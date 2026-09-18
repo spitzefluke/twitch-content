@@ -1,0 +1,10 @@
+# Die Functions prüfen den Login selbst (bzw. die Twitch-Signatur),
+# daher ist die automatische JWT-Prüfung von Supabase ausgeschaltet.
+[functions.twitch-oauth]
+verify_jwt = false
+
+[functions.twitch-eventsub]
+verify_jwt = false
+
+[functions.spin]
+verify_jwt = false
