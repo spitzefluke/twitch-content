@@ -23,15 +23,29 @@ Set-Location $PSScriptRoot
 function Step($text) { Write-Host ""; Write-Host "==> $text" -ForegroundColor Yellow }
 function Info($text) { Write-Host "    $text" -ForegroundColor Gray }
 
+# npx.cmd statt npx: der PowerShell-Wrapper npx.ps1 macht aus jeder Meldung auf stderr einen Fehler
 function Invoke-Supabase {
-  & npx --yes supabase@latest @args
+  & npx.cmd --yes supabase@latest @args
   if ($LASTEXITCODE -ne 0) { throw "Supabase-CLI fehlgeschlagen: supabase $($args -join ' ')" }
 }
 
 # ---------------------------------------------------------------- 1. Login
 Step 'Supabase-Login'
-& npx --yes supabase@latest projects list *> $null
-if ($LASTEXITCODE -ne 0) {
+function Test-SupabaseLogin {
+  # Windows PowerShell 5.1 wertet umgeleitete stderr-Ausgaben sonst als Abbruch
+  $old = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    & npx.cmd --yes supabase@latest projects list 2>&1 | Out-Null
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  } finally {
+    $ErrorActionPreference = $old
+  }
+}
+
+if (-not (Test-SupabaseLogin)) {
   Info 'Es oeffnet sich gleich der Browser. Bitte bei Supabase anmelden und bestaetigen.'
   Invoke-Supabase login
 } else {
@@ -133,7 +147,7 @@ Invoke-Supabase functions deploy --use-api --no-verify-jwt --project-ref $Projec
 
 # ---------------------------------------------------------------- 6. config.js
 Step 'js/config.js aktualisieren'
-$keysJson = (& npx --yes supabase@latest projects api-keys --project-ref $ProjectRef -o json) -join "`n"
+$keysJson = (& npx.cmd --yes supabase@latest projects api-keys --project-ref $ProjectRef -o json) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'API-Keys konnten nicht gelesen werden.' }
 $keys = $keysJson | ConvertFrom-Json
 $publicKey = ($keys | Where-Object { $_.name -eq 'anon' } | Select-Object -First 1).api_key
