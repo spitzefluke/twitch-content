@@ -1,15 +1,17 @@
 -- ============================================================
 -- Zugfahrer_DaveTV · Content-Stellwerk
+-- Mehrfach ausführbar: bereits vorhandene Objekte werden übersprungen bzw. ersetzt.
 -- ============================================================
 
 -- ---------- Profile ----------
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
   username text not null check (char_length(username) between 1 and 25),
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
 alter table public.profiles enable row level security;
+drop policy if exists "profiles: lesen für angemeldete" on public.profiles;
 create policy "profiles: lesen für angemeldete" on public.profiles
   for select to authenticated using (true);
 
@@ -25,6 +27,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
@@ -35,7 +38,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
 $$;
 
 -- ---------- Kacheln ----------
-create table public.tiles (
+create table if not exists public.tiles (
   id text primary key,
   position int not null,
   kind text not null check (kind in ('wheel', 'countdown')),
@@ -47,8 +50,10 @@ create table public.tiles (
   updated_at timestamptz not null default now()
 );
 alter table public.tiles enable row level security;
+drop policy if exists "tiles: lesen für angemeldete" on public.tiles;
 create policy "tiles: lesen für angemeldete" on public.tiles
   for select to authenticated using (true);
+drop policy if exists "tiles: ändern nur admin" on public.tiles;
 create policy "tiles: ändern nur admin" on public.tiles
   for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()));
 
@@ -61,7 +66,7 @@ insert into public.tiles (id, position, kind, title, description, theme, target_
 on conflict (id) do nothing;
 
 -- ---------- Glücksrad-Varianten ----------
-create table public.wheel_variants (
+create table if not exists public.wheel_variants (
   id text primary key,
   position int not null,
   name text not null,
@@ -70,8 +75,10 @@ create table public.wheel_variants (
   segments jsonb not null check (jsonb_typeof(segments) = 'array' and jsonb_array_length(segments) >= 2)
 );
 alter table public.wheel_variants enable row level security;
+drop policy if exists "wheel_variants: lesen für angemeldete" on public.wheel_variants;
 create policy "wheel_variants: lesen für angemeldete" on public.wheel_variants
   for select to authenticated using (true);
+drop policy if exists "wheel_variants: ändern nur admin" on public.wheel_variants;
 create policy "wheel_variants: ändern nur admin" on public.wheel_variants
   for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()));
 
@@ -110,7 +117,7 @@ on conflict (id) do nothing;
 
 -- ---------- Drehungen ----------
 -- Schreiben nur über Edge Functions (service role), lesen für alle Angemeldeten.
-create table public.spins (
+create table if not exists public.spins (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   source text not null check (source in ('web', 'twitch')),
@@ -123,16 +130,26 @@ create table public.spins (
   user_id uuid references auth.users on delete set null,
   redemption_id text unique
 );
-create index spins_created_at_idx on public.spins (created_at desc);
-create index spins_user_idx on public.spins (user_id, created_at desc);
+create index if not exists spins_created_at_idx on public.spins (created_at desc);
+create index if not exists spins_user_idx on public.spins (user_id, created_at desc);
 alter table public.spins enable row level security;
+drop policy if exists "spins: lesen für angemeldete" on public.spins;
 create policy "spins: lesen für angemeldete" on public.spins
   for select to authenticated using (true);
 
-alter publication supabase_realtime add table public.spins;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'spins'
+  ) then
+    alter publication supabase_realtime add table public.spins;
+  end if;
+end;
+$$;
 
 -- ---------- Twitch (nur service role) ----------
-create table public.twitch_connection (
+create table if not exists public.twitch_connection (
   id int primary key default 1 check (id = 1),
   broadcaster_id text not null,
   broadcaster_login text not null,
@@ -151,7 +168,7 @@ create table public.twitch_connection (
 alter table public.twitch_connection enable row level security;
 -- absichtlich keine Policies: Tokens sind nur für Edge Functions lesbar
 
-create table public.oauth_states (
+create table if not exists public.oauth_states (
   state text primary key,
   user_id uuid not null references auth.users on delete cascade,
   created_at timestamptz not null default now()
