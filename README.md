@@ -44,7 +44,26 @@ Das Intro erzwingen: `http://localhost:5317/?intro=1`
 2. **Settings → Pages → Build and deployment**: Source „Deploy from a branch“, Branch `main`, Ordner `/ (root)`.
 3. Nach ca. einer Minute ist die Seite unter `https://<dein-name>.github.io/<repo>/` erreichbar.
 
-### 2. Supabase-Projekt
+### 2. Supabase – schnell mit dem Setup-Skript (Windows)
+
+1. Auf [supabase.com/dashboard](https://supabase.com/dashboard) ein neues Projekt anlegen (kostenloser Tarif, Region z. B. *Frankfurt*). Das Datenbank-Passwort gut merken.
+2. Repo klonen und im Ordner ausführen:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\setup-supabase.ps1
+   ```
+
+   Das Skript erledigt Folgendes:
+   - Es meldet dich bei Supabase an (über den Browser) und fragt nach der Projekt-ID.
+   - Es legt die Datenbank an.
+   - Es zeigt dir die Redirect-URL für die Twitch-App und fragt dann nach Client-ID und Secret.
+   - Es setzt alle Secrets (das Webhook-Secret erzeugt es selbst).
+   - Es lädt die Server-Funktionen hoch und trägt die Supabase-Adresse in `js/config.js` ein.
+3. Danach bleiben nur die zwei Schritte, die das Skript am Ende anzeigt: die Site-URL im Supabase-Dashboard eintragen und `js/config.js` pushen.
+
+Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
+
+### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
 2. **SQL Editor** öffnen, den Inhalt von `supabase/migrations/20260918000000_init.sql` einfügen und ausführen.
@@ -83,7 +102,13 @@ supabase secrets set TWITCH_CLIENT_ID=xxx TWITCH_CLIENT_SECRET=xxx EVENTSUB_SECR
 ```
 
 ```bash
-supabase functions deploy --no-verify-jwt
+supabase functions deploy --use-api --no-verify-jwt
+```
+
+Tests für die Webhook-Signaturprüfung:
+
+```bash
+npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signature_test.ts
 ```
 
 | Secret | Bedeutung |
