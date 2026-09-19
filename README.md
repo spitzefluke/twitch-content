@@ -67,7 +67,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen, den Inhalt von `supabase/migrations/20260918000000_init.sql` einfügen und ausführen.
+2. **SQL Editor** öffnen und nacheinander den Inhalt beider Dateien aus `supabase/migrations/` einfügen und ausführen (erst `…_init.sql`, dann `…_admin.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
