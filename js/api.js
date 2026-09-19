@@ -79,6 +79,10 @@ async function createSupabaseApi() {
       if (error) throw error;
       location.href = data.url;
     },
+    // Einmal-Code aus admin.html einlösen → echte Sitzung als Stellwerk-Admin
+    async adminSiteLogin(tokenHash) {
+      unwrap(await sb.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }));
+    },
     async signOut() { await sb.auth.signOut(); },
     async getProfile(user) {
       const { data } = await sb.from('profiles').select('username, is_admin').eq('id', user.id).maybeSingle();
@@ -192,6 +196,11 @@ function createLocalApi() {
     },
     async signInWithProvider() {
       throw new Error('Im Demo-Modus nicht verfügbar. Social-Logins brauchen Supabase.');
+    },
+    async adminSiteLogin(email) {
+      if (!store.get('users', {})[email]) throw new Error('Admin-Account nicht gefunden.');
+      current = { id: email, email };
+      store.set('session', email);
     },
     async signOut() {
       current = null;

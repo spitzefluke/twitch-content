@@ -66,6 +66,12 @@ function demoCall(action, extra) {
     return { ok: true };
   }
   if (action === 'twitch_check') return { found: false, status: 'im Demo-Modus nicht verfügbar' };
+  if (action === 'site_session') {
+    const users = read('users', {});
+    users['stellwerk-admin@example.com'] = { username: 'Stellwerk-Admin', pass: null, is_admin: true };
+    localStorage.setItem('zd_users', JSON.stringify(users));
+    return { token_hash: 'stellwerk-admin@example.com' };
+  }
   const spins = read('spins', []);
   const users = Object.entries(read('users', {})).map(([email, u]) => ({
     id: email, email, username: u.username, is_admin: !!u.is_admin,
@@ -93,6 +99,7 @@ function init() {
   $('#admin-form').addEventListener('submit', onLogin);
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
+  $('#site-btn').addEventListener('click', openSiteAsAdmin);
   $('#users-search').addEventListener('input', (e) => { state.search = e.target.value.trim().toLowerCase(); state.usersSig = ''; renderUsers(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.token) refresh();
@@ -148,6 +155,24 @@ function logout(message) {
   state.chartSig = '';
   session.clear();
   showLogin(message);
+}
+
+// Meldet auf der Webseite mit dem internen Admin-Account an (ohne Registrierung).
+// Der Einmal-Code geht über sessionStorage (gleicher Tab), nicht über die URL.
+async function openSiteAsAdmin() {
+  const btn = $('#site-btn');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  try {
+    const { token_hash } = await call('site_session');
+    sessionStorage.setItem('zd_admin_site', token_hash);
+    location.href = './';
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    toast(`Webseite konnte nicht geöffnet werden: ${err.message}`, 'error', 6000);
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+  }
 }
 
 function showApp() {

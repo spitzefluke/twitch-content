@@ -32,9 +32,13 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   const apiPromise = Promise.resolve(createApi());
 
+  // Einmal-Code vom Admin-Bereich ("Webseite als Admin öffnen")
+  let adminHash = null;
+  try { adminHash = sessionStorage.getItem('zd_admin_site'); sessionStorage.removeItem('zd_admin_site'); } catch { /* ignorieren */ }
+
   let seen = false;
   try { seen = sessionStorage.getItem('zd_intro') === '1'; sessionStorage.setItem('zd_intro', '1'); } catch { /* ignorieren */ }
-  if (params.has('intro') || (!seen && !params.has('twitch'))) {
+  if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash)) {
     await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 10) * 1000 });
   } else {
     $('#intro').remove();
@@ -54,6 +58,14 @@ async function boot() {
   if (twitchReturn) {
     history.replaceState(null, '', location.pathname);
     queueMicrotask(() => showTwitchReturn(twitchReturn, params.get('reason')));
+  }
+
+  if (adminHash) {
+    try {
+      await state.api.adminSiteLogin(adminHash);
+    } catch (err) {
+      queueMicrotask(() => toast(`Admin-Anmeldung fehlgeschlagen: ${germanError(err)}`, 'error', 7000));
+    }
   }
 
   setupAuthForms();
@@ -247,6 +259,7 @@ function renderHeader() {
   $('#user-name').textContent = profile.username;
   $('#user-avatar').textContent = profile.username.slice(0, 1).toUpperCase();
   $('#user-role').hidden = !profile.is_admin;
+  $('#admin-btn').hidden = !profile.is_admin;
 
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';

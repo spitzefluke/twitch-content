@@ -4,6 +4,7 @@
 //   POST {action:"overview", token}         → Live-Daten für das Dashboard
 //   POST {action:"twitch_check", token}     → Status des EventSub-Webhooks direkt bei Twitch
 //   POST {action:"set_admin", token, user_id, is_admin}
+//   POST {action:"site_session", token}     → Einmal-Code, mit dem admin.html auf der Webseite anmeldet
 import { corsHeaders, db, env, getAppToken, helix, json } from "../_shared/twitch.ts";
 
 const SESSION_HOURS = 12;
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
     if (body.action === "overview") return json(await overview());
     if (body.action === "twitch_check") return json(await twitchCheck());
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
+    if (body.action === "site_session") return json(await siteSession());
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {
     console.error(e);
@@ -153,6 +155,30 @@ async function twitchCheck() {
   return sub
     ? { found: true, status: sub.status, created_at: sub.created_at, callback: sub.transport?.callback }
     : { found: false, status: "bei Twitch nicht gefunden" };
+}
+
+// Interner Account für den Admin-Zugang auf der Webseite. Er hat kein Passwort
+// und ist nur über diese Funktion (also mit dem Admin-Passwort) erreichbar.
+// example.com ist eine reservierte Domain – es wird nie eine Mail verschickt.
+const SITE_ADMIN_EMAIL = "stellwerk-admin@example.com";
+
+async function siteSession() {
+  const created = await db.auth.admin.createUser({
+    email: SITE_ADMIN_EMAIL,
+    email_confirm: true,
+    user_metadata: { username: "Stellwerk-Admin" },
+  });
+  if (created.error && !/already|registered|exists/i.test(created.error.message)) throw created.error;
+
+  // Erzeugt nur den Einmal-Code, verschickt keine E-Mail
+  const { data, error } = await db.auth.admin.generateLink({ type: "magiclink", email: SITE_ADMIN_EMAIL });
+  if (error) throw error;
+
+  const { error: profileError } = await db.from("profiles")
+    .upsert({ id: data.user.id, username: "Stellwerk-Admin", is_admin: true });
+  if (profileError) throw profileError;
+
+  return { token_hash: data.properties.hashed_token };
 }
 
 async function setAdmin(userId: unknown, isAdmin: unknown) {
