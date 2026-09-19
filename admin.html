@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Stellwerk-Admin · Zugfahrer_DaveTV</title>
+  <meta name="theme-color" content="#0a0d13">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <script type="module" src="js/admin.js"></script>
+</head>
+<body>
+  <div id="demo-banner" class="demo-banner" hidden>
+    Demo-Modus: Passwort <code>demo</code>. Angezeigt werden nur die Daten aus diesem Browser.
+  </div>
+
+  <!-- ============ LOGIN ============ -->
+  <main id="admin-login" class="admin-login" hidden>
+    <form id="admin-form" class="auth-card admin-card" novalidate>
+      <div class="brand">
+        <img src="assets/favicon.svg" alt="" width="36" height="36">
+        <span>Zugfahrer_DaveTV</span>
+      </div>
+      <p class="eyebrow">Nur für das Team</p>
+      <h1>Stellwerk-Admin</h1>
+      <p class="admin-lead">Live-Daten zu Nutzern, Glücksrad und Twitch-Verbindung. Ohne Registrierung, nur mit dem Admin-Passwort.</p>
+      <label class="field">
+        <span>Admin-Passwort</span>
+        <input name="password" type="password" autocomplete="current-password" required placeholder="••••••••••••">
+      </label>
+      <p class="form-msg" role="alert"></p>
+      <button class="btn btn--primary btn--block" type="submit">Einloggen</button>
+      <a class="back-link" href="./">← Zur Webseite</a>
+    </form>
+  </main>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="admin-app" class="app" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/favicon.svg" alt="" width="30" height="30">
+        <span>Stellwerk-Admin</span>
+      </div>
+      <div class="topbar-actions">
+        <span id="live" class="live-pill" role="status"><span class="live-dot" aria-hidden="true"></span><span class="live-text">Verbinde …</span></span>
+        <a class="btn btn--ghost btn--sm" href="./">Zur Webseite</a>
+        <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section id="kpis" class="kpis" aria-label="Kennzahlen"></section>
+
+      <div class="admin-grid">
+        <section class="panel panel--chart" aria-labelledby="chart-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="chart-title">Drehungen pro Tag</h2>
+              <p class="panel-sub">Letzte 14 Tage</p>
+            </div>
+            <ul class="legend" aria-label="Legende">
+              <li><span class="key key--twitch"></span>Kanalpunkte</li>
+              <li><span class="key key--web"></span>Webseite</li>
+            </ul>
+          </div>
+          <div id="chart" class="chart"></div>
+          <details class="table-view">
+            <summary>Als Tabelle anzeigen</summary>
+            <table id="chart-table"></table>
+          </details>
+        </section>
+
+        <section class="panel" aria-labelledby="twitch-title">
+          <div class="panel-head">
+            <h2 id="twitch-title">Twitch</h2>
+            <button id="twitch-check" class="btn btn--ghost btn--sm" type="button">Live bei Twitch prüfen</button>
+          </div>
+          <dl id="twitch-panel" class="status-list"></dl>
+          <p id="twitch-check-result" class="check-result" role="status"></p>
+        </section>
+
+        <section class="panel panel--feed" aria-labelledby="feed-title">
+          <div class="panel-head">
+            <h2 id="feed-title">Live-Feed</h2>
+            <p class="panel-sub">Letzte 40 Drehungen</p>
+          </div>
+          <ol id="feed" class="feed"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="variants-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="variants-title">Varianten</h2>
+              <p class="panel-sub">Letzte 14 Tage</p>
+            </div>
+          </div>
+          <div id="variants" class="hbars"></div>
+        </section>
+
+        <section class="panel panel--wide" aria-labelledby="users-title">
+          <div class="panel-head">
+            <h2 id="users-title">Nutzer <span id="users-count" class="count"></span></h2>
+            <input id="users-search" class="search" type="search" placeholder="Suchen …" aria-label="Nutzer suchen">
+          </div>
+          <div class="table-wrap">
+            <table class="users">
+              <thead>
+                <tr><th>Name</th><th>E-Mail</th><th>Registriert</th><th>Letzter Login</th><th>Bestätigt</th><th>Admin</th></tr>
+              </thead>
+              <tbody id="users"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="chart-tip" class="chart-tip" role="tooltip" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

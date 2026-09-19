@@ -3,7 +3,7 @@
     1. Supabase-Login (Browser)
     2. Projekt verknuepfen
     3. Datenbank anlegen (Tabellen, Rechte, Startdaten)
-    4. Twitch-Zugangsdaten + Secrets setzen
+    4. Twitch-Zugangsdaten, Admin-Passwort + Secrets setzen
     5. Edge Functions deployen
     6. js/config.js mit URL + oeffentlichem Key fuellen
 
@@ -11,7 +11,7 @@
   Start:   powershell -ExecutionPolicy Bypass -File .\setup-supabase.ps1
 #>
 param(
-  [string]$ProjectRef,
+  [string]$ProjectRef = 'ssibsphuttjlphijilsc',
   [string]$SiteUrl = 'https://spitzefluke.github.io/twitch-content/',
   [string]$BroadcasterLogin = 'zugfahrer_davetv',
   [int]$RewardCost = 10000
@@ -55,43 +55,73 @@ Invoke-Supabase link --project-ref $ProjectRef
 Step 'Datenbank einrichten'
 Invoke-Supabase db push --yes
 
-# ---------------------------------------------------------------- 4. Twitch + Secrets
+# ---------------------------------------------------------------- 4. Twitch + Admin + Secrets
+function Read-Secret($prompt) {
+  $secure = Read-Host $prompt -AsSecureString
+  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+  try { return [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+}
+
 Step 'Twitch-App'
 $RedirectUrl = "$SupabaseUrl/functions/v1/twitch-oauth"
 Write-Host ''
-Write-Host '    Lege jetzt auf https://dev.twitch.tv/console/apps eine App an:' -ForegroundColor Cyan
+Write-Host '    Lege auf https://dev.twitch.tv/console/apps eine App an (falls noch nicht geschehen):' -ForegroundColor Cyan
 Write-Host "      OAuth Redirect URL:  $RedirectUrl" -ForegroundColor Cyan
 Write-Host '      Kategorie:           Website Integration' -ForegroundColor Cyan
 Write-Host '      Client-Typ:          Confidential' -ForegroundColor Cyan
 Write-Host '    Danach "Manage" -> Client ID kopieren und "New Secret" erzeugen.' -ForegroundColor Cyan
+Write-Host '    Schon erledigt und Secrets gesetzt? Dann einfach Enter druecken zum Ueberspringen.' -ForegroundColor Cyan
 Write-Host ''
 try { Set-Clipboard -Value $RedirectUrl; Info '(Redirect URL ist in der Zwischenablage.)' } catch { }
 
+$lines = @()
 $ClientId = (Read-Host '    Twitch Client ID').Trim()
-$secure = Read-Host '    Twitch Client Secret (Eingabe unsichtbar)' -AsSecureString
-$ClientSecret = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)).Trim()
-if (-not $ClientId -or -not $ClientSecret) { throw 'Client ID und Client Secret werden benoetigt.' }
+if ($ClientId) {
+  $ClientSecret = (Read-Secret '    Twitch Client Secret (Eingabe unsichtbar)').Trim()
+  if (-not $ClientSecret) { throw 'Ohne Client Secret geht es nicht.' }
 
-# Zufaelliges Webhook-Secret (48 Zeichen), mit dem Twitch seine Nachrichten signiert
-$chars = [char[]]'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-$bytes = New-Object byte[] 48
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-$EventSubSecret = -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
+  # Zufaelliges Webhook-Secret (48 Zeichen), mit dem Twitch seine Nachrichten signiert
+  $chars = [char[]]'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  $bytes = New-Object byte[] 48
+  [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $EventSubSecret = -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
 
-Step 'Secrets setzen'
-$envFile = Join-Path $env:TEMP "stellwerk-secrets-$([guid]::NewGuid()).env"
-try {
-  $lines = @(
+  $lines += @(
     "TWITCH_CLIENT_ID=$ClientId"
     "TWITCH_CLIENT_SECRET=$ClientSecret"
     "EVENTSUB_SECRET=$EventSubSecret"
-    "SITE_URL=$SiteUrl"
-    "BROADCASTER_LOGIN=$BroadcasterLogin"
-    "REWARD_TITLE=Gl$([char]0x00FC)cksrad"
-    "REWARD_COST=$RewardCost"
   )
+} else {
+  Info 'Twitch uebersprungen - vorhandene Twitch-Secrets bleiben unveraendert.'
+}
+
+Step 'Admin-Passwort'
+Info 'Damit meldest du dich auf admin.html an (ohne Registrierung).'
+Info 'Mindestens 12 Zeichen. Enter = ueberspringen (vorhandenes Passwort bleibt).'
+$AdminPassword = Read-Secret '    Neues Admin-Passwort (Eingabe unsichtbar)'
+if ($AdminPassword) {
+  if ($AdminPassword.Length -lt 12) { throw 'Das Admin-Passwort muss mindestens 12 Zeichen lang sein.' }
+  if ($AdminPassword.Contains("'")) { throw 'Bitte kein Apostroph ('') im Admin-Passwort verwenden.' }
+  $repeat = Read-Secret '    Admin-Passwort wiederholen'
+  if ($repeat -ne $AdminPassword) { throw 'Die Passwoerter stimmen nicht ueberein.' }
+  # in einfachen Anfuehrungszeichen, damit $ oder # im Passwort nicht umgedeutet werden
+  $lines += "ADMIN_PASSWORD='$AdminPassword'"
+} else {
+  Info 'Admin-Passwort uebersprungen.'
+}
+
+Step 'Secrets setzen'
+$lines += @(
+  "SITE_URL=$SiteUrl"
+  "BROADCASTER_LOGIN=$BroadcasterLogin"
+  "REWARD_TITLE=Gl$([char]0x00FC)cksrad"
+  "REWARD_COST=$RewardCost"
+)
+$envFile = Join-Path $env:TEMP "stellwerk-secrets-$([guid]::NewGuid()).env"
+try {
   # UTF-8 ohne BOM, sonst liest die CLI den ersten Namen falsch
-  [IO.File]::WriteAllLines($envFile, $lines, (New-Object Text.UTF8Encoding $false))
+  [IO.File]::WriteAllLines($envFile, [string[]]$lines, (New-Object Text.UTF8Encoding $false))
   Invoke-Supabase secrets set --env-file $envFile --project-ref $ProjectRef
 } finally {
   Remove-Item $envFile -Force -ErrorAction SilentlyContinue
@@ -132,3 +162,4 @@ Write-Host '       git commit -m "Supabase verbinden"' -ForegroundColor Green
 Write-Host '       git push' -ForegroundColor Green
 Write-Host ''
 Write-Host "Danach auf $SiteUrl registrieren und oben rechts 'Mit Twitch verbinden' klicken." -ForegroundColor Green
+Write-Host "Admin-Bereich: $($SiteUrl)admin.html" -ForegroundColor Green

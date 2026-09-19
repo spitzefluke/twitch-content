@@ -57,6 +57,7 @@ Das Intro erzwingen: `http://localhost:5317/?intro=1`
    - Es meldet dich bei Supabase an (über den Browser) und fragt nach der Projekt-ID.
    - Es legt die Datenbank an.
    - Es zeigt dir die Redirect-URL für die Twitch-App und fragt dann nach Client-ID und Secret.
+   - Es fragt nach einem Admin-Passwort für `admin.html`.
    - Es setzt alle Secrets (das Webhook-Secret erzeugt es selbst).
    - Es lädt die Server-Funktionen hoch und trägt die Supabase-Adresse in `js/config.js` ein.
 3. Danach bleiben nur die zwei Schritte, die das Skript am Ende anzeigt: die Site-URL im Supabase-Dashboard eintragen und `js/config.js` pushen.
@@ -143,6 +144,25 @@ Löst ab jetzt ein Zuschauer die Belohnung ein, passiert Folgendes:
 5. Ist die Webseite gerade offen, dreht sich das Rad dort live mit (Supabase Realtime).
 
 Dreht Dave selbst auf der Webseite, kann er mit dem Schalter „Ergebnis im Twitch-Chat posten“ bestimmen, ob das Ergebnis auch im Chat landet.
+
+## Admin-Bereich
+
+Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen Admin-Zugang **ohne Registrierung**, nur mit Passwort. Er zeigt Live-Daten und aktualisiert sich alle 5 Sekunden:
+
+- Kennzahlen: registrierte Nutzer, Drehungen heute und gesamt, Einlösungen per Kanalpunkte, ausgegebene Kanalpunkte
+- Säulendiagramm der Drehungen pro Tag (Kanalpunkte / Webseite) für die letzten 14 Tage
+- Live-Feed der letzten 40 Drehungen
+- Verteilung auf die drei Glücksrad-Varianten
+- Twitch-Status (Verbindung, Belohnung, Webhook, Token) mit Button „Live bei Twitch prüfen“
+- Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf.
+
+Das Passwort steht **nicht** im Code, weil das Repo öffentlich ist. Es liegt als Secret `ADMIN_PASSWORD` in Supabase und wird im Setup-Skript abgefragt. Später ändern:
+
+```bash
+npx supabase secrets set "ADMIN_PASSWORD='neues-langes-passwort'"
+```
+
+Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen in 15 Minuten ist der Login für 15 Minuten gesperrt. Im Demo-Modus lautet das Passwort `demo`.
 
 ## Wichtig zu wissen
 

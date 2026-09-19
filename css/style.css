@@ -310,6 +310,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .form-msg { min-height: 1.2em; font-size: 14px; color: #ff9d95; }
 .form-msg.is-ok { color: #9ff0c3; }
 .form-msg:empty { display: none; }
+.admin-link { justify-self: center; font-size: 13px; color: var(--dim); text-decoration: none; }
+.admin-link:hover { color: var(--muted); text-decoration: underline; }
 
 /* ==========================================================
    APP
