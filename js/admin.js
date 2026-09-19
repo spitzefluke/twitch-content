@@ -11,9 +11,10 @@ const PROVIDERS = [
   ['email', 'E-Mail'], ['twitch', 'Twitch'], ['discord', 'Discord'],
   ['google', 'Google'], ['spotify', 'Spotify'], ['github', 'GitHub'],
 ];
+// Pfad direkt in mask-image: in einer CSS-Variablen wuerde er relativ zur CSS-Datei aufgeloest
 const providerIcon = (id) => id === 'email'
   ? '<span class="p-email" aria-hidden="true">@</span>'
-  : `<span class="p-icon" style="--icon:url('assets/icons/${id}.svg')" aria-hidden="true"></span>`;
+  : `<span class="p-icon" style="-webkit-mask-image:url('assets/icons/${id}.svg');mask-image:url('assets/icons/${id}.svg')" aria-hidden="true"></span>`;
 
 const state = {
   token: null,

@@ -164,7 +164,12 @@
 .providers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 .providers li { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line); font-weight: 600; font-size: 14px; }
 .providers .p-name { display: flex; align-items: center; gap: 8px; }
-.p-icon { width: 18px; height: 18px; flex: none; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+.p-icon {
+  width: 18px; height: 18px; flex: none; background: currentColor;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
 .p-email { display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 14px; }
 .via { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .via .p-icon { width: 14px; height: 14px; }

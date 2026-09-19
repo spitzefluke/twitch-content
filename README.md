@@ -2,7 +2,8 @@
 
 Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_DaveTV**:
 
-- **10-Sekunden-Intro** (Signal → Zug fährt durch → Abfahrtstafel), überspringbar, einmal pro Browser-Sitzung
+- **10-Sekunden-Intro** (Signal → Zug fährt durch → Abfahrtstafel) mit **Bahnhofs-Gong und Durchsage**, überspringbar, einmal pro Browser-Sitzung
+- **Animierter Hintergrund**: ziehende Lichter, Sternenfeld und alle 45 Sekunden ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort)
 - **Raster mit 5 Kacheln**: Hintergrund, Hover-Animation, Kurzbeschreibung
   - Kachel 1: **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)

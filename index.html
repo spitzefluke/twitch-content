@@ -15,6 +15,26 @@
 </head>
 <body>
 
+  <!-- ============ HINTERGRUND ============ -->
+  <div class="site-bg" aria-hidden="true">
+    <div class="bg-stars"></div>
+    <div class="bg-glow bg-glow--a"></div>
+    <div class="bg-glow bg-glow--b"></div>
+    <div class="bg-line"></div>
+    <div class="bg-train">
+      <svg viewBox="0 0 300 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 30 L4 24 Q0 22 2 18 L8 8 Q11 3 18 3 L92 3 Q96 3 96 7 L96 30 Z" fill="currentColor"/>
+        <rect x="102" y="6" width="88" height="24" rx="4" fill="currentColor"/>
+        <rect x="196" y="6" width="88" height="24" rx="4" fill="currentColor"/>
+        <g fill="currentColor">
+          <circle cx="20" cy="33" r="4"/><circle cx="36" cy="33" r="4"/><circle cx="70" cy="33" r="4"/><circle cx="86" cy="33" r="4"/>
+          <circle cx="116" cy="33" r="4"/><circle cx="176" cy="33" r="4"/><circle cx="210" cy="33" r="4"/><circle cx="270" cy="33" r="4"/>
+        </g>
+        <circle cx="5" cy="26" r="2.5" fill="#ffe9a8"/>
+      </svg>
+    </div>
+  </div>
+
   <!-- ============ INTRO (10 Sekunden) ============ -->
   <section id="intro" class="intro" aria-label="Intro">
     <div class="intro-stars" aria-hidden="true"></div>
@@ -111,6 +131,7 @@
     </div>
 
     <div class="intro-progress" aria-hidden="true"><span></span></div>
+    <button id="intro-sound" class="intro-sound" type="button" data-state="blocked" aria-pressed="false">Ton einschalten</button>
     <button class="intro-skip" type="button">Überspringen <kbd>Esc</kbd></button>
   </section>
 
