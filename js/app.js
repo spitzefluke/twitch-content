@@ -57,6 +57,7 @@ async function boot() {
   }
 
   setupAuthForms();
+  setupSocial();
   setupDialogs();
 
   state.api.onAuthChange((user) => {
@@ -136,6 +137,43 @@ function setupAuthForms() {
       }
     });
   });
+}
+
+// ---------- Social-Logins (Twitch, Discord, Google, Spotify, GitHub) ----------
+async function setupSocial() {
+  const box = $('#social');
+  const msg = box.querySelector('.social-msg');
+
+  // Fehler, mit denen Supabase nach dem Anbieter-Login zurückleitet (?error=… oder #error=…)
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const query = new URLSearchParams(location.search);
+  const oauthError = query.get('error_description') ?? hash.get('error_description') ?? query.get('error') ?? hash.get('error');
+  if (oauthError) {
+    msg.textContent = `Anmeldung fehlgeschlagen: ${germanError(new Error(oauthError.replace(/\+/g, ' ')))}`;
+    history.replaceState(null, '', location.pathname);
+  }
+
+  let enabled = {};
+  try { enabled = await state.api.authProviders(); } catch { /* Buttons bleiben aus */ }
+  let visible = 0;
+  box.querySelectorAll('[data-provider]').forEach((btn) => {
+    const on = !!enabled[btn.dataset.provider];
+    btn.hidden = !on;
+    if (on) visible++;
+    btn.addEventListener('click', async () => {
+      msg.textContent = '';
+      box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = true; });
+      try {
+        await state.api.signInWithProvider(btn.dataset.provider); // leitet weiter
+      } catch (err) {
+        msg.textContent = germanError(err);
+        box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = false; });
+      }
+    });
+  });
+  // Der erste sichtbare Button wird groß dargestellt (normalerweise Twitch)
+  box.querySelector('[data-provider]:not([hidden])')?.classList.add('is-primary');
+  box.hidden = visible === 0 && !oauthError;
 }
 
 async function withLoading(form, fn) {

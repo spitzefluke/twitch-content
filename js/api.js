@@ -18,6 +18,9 @@ const ERRORS = [
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
   [/failed to fetch|networkerror/i, 'Keine Verbindung zum Server.'],
+  [/provider is not enabled|unsupported provider/i, 'Diese Anmelde-Möglichkeit ist noch nicht eingerichtet.'],
+  [/access.denied|user denied|cancel/i, 'Anmeldung abgebrochen.'],
+  [/email.*(not|kein).*(provided|available)|missing email/i, 'Der Anbieter hat keine E-Mail-Adresse geliefert. Bitte eine andere Möglichkeit wählen.'],
 ];
 export function germanError(err) {
   const msg = err?.message ?? String(err);
@@ -61,6 +64,20 @@ async function createSupabaseApi() {
         options: { data: { username }, emailRedirectTo: location.origin + location.pathname },
       }));
       return { needsConfirmation: !data.session };
+    },
+    // Welche Social-Logins sind in Supabase eingeschaltet?
+    async authProviders() {
+      const res = await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: CONFIG.SUPABASE_ANON_KEY } });
+      if (!res.ok) return {};
+      return (await res.json()).external ?? {};
+    },
+    async signInWithProvider(provider) {
+      const { data, error } = await sb.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: location.origin + location.pathname, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      location.href = data.url;
     },
     async signOut() { await sb.auth.signOut(); },
     async getProfile(user) {
@@ -169,6 +186,12 @@ function createLocalApi() {
       store.set('session', key);
       emit();
       return { needsConfirmation: false };
+    },
+    async authProviders() {
+      return { twitch: true, discord: true, google: true, spotify: true, github: true };
+    },
+    async signInWithProvider() {
+      throw new Error('Im Demo-Modus nicht verfügbar. Social-Logins brauchen Supabase.');
     },
     async signOut() {
       current = null;

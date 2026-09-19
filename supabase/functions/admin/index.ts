@@ -123,6 +123,7 @@ async function overview() {
     created_at: u.created_at,
     last_sign_in_at: u.last_sign_in_at ?? null,
     confirmed: !!u.email_confirmed_at,
+    provider: (u.app_metadata?.provider as string | undefined) ?? "email",
   })).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 
   const twitchSpins = twitchCount.count ?? 0;

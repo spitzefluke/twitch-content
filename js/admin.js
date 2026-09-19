@@ -7,6 +7,13 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const TOKEN_KEY = 'zd_admin_token';
 const POLL_MS = 5000;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PROVIDERS = [
+  ['email', 'E-Mail'], ['twitch', 'Twitch'], ['discord', 'Discord'],
+  ['google', 'Google'], ['spotify', 'Spotify'], ['github', 'GitHub'],
+];
+const providerIcon = (id) => id === 'email'
+  ? '<span class="p-email" aria-hidden="true">@</span>'
+  : `<span class="p-icon" style="--icon:url('assets/icons/${id}.svg')" aria-hidden="true"></span>`;
 
 const state = {
   token: null,
@@ -93,6 +100,7 @@ function init() {
   setInterval(updateLiveLabel, 1000);
 
   state.token = session.get();
+  loadProviders();
   if (state.token) showApp();
   else showLogin();
 }
@@ -398,25 +406,43 @@ async function checkTwitch() {
   }
 }
 
+// ---------- Anmelde-Möglichkeiten (öffentliche Supabase-Einstellungen) ----------
+async function loadProviders() {
+  let settings = { external: {} };
+  if (isDemo) settings = { external: { email: true } };
+  else {
+    try {
+      const res = await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: CONFIG.SUPABASE_ANON_KEY } });
+      if (res.ok) settings = await res.json();
+    } catch { /* offline */ }
+  }
+  const ext = settings.external ?? {};
+  $('#providers').innerHTML = PROVIDERS.map(([id, name]) => {
+    const on = !!ext[id];
+    return `<li><span class="p-name">${providerIcon(id)}${name}</span>${on ? '<span class="chip chip--ok">✓ Aktiv</span>' : '<span class="chip chip--warn">! Nicht eingerichtet</span>'}</li>`;
+  }).join('');
+}
+
 // ---------- Nutzer ----------
 function renderUsers() {
   const users = state.data?.users ?? [];
   const q = state.search;
   const list = q ? users.filter((u) => `${u.username} ${u.email}`.toLowerCase().includes(q)) : users;
   $('#users-count').textContent = `(${nf.format(users.length)})`;
-  const sig = JSON.stringify(list.map((u) => [u.id, u.is_admin, u.last_sign_in_at, u.confirmed]));
+  const sig = JSON.stringify(list.map((u) => [u.id, u.is_admin, u.last_sign_in_at, u.confirmed, u.provider]));
   if (sig === state.usersSig) return; // nicht neu zeichnen, solange sich nichts ändert
   state.usersSig = sig;
 
   const tbody = $('#users');
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">${q ? 'Keine Treffer.' : 'Noch niemand registriert.'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">${q ? 'Keine Treffer.' : 'Noch niemand registriert.'}</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map((u) => `
     <tr>
       <td><span class="u-name"><span class="avatar" aria-hidden="true">${escapeHtml((u.username ?? '?').slice(0, 1).toUpperCase())}</span>${escapeHtml(u.username ?? '')}</span></td>
-      <td class="muted">${escapeHtml(u.email ?? '')}</td>
+      <td><span class="via">${providerIcon(PROVIDERS.some(([id]) => id === u.provider) ? u.provider : 'email')}${escapeHtml((PROVIDERS.find(([id]) => id === u.provider) ?? [u.provider, u.provider ?? 'E-Mail'])[1])}</span></td>
+      <td class="muted">${escapeHtml(u.email ?? '–')}</td>
       <td class="mono">${fmtDate(u.created_at)}</td>
       <td class="mono">${u.last_sign_in_at ? relTime(u.last_sign_in_at) : '–'}</td>
       <td>${u.confirmed ? '<span class="chip chip--ok">✓ Ja</span>' : '<span class="chip chip--warn">! Offen</span>'}</td>

@@ -9,12 +9,15 @@
 
   Voraussetzung: Node.js (fuer npx) und ein angelegtes Supabase-Projekt.
   Start:   powershell -ExecutionPolicy Bypass -File .\setup-supabase.ps1
+  Update:  powershell -ExecutionPolicy Bypass -File .\setup-supabase.ps1 -Update
+           (nur Datenbank + Functions aktualisieren, keine Passwort-Abfragen)
 #>
 param(
   [string]$ProjectRef = 'ssibsphuttjlphijilsc',
   [string]$SiteUrl = 'https://spitzefluke.github.io/twitch-content/',
   [string]$BroadcasterLogin = 'zugfahrer_davetv',
-  [int]$RewardCost = 10000
+  [int]$RewardCost = 10000,
+  [switch]$Update
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,12 +65,26 @@ if (-not $ProjectRef) {
 if ($ProjectRef -notmatch '^[a-z0-9]{20}$') { throw "Das sieht nicht wie eine Reference ID aus: $ProjectRef" }
 $SupabaseUrl = "https://$ProjectRef.supabase.co"
 
-Info 'Beim Verknuepfen fragt die CLI evtl. nach dem Datenbank-Passwort (beim Anlegen des Projekts festgelegt).'
-Invoke-Supabase link --project-ref $ProjectRef
+$linkedFile = Join-Path $PSScriptRoot 'supabase\.temp\project-ref'
+$linked = (Test-Path $linkedFile) -and ((Get-Content $linkedFile -Raw).Trim() -eq $ProjectRef)
+if ($linked) {
+  Info "Projekt $ProjectRef ist bereits verknuepft."
+} else {
+  Info 'Beim Verknuepfen fragt die CLI evtl. nach dem Datenbank-Passwort (beim Anlegen des Projekts festgelegt).'
+  Invoke-Supabase link --project-ref $ProjectRef
+}
 
 # ---------------------------------------------------------------- 3. Datenbank
 Step 'Datenbank einrichten'
 Invoke-Supabase db push --yes
+
+if ($Update) {
+  Step 'Edge Functions deployen'
+  Invoke-Supabase functions deploy --use-api --no-verify-jwt --project-ref $ProjectRef
+  Write-Host ''
+  Write-Host 'Update fertig! Datenbank und Functions sind aktuell.' -ForegroundColor Green
+  exit 0
+}
 
 # ---------------------------------------------------------------- 4. Twitch + Admin + Secrets
 function Read-Secret($prompt) {

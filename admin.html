@@ -102,6 +102,16 @@
           <div id="variants" class="hbars"></div>
         </section>
 
+        <section class="panel panel--wide" aria-labelledby="providers-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="providers-title">Anmelde-Möglichkeiten</h2>
+              <p class="panel-sub">Einschalten in Supabase unter Authentication → Sign In / Providers</p>
+            </div>
+          </div>
+          <ul id="providers" class="providers"></ul>
+        </section>
+
         <section class="panel panel--wide" aria-labelledby="users-title">
           <div class="panel-head">
             <h2 id="users-title">Nutzer <span id="users-count" class="count"></span></h2>
@@ -110,7 +120,7 @@
           <div class="table-wrap">
             <table class="users">
               <thead>
-                <tr><th>Name</th><th>E-Mail</th><th>Registriert</th><th>Letzter Login</th><th>Bestätigt</th><th>Admin</th></tr>
+                <tr><th>Name</th><th>Angemeldet über</th><th>E-Mail</th><th>Registriert</th><th>Letzter Login</th><th>Bestätigt</th><th>Admin</th></tr>
               </thead>
               <tbody id="users"></tbody>
             </table>

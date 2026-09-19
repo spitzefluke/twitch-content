@@ -136,6 +136,20 @@
 
     <section class="auth-card" aria-labelledby="auth-title">
       <h2 id="auth-title" class="visually-hidden">Anmelden oder registrieren</h2>
+
+      <div id="social" class="social" hidden>
+        <p class="social-title">Schnell einsteigen mit</p>
+        <div class="social-grid">
+          <button type="button" class="social-btn social-btn--twitch" data-provider="twitch"><span class="s-icon" aria-hidden="true"></span>Mit Twitch anmelden</button>
+          <button type="button" class="social-btn social-btn--discord" data-provider="discord"><span class="s-icon" aria-hidden="true"></span>Discord</button>
+          <button type="button" class="social-btn social-btn--google" data-provider="google"><span class="s-icon" aria-hidden="true"></span>Google</button>
+          <button type="button" class="social-btn social-btn--spotify" data-provider="spotify"><span class="s-icon" aria-hidden="true"></span>Spotify</button>
+          <button type="button" class="social-btn social-btn--github" data-provider="github"><span class="s-icon" aria-hidden="true"></span>GitHub</button>
+        </div>
+        <p class="social-msg form-msg" role="alert"></p>
+        <p class="divider"><span>oder mit E-Mail</span></p>
+      </div>
+
       <div class="segmented" role="tablist">
         <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="form-login">Anmelden</button>
         <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="form-register">Registrieren</button>

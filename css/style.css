@@ -310,6 +310,40 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .form-msg { min-height: 1.2em; font-size: 14px; color: #ff9d95; }
 .form-msg.is-ok { color: #9ff0c3; }
 .form-msg:empty { display: none; }
+/* ---------- Social Login ---------- */
+.social { margin-bottom: 20px; }
+.social-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
+.social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.social-btn {
+  --brand: var(--surface-2); --on-brand: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 46px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid transparent; background: var(--brand); color: var(--on-brand);
+  font-weight: 600; font-size: 15px;
+  transition: transform .18s var(--ease-out), filter .2s, box-shadow .2s;
+}
+.social-btn:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 8px 20px -10px var(--brand); }
+.social-btn:active { transform: scale(.97); }
+.social-btn:disabled { opacity: .6; cursor: progress; }
+.social-btn.is-primary { grid-column: 1 / -1; min-height: 52px; font-size: 16px; }
+.s-icon {
+  width: 20px; height: 20px; flex: none; background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
+}
+.social-btn--twitch  { --brand: #9146ff; --on-brand: #fff; }
+.social-btn--discord { --brand: #5865f2; --on-brand: #fff; }
+.social-btn--google  { --brand: #ffffff; --on-brand: #1f1f1f; }
+.social-btn--spotify { --brand: #1ed760; --on-brand: #0b0b0b; }
+.social-btn--github  { --brand: #0d1117; --on-brand: #f0f6fc; border-color: #3d444d; }
+.social-btn--twitch .s-icon  { --icon: url("../assets/icons/twitch.svg"); }
+.social-btn--discord .s-icon { --icon: url("../assets/icons/discord.svg"); }
+.social-btn--google .s-icon  { --icon: url("../assets/icons/google.svg"); }
+.social-btn--spotify .s-icon { --icon: url("../assets/icons/spotify.svg"); }
+.social-btn--github .s-icon  { --icon: url("../assets/icons/github.svg"); }
+.social-msg { margin-top: 10px; }
+.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0 16px; font-size: 13px; color: var(--dim); }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
 .admin-link { justify-self: center; font-size: 13px; color: var(--dim); text-decoration: none; }
 .admin-link:hover { color: var(--muted); text-decoration: underline; }
 
