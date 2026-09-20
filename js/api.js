@@ -1,7 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
-import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
+import { DEFAULT_ARCHIVE, DEFAULT_IDEAS, DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -99,6 +99,39 @@ async function createSupabaseApi() {
     },
     async getSpins(limit = 15) {
       return unwrap(await sb.from('spins').select('*').order('created_at', { ascending: false }).limit(limit));
+    },
+
+    // ---------- Archiv (gefahrene Strecken) ----------
+    async getArchive(limit = 12) {
+      return unwrap(await sb.from('archive').select('*').order('happened_at', { ascending: false }).limit(limit));
+    },
+    async saveArchive(entry) {
+      const row = entry.id
+        ? await sb.from('archive').update(entry).eq('id', entry.id).select().single()
+        : await sb.from('archive').insert(entry).select().single();
+      return unwrap(row);
+    },
+    async deleteArchive(id) {
+      unwrap(await sb.from('archive').delete().eq('id', id));
+    },
+
+    // ---------- Vorschläge ----------
+    async getIdeas(user, limit = 12) {
+      const ideas = unwrap(await sb.from('ideas').select('*').order('votes', { ascending: false }).order('created_at', { ascending: false }).limit(limit));
+      if (!user || !ideas.length) return ideas.map((i) => ({ ...i, voted: false }));
+      const mine = unwrap(await sb.from('idea_votes').select('idea_id').eq('user_id', user.id));
+      const voted = new Set(mine.map((v) => v.idea_id));
+      return ideas.map((i) => ({ ...i, voted: voted.has(i.id) }));
+    },
+    async addIdea(text, user, username) {
+      return unwrap(await sb.from('ideas').insert({ text, user_id: user.id, author: username }).select().single());
+    },
+    async voteIdea(ideaId, on, user) {
+      if (on) unwrap(await sb.from('idea_votes').insert({ idea_id: ideaId, user_id: user.id }));
+      else unwrap(await sb.from('idea_votes').delete().eq('idea_id', ideaId).eq('user_id', user.id));
+    },
+    async deleteIdea(id) {
+      unwrap(await sb.from('ideas').delete().eq('id', id));
     },
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
@@ -219,6 +252,36 @@ function createLocalApi() {
     },
     async getVariants() { return DEFAULT_VARIANTS; },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
+
+    async getArchive(limit = 12) {
+      return store.get('archive', DEFAULT_ARCHIVE).slice(0, limit);
+    },
+    async saveArchive(entry) {
+      const rows = store.get('archive', DEFAULT_ARCHIVE);
+      const row = { ...entry, id: entry.id ?? Date.now() };
+      const next = entry.id ? rows.map((r) => (r.id === entry.id ? row : r)) : [row, ...rows];
+      next.sort((a, b) => String(b.happened_at).localeCompare(String(a.happened_at)));
+      store.set('archive', next);
+      return row;
+    },
+    async deleteArchive(id) {
+      store.set('archive', store.get('archive', DEFAULT_ARCHIVE).filter((r) => r.id !== id));
+    },
+
+    async getIdeas(_user, limit = 12) {
+      return store.get('ideas', DEFAULT_IDEAS).slice(0, limit);
+    },
+    async addIdea(text, _user, username) {
+      const idea = { id: Date.now(), text, author: username, votes: 1, voted: true, created_at: new Date().toISOString() };
+      store.set('ideas', [idea, ...store.get('ideas', DEFAULT_IDEAS)]);
+      return idea;
+    },
+    async voteIdea(ideaId, on) {
+      store.set('ideas', store.get('ideas', DEFAULT_IDEAS).map((i) => (i.id === ideaId ? { ...i, voted: on, votes: i.votes + (on ? 1 : -1) } : i)));
+    },
+    async deleteIdea(id) {
+      store.set('ideas', store.get('ideas', DEFAULT_IDEAS).filter((i) => i.id !== id));
+    },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
       const profile = await this.getProfile(current);

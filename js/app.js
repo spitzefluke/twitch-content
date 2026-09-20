@@ -5,7 +5,6 @@ import { Wheel } from './wheel.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 const state = {
   api: null,
@@ -16,10 +15,13 @@ const state = {
   variantId: null,
   twitch: { connected: false },
   spins: [],
+  archive: [],
+  ideas: [],
   spinning: false,
   queue: [],
   wheel: null,
   activeTile: null,
+  activeArchive: null,
   spinSubscribed: false,
 };
 
@@ -39,7 +41,7 @@ async function boot() {
   let seen = false;
   try { seen = sessionStorage.getItem('zd_intro') === '1'; sessionStorage.setItem('zd_intro', '1'); } catch { /* ignorieren */ }
   if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash)) {
-    await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 10) * 1000 });
+    await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 18) * 1000 });
   } else {
     $('#intro').remove();
   }
@@ -71,6 +73,8 @@ async function boot() {
   setupAuthForms();
   setupSocial();
   setupDialogs();
+  tickClock();
+  setInterval(tickClock, 30000);
 
   state.api.onAuthChange((user) => {
     if (user && !state.user) enterApp(user);
@@ -79,6 +83,12 @@ async function boot() {
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
   else showAuth();
+}
+
+function tickClock() {
+  const d = new Date();
+  const el = $('#auth-clock');
+  if (el) el.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function showTwitchReturn(status, reason) {
@@ -126,9 +136,7 @@ function setupAuthForms() {
     const email = f.email.value.trim();
     const password = f.password.value;
     if (!email || !password) return formMsg(f, 'Bitte E-Mail und Passwort eingeben.');
-    await withLoading(f, async () => {
-      await state.api.signIn(email, password);
-    });
+    await withLoading(f, async () => { await state.api.signIn(email, password); });
   });
 
   forms.register.addEventListener('submit', async (e) => {
@@ -151,12 +159,11 @@ function setupAuthForms() {
   });
 }
 
-// ---------- Social-Logins (Twitch, Discord, Google, Spotify, GitHub) ----------
+// ---------- Social-Logins ----------
 async function setupSocial() {
   const box = $('#social');
   const msg = box.querySelector('.social-msg');
 
-  // Fehler, mit denen Supabase nach dem Anbieter-Login zurückleitet (?error=… oder #error=…)
   const hash = new URLSearchParams(location.hash.slice(1));
   const query = new URLSearchParams(location.search);
   const oauthError = query.get('error_description') ?? hash.get('error_description') ?? query.get('error') ?? hash.get('error');
@@ -183,7 +190,6 @@ async function setupSocial() {
       }
     });
   });
-  // Der erste sichtbare Button wird groß dargestellt (normalerweise Twitch)
   box.querySelector('[data-provider]:not([hidden])')?.classList.add('is-primary');
   box.hidden = visible === 0 && !oauthError;
 }
@@ -205,6 +211,7 @@ async function withLoading(form, fn) {
 
 function formMsg(form, text, ok = false) {
   const el = form.querySelector('.form-msg');
+  if (!el) return;
   el.textContent = text;
   el.classList.toggle('is-ok', ok);
 }
@@ -218,19 +225,24 @@ async function enterApp(user) {
   $('#app').hidden = false;
 
   const api = state.api;
-  const [profile, tiles, variants, twitch, spins] = await Promise.all([
+  const [profile, tiles, variants, twitch, spins, archive, ideas] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
     api.twitchStatus().catch(() => ({ connected: false })),
     api.getSpins().catch(() => []),
+    api.getArchive().catch(fail('Archiv', [])),
+    api.getIdeas(user).catch(fail('Vorschläge', [])),
   ]);
   if (!state.user) return; // zwischenzeitlich abgemeldet
-  Object.assign(state, { profile, tiles, variants, twitch, spins });
+  Object.assign(state, { profile, tiles, variants, twitch, spins, archive, ideas });
   state.variantId ??= variants[0]?.id;
 
   renderHeader();
+  renderHero();
   renderGrid();
+  renderArchive();
+  renderIdeas();
   renderWheelPanel();
 
   if (!state.spinSubscribed) {
@@ -260,11 +272,7 @@ function renderHeader() {
   $('#user-avatar').textContent = profile.username.slice(0, 1).toUpperCase();
   $('#user-role').hidden = !profile.is_admin;
   $('#admin-btn').hidden = !profile.is_admin;
-
-  const hour = new Date().getHours();
-  const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
-  $('#greeting').textContent = `${hello}, ${profile.username}`;
-  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const btn = $('#twitch-btn');
   btn.classList.toggle('btn--twitch', !twitch.connected);
@@ -272,102 +280,90 @@ function renderHeader() {
   btn.classList.toggle('btn--connected', twitch.connected);
   btn.textContent = twitch.connected ? `Twitch: ${twitch.display_name ?? twitch.login}` : 'Mit Twitch verbinden';
   btn.title = twitch.connected ? 'Kanalpunkte & Chat sind verbunden' : 'Für Dave: Kanalpunkte und Chat freigeben';
+
+  const chip = $('#wheel-chip');
+  chip.textContent = twitch.connected && twitch.reward_active
+    ? `Jederzeit · ${Number(twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte`
+    : 'Drei Varianten · jederzeit drehbar';
+
+  const [c1, c2, c3] = state.variants.map((v) => v.color);
+  $('#wheel-disc').style.cssText = `--c1:${c1 ?? '#ffb81c'};--c2:${c2 ?? '#3ddc84'};--c3:${c3 ?? '#9146ff'}`;
 }
 
-// ---------- Kacheln ----------
+// ---------- Nächste Abfahrt ----------
+const THEME_BG = { tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg' };
+
+function countdownTiles() {
+  return state.tiles.filter((t) => t.kind === 'countdown');
+}
+
+function renderHero() {
+  const upcoming = countdownTiles()
+    .filter((t) => t.target_at && Date.parse(t.target_at) > Date.now())
+    .sort((a, b) => Date.parse(a.target_at) - Date.parse(b.target_at));
+  const next = upcoming[0] ?? countdownTiles()[0];
+  $('#tile-count').textContent = `${countdownTiles().length + 1} Abfahrten geplant`;
+
+  if (!next) {
+    $('#next-title').textContent = 'Noch kein Termin geplant';
+    $('#next-desc').textContent = 'Sobald eine Idee ein Datum bekommt, steht sie hier.';
+    $('#next-countdown').replaceChildren();
+    return;
+  }
+  const img = safeUrl(next.background) ?? THEME_BG[next.theme] ?? THEME_BG.tracks;
+  $('#next-bg').style.backgroundImage = `url(${JSON.stringify(img)})`;
+  $('#next-title').textContent = next.title;
+  $('#next-desc').textContent = next.description;
+  const cd = $('#next-countdown');
+  cd.dataset.target = next.target_at ?? '';
+  cd.replaceChildren();
+  renderCountdown(cd, next.target_at);
+}
+
+// ---------- Fahrplan ----------
 function renderGrid() {
   const grid = $('#grid');
-  grid.replaceChildren(...state.tiles.map((tile, i) => buildTile(tile, i)));
+  grid.replaceChildren(...countdownTiles().map((tile, i) => buildTile(tile, i)));
   updateCountdowns();
 }
 
 function buildTile(tile, i) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = `tile tile--${tile.kind} theme-${tile.theme}`;
+  el.className = `tile theme-${tile.theme}`;
   el.style.setProperty('--i', i);
   el.dataset.id = tile.id;
 
-  const bg = document.createElement('div');
+  const bg = document.createElement('span');
   bg.className = 'tile-bg';
+  bg.setAttribute('aria-hidden', 'true');
   const img = safeUrl(tile.background);
   if (img) bg.style.backgroundImage = `url(${JSON.stringify(img)})`;
-  el.append(bg, div('tile-shade'), div('tile-shine'));
+  const shade = document.createElement('span');
+  shade.className = 'tile-shade';
+  shade.setAttribute('aria-hidden', 'true');
 
-  const body = div('tile-body');
-  const tag = document.createElement('span');
-  tag.className = 'tile-tag';
-  const title = document.createElement('h3');
-  title.className = 'tile-title';
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = tile.target_at
+    ? new Date(tile.target_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : 'Termin folgt';
+
+  const title = document.createElement('span');
+  title.className = 'card-title';
   title.textContent = tile.title;
-  const desc = document.createElement('p');
-  desc.className = 'tile-desc';
+
+  const desc = document.createElement('span');
+  desc.className = 'card-desc';
   desc.textContent = tile.description;
 
-  if (tile.kind === 'wheel') {
-    const [c1, c2, c3] = state.variants.map((v) => v.color);
-    const deco = div('wheel-deco');
-    deco.style.cssText = `--c1:${c1 ?? '#ffb81c'};--c2:${c2 ?? '#3ddc84'};--c3:${c3 ?? '#9146ff'}`;
-    el.append(deco, div('wheel-deco-pointer'));
-    tag.textContent = `Fortnite · ${state.variants.length} Varianten`;
-    const chips = div('variant-chips');
-    for (const v of state.variants) {
-      const chip = document.createElement('span');
-      chip.className = 'variant-chip';
-      chip.style.setProperty('--c', v.color);
-      chip.textContent = v.name;
-      chips.append(chip);
-    }
-    const cta = document.createElement('span');
-    cta.className = 'tile-cta';
-    cta.textContent = 'Rad öffnen';
-    body.append(tag, title, desc, chips, cta);
-    el.setAttribute('aria-label', `${tile.title}: Glücksrad öffnen`);
-    el.addEventListener('click', openWheel);
-  } else {
-    tag.textContent = 'Abfahrt in';
-    const cd = div('countdown');
-    cd.dataset.target = tile.target_at ?? '';
-    body.append(tag, title, desc, cd);
-    el.addEventListener('click', () => openTile(tile.id));
-  }
-  el.append(body);
-  if (finePointer && !reducedMotion) addTilt(el);
+  const cd = document.createElement('span');
+  cd.className = 'countdown countdown--sm';
+  cd.dataset.target = tile.target_at ?? '';
+
+  el.append(bg, shade, chip, title, desc, cd);
+  el.addEventListener('click', () => openTile(tile.id));
   return el;
-}
-
-function addTilt(el) {
-  el.addEventListener('pointermove', (e) => {
-    const r = el.getBoundingClientRect();
-    const px = (e.clientX - r.left) / r.width;
-    const py = (e.clientY - r.top) / r.height;
-    el.classList.add('is-tilting');
-    el.style.setProperty('--ry', `${(px - 0.5) * 6}deg`);
-    el.style.setProperty('--rx', `${(0.5 - py) * 6}deg`);
-    el.style.setProperty('--mx', `${px * 100}%`);
-    el.style.setProperty('--my', `${py * 100}%`);
-  });
-  el.addEventListener('pointerleave', () => {
-    el.classList.remove('is-tilting');
-    el.style.setProperty('--rx', '0deg');
-    el.style.setProperty('--ry', '0deg');
-  });
-}
-
-function div(cls) {
-  const d = document.createElement('div');
-  d.className = cls;
-  return d;
-}
-
-function safeUrl(value) {
-  if (!value) return null;
-  try {
-    const u = new URL(value);
-    return u.protocol === 'https:' ? u.href : null;
-  } catch {
-    return null;
-  }
 }
 
 // ---------- Countdowns ----------
@@ -376,22 +372,23 @@ const UNITS = [['Tage', 86400], ['Std', 3600], ['Min', 60], ['Sek', 1]];
 function renderCountdown(el, targetIso) {
   const target = Date.parse(targetIso);
   if (!targetIso || Number.isNaN(target)) {
-    el.className = el.className.replace(/\bcountdown--done\b/, '');
+    el.classList.remove('countdown--done');
     el.textContent = 'Termin folgt';
     return;
   }
   let secs = Math.max(0, Math.floor((target - Date.now()) / 1000));
-  const tag = el.closest('.tile')?.querySelector('.tile-tag');
+  const chip = el.parentElement?.querySelector('.chip') ?? el.closest('.tile')?.querySelector('.chip');
   if (secs === 0) {
     el.classList.add('countdown--done');
     el.textContent = 'Abgefahren · jetzt live!';
-    if (tag) { tag.textContent = 'Live'; tag.classList.add('is-live'); }
+    chip?.classList.add('is-live');
     return;
   }
   el.classList.remove('countdown--done');
-  if (!el.children.length || el.children.length !== 4) {
+  if (el.children.length !== 4) {
     el.replaceChildren(...UNITS.map(([lbl]) => {
-      const u = div('cd-unit');
+      const u = document.createElement('span');
+      u.className = 'cd-unit';
       u.innerHTML = `<span class="cd-num"></span><span class="cd-lbl">${lbl}</span>`;
       return u;
     }));
@@ -403,11 +400,7 @@ function renderCountdown(el, targetIso) {
     const text = String(value).padStart(2, '0');
     if (num.textContent !== text) {
       num.textContent = text;
-      if (!reducedMotion) {
-        num.classList.remove('bump');
-        void num.offsetWidth;
-        num.classList.add('bump');
-      }
+      if (!reducedMotion) { num.classList.remove('bump'); void num.offsetWidth; num.classList.add('bump'); }
     }
   });
 }
@@ -418,7 +411,190 @@ function updateCountdowns() {
 setInterval(updateCountdowns, 1000);
 
 // ============================================================
-// Dialoge allgemein
+// Archiv
+// ============================================================
+function renderArchive() {
+  const list = $('#archive-list');
+  const isAdmin = !!state.profile?.is_admin;
+  $('#archive-add').hidden = !isAdmin;
+
+  if (!state.archive.length) {
+    list.innerHTML = '<li class="empty-note" style="background:none;border:0">Noch keine gefahrenen Strecken eingetragen.</li>';
+    return;
+  }
+  list.replaceChildren(...state.archive.map((row) => {
+    const li = document.createElement('li');
+    const date = document.createElement('span');
+    date.className = 'archive-date';
+    date.textContent = new Date(row.happened_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+
+    const main = document.createElement('span');
+    main.className = 'archive-main';
+    main.innerHTML = '<strong></strong><small></small>';
+    main.querySelector('strong').textContent = row.title;
+    main.querySelector('small').textContent = row.meta ?? '';
+
+    const actions = document.createElement('span');
+    actions.className = 'archive-actions';
+    const vod = safeUrl(row.vod_url);
+    if (vod) {
+      const a = document.createElement('a');
+      a.className = 'vod';
+      a.href = vod;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = 'VOD';
+      actions.append(a);
+    }
+    if (isAdmin) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'mini-btn';
+      edit.textContent = 'Bearbeiten';
+      edit.addEventListener('click', () => openArchiveDialog(row));
+      actions.append(edit);
+    }
+    li.append(date, main, actions);
+    return li;
+  }));
+}
+
+function openArchiveDialog(row) {
+  state.activeArchive = row;
+  const form = $('#archive-form');
+  form.title.value = row?.title ?? '';
+  form.happened_at.value = row?.happened_at ? String(row.happened_at).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  form.meta.value = row?.meta ?? '';
+  form.vod_url.value = row?.vod_url ?? '';
+  formMsg(form, '');
+  $('#archive-delete').hidden = !row;
+  $('#archive-dialog-title').textContent = row ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
+  $('#archive-dialog').showModal();
+}
+
+async function saveArchive(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const vod = form.vod_url.value.trim();
+  if (vod && !safeUrl(vod)) return formMsg(form, 'Der VOD-Link muss eine https-Adresse sein.');
+  const entry = {
+    ...(state.activeArchive?.id ? { id: state.activeArchive.id } : {}),
+    title: form.title.value.trim(),
+    happened_at: form.happened_at.value,
+    meta: form.meta.value.trim(),
+    vod_url: vod || null,
+  };
+  if (!entry.title) return formMsg(form, 'Bitte einen Titel eingeben.');
+  await withLoading(form, async () => {
+    const saved = await state.api.saveArchive(entry);
+    state.archive = state.activeArchive?.id
+      ? state.archive.map((r) => (r.id === saved.id ? saved : r))
+      : [saved, ...state.archive];
+    state.archive.sort((a, b) => String(b.happened_at).localeCompare(String(a.happened_at)));
+    renderArchive();
+    closeDialog($('#archive-dialog'));
+    toast('Archiv aktualisiert.', 'ok');
+  });
+}
+
+async function deleteArchive() {
+  const row = state.activeArchive;
+  if (!row) return;
+  try {
+    await state.api.deleteArchive(row.id);
+    state.archive = state.archive.filter((r) => r.id !== row.id);
+    renderArchive();
+    closeDialog($('#archive-dialog'));
+    toast('Eintrag gelöscht.', 'ok');
+  } catch (err) {
+    toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
+  }
+}
+
+// ============================================================
+// Vorschläge
+// ============================================================
+function renderIdeas() {
+  const list = $('#idea-list');
+  const isAdmin = !!state.profile?.is_admin;
+  if (!state.ideas.length) {
+    list.innerHTML = '<li class="empty-note" style="background:none;border:0">Noch keine Vorschläge. Mach den Anfang!</li>';
+    return;
+  }
+  list.replaceChildren(...state.ideas.map((idea) => {
+    const li = document.createElement('li');
+    const text = document.createElement('span');
+    text.className = 'idea-text';
+    text.innerHTML = '<strong></strong><small></small>';
+    text.querySelector('strong').textContent = idea.text;
+    text.querySelector('small').textContent = `von ${idea.author}`;
+
+    const actions = document.createElement('span');
+    actions.className = 'idea-actions';
+    const vote = document.createElement('button');
+    vote.type = 'button';
+    vote.className = 'vote-btn';
+    vote.setAttribute('aria-pressed', String(!!idea.voted));
+    vote.setAttribute('aria-label', `${idea.voted ? 'Stimme zurücknehmen' : 'Dafür stimmen'}: ${idea.text}`);
+    vote.textContent = `▲ ${idea.votes}`;
+    vote.addEventListener('click', () => toggleVote(idea, vote));
+    actions.append(vote);
+
+    if (isAdmin || idea.user_id === state.user?.id) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'mini-btn';
+      del.textContent = '×';
+      del.title = 'Vorschlag löschen';
+      del.addEventListener('click', () => removeIdea(idea));
+      actions.append(del);
+    }
+    li.append(text, actions);
+    return li;
+  }));
+}
+
+async function toggleVote(idea, btn) {
+  const on = !idea.voted;
+  btn.disabled = true;
+  try {
+    await state.api.voteIdea(idea.id, on, state.user);
+    idea.voted = on;
+    idea.votes += on ? 1 : -1;
+    state.ideas.sort((a, b) => b.votes - a.votes);
+    renderIdeas();
+  } catch (err) {
+    toast(`Abstimmen fehlgeschlagen: ${germanError(err)}`, 'error');
+    btn.disabled = false;
+  }
+}
+
+async function removeIdea(idea) {
+  try {
+    await state.api.deleteIdea(idea.id);
+    state.ideas = state.ideas.filter((i) => i.id !== idea.id);
+    renderIdeas();
+  } catch (err) {
+    toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
+  }
+}
+
+async function submitIdea(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const text = form.text.value.trim();
+  if (text.length < 3) return formMsg(form, 'Bitte schreib etwas mehr zu deiner Idee.');
+  await withLoading(form, async () => {
+    const idea = await state.api.addIdea(text, state.user, state.profile.username);
+    state.ideas = [{ ...idea, voted: true }, ...state.ideas];
+    form.reset();
+    renderIdeas();
+    toast('Danke! Dein Vorschlag steht in der Liste.', 'ok');
+  });
+}
+
+// ============================================================
+// Dialoge
 // ============================================================
 function setupDialogs() {
   document.querySelectorAll('dialog').forEach((dlg) => {
@@ -430,11 +606,16 @@ function setupDialogs() {
 
   $('#logout-btn').addEventListener('click', () => state.api.signOut());
   $('#twitch-btn').addEventListener('click', openTwitchDialog);
+  $('#wheel-card').addEventListener('click', openWheel);
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   $('#tile-edit-btn').addEventListener('click', () => showTileForm(true));
   $('#tile-cancel-btn').addEventListener('click', () => showTileForm(false));
   $('#tile-form').addEventListener('submit', saveTile);
+  $('#archive-add').addEventListener('click', () => openArchiveDialog(null));
+  $('#archive-form').addEventListener('submit', saveArchive);
+  $('#archive-delete').addEventListener('click', deleteArchive);
+  $('#idea-form').addEventListener('submit', submitIdea);
 }
 
 function closeDialog(dlg) {
@@ -468,16 +649,14 @@ function selectVariant(id) {
   const input = document.getElementById(`variant-${id}`);
   if (input) input.checked = true;
   const v = currentVariant();
-  if (v) {
-    $('#wheel-dialog').style.setProperty('--variant', v.color);
-    state.wheel?.setVariant(v);
-  }
+  if (v) state.wheel?.setVariant(v);
 }
 
 function renderWheelPanel() {
   const list = $('#variant-list');
   list.replaceChildren(...state.variants.map((v) => {
-    const wrap = div('variant-opt');
+    const wrap = document.createElement('div');
+    wrap.className = 'variant-opt';
     wrap.style.setProperty('--c', v.color);
     const input = document.createElement('input');
     input.type = 'radio';
@@ -552,7 +731,6 @@ function setVariantInputsDisabled(disabled) {
   document.querySelectorAll('#variant-list input').forEach((i) => { i.disabled = disabled; });
 }
 
-// Neue Drehung über Realtime (z. B. Kanalpunkte-Einlösung auf Twitch)
 function handleIncomingSpin(spin) {
   if (state.spins.some((s) => s.id === spin.id)) return;
   if (spin.source !== 'twitch') { addSpin(spin); return; }
@@ -643,8 +821,6 @@ function renderHistory(newId) {
 // ============================================================
 // Countdown-Kachel: Details & Bearbeiten
 // ============================================================
-const THEME_BG = { tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg' };
-
 function openTile(id) {
   const tile = state.tiles.find((t) => t.id === id);
   if (!tile) return;
@@ -702,6 +878,7 @@ async function saveTile(e) {
     const updated = await state.api.updateTile(state.activeTile.id, patch);
     state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
     state.activeTile = updated;
+    renderHero();
     renderGrid();
     fillTileDialog(updated);
     showTileForm(false);
@@ -771,6 +948,16 @@ async function twitchAction(btn) {
 // ============================================================
 // Hilfsfunktionen
 // ============================================================
+function safeUrl(value) {
+  if (!value) return null;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'https:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function toast(text, type = 'info', ms = 4500) {
   const el = document.createElement('div');
   el.className = `toast toast--${type}`;
@@ -784,5 +971,5 @@ function toast(text, type = 'info', ms = 4500) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

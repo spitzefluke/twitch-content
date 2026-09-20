@@ -56,6 +56,20 @@ export const DEFAULT_VARIANTS = [
   },
 ];
 
+// Beispielinhalte für den Demo-Modus (live kommen sie aus Supabase)
+export const DEFAULT_ARCHIVE = [
+  { id: 1, happened_at: '2026-09-13', title: 'Glücksrad-Marathon', meta: '4 Std 20 Min · 61 Drehungen', vod_url: null },
+  { id: 2, happened_at: '2026-09-06', title: 'Hamburg → Kiel in Echtzeit', meta: '3 Std 05 Min · Train Sim World', vod_url: null },
+  { id: 3, happened_at: '2026-08-30', title: 'Handicap-Express Premiere', meta: '2 Std 40 Min · Fortnite', vod_url: null },
+  { id: 4, happened_at: '2026-08-23', title: 'Zuschauer-Fahrplan', meta: '5 Std 10 Min · Community-Wünsche', vod_url: null },
+];
+
+export const DEFAULT_IDEAS = [
+  { id: 11, text: 'Nachtzug durch die Alpen', author: 'lokfuchs', votes: 42, voted: false, created_at: '2026-09-18T20:00:00Z' },
+  { id: 12, text: 'Glücksrad mit Chat-Regeln', author: 'signal_sina', votes: 31, voted: false, created_at: '2026-09-17T20:00:00Z' },
+  { id: 13, text: '24h Güterverkehr-Schicht', author: 'kupplung_kev', votes: 18, voted: false, created_at: '2026-09-16T20:00:00Z' },
+];
+
 export const DEFAULT_TILES = [
   {
     id: 'wheel',
