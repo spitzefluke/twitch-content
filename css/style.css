@@ -220,8 +220,9 @@ code { font-family: var(--font-mono); font-size: .9em; }
 }
 .signal-pole { width: 6px; height: 16vh; background: linear-gradient(#3a4155, #22283a); }
 .lamp { width: 18px; height: 18px; border-radius: 50%; background: #2b2f3a; }
-.lamp--red { animation: lamp-red 1.3s steps(1) .3s forwards; }
-.lamp--green { animation: lamp-green .3s ease 1.3s forwards; }
+/* Alle Zeiten richten sich nach --intro-duration (siehe js/config.js) */
+.lamp--red { animation: lamp-red calc(var(--intro-duration, 10s) * .1) steps(1) calc(var(--intro-duration, 10s) * .03) forwards; }
+.lamp--green { animation: lamp-green .3s ease calc(var(--intro-duration, 10s) * .13) forwards; }
 @keyframes lamp-red {
   0% { background: var(--red); box-shadow: 0 0 18px 4px rgba(255, 90, 78, .7); }
   100% { background: #3a2226; box-shadow: none; }
@@ -233,7 +234,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
   position: absolute; left: 0; bottom: 18%;
   height: clamp(80px, 17vh, 170px); aspect-ratio: 1190 / 170;
   transform: translateX(105vw);
-  animation: train-pass 3.6s cubic-bezier(.45, .05, .35, 1) 1.5s forwards;
+  animation: train-pass calc(var(--intro-duration, 10s) * .26) cubic-bezier(.45, .05, .35, 1) calc(var(--intro-duration, 10s) * .15) forwards;
   will-change: transform;
 }
 .intro-train svg { width: 100%; height: 100%; overflow: visible; }
@@ -251,7 +252,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
   border: 1px solid #262e42;
   box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .04);
   opacity: 0;
-  animation: board-in .8s var(--ease-out) 4.6s forwards;
+  animation: board-in .8s var(--ease-out) calc(var(--intro-duration, 10s) * .46) forwards;
 }
 @keyframes board-in { to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 .board-meta {
@@ -279,6 +280,19 @@ code { font-family: var(--font-mono); font-size: .9em; }
   font-family: var(--font-mono); font-size: clamp(12px, 1.8vw, 18px); letter-spacing: .12em; text-transform: uppercase; color: #aeb6c7;
 }
 .flap-sub::after { content: "▌"; color: var(--amber); animation: blink 1s steps(1) infinite; }
+
+/* Laufband mit den naechsten Halten, erscheint zum Schluss */
+.board-ticker {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid #222a3c;
+  overflow: hidden; white-space: nowrap;
+  opacity: 0; transition: opacity .6s ease;
+  font-family: var(--font-mono); font-size: clamp(11px, 1.5vw, 15px); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+.board-ticker.is-on { opacity: 1; }
+.board-ticker span { display: inline-block; padding-left: 100%; }
+.board-ticker.is-on span { animation: ticker 9s linear forwards; }
+.board-ticker b { color: var(--amber); font-weight: 700; }
+@keyframes ticker { to { transform: translateX(-100%); } }
 @keyframes blink { 50% { opacity: 0; } }
 
 .intro-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .06); }

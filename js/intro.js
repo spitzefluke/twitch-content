@@ -1,6 +1,7 @@
-// 10-Sekunden-Intro: Signal springt auf Grün, der Zug fährt durch,
-// dann blättert die Abfahrtstafel "ZUGFAHRER_DAVETV" auf.
+// Intro: Signal springt auf Grün, der Zug fährt durch, die Abfahrtstafel
+// blättert "ZUGFAHRER_DAVETV" auf, zum Schluss läuft das Laufband.
 // Dazu Bahnhofs-Gong und Durchsage (siehe sound.js).
+// Die Länge steht in js/config.js; alle Schritte richten sich danach.
 import { IntroSound } from './sound.js';
 
 const TITLE = 'ZUGFAHRER_DAVETV';
@@ -26,6 +27,7 @@ export function playIntro({ duration = 10000 } = {}) {
     return cell;
   });
   const sub = root.querySelector('#flap-sub');
+  const ticker = root.querySelector('#board-ticker');
 
   const timers = [];
   const at = (ms, fn) => timers.push(setTimeout(fn, ms));
@@ -36,7 +38,7 @@ export function playIntro({ duration = 10000 } = {}) {
   const started = performance.now();
   const cues = [
     { t: 150, done: false, play: () => sound.chime() },
-    { t: 1900, done: false, play: () => sound.whoosh(2.6) },
+    { t: Math.round(duration * 0.17), done: false, play: () => sound.whoosh(Math.min(4.4, duration * 0.00026)) },
     { t: boardAt + 700, done: false, play: () => sound.speak(ANNOUNCEMENT) },
   ];
 
@@ -98,7 +100,11 @@ export function playIntro({ duration = 10000 } = {}) {
     root.querySelector('.intro-skip').addEventListener('click', finish);
 
     at(boardAt, () => flipIn(cells, reduced, at));
-    at(boardAt + (reduced ? 300 : 1900), () => typeIn(sub, SUB, at));
+    at(boardAt + (reduced ? 300 : Math.round(duration * 0.14)), () => typeIn(sub, SUB, at));
+    at(boardAt + (reduced ? 600 : Math.round(duration * 0.20)), () => {
+      ticker.innerHTML = '<span>Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güterzug · Community-Cup · Geisterzug-Special · Subathon · <b>Content-Stellwerk</b> · Bitte alle einsteigen …</span>';
+      ticker.classList.add('is-on');
+    });
     at(duration - 700, finish);
   });
 }
