@@ -969,7 +969,16 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .perm-list small { display: block; color: var(--muted); font-size: 13px; }
 
 /* ---------- Toasts ---------- */
-.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 200; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); }
+/* Die Meldungen liegen als Popover in der "top layer" – sonst verschwinden
+   sie hinter dem abgedunkelten Hintergrund eines offenen Dialogs. Die
+   Angaben hier überschreiben die Standard-Darstellung von [popover]. */
+.toasts {
+  position: fixed; inset: auto 16px 16px auto; z-index: 200;
+  display: grid; gap: 10px;
+  width: min(380px, calc(100vw - 32px)); height: auto;
+  margin: 0; padding: 0; border: 0; background: none; color: inherit; overflow: visible;
+}
+.toasts:empty { display: none; }
 .toast {
   padding: 14px 16px; border-radius: 14px;
   background: var(--surface-2); border: 1px solid var(--line-2);
