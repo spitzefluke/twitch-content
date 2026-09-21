@@ -16,5 +16,5 @@ export const CONFIG = {
   CHANNEL: 'zugfahrer_davetv',
 
   // Länge des Intros in Sekunden (der ganze Ablauf richtet sich danach)
-  INTRO_SECONDS: 16,
+  INTRO_SECONDS: 20,
 };

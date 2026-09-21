@@ -108,3 +108,10 @@ export const DEFAULT_TILES = [
     background: null,
   },
 ];
+
+// Vorschläge aus der Community (nur Demo-Modus – live kommen sie aus Supabase)
+export const DEFAULT_IDEAS = [
+  { id: 1, text: 'Nachtzug durch die Alpen', author: 'lokfuchs', votes: 42, voters: [] },
+  { id: 2, text: 'Glücksrad mit Chat-Regeln', author: 'signal_sina', votes: 31, voters: [] },
+  { id: 3, text: '24h Güterverkehr-Schicht', author: 'kupplung_kev', votes: 18, voters: [] },
+];

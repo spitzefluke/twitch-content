@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zugfahrer_DaveTV · Content-Stellwerk</title>
   <meta name="description" content="Content-Ideen, Countdowns und das Fortnite-Glücksrad für Zugfahrer_DaveTV.">
-  <meta name="theme-color" content="#0a0d13">
+  <meta name="theme-color" content="#07090f">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +20,9 @@
     <div class="bg-stars"></div>
     <div class="bg-glow bg-glow--a"></div>
     <div class="bg-glow bg-glow--b"></div>
+    <div class="bg-fog bg-fog--a"></div>
+    <div class="bg-fog bg-fog--b"></div>
+    <div class="bg-wire"></div>
     <div class="bg-line"></div>
     <div class="bg-train">
       <svg viewBox="0 0 300 40" xmlns="http://www.w3.org/2000/svg">
@@ -35,103 +38,145 @@
     </div>
   </div>
 
-  <!-- ============ INTRO (10 Sekunden) ============ -->
+  <!-- ============ INTRO ============================================
+       Eine durchgehende Kamerafahrt über eine 3000 × 1000 große Bühne:
+       Nachtbahnhof → Einfahrt → Abfahrtstafel → Bahnsteiguhr mit Gong →
+       Signal auf Grün → Türen öffnen → Überblendung in die Seite.
+       Die Bewegung steuert js/intro.js, hier steht nur das Bühnenbild.
+  ================================================================= -->
   <section id="intro" class="intro" aria-label="Intro">
-    <div class="intro-stars" aria-hidden="true"></div>
-    <div class="intro-hills" aria-hidden="true"></div>
+    <div class="intro-camera" id="intro-camera">
+      <div class="intro-stage">
 
-    <div class="intro-signal" aria-hidden="true">
-      <div class="signal-head">
-        <span class="lamp lamp--red"></span>
-        <span class="lamp lamp--green"></span>
+        <div class="sc-stars" aria-hidden="true"></div>
+        <div class="sc-skyline" aria-hidden="true"></div>
+        <div class="sc-fence" aria-hidden="true"></div>
+        <div class="sc-haze" aria-hidden="true"></div>
+        <div class="sc-ground" aria-hidden="true"></div>
+        <div class="sc-rails" aria-hidden="true"></div>
+        <div class="sc-platform" aria-hidden="true"></div>
+        <div class="sc-platform-edge" aria-hidden="true"></div>
+        <div class="sc-wire" aria-hidden="true"></div>
+
+        <!-- Hallenstützen links und rechts -->
+        <div class="sc-hall sc-hall--left" aria-hidden="true"><span class="sc-hall-post"></span><span class="sc-hall-beam"></span></div>
+        <div class="sc-hall sc-hall--right" aria-hidden="true"><span class="sc-hall-post"></span><span class="sc-hall-beam"></span></div>
+
+        <!-- Bahnsteiglampen -->
+        <div class="sc-lamp sc-lamp--left" aria-hidden="true">
+          <span class="sc-lamp-pole"></span><span class="sc-lamp-head"></span>
+          <span class="sc-lamp-cone"></span><span class="sc-lamp-pool"></span>
+        </div>
+        <div class="sc-lamp sc-lamp--right" aria-hidden="true">
+          <span class="sc-lamp-pole"></span><span class="sc-lamp-head"></span>
+          <span class="sc-lamp-cone"></span><span class="sc-lamp-pool"></span>
+        </div>
+
+        <div class="sc-sign" aria-hidden="true">GLEIS 1</div>
+        <div class="sc-hut" aria-hidden="true"></div>
+        <div class="sc-signal-haze" aria-hidden="true"></div>
+
+        <!-- Bahnsteiguhr -->
+        <div class="sc-clock" aria-hidden="true">
+          <span class="sc-clock-pole"></span>
+          <div class="sc-clock-face">
+            <span class="sc-clock-ticks"></span>
+            <span class="sc-clock-ticks sc-clock-ticks--major"></span>
+            <span class="sc-clock-hand sc-clock-hand--hour" id="clock-hour"></span>
+            <span class="sc-clock-hand sc-clock-hand--min" id="clock-min"></span>
+            <span class="sc-clock-cap"></span>
+          </div>
+        </div>
+
+        <!-- Abfahrtstafel -->
+        <div class="sc-board-posts" aria-hidden="true"><span></span><span></span></div>
+        <div class="intro-board" id="intro-board">
+          <div class="board-meta">
+            <span>Gleis 1 · Abfahrt</span>
+            <span><b id="intro-clock">--:--</b></span>
+          </div>
+          <div class="flap-row" id="flap-title" aria-label="Zugfahrer_DaveTV"></div>
+          <div class="flap-sub" id="flap-sub"></div>
+          <div class="board-ticker" id="board-ticker"><span></span></div>
+        </div>
+
+        <!-- Ausfahrsignal -->
+        <div class="sc-signal" aria-hidden="true">
+          <div class="sc-signal-head">
+            <span class="sc-signal-lamp sc-signal-lamp--red" id="signal-red"></span>
+            <span class="sc-signal-lamp sc-signal-lamp--green" id="signal-green"></span>
+          </div>
+          <span class="sc-signal-pole"></span>
+        </div>
+
+        <!-- Zug: Lok + zwei Wagen -->
+        <div class="sc-train" id="intro-train" aria-hidden="true">
+          <span class="sc-headlight" id="train-headlight"></span>
+          <span class="sc-brake" id="train-brake"></span>
+
+          <div class="sc-loco">
+            <span class="sc-loco-body"></span>
+            <span class="sc-loco-stripe"></span>
+            <span class="sc-loco-accent"></span>
+            <span class="sc-loco-window"></span>
+            <span class="sc-loco-name">DAVE·TV</span>
+            <span class="sc-loco-roof"></span>
+            <span class="sc-loco-light"></span>
+            <span class="sc-bogie" style="--x: 30px"></span>
+            <span class="sc-bogie" style="--x: 260px"></span>
+            <span class="sc-wheel" style="--x: 62px"></span>
+            <span class="sc-wheel" style="--x: 124px"></span>
+            <span class="sc-wheel" style="--x: 284px"></span>
+            <span class="sc-wheel" style="--x: 346px"></span>
+          </div>
+
+          <span class="sc-coupler" style="--x: 430px"></span>
+
+          <!-- Erster Wagen: hier gehen am Ende die Türen auf -->
+          <div class="sc-coach" style="--x: 446px">
+            <span class="sc-coach-body"></span>
+            <span class="sc-coach-stripe"></span>
+            <span class="sc-coach-accent"></span>
+            <span class="sc-coach-roof"></span>
+            <span class="sc-coach-windows sc-coach-windows--short"><i></i><i></i><i></i></span>
+            <div class="sc-doorway">
+              <span class="sc-doorway-glow" id="door-interior"></span>
+              <span class="sc-doorway-seats"><i></i><i></i><i></i></span>
+              <span class="sc-doorway-vignette"></span>
+              <span class="sc-door sc-door--left" id="door-left"></span>
+              <span class="sc-door sc-door--right" id="door-right"></span>
+            </div>
+            <span class="sc-bogie sc-bogie--coach" style="--x: 40px"></span>
+            <span class="sc-bogie sc-bogie--coach" style="--x: 380px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 74px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 136px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 404px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 466px"></span>
+          </div>
+
+          <!-- Zweiter Wagen -->
+          <div class="sc-coach" style="--x: 1020px">
+            <span class="sc-coach-body"></span>
+            <span class="sc-coach-stripe"></span>
+            <span class="sc-coach-accent"></span>
+            <span class="sc-coach-roof"></span>
+            <span class="sc-coach-windows"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="sc-bogie sc-bogie--coach" style="--x: 40px"></span>
+            <span class="sc-bogie sc-bogie--coach" style="--x: 380px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 74px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 136px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 404px"></span>
+            <span class="sc-wheel sc-wheel--coach" style="--x: 466px"></span>
+          </div>
+        </div>
+
+        <div class="sc-drift" aria-hidden="true"></div>
       </div>
-      <div class="signal-pole"></div>
     </div>
 
-    <div class="intro-train" aria-hidden="true">
-      <svg viewBox="0 0 1190 170" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="beam" x1="1" x2="0" y1="0" y2="0">
-            <stop offset="0" stop-color="#fff6d8" stop-opacity=".75"/>
-            <stop offset="1" stop-color="#fff6d8" stop-opacity="0"/>
-          </linearGradient>
-          <radialGradient id="glow">
-            <stop offset="0" stop-color="#fff" stop-opacity=".95"/>
-            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
-          </radialGradient>
-          <clipPath id="locoClip">
-            <path d="M60 140 L18 118 Q6 111 10 98 L34 44 Q42 26 64 24 L392 24 Q400 24 400 32 L400 140 Z"/>
-          </clipPath>
-          <g id="wheelset">
-            <circle r="13" fill="#262d3d" stroke="#5d667c" stroke-width="3"/>
-            <path d="M-11 0H11M0-11V11" stroke="#5d667c" stroke-width="2"/>
-          </g>
-          <g id="wagon">
-            <rect x="0" y="24" width="380" height="116" rx="10" fill="#dfe4ec"/>
-            <rect x="0" y="104" width="380" height="28" fill="#9146ff"/>
-            <rect x="0" y="100" width="380" height="4" fill="#ffb81c"/>
-            <rect x="8" y="16" width="364" height="10" rx="4" fill="#9aa3b5"/>
-            <g fill="#ffd680">
-              <rect x="24" y="44" width="44" height="32" rx="5"/>
-              <rect x="82" y="44" width="44" height="32" rx="5"/>
-              <rect x="140" y="44" width="44" height="32" rx="5"/>
-              <rect x="196" y="44" width="44" height="32" rx="5"/>
-              <rect x="254" y="44" width="44" height="32" rx="5"/>
-              <rect x="312" y="44" width="44" height="32" rx="5"/>
-            </g>
-            <rect x="30" y="140" width="100" height="12" rx="4" fill="#1c2130"/>
-            <rect x="250" y="140" width="100" height="12" rx="4" fill="#1c2130"/>
-            <g class="spin"><use href="#wheelset" x="55" y="152"/></g>
-            <g class="spin"><use href="#wheelset" x="105" y="152"/></g>
-            <g class="spin"><use href="#wheelset" x="275" y="152"/></g>
-            <g class="spin"><use href="#wheelset" x="325" y="152"/></g>
-          </g>
-        </defs>
-
-        <polygon points="18,124 -700,40 -700,210" fill="url(#beam)"/>
-
-        <!-- Lok -->
-        <path d="M60 140 L18 118 Q6 111 10 98 L34 44 Q42 26 64 24 L392 24 Q400 24 400 32 L400 140 Z" fill="#dfe4ec"/>
-        <g clip-path="url(#locoClip)">
-          <rect x="0" y="104" width="400" height="40" fill="#9146ff"/>
-          <rect x="0" y="100" width="400" height="4" fill="#ffb81c"/>
-        </g>
-        <path d="M30 88 L50 46 Q54 40 62 40 L98 40 L98 88 Z" fill="#0d1220"/>
-        <path d="M44 82 L62 46 L71 46 L53 82 Z" fill="#ffffff" opacity=".12"/>
-        <rect x="112" y="40" width="16" height="58" rx="3" fill="none" stroke="#aab2c3" stroke-width="2"/>
-        <rect x="140" y="44" width="40" height="28" rx="4" fill="#0d1220"/>
-        <text x="228" y="84" font-family="Barlow Condensed, sans-serif" font-weight="800" font-size="34" letter-spacing="3" fill="#1a1f2c">DAVE·TV</text>
-        <rect x="70" y="16" width="300" height="10" rx="4" fill="#9aa3b5"/>
-        <path d="M205 16 L235 2 L262 16 M222 3 H292" stroke="#9aa3b5" stroke-width="3" fill="none"/>
-        <circle cx="20" cy="122" r="16" fill="url(#glow)"/>
-        <circle cx="20" cy="122" r="5" fill="#fff"/>
-        <rect x="50" y="140" width="110" height="12" rx="4" fill="#1c2130"/>
-        <rect x="270" y="140" width="110" height="12" rx="4" fill="#1c2130"/>
-        <g class="spin"><use href="#wheelset" x="75" y="152"/></g>
-        <g class="spin"><use href="#wheelset" x="135" y="152"/></g>
-        <g class="spin"><use href="#wheelset" x="295" y="152"/></g>
-        <g class="spin"><use href="#wheelset" x="355" y="152"/></g>
-
-        <rect x="400" y="70" width="14" height="50" fill="#1c2130"/>
-        <use href="#wagon" x="414"/>
-        <rect x="794" y="70" width="14" height="50" fill="#1c2130"/>
-        <use href="#wagon" x="808"/>
-      </svg>
-    </div>
-
-    <div class="intro-rails" aria-hidden="true"></div>
-
-    <div class="intro-board">
-      <div class="board-meta">
-        <span>Gleis 1</span>
-        <span>Abfahrt <b id="intro-clock">--:--</b></span>
-      </div>
-      <div class="flap-row" id="flap-title" aria-label="Zugfahrer_DaveTV"></div>
-      <div class="flap-sub" id="flap-sub"></div>
-      <div class="board-ticker" id="board-ticker"><span></span></div>
-    </div>
-
-    <div class="intro-progress" aria-hidden="true"><span></span></div>
+    <div class="intro-fade" id="intro-fade" aria-hidden="true"></div>
+    <p class="intro-beat" aria-hidden="true"><b id="intro-beat-no">01</b> · <span id="intro-beat-label"></span></p>
+    <div class="intro-progress" aria-hidden="true"><span id="intro-progress-bar"></span></div>
     <button id="intro-sound" class="intro-sound" type="button" data-state="blocked" aria-pressed="false">Ton einschalten</button>
     <button class="intro-skip" type="button">Überspringen <kbd>Esc</kbd></button>
   </section>
@@ -144,81 +189,94 @@
   <main id="auth" class="auth" hidden>
     <section class="auth-hero">
       <div class="brand">
-        <img src="assets/favicon.svg" alt="" width="36" height="36">
+        <img src="assets/favicon.svg" alt="" width="34" height="34">
         <span>Zugfahrer_DaveTV</span>
+        <span class="brand-badge">Gleis 1</span>
       </div>
       <h1>Das Content-<wbr>Stellwerk</h1>
-      <p class="auth-lead">Hier werden Ideen für den Stream gesammelt, getaktet und auf die Strecke geschickt. Mit Countdown bis zur Abfahrt und einem Glücksrad, das Daves Fortnite-Runden durcheinanderbringt.</p>
+      <p class="auth-kicker"><span class="rule" aria-hidden="true"></span>Fahrplan · Glücksrad · Countdown</p>
+      <p class="auth-lead">Hier werden Ideen für den Stream gesammelt, getaktet und auf die Strecke geschickt – mit Countdown bis zur Abfahrt und einem Glücksrad, das Daves Fortnite-Runden durcheinanderbringt.</p>
       <ul class="auth-points">
-        <li><span class="dot dot--amber"></span>Countdowns für kommende Stream-Ideen</li>
-        <li><span class="dot dot--green"></span>Fortnite-Glücksrad mit drei Varianten</li>
-        <li><span class="dot dot--twitch"></span>Per Kanalpunkte direkt aus dem Twitch-Chat drehbar</li>
+        <li><span class="dot dot--amber"></span><span>Countdowns für kommende<br>Stream-Ideen</span></li>
+        <li><span class="dot dot--green"></span><span>Fortnite-Glücksrad mit<br>drei Varianten</span></li>
+        <li><span class="dot dot--twitch"></span><span>Per Kanalpunkte direkt<br>aus dem Chat drehbar</span></li>
       </ul>
     </section>
 
     <section class="auth-card" aria-labelledby="auth-title">
       <h2 id="auth-title" class="visually-hidden">Anmelden oder registrieren</h2>
 
-      <div id="social" class="social" hidden>
-        <p class="social-title">Schnell einsteigen mit</p>
-        <div class="social-grid">
-          <button type="button" class="social-btn social-btn--twitch" data-provider="twitch"><span class="s-icon" aria-hidden="true"></span>Mit Twitch anmelden</button>
-          <button type="button" class="social-btn social-btn--discord" data-provider="discord"><span class="s-icon" aria-hidden="true"></span>Discord</button>
-          <button type="button" class="social-btn social-btn--google" data-provider="google"><span class="s-icon" aria-hidden="true"></span>Google</button>
-          <button type="button" class="social-btn social-btn--spotify" data-provider="spotify"><span class="s-icon" aria-hidden="true"></span>Spotify</button>
-          <button type="button" class="social-btn social-btn--github" data-provider="github"><span class="s-icon" aria-hidden="true"></span>GitHub</button>
+      <div class="auth-card-head">
+        <span>Einstieg</span>
+        <span>Abfahrt <b id="auth-clock">--:--</b></span>
+      </div>
+
+      <div class="auth-card-body">
+        <div id="social" class="social" hidden>
+          <p class="social-title">Schnell einsteigen mit</p>
+          <div class="social-grid">
+            <button type="button" class="social-btn social-btn--twitch" data-provider="twitch"><span class="s-icon" aria-hidden="true"></span>Mit Twitch anmelden</button>
+            <button type="button" class="social-btn social-btn--discord" data-provider="discord"><span class="s-icon" aria-hidden="true"></span>Discord</button>
+            <button type="button" class="social-btn social-btn--google" data-provider="google"><span class="s-icon" aria-hidden="true"></span>Google</button>
+            <button type="button" class="social-btn social-btn--spotify" data-provider="spotify"><span class="s-icon" aria-hidden="true"></span>Spotify</button>
+            <button type="button" class="social-btn social-btn--github" data-provider="github"><span class="s-icon" aria-hidden="true"></span>GitHub</button>
+          </div>
+          <p class="social-msg form-msg" role="alert"></p>
+          <p class="divider"><span>oder mit E-Mail</span></p>
         </div>
-        <p class="social-msg form-msg" role="alert"></p>
-        <p class="divider"><span>oder mit E-Mail</span></p>
+
+        <div class="segmented" role="tablist">
+          <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="form-login">Anmelden</button>
+          <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="form-register">Registrieren</button>
+          <span class="segmented-thumb" aria-hidden="true"></span>
+        </div>
+
+        <form id="form-login" class="auth-form" role="tabpanel" aria-labelledby="tab-login" novalidate>
+          <label class="field">
+            <span>E-Mail</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="dave@beispiel.de">
+          </label>
+          <label class="field">
+            <span>Passwort</span>
+            <input name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+          </label>
+          <p class="form-msg" role="alert"></p>
+          <button class="btn btn--primary btn--block" type="submit">Einsteigen</button>
+          <a class="admin-link" href="admin.html">Admin-Zugang</a>
+        </form>
+
+        <form id="form-register" class="auth-form" role="tabpanel" aria-labelledby="tab-register" hidden novalidate>
+          <label class="field">
+            <span>Benutzername</span>
+            <input name="username" type="text" autocomplete="username" required minlength="3" maxlength="25" placeholder="Dein Twitch-Name">
+          </label>
+          <label class="field">
+            <span>E-Mail</span>
+            <input name="email" type="email" autocomplete="email" required placeholder="du@beispiel.de">
+          </label>
+          <label class="field">
+            <span>Passwort</span>
+            <input name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="Mindestens 6 Zeichen">
+          </label>
+          <p class="form-msg" role="alert"></p>
+          <button class="btn btn--primary btn--block" type="submit">Konto erstellen</button>
+        </form>
       </div>
-
-      <div class="segmented" role="tablist">
-        <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="form-login">Anmelden</button>
-        <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="form-register">Registrieren</button>
-        <span class="segmented-thumb" aria-hidden="true"></span>
-      </div>
-
-      <form id="form-login" class="auth-form" role="tabpanel" aria-labelledby="tab-login" novalidate>
-        <label class="field">
-          <span>E-Mail</span>
-          <input name="email" type="email" autocomplete="email" required placeholder="dave@beispiel.de">
-        </label>
-        <label class="field">
-          <span>Passwort</span>
-          <input name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
-        </label>
-        <p class="form-msg" role="alert"></p>
-        <button class="btn btn--primary btn--block" type="submit">Einsteigen</button>
-        <a class="admin-link" href="admin.html">Admin-Zugang</a>
-      </form>
-
-      <form id="form-register" class="auth-form" role="tabpanel" aria-labelledby="tab-register" hidden novalidate>
-        <label class="field">
-          <span>Benutzername</span>
-          <input name="username" type="text" autocomplete="username" required minlength="3" maxlength="25" placeholder="Dein Twitch-Name">
-        </label>
-        <label class="field">
-          <span>E-Mail</span>
-          <input name="email" type="email" autocomplete="email" required placeholder="du@beispiel.de">
-        </label>
-        <label class="field">
-          <span>Passwort</span>
-          <input name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="Mindestens 6 Zeichen">
-        </label>
-        <p class="form-msg" role="alert"></p>
-        <button class="btn btn--primary btn--block" type="submit">Konto erstellen</button>
-      </form>
     </section>
   </main>
 
   <!-- ============ DASHBOARD ============ -->
   <div id="app" class="app" hidden>
     <header class="topbar">
-      <div class="brand">
-        <img src="assets/favicon.svg" alt="" width="30" height="30">
-        <span>Zugfahrer_DaveTV</span>
+      <div class="topbar-brand">
+        <div class="brand">
+          <img src="assets/favicon.svg" alt="" width="30" height="30">
+          <span>Zugfahrer_DaveTV</span>
+        </div>
+        <p class="topbar-greeting" id="greeting"></p>
       </div>
       <div class="topbar-actions">
+        <span id="live-pill" class="live-pill" hidden>Live</span>
         <button id="twitch-btn" class="btn btn--twitch btn--sm" type="button"></button>
         <div class="user-chip">
           <span class="avatar" id="user-avatar" aria-hidden="true"></span>
@@ -231,11 +289,66 @@
     </header>
 
     <main class="dashboard">
-      <div class="dash-head">
-        <p class="eyebrow">Fahrplan · <span id="today"></span></p>
-        <h1 id="greeting">Willkommen im Stellwerk</h1>
-      </div>
-      <div id="grid" class="grid" aria-live="polite"></div>
+      <!-- Nächste Abfahrt + Glücksrad -->
+      <section class="dash-hero">
+        <article class="next-departure" id="next-departure">
+          <span class="nd-bg" aria-hidden="true"></span>
+          <span class="nd-shade" aria-hidden="true"></span>
+          <div class="nd-body">
+            <p class="eyebrow">Nächste Abfahrt · <span id="today"></span></p>
+            <h1 id="next-title">Kein Termin geplant</h1>
+            <p class="nd-desc" id="next-desc">Sobald eine Idee einen Termin bekommt, steht sie hier.</p>
+            <div class="countdown countdown--lg" id="next-countdown"></div>
+          </div>
+        </article>
+
+        <button type="button" class="wheel-card" id="wheel-card">
+          <span class="wheel-card-disc" aria-hidden="true"></span>
+          <span class="wheel-card-shade" aria-hidden="true"></span>
+          <span class="tile-tag" id="wheel-card-tag">Jederzeit</span>
+          <span class="wheel-card-title" id="wheel-card-title">Fortnite-Glücksrad</span>
+          <span class="wheel-card-desc" id="wheel-card-desc"></span>
+          <span class="wheel-card-cta">Rad drehen →</span>
+        </button>
+      </section>
+
+      <!-- Fahrplan -->
+      <section class="section">
+        <div class="section-head">
+          <h2>Fahrplan</h2>
+          <span id="plan-count"></span>
+        </div>
+        <div id="grid" class="grid" aria-live="polite"></div>
+      </section>
+
+      <!-- Archiv + Vorschläge -->
+      <section class="panels">
+        <div class="panel">
+          <div class="section-head">
+            <h2>Archiv</h2>
+            <span>Gefahrene Strecken</span>
+          </div>
+          <ul id="archive-list" class="archive"></ul>
+        </div>
+
+        <div class="panel" id="ideas-panel" hidden>
+          <div class="section-head">
+            <h2>Vorschläge</h2>
+            <span>Von Zuschauern</span>
+          </div>
+          <div class="ideas-box">
+            <form id="idea-form" novalidate>
+              <label class="field">
+                <span>Deine Idee für den Fahrplan</span>
+                <input name="text" type="text" maxlength="120" required placeholder="z. B. Nachtzug durch die Alpen">
+              </label>
+              <p class="form-msg" role="alert"></p>
+              <button class="btn btn--outline btn--block" type="submit">Vorschlag einreichen</button>
+            </form>
+            <ul id="ideas-list" class="ideas"></ul>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 

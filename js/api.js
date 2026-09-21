@@ -1,7 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
-import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
+import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -96,6 +96,34 @@ async function createSupabaseApi() {
     },
     async getVariants() {
       return unwrap(await sb.from('wheel_variants').select('*').order('position'));
+    },
+    // Vorschläge aus der Community. Die Tabellen kamen erst später dazu –
+    // fehlen sie noch, liefert die Abfrage einen Fehler und app.js blendet
+    // den Bereich aus.
+    async getIdeas(limit = 12) {
+      return unwrap(await sb.from('ideas_ranked')
+        .select('id, text, author, votes, voted')
+        .order('votes', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(limit));
+    },
+    async addIdea(text) {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) throw new Error('Bitte zuerst anmelden.');
+      const profile = await this.getProfile(user);
+      const row = unwrap(await sb.from('ideas')
+        .insert({ text, author: profile.username, user_id: user.id })
+        .select('id, text, author')
+        .single());
+      return { ...row, votes: 0, voted: false };
+    },
+    async voteIdea(id, on) {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) throw new Error('Bitte zuerst anmelden.');
+      if (on) unwrap(await sb.from('idea_votes').insert({ idea_id: id, user_id: user.id }));
+      else unwrap(await sb.from('idea_votes').delete().eq('idea_id', id).eq('user_id', user.id));
     },
     async getSpins(limit = 15) {
       return unwrap(await sb.from('spins').select('*').order('created_at', { ascending: false }).limit(limit));
@@ -218,6 +246,28 @@ function createLocalApi() {
       return tiles.find((t) => t.id === id);
     },
     async getVariants() { return DEFAULT_VARIANTS; },
+    async getIdeas(limit = 12) {
+      const me = current?.email ?? '';
+      return store.get('ideas', DEFAULT_IDEAS)
+        .map(({ voters = [], ...i }) => ({ ...i, votes: i.votes + (voters.includes(me) ? 1 : 0), voted: voters.includes(me) }))
+        .sort((a, b) => b.votes - a.votes || b.id - a.id)
+        .slice(0, limit);
+    },
+    async addIdea(text) {
+      const profile = await this.getProfile(current);
+      const idea = { id: nextId++, text, author: profile.username, votes: 0, voters: [current.email] };
+      store.set('ideas', [idea, ...store.get('ideas', DEFAULT_IDEAS)].slice(0, 40));
+      return { id: idea.id, text, author: idea.author, votes: 1, voted: true };
+    },
+    async voteIdea(id, on) {
+      const me = current?.email ?? '';
+      store.set('ideas', store.get('ideas', DEFAULT_IDEAS).map((i) => {
+        if (i.id !== id) return i;
+        const voters = new Set(i.voters ?? []);
+        if (on) voters.add(me); else voters.delete(me);
+        return { ...i, voters: [...voters] };
+      }));
+    },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
