@@ -17,6 +17,7 @@ const ERRORS = [
   [/email not confirmed/i, 'Bitte bestätige zuerst den Link in deiner E-Mail.'],
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
+  [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
   [/failed to fetch|networkerror/i, 'Keine Verbindung zum Server.'],
   [/provider is not enabled|unsupported provider/i, 'Diese Anmelde-Möglichkeit ist noch nicht eingerichtet.'],
   [/access.denied|user denied|cancel/i, 'Anmeldung abgebrochen.'],

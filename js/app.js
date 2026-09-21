@@ -903,6 +903,7 @@ function openTwitchDialog() {
   if (twitch.connected) {
     body.innerHTML = `
       <p>Verbunden mit <b></b>. Die Kanalpunkte-Belohnung ist ${twitch.subscription_active ? 'aktiv' : '<b>nicht aktiv</b> (bitte neu verbinden)'}.</p>
+      <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
         ${profile.is_admin ? '<button class="btn btn--ghost" type="button" data-action="reconnect">Neu verbinden</button><button class="btn btn--ghost" type="button" data-action="disconnect">Trennen</button>' : ''}
         <button class="btn btn--primary" type="button" data-close>OK</button>
@@ -916,6 +917,7 @@ function openTwitchDialog() {
         <li><span>Kanalpunkte-Einlösungen lesen<small>Damit das Rad sich dreht, auch wenn diese Seite geschlossen ist.</small></span></li>
         <li><span>Nachrichten im Chat senden<small>Das Ergebnis jeder Drehung wird im Twitch-Chat gepostet.</small></span></li>
       </ul>
+      <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
         <button class="btn btn--ghost" type="button" data-close>Abbrechen</button>
         <button class="btn btn--twitch" type="button" data-action="connect">Weiter zu Twitch</button>
@@ -928,6 +930,8 @@ function openTwitchDialog() {
 
 async function twitchAction(btn) {
   const action = btn.dataset.action;
+  const msg = $('#twitch-dialog-body .form-msg');
+  if (msg) msg.textContent = '';
   btn.disabled = true;
   btn.classList.add('is-loading');
   try {
@@ -943,7 +947,12 @@ async function twitchAction(btn) {
       await state.api.twitchConnect(); // leitet zu Twitch weiter
     }
   } catch (err) {
-    toast(germanError(err), 'error', 7000);
+    // Der Fehler gehört in den Dialog: dort schaut man hin, nachdem man
+    // geklickt hat.
+    console.error(err);
+    const text = germanError(err);
+    if (msg) msg.textContent = text;
+    else toast(text, 'error', 7000);
     btn.disabled = false;
     btn.classList.remove('is-loading');
   }
@@ -953,15 +962,38 @@ async function twitchAction(btn) {
 // Hilfsfunktionen
 // ============================================================
 function toast(text, type = 'info', ms = 4500) {
+  const host = $('#toasts');
   const el = document.createElement('div');
   el.className = `toast toast--${type}`;
   el.textContent = text;
   el.setAttribute('role', type === 'error' ? 'alert' : 'status');
-  $('#toasts').append(el);
+  host.append(el);
+  raiseToasts();
   setTimeout(() => {
     el.classList.add('is-leaving');
-    setTimeout(() => el.remove(), 260);
+    setTimeout(() => {
+      el.remove();
+      if (!host.children.length) hideToasts();
+    }, 260);
   }, ms);
+}
+
+// Ein Dialog mit showModal() liegt in der "top layer" und deckt alles
+// Normale zu – auch die Meldungen. Als Popover landen sie selbst in der
+// top layer und bleiben lesbar. Jedes erneute Zeigen hebt sie über einen
+// Dialog, der zwischenzeitlich geöffnet wurde.
+function raiseToasts() {
+  const host = $('#toasts');
+  if (typeof host.showPopover !== 'function') return; // ältere Browser: wie bisher
+  try {
+    if (host.matches(':popover-open')) host.hidePopover();
+    host.showPopover();
+  } catch { /* Popover nicht möglich – Meldungen bleiben in der normalen Ebene */ }
+}
+
+function hideToasts() {
+  const host = $('#toasts');
+  try { if (host.matches(':popover-open')) host.hidePopover(); } catch { /* egal */ }
 }
 
 function escapeHtml(s) {
