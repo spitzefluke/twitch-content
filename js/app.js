@@ -16,6 +16,8 @@ const state = {
   variantId: null,
   twitch: { connected: false },
   spins: [],
+  ideas: [],
+  ideasOn: false,
   spinning: false,
   queue: [],
   wheel: null,
@@ -39,7 +41,7 @@ async function boot() {
   let seen = false;
   try { seen = sessionStorage.getItem('zd_intro') === '1'; sessionStorage.setItem('zd_intro', '1'); } catch { /* ignorieren */ }
   if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash)) {
-    await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 10) * 1000 });
+    await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 20) * 1000 });
   } else {
     $('#intro').remove();
   }
@@ -218,19 +220,27 @@ async function enterApp(user) {
   $('#app').hidden = false;
 
   const api = state.api;
-  const [profile, tiles, variants, twitch, spins] = await Promise.all([
+  const [profile, tiles, variants, twitch, spins, ideas] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
     api.twitchStatus().catch(() => ({ connected: false })),
     api.getSpins().catch(() => []),
+    // Die Vorschläge-Tabellen kamen später dazu: fehlen sie in der Datenbank,
+    // bleibt der Bereich einfach aus, statt einen Fehler zu zeigen.
+    api.getIdeas().catch((err) => { console.warn('Vorschläge nicht verfügbar:', err); return null; }),
   ]);
   if (!state.user) return; // zwischenzeitlich abgemeldet
   Object.assign(state, { profile, tiles, variants, twitch, spins });
+  state.ideas = ideas ?? [];
+  state.ideasOn = ideas !== null;
   state.variantId ??= variants[0]?.id;
 
   renderHeader();
+  renderHero();
   renderGrid();
+  renderArchive();
+  renderIdeas();
   renderWheelPanel();
 
   if (!state.spinSubscribed) {
@@ -264,7 +274,12 @@ function renderHeader() {
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
   $('#greeting').textContent = `${hello}, ${profile.username}`;
-  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
+  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Die Plakette zeigt, ob Zuschauer das Rad gerade per Kanalpunkten drehen können.
+  const pill = $('#live-pill');
+  pill.hidden = !(twitch.connected && twitch.reward_active);
+  pill.textContent = 'Kanalpunkte aktiv';
 
   const btn = $('#twitch-btn');
   btn.classList.toggle('btn--twitch', !twitch.connected);
@@ -274,10 +289,184 @@ function renderHeader() {
   btn.title = twitch.connected ? 'Kanalpunkte & Chat sind verbunden' : 'Für Dave: Kanalpunkte und Chat freigeben';
 }
 
+// ---------- Nächste Abfahrt & Glücksrad ----------
+// Eine Kachel wandert erst ins Archiv, wenn der Termin ein paar Stunden
+// zurückliegt – solange bleibt sie mit "jetzt live" im Fahrplan stehen.
+const LIVE_WINDOW = 6 * 60 * 60 * 1000;
+const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
+const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
+
+// Der nächste Termin, der noch bevorsteht – sonst der, der gerade läuft.
+function nextDeparture() {
+  const dated = state.tiles.filter((t) => isPlanned(t) && t.target_at)
+    .sort((a, b) => Date.parse(a.target_at) - Date.parse(b.target_at));
+  return dated.find((t) => Date.parse(t.target_at) >= Date.now()) ?? dated[0] ?? null;
+}
+
+function renderHero() {
+  const next = nextDeparture();
+  $('#next-title').textContent = next?.title ?? 'Kein Termin geplant';
+  $('#next-desc').textContent = next?.description ?? 'Sobald eine Idee einen Termin bekommt, steht sie hier.';
+  $('.nd-bg').style.backgroundImage = `url(${JSON.stringify(heroImage(next))})`;
+
+  const cd = $('#next-countdown');
+  cd.replaceChildren();
+  cd.hidden = !next;
+  if (next) {
+    cd.dataset.target = next.target_at ?? '';
+    renderCountdown(cd, next.target_at);
+  } else {
+    delete cd.dataset.target;
+  }
+
+  const wheelTile = state.tiles.find((t) => t.kind === 'wheel');
+  const card = $('#wheel-card');
+  const [c1, c2, c3] = state.variants.map((v) => v.color);
+  card.style.setProperty('--c1', c1 ?? '#ffb81c');
+  card.style.setProperty('--c2', c2 ?? '#3ddc84');
+  card.style.setProperty('--c3', c3 ?? '#9146ff');
+  $('#wheel-card-title').textContent = wheelTile?.title ?? 'Fortnite-Glücksrad';
+  $('#wheel-card-desc').textContent = wheelTile?.description ?? '';
+  $('#wheel-card-tag').textContent = state.twitch.reward_active
+    ? `Jederzeit · ${Number(state.twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte`
+    : `Jederzeit · ${state.variants.length} Varianten`;
+  card.setAttribute('aria-label', `${wheelTile?.title ?? 'Glücksrad'} öffnen`);
+
+  $('#plan-count').textContent = `${state.tiles.filter(isPlanned).length + 1} Abfahrten geplant`;
+}
+
+function heroImage(tile) {
+  return safeUrl(tile?.background) ?? THEME_BG[tile?.theme] ?? THEME_BG.tracks;
+}
+
+// ---------- Archiv ----------
+function renderArchive() {
+  const list = $('#archive-list');
+  const rows = state.tiles.filter(isArchived)
+    .sort((a, b) => Date.parse(b.target_at) - Date.parse(a.target_at));
+
+  if (!rows.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch nichts gefahren – der erste Countdown läuft oben.';
+    list.replaceChildren(li);
+    return;
+  }
+
+  list.replaceChildren(...rows.map((tile) => {
+    const date = new Date(tile.target_at);
+    const li = document.createElement('li');
+
+    const when = document.createElement('span');
+    when.className = 'ar-date';
+    when.textContent = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+
+    const main = document.createElement('span');
+    main.className = 'ar-main';
+    const title = document.createElement('span');
+    title.className = 'ar-title';
+    title.textContent = tile.title;
+    const meta = document.createElement('span');
+    meta.className = 'ar-meta';
+    meta.textContent = `${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr · ${tile.description}`;
+    main.append(title, meta);
+
+    const vod = document.createElement('a');
+    vod.className = 'ar-vod';
+    vod.href = `https://www.twitch.tv/${CONFIG.CHANNEL}/videos`;
+    vod.target = '_blank';
+    vod.rel = 'noopener';
+    vod.textContent = 'VOD';
+    vod.title = `Aufzeichnungen von ${CONFIG.CHANNEL} auf Twitch`;
+
+    li.append(when, main, vod);
+    return li;
+  }));
+}
+
+// ---------- Vorschläge ----------
+function renderIdeas() {
+  $('#ideas-panel').hidden = !state.ideasOn;
+  if (!state.ideasOn) return;
+
+  const list = $('#ideas-list');
+  if (!state.ideas.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch keine Vorschläge – mach den Anfang.';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...state.ideas.map(buildIdea));
+}
+
+function buildIdea(idea) {
+  const li = document.createElement('li');
+
+  const main = document.createElement('span');
+  main.className = 'idea-main';
+  const text = document.createElement('span');
+  text.className = 'idea-text';
+  text.textContent = idea.text;
+  const by = document.createElement('span');
+  by.className = 'idea-by';
+  by.textContent = `von ${idea.author || 'anonym'}`;
+  main.append(text, by);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'vote-btn';
+  paintVote(btn, idea);
+  btn.addEventListener('click', () => voteIdea(idea, btn));
+
+  li.append(main, btn);
+  return li;
+}
+
+function paintVote(btn, idea) {
+  btn.textContent = String(idea.votes);
+  btn.classList.toggle('is-voted', !!idea.voted);
+  btn.setAttribute('aria-pressed', String(!!idea.voted));
+  btn.setAttribute('aria-label', `${idea.votes} Stimmen für „${idea.text}“`);
+}
+
+async function voteIdea(idea, btn) {
+  const on = !idea.voted;
+  btn.disabled = true;
+  // Erst umschalten, damit der Klick sofort ankommt – bei Fehler zurückdrehen.
+  idea.voted = on;
+  idea.votes += on ? 1 : -1;
+  paintVote(btn, idea);
+  try {
+    await state.api.voteIdea(idea.id, on);
+  } catch (err) {
+    idea.voted = !on;
+    idea.votes += on ? -1 : 1;
+    paintVote(btn, idea);
+    toast(`Stimme konnte nicht gespeichert werden: ${germanError(err)}`, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitIdea(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const text = form.text.value.trim();
+  if (text.length < 3) return formMsg(form, 'Bitte mindestens 3 Zeichen eingeben.');
+  await withLoading(form, async () => {
+    const idea = await state.api.addIdea(text);
+    state.ideas = [idea, ...state.ideas];
+    form.reset();
+    renderIdeas();
+    toast('Danke! Dein Vorschlag steht jetzt im Stellwerk.', 'ok');
+  });
+}
+
 // ---------- Kacheln ----------
 function renderGrid() {
   const grid = $('#grid');
-  grid.replaceChildren(...state.tiles.map((tile, i) => buildTile(tile, i)));
+  grid.replaceChildren(...state.tiles.filter(isPlanned).map((tile, i) => buildTile(tile, i)));
   updateCountdowns();
 }
 
@@ -297,41 +486,19 @@ function buildTile(tile, i) {
   const body = div('tile-body');
   const tag = document.createElement('span');
   tag.className = 'tile-tag';
+  tag.textContent = 'Abfahrt in';
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
   const desc = document.createElement('p');
   desc.className = 'tile-desc';
   desc.textContent = tile.description;
+  const cd = div('countdown');
+  cd.dataset.target = tile.target_at ?? '';
 
-  if (tile.kind === 'wheel') {
-    const [c1, c2, c3] = state.variants.map((v) => v.color);
-    const deco = div('wheel-deco');
-    deco.style.cssText = `--c1:${c1 ?? '#ffb81c'};--c2:${c2 ?? '#3ddc84'};--c3:${c3 ?? '#9146ff'}`;
-    el.append(deco, div('wheel-deco-pointer'));
-    tag.textContent = `Fortnite · ${state.variants.length} Varianten`;
-    const chips = div('variant-chips');
-    for (const v of state.variants) {
-      const chip = document.createElement('span');
-      chip.className = 'variant-chip';
-      chip.style.setProperty('--c', v.color);
-      chip.textContent = v.name;
-      chips.append(chip);
-    }
-    const cta = document.createElement('span');
-    cta.className = 'tile-cta';
-    cta.textContent = 'Rad öffnen';
-    body.append(tag, title, desc, chips, cta);
-    el.setAttribute('aria-label', `${tile.title}: Glücksrad öffnen`);
-    el.addEventListener('click', openWheel);
-  } else {
-    tag.textContent = 'Abfahrt in';
-    const cd = div('countdown');
-    cd.dataset.target = tile.target_at ?? '';
-    body.append(tag, title, desc, cd);
-    el.addEventListener('click', () => openTile(tile.id));
-  }
+  body.append(tag, title, desc, cd);
   el.append(body);
+  el.addEventListener('click', () => openTile(tile.id));
   if (finePointer && !reducedMotion) addTilt(el);
   return el;
 }
@@ -415,7 +582,16 @@ function renderCountdown(el, targetIso) {
 function updateCountdowns() {
   document.querySelectorAll('.countdown[data-target]').forEach((el) => renderCountdown(el, el.dataset.target));
 }
-setInterval(updateCountdowns, 1000);
+
+// Die Kopfleiste der Anmeldekarte zeigt die aktuelle Uhrzeit wie eine Anzeigetafel.
+function updateAuthClock() {
+  const el = $('#auth-clock');
+  if (!el) return;
+  const d = new Date();
+  el.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+updateAuthClock();
+setInterval(() => { updateCountdowns(); updateAuthClock(); }, 1000);
 
 // ============================================================
 // Dialoge allgemein
@@ -429,6 +605,8 @@ function setupDialogs() {
   });
 
   $('#logout-btn').addEventListener('click', () => state.api.signOut());
+  $('#wheel-card').addEventListener('click', openWheel);
+  $('#idea-form').addEventListener('submit', submitIdea);
   $('#twitch-btn').addEventListener('click', openTwitchDialog);
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
@@ -702,7 +880,9 @@ async function saveTile(e) {
     const updated = await state.api.updateTile(state.activeTile.id, patch);
     state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
     state.activeTile = updated;
+    renderHero();
     renderGrid();
+    renderArchive();
     fillTileDialog(updated);
     showTileForm(false);
     toast('Gespeichert.', 'ok');
@@ -755,6 +935,7 @@ async function twitchAction(btn) {
       await state.api.twitchDisconnect();
       state.twitch = { connected: false };
       renderHeader();
+      renderHero();
       renderWheelPanel();
       closeDialog($('#twitch-dialog'));
       toast('Twitch wurde getrennt. Die Belohnung ist deaktiviert.', 'ok');

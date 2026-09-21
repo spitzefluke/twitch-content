@@ -2,19 +2,20 @@
 
 Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_DaveTV**:
 
-- **10-Sekunden-Intro** (Signal → Zug fährt durch → Abfahrtstafel) mit **Bahnhofs-Gong und Durchsage**, überspringbar, einmal pro Browser-Sitzung
-- **Animierter Hintergrund**: ziehende Lichter, Sternenfeld und alle 45 Sekunden ein kleiner Zug
-- **Anmelden / Registrieren** (E-Mail + Passwort)
-- **Raster mit 5 Kacheln**: Hintergrund, Hover-Animation, Kurzbeschreibung
-  - Kachel 1: **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)
-  - Kacheln 2–5: Content-Ideen mit **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
+- **Intro als Kamerafahrt** über einen Nachtbahnhof (Einfahrt auf Gleis 1 → Abfahrtstafel blättert auf → Bahnsteiguhr springt auf 20:15 → Signal auf Grün, Türen öffnen) mit **Bahnhofs-Gong und Durchsage**, überspringbar, einmal pro Browser-Sitzung
+- **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
+- **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
+- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)
+- **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
+- **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
+- **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht und das Ergebnis im **Twitch-Chat** gepostet.
 
 ## Aufbau
 
 ```
 index.html, css/, js/, assets/   → statische Seite für GitHub Pages
-supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Twitch-Tokens)
+supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Vorschläge, Twitch-Tokens)
 supabase/functions/
   twitch-oauth/                  → Twitch-Login für Dave, legt Belohnung + EventSub-Webhook an
   twitch-eventsub/               → empfängt Kanalpunkte-Einlösungen von Twitch, dreht, postet im Chat
@@ -33,7 +34,7 @@ Lokal starten (ES-Module brauchen einen Webserver):
 npx http-server -p 5317
 ```
 
-Das Intro erzwingen: `http://localhost:5317/?intro=1`
+Das Intro erzwingen: `http://localhost:5317/?intro=1` (Länge über `INTRO_SECONDS` in `js/config.js`)
 
 ---
 
@@ -68,7 +69,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und nacheinander den Inhalt beider Dateien aus `supabase/migrations/` einfügen und ausführen (erst `…_init.sql`, dann `…_admin.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -198,3 +199,4 @@ Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen
 - Die Chat-Nachricht wird im Namen von Daves Account gesendet.
 - **Glücksrad-Felder ändern:** in Supabase unter *Table Editor → wheel_variants → segments* (JSON mit `label` und `detail`). Die Werte in `js/defaults.js` gelten nur für den Demo-Modus.
 - **Weitere Kacheln:** neue Zeile in der Tabelle `tiles` mit `kind = 'countdown'` anlegen.
+- **Vorschläge:** stehen in `ideas`, die Stimmen in `idea_votes`. Solange die Migration `…_ideas.sql` nicht eingespielt ist, blendet die Seite den Bereich einfach aus.
