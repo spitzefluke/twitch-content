@@ -54,8 +54,14 @@ export async function twitchToken(params: Record<string, string>) {
   return data as { access_token: string; refresh_token?: string; expires_in: number; scope?: string[] };
 }
 
+// App-Token wird wiederverwendet, solange er gilt (Twitch: ca. 60 Tage) –
+// nicht für jede Chat-Nachricht einen neuen holen.
+let appToken: { token: string; expires: number } | null = null;
 export async function getAppToken(): Promise<string> {
-  return (await twitchToken({ grant_type: "client_credentials" })).access_token;
+  if (appToken && appToken.expires - Date.now() > 60_000) return appToken.token;
+  const t = await twitchToken({ grant_type: "client_credentials" });
+  appToken = { token: t.access_token, expires: Date.now() + t.expires_in * 1000 };
+  return appToken.token;
 }
 
 export class HelixError extends Error {
@@ -115,10 +121,22 @@ export async function getConnection(): Promise<Connection | null> {
   return { ...data, ...patch };
 }
 
+export async function getBot(): Promise<{ user_id: string; login: string; display_name: string } | null> {
+  const { data, error } = await db.from("twitch_bot").select("user_id, login, display_name").eq("id", 1).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Chat-Nachrichten schreibt der Stellwerk-Bot, nie Dave selbst. Gesendet
+// wird mit dem App-Token: Dafür hat der Bot user:bot freigegeben und Dave
+// channel:bot (oder der Bot ist Moderator im Kanal). Twitch zeigt dann das
+// Bot-Abzeichen. Ohne verbundenen Bot bleibt der Chat still.
 export async function sendChat(conn: Connection, message: string) {
-  const res = await helix("chat/messages", conn.access_token, {
+  const bot = await getBot();
+  if (!bot) throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
+  const res = await helix("chat/messages", await getAppToken(), {
     method: "POST",
-    body: { broadcaster_id: conn.broadcaster_id, sender_id: conn.broadcaster_id, message: message.slice(0, 500) },
+    body: { broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: message.slice(0, 500) },
   });
   const r = res?.data?.[0];
   if (r && !r.is_sent) throw new Error(`Chat-Nachricht blockiert: ${r.drop_reason?.message ?? "unbekannt"}`);

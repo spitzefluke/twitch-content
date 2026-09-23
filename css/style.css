@@ -1002,6 +1002,14 @@ code { font-family: var(--font-mono); font-size: .9em; }
   .obs-body { padding-left: 16px; padding-right: 16px; }
 }
 .twitch-dialog-body p { color: #c4cad6; }
+.bot-box {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px 12px;
+  padding: 12px 14px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line);
+}
+.bot-icon { font-size: 22px; line-height: 1; }
+.bot-text { display: grid; gap: 2px; min-width: 0; }
+.bot-text small { color: var(--muted); font-size: 13px; }
+.bot-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; }
 .perm-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .perm-list li { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); font-size: 15px; }
 .perm-list li::before { content: "✓"; color: var(--green); font-weight: 700; }
