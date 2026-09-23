@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OBS-Overlay · Content-Stellwerk</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/overlay.css">
+  <script type="module" src="js/overlay.js"></script>
+</head>
+<!-- Als Browserquelle in OBS einbinden (1920 × 1080). Der Hintergrund ist
+     durchsichtig, sichtbar sind nur die beiden Karten. Optionen stehen in js/overlay.js. -->
+<body>
+
+  <!-- Glücksrad: erscheint nur, wenn gedreht wird -->
+  <section class="ov-card ov-spin" id="ov-spin" aria-live="polite">
+    <header class="ov-head">
+      <span class="ov-dot" aria-hidden="true"></span>
+      <span>Glücksrad</span>
+      <span class="ov-sep" aria-hidden="true">·</span>
+      <span class="ov-who" id="ov-who"></span>
+    </header>
+    <div class="ov-spin-body">
+      <div class="ov-wheel">
+        <span class="ov-pointer" id="ov-pointer" aria-hidden="true"></span>
+        <canvas id="ov-canvas" aria-hidden="true"></canvas>
+        <span class="ov-hub" aria-hidden="true"><img src="assets/favicon.svg" alt=""></span>
+      </div>
+      <div class="ov-text">
+        <p class="ov-variant" id="ov-variant"></p>
+        <p class="ov-status" id="ov-status">Das Rad dreht sich …</p>
+        <p class="ov-result" id="ov-result"></p>
+        <p class="ov-detail" id="ov-detail"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Nächste Abfahrt: wechselt durch die kommenden Content-Ideen -->
+  <section class="ov-card ov-next" id="ov-next" hidden>
+    <header class="ov-head">
+      <span class="ov-dot" aria-hidden="true"></span>
+      <span>Nächste Abfahrt</span>
+      <span class="ov-sep" aria-hidden="true">·</span>
+      <span id="ov-next-date"></span>
+    </header>
+    <div class="ov-next-body" id="ov-next-body">
+      <p class="ov-next-title" id="ov-next-title"></p>
+      <div class="ov-countdown" id="ov-countdown">
+        <span><b></b><i>Tage</i></span>
+        <span><b></b><i>Std</i></span>
+        <span><b></b><i>Min</i></span>
+        <span><b></b><i>Sek</i></span>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

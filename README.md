@@ -9,12 +9,14 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
+- **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown. Den Link gibt's im Dashboard unter **OBS**.
 - **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht und das Ergebnis im **Twitch-Chat** gepostet.
 
 ## Aufbau
 
 ```
 index.html, css/, js/, assets/   → statische Seite für GitHub Pages
+overlay.html                     → OBS-Browserquelle (Glücksrad + nächste Abfahrt)
 supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Vorschläge, Twitch-Tokens)
 supabase/functions/
   twitch-oauth/                  → Twitch-Login für Dave, legt Belohnung + EventSub-Webhook an
@@ -69,7 +71,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -170,6 +172,28 @@ Die Client-ID und das Secret aus der App trägst du dann in Supabase unter **Aut
 **Wichtig:** Unter **Authentication → URL Configuration** müssen *Site URL* und *Redirect URLs* auf `https://spitzefluke.github.io/twitch-content/` stehen. Sonst landen Zuschauer nach dem Login nicht wieder auf der Webseite.
 
 Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mit Twitch anmelden“ (für Zuschauer) und „Mit Twitch verbinden“ (für Dave, Kanalpunkte und Chat) sind zwei getrennte Dinge.
+
+## OBS-Overlay
+
+Im Dashboard oben auf **OBS** klicken (nur für Admins sichtbar). Dort stellst du ein, in welcher Ecke das Glücksrad und die nächste Abfahrt erscheinen, siehst eine Vorschau und kopierst die fertige Adresse.
+
+In OBS:
+
+1. Unter **Quellen** auf **+** klicken → **Browser**.
+2. Die kopierte Adresse einfügen, **Breite 1920**, **Höhe 1080**.
+3. Optional **„Audio über OBS steuern“** anhaken, dann erscheinen Tick und Gong im Audio-Mixer.
+
+Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad taucht nur auf, wenn jemand dreht – per Kanalpunkte oder auf der Webseite –, und verschwindet nach dem Ergebnis wieder.
+
+| Option in der Adresse | Wirkung |
+|---|---|
+| `wheel=br` / `bl` / `tr` / `tl` / `0` | Ecke fürs Glücksrad (unten rechts, unten links, oben rechts, oben links, aus) |
+| `next=bl` / … / `0` | Ecke für „Nächste Abfahrt“ |
+| `scale=1.25` | Größe (0.5 bis 2) |
+| `sound=0` | ohne Ton |
+| `test=1` | alle 20 Sekunden eine Probe-Drehung – nur zum Ausrichten, danach wieder entfernen |
+
+**Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
 
 ## Admin-Bereich
 

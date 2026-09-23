@@ -129,6 +129,11 @@ async function createSupabaseApi() {
     async getSpins(limit = 15) {
       return unwrap(await sb.from('spins').select('*').order('created_at', { ascending: false }).limit(limit));
     },
+    // Ist die Datenbank fürs OBS-Overlay vorbereitet (Migration …_overlay.sql)?
+    async overlayReady() {
+      const { error } = await sb.from('overlay_spins').select('id', { head: true }).limit(1);
+      return !error;
+    },
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
     },
@@ -270,6 +275,7 @@ function createLocalApi() {
       }));
     },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
+    async overlayReady() { return true; },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
       const profile = await this.getProfile(current);
