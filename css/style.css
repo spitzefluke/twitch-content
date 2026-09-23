@@ -1451,3 +1451,35 @@ code { font-family: var(--font-mono); font-size: .9em; }
   .intro-weather { right: 16px; top: auto; bottom: 58px; font-size: 10px; }
   .sc-tunnel { transform: scale(.82); transform-origin: bottom left; }
 }
+
+
+/* ==========================================================
+   PERFORMANCE PASS · gezieltes Compositing statt Dauer-Reflow
+   ========================================================== */
+.intro-camera {
+  contain: layout style;
+  transform-origin: 0 0;
+}
+.intro-stage {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+.intro-stage > * {
+  backface-visibility: hidden;
+}
+.sc-wheel { animation-play-state: paused; }
+.intro.is-moving .sc-wheel { animation-play-state: running; }
+.sc-rain,
+.sc-stars,
+.sc-haze,
+.sc-drift,
+.sc-mountains,
+.sc-tunnel__light {
+  will-change: transform;
+}
+.intro.is-out .intro-camera,
+.intro.is-out .intro-stage { will-change: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .intro-stage { transform: none; }
+  .sc-wheel { animation-play-state: paused !important; }
+}

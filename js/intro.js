@@ -18,19 +18,20 @@ const TICKER = 'Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güte
 
 // Kamera: [p, Blickpunkt-X, Blickpunkt-Y, Zoom] in Bühnen-Koordinaten
 const CAM = [
-  [0.000, 2700, 430, 0.58],
-  [0.100, 2520, 460, 0.66],
-  [0.220, 2250, 520, 0.75],
-  [0.320, 1940, 590, 0.88],
-  [0.420, 1520, 640, 0.95],
-  [0.500, 1160, 656, 1.04],
-  [0.580, 1280, 250, 0.78],
-  [0.700, 1280, 236, 0.84],
-  [0.765, 520, 330, 1.12],
-  [0.825, 520, 330, 1.20],
-  [0.865, 2250, 440, 0.92],
-  [0.905, 1396, 690, 1.12],
-  [0.960, 1396, 692, 2.80],
+  [0.000, 2700, 430, 0.50],
+  [0.080, 2650, 450, 0.54],
+  [0.180, 2450, 480, 0.62],
+  [0.280, 2300, 530, 0.70],
+  [0.380, 2050, 590, 0.80],
+  [0.480, 1800, 635, 0.90],
+  [0.580, 1500, 650, 0.98],
+  [0.660, 1280, 250, 0.78],
+  [0.750, 1280, 236, 0.84],
+  [0.810, 520, 330, 1.12],
+  [0.860, 520, 330, 1.20],
+  [0.900, 2250, 440, 0.92],
+  [0.940, 1396, 690, 1.12],
+  [0.970, 1396, 692, 2.80],
   [1.000, 1396, 692, 7.20],
 ];
 
@@ -115,6 +116,8 @@ export function playIntro({ duration = 20000 } = {}) {
 
   return new Promise((resolve) => {
     let frame = null;
+    let lastPaint = 0;
+    const FRAME_MS = 1000 / 45;
     let done = false;
 
     const finish = () => {
@@ -149,6 +152,11 @@ export function playIntro({ duration = 20000 } = {}) {
       if (p >= 0.08 && !cues.whoosh) { cues.whoosh = true; sound.whoosh(Math.min(6.2, duration * 0.0003)); }
       if (p >= 0.68 && !cues.speak) { cues.speak = true; sound.speak(ANNOUNCEMENT); }
       if (p >= 0.72 && !cues.gong) { cues.gong = true; sound.chime(); }
+      if (now - lastPaint < FRAME_MS && p < 1) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+      lastPaint = now;
       render(p);
       if (p >= 1) finish();
       else frame = requestAnimationFrame(tick);
@@ -186,6 +194,7 @@ export function playIntro({ duration = 20000 } = {}) {
     root.classList.toggle('is-mountain', p < 0.20);
     root.classList.toggle('is-tunnel', p >= 0.20 && p < 0.36);
     root.classList.toggle('is-station', p >= 0.36);
+    root.classList.toggle('is-moving', p >= 0.10 && p < 0.52);
 
     // ---- Kamera ----
     const cam = sampleCam(p);
