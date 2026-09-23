@@ -18,21 +18,29 @@ const TICKER = 'Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güte
 
 // Kamera: [p, Blickpunkt-X, Blickpunkt-Y, Zoom] in Bühnen-Koordinaten
 const CAM = [
-  [0.000, 2700, 430, 0.50],
-  [0.080, 2650, 450, 0.54],
-  [0.180, 2450, 480, 0.62],
-  [0.280, 2300, 530, 0.70],
-  [0.380, 2050, 590, 0.80],
-  [0.480, 1800, 635, 0.90],
-  [0.580, 1500, 650, 0.98],
-  [0.660, 1280, 250, 0.78],
-  [0.750, 1280, 236, 0.84],
-  [0.810, 520, 330, 1.12],
-  [0.860, 520, 330, 1.20],
-  [0.900, 2250, 440, 0.92],
-  [0.940, 1396, 690, 1.12],
-  [0.970, 1396, 692, 2.80],
-  [1.000, 1396, 692, 7.20],
+  [0.000, 2700, 410, 0.46],
+  [0.080, 2550, 430, 0.50],
+  [0.180, 2300, 500, 0.68],
+  [0.260, 2150, 560, 0.82],
+  [0.340, 1900, 600, 0.88],
+  [0.480, 1550, 635, 0.94],
+  [0.600, 1300, 650, 1.00],
+  [0.680, 1220, 280, 0.76],
+  [0.800, 980, 255, 0.88],
+  [0.860, 520, 330, 1.14],
+  [0.900, 520, 330, 1.20],
+  [0.930, 2250, 440, 0.92],
+  [0.970, 1396, 690, 1.14],
+  [1.000, 1396, 692, 6.80],
+];
+
+const SHOTS = [
+  { at: 0.00, end: 0.18, label: '01 · BERGPASS' },
+  { at: 0.18, end: 0.34, label: '02 · TUNNEL' },
+  { at: 0.34, end: 0.48, label: '03 · TUNNELAUSFAHRT' },
+  { at: 0.48, end: 0.68, label: '04 · ANKUNFT' },
+  { at: 0.68, end: 0.86, label: '05 · GLEIS 1' },
+  { at: 0.86, end: 1.01, label: '06 · EINSTIEG' },
 ];
 
 const BEATS = [
@@ -91,6 +99,7 @@ export function playIntro({ duration = 20000 } = {}) {
   const weather = el('intro-weather');
   const weatherIcon = weather.querySelector('.intro-weather__icon');
   const tunnelTrigger = el('tunnel-light-trigger');
+  const shotMarkers = [...root.querySelectorAll('[data-shot-label]')];
   let secretHits = [];
   let secretMode = false;
 
@@ -219,6 +228,9 @@ export function playIntro({ duration = 20000 } = {}) {
 
   function render(p) {
     root.style.setProperty('--intro-p', p.toFixed(4));
+    const shot = SHOTS.find(({ at, end }) => p >= at && p < end) ?? SHOTS[SHOTS.length - 1];
+    root.dataset.shot = shot.label.split(' · ')[0];
+    shotMarkers.forEach((marker) => marker.classList.toggle('is-active', marker.dataset.shotLabel === shot.label));
     root.classList.toggle('is-mountain', p < 0.20);
     root.classList.toggle('is-tunnel', p >= 0.20 && p < 0.36);
     root.classList.toggle('is-station', p >= 0.36);

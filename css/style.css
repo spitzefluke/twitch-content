@@ -1539,3 +1539,75 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .intro.is-secret-ride .intro-beat b { color: #e0a8ff; }
 .intro.is-secret-ride .intro-progress span { background: linear-gradient(90deg, #9146ff, #e0a8ff); }
 @keyframes secret-light { 50% { opacity: .34; transform: scale(.72); } }
+
+
+/* ==========================================================
+   CINEMATIC SHOTS · 3D-ready depth and 4K-safe presentation
+   ========================================================== */
+.intro {
+  perspective: 1800px;
+  perspective-origin: 50% 54%;
+  background: #020308;
+}
+.intro-camera,
+.intro-stage { transform-style: preserve-3d; }
+.intro-stage > * { backface-visibility: hidden; }
+.sc-stars { transform: translateZ(-260px); }
+.sc-mountains { transform: translateZ(-150px); }
+.sc-skyline { transform: translateZ(-70px); }
+.sc-fence { transform: translateZ(-20px); }
+.sc-ground,
+.sc-rails,
+.sc-platform { transform: translateZ(0); }
+.sc-train { transform-style: preserve-3d; }
+.sc-loco,
+.sc-coach { transform: translateZ(46px); }
+.sc-tunnel { transform: translateZ(-30px); }
+
+/* Frame changes are intentionally readable: each shot gets a short editorial hold. */
+.intro-shots {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+  color: rgba(211, 220, 240, .52);
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.intro-shots span {
+  padding: 7px 9px;
+  border: 1px solid rgba(211, 220, 240, .12);
+  background: rgba(2, 4, 9, .42);
+  opacity: .36;
+  transition: opacity .35s ease, color .35s ease, border-color .35s ease, background .35s ease;
+}
+.intro-shots span.is-active {
+  color: var(--amber);
+  border-color: rgba(255, 184, 28, .65);
+  background: rgba(30, 23, 7, .72);
+  opacity: 1;
+}
+.intro[data-shot="01"] .sc-mountains { filter: contrast(1.12) saturate(.9); }
+.intro[data-shot="02"] .sc-tunnel { filter: brightness(1.18) contrast(1.14); }
+.intro[data-shot="03"] .sc-tunnel__light { filter: brightness(1.5); }
+.intro[data-shot="04"] .sc-headlight { filter: blur(3px) brightness(1.22); }
+.intro[data-shot="05"] .intro-board { filter: contrast(1.06); }
+.intro[data-shot="06"] .sc-doorway-glow { filter: brightness(1.18); }
+
+/* Native CSS remains crisp on 4K screens; the stage is authored at 3000×1000
+   and scales proportionally without bitmap interpolation. */
+@media (min-width: 2560px) {
+  .intro-shots { top: 52px; transform: translateX(-50%) scale(1.25); transform-origin: top center; }
+  .intro-beat, .intro-caption, .intro-weather { transform: scale(1.25); transform-origin: left top; }
+  .intro-sound, .intro-skip { transform: scale(1.18); transform-origin: bottom; }
+}
+@media (max-width: 900px) {
+  .intro-shots { max-width: calc(100vw - 28px); overflow: hidden; }
+  .intro-shots span { display: none; }
+  .intro-shots span.is-active { display: block; }
+}
