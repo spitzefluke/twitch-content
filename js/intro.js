@@ -90,6 +90,29 @@ export function playIntro({ duration = 20000 } = {}) {
   const signalBeam = el('signal-beam');
   const weather = el('intro-weather');
   const weatherIcon = weather.querySelector('.intro-weather__icon');
+  const tunnelTrigger = el('tunnel-light-trigger');
+  let secretHits = [];
+  let secretMode = false;
+
+  const triggerSecretRide = () => {
+    if (secretMode) return;
+    secretMode = true;
+    root.classList.add('is-secret-ride');
+    caption.textContent = 'Sonderfahrt aktiviert · Ziel: Gleis 13';
+    beatLabel.textContent = 'Geheimes Signal · Sonderfahrt';
+    sound.secretWhistle();
+  };
+  const registerSecretHit = () => {
+    const now = performance.now();
+    secretHits = secretHits.filter((hit) => now - hit < 2200);
+    secretHits.push(now);
+    if (secretHits.length >= 3) triggerSecretRide();
+  };
+  tunnelTrigger.addEventListener('click', registerSecretHit);
+  const onSecretKey = (event) => {
+    if (event.key.toLowerCase() === 't') registerSecretHit();
+  };
+  document.addEventListener('keydown', onSecretKey);
 
   const conditionsPromise = getGermanyConditions();
   conditionsPromise.then((conditions) => {
@@ -128,6 +151,7 @@ export function playIntro({ duration = 20000 } = {}) {
       cancelAnimationFrame(frame);
       sound.stop();
       document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onSecretKey);
       root.classList.add('is-out');
       setTimeout(() => { root.remove(); resolve(); }, 700);
     };

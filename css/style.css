@@ -1519,3 +1519,23 @@ code { font-family: var(--font-mono); font-size: .9em; }
   92% { opacity: .08; }
   93% { opacity: .42; }
 }
+
+
+/* Hidden Easter egg: the tunnel light becomes a tiny, discoverable control. */
+.sc-tunnel__light {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform .2s ease, filter .2s ease;
+}
+.sc-tunnel__light:hover,
+.sc-tunnel__light:focus-visible { filter: brightness(1.7); transform: scale(1.22); outline: 1px solid rgba(255, 226, 163, .5); outline-offset: 5px; }
+.intro.is-secret-ride .sc-tunnel__light {
+  background: #d89bff;
+  box-shadow: 0 0 26px 10px rgba(193, 108, 255, .75);
+  animation: secret-light 1.1s steps(2, end) infinite;
+}
+.intro.is-secret-ride .intro-caption,
+.intro.is-secret-ride .intro-beat b { color: #e0a8ff; }
+.intro.is-secret-ride .intro-progress span { background: linear-gradient(90deg, #9146ff, #e0a8ff); }
+@keyframes secret-light { 50% { opacity: .34; transform: scale(.72); } }

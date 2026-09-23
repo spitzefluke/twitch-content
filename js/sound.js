@@ -183,6 +183,24 @@ export class IntroSound {
     osc.connect(gain); gain.connect(this.master); osc.start(); osc.stop(ctx.currentTime + duration + .05);
   }
 
+  secretWhistle() {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime + .04;
+    [0, .22].forEach((offset, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(index ? 1046 : 784, now + offset);
+      osc.frequency.exponentialRampToValueAtTime(index ? 880 : 659, now + offset + .32);
+      gain.gain.setValueAtTime(.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(.34, now + offset + .025);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + offset + .42);
+      osc.connect(gain); gain.connect(this.master);
+      osc.start(now + offset); osc.stop(now + offset + .48);
+    });
+  }
+
   speak(text) {
     if (this.spoken || !this.wanted) return;
     const synth = window.speechSynthesis;
