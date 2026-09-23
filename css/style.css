@@ -1333,3 +1333,121 @@ code { font-family: var(--font-mono); font-size: .9em; }
 }
 .sc-train { transition: filter .3s ease; }
 .intro.is-departing .sc-train { filter: drop-shadow(0 10px 8px rgba(0,0,0,.42)); }
+
+
+/* ==========================================================
+   ROUTE PASS · Gebirge, Tunnel und Deutschland-Wetter
+   ========================================================== */
+.sc-mountains {
+  left: 1450px;
+  top: 205px;
+  width: 1550px;
+  height: 520px;
+  opacity: .88;
+  background:
+    linear-gradient(145deg, transparent 0 22%, rgba(22, 30, 48, .96) 22.2% 37%, transparent 37.2%),
+    linear-gradient(28deg, transparent 0 35%, rgba(15, 22, 37, .98) 35.2% 57%, transparent 57.2%),
+    linear-gradient(154deg, transparent 0 48%, rgba(29, 36, 56, .78) 48.2% 68%, transparent 68.2%);
+  filter: drop-shadow(0 20px 16px rgba(0,0,0,.52));
+}
+.sc-mountains::after {
+  content: "";
+  position: absolute;
+  left: 60px;
+  right: 120px;
+  bottom: 40px;
+  height: 230px;
+  opacity: .4;
+  background: linear-gradient(145deg, transparent 0 42%, rgba(125, 143, 177, .18) 42.5% 46%, transparent 46.5% 100%);
+  clip-path: polygon(0 100%, 25% 12%, 42% 60%, 61% 0, 100% 100%);
+}
+.sc-tunnel {
+  left: 2290px;
+  top: 405px;
+  width: 450px;
+  height: 350px;
+  z-index: 1;
+}
+.sc-tunnel__rim {
+  position: absolute;
+  left: 0;
+  bottom: 34px;
+  width: 290px;
+  height: 285px;
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(100deg, #343b54, #161d31 54%, #0b101c);
+  box-shadow: inset 14px 0 22px rgba(255,255,255,.08), 0 22px 42px rgba(0,0,0,.6);
+  clip-path: polygon(0 100%, 7% 38%, 24% 11%, 48% 0, 75% 13%, 94% 44%, 100% 100%);
+}
+.sc-tunnel__mouth {
+  position: absolute;
+  left: 45px;
+  bottom: 34px;
+  width: 205px;
+  height: 242px;
+  border-radius: 50% 50% 0 0;
+  background: radial-gradient(ellipse at 53% 84%, #090b13 0 25%, #03050a 54%, #010205 70%);
+  box-shadow: 0 0 45px rgba(0,0,0,.95), inset 0 0 18px rgba(114,135,178,.1);
+}
+.sc-tunnel__light {
+  position: absolute;
+  left: 148px;
+  bottom: 82px;
+  width: 16px;
+  height: 10px;
+  border-radius: 50%;
+  opacity: .2;
+  background: #fff1c1;
+  box-shadow: 0 0 28px 8px rgba(255, 224, 151, .3);
+  animation: tunnel-light 2.2s ease-in-out infinite;
+}
+@keyframes tunnel-light { 50% { opacity: .7; transform: scale(1.35); } }
+.intro.is-tunnel .sc-tunnel__light { opacity: .85; }
+.intro.is-tunnel .sc-mountains { filter: brightness(.72) saturate(.8); }
+.intro.is-station .sc-tunnel { opacity: .62; }
+
+.intro-weather {
+  position: absolute;
+  z-index: 10;
+  right: clamp(16px, 4vw, 48px);
+  top: clamp(16px, 4vw, 44px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: rgba(202, 211, 228, .72);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0,0,0,.9);
+}
+.intro-weather__icon {
+  width: 11px;
+  height: 11px;
+  display: inline-block;
+  border-radius: 50%;
+  background: #ffd36b;
+  box-shadow: 0 0 12px rgba(255,211,107,.7);
+}
+.intro-weather__icon[data-weather="cloudy"],
+.intro-weather__icon[data-weather="fog"] { border-radius: 6px; background: #aeb8ca; box-shadow: 5px 2px 0 -1px #7b879e; }
+.intro-weather__icon[data-weather="rain"],
+.intro-weather__icon[data-weather="drizzle"] { border-radius: 6px 6px 2px 2px; background: #7da6d2; box-shadow: 3px 9px 0 -4px #b5d2ed; }
+.intro-weather__icon[data-weather="snow"] { background: #e7eef8; box-shadow: 4px 5px 0 -2px #e7eef8, -4px 6px 0 -2px #e7eef8; }
+.intro-weather__icon[data-weather="storm"] { border-radius: 3px; background: #8d79bd; box-shadow: 3px 8px 0 -3px #ffd36b; }
+.intro[data-daypart="day"] { background: linear-gradient(#18233a, #101827 55%, #0e0b1e); }
+.intro[data-daypart="morning"] { background: linear-gradient(#17243d, #0e1423 55%, #0e0b1e); }
+.intro[data-daypart="evening"] .sc-mountains { filter: sepia(.12) saturate(1.08); }
+.intro[data-daypart="night"] .sc-mountains { filter: brightness(.82) saturate(.78); }
+.intro[data-weather="rain"] .sc-rain--far,
+.intro[data-weather="drizzle"] .sc-rain--far { opacity: .24; }
+.intro[data-weather="snow"] .sc-rain { transform: skewX(-5deg); background-image: radial-gradient(circle, rgba(235,242,255,.8) 0 2px, transparent 3px); background-size: 70px 90px; }
+.intro[data-weather="snow"] .sc-rain--near { opacity: .18; }
+.intro[data-weather="fog"] .sc-haze { opacity: 1; filter: blur(34px); }
+.intro[data-weather="storm"] .sc-stars { opacity: .35; }
+
+@media (max-width: 700px) {
+  .intro-weather { right: 16px; top: auto; bottom: 58px; font-size: 10px; }
+  .sc-tunnel { transform: scale(.82); transform-origin: bottom left; }
+}

@@ -7,6 +7,7 @@
 // Alles hängt am Fortschritt p (0 … 1). Die Länge steht in js/config.js.
 // Das Bühnenbild selbst steht in index.html, die Maße in css/style.css.
 import { IntroSound } from './sound.js';
+import { getGermanyConditions, weatherCaption } from './weather.js';
 
 const TITLE = 'ZUGFAHRER_DAVETV';
 const SUB = 'Content-Stellwerk · Bitte einsteigen';
@@ -17,25 +18,27 @@ const TICKER = 'Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güte
 
 // Kamera: [p, Blickpunkt-X, Blickpunkt-Y, Zoom] in Bühnen-Koordinaten
 const CAM = [
-  [0.000, 1900, 470, 0.72],
-  [0.100, 2060, 500, 0.76],
-  [0.220, 1940, 540, 0.79],
-  [0.320, 1520, 640, 0.95],
-  [0.420, 1160, 656, 1.04],
-  [0.500, 1280, 250, 0.78],
-  [0.680, 1280, 236, 0.84],
-  [0.745, 520, 330, 1.12],
-  [0.805, 520, 330, 1.20],
-  [0.845, 2250, 440, 0.92],
-  [0.885, 1396, 690, 1.12],
-  [0.950, 1396, 692, 2.80],
+  [0.000, 2700, 430, 0.58],
+  [0.100, 2520, 460, 0.66],
+  [0.220, 2250, 520, 0.75],
+  [0.320, 1940, 590, 0.88],
+  [0.420, 1520, 640, 0.95],
+  [0.500, 1160, 656, 1.04],
+  [0.580, 1280, 250, 0.78],
+  [0.700, 1280, 236, 0.84],
+  [0.765, 520, 330, 1.12],
+  [0.825, 520, 330, 1.20],
+  [0.865, 2250, 440, 0.92],
+  [0.905, 1396, 690, 1.12],
+  [0.960, 1396, 692, 2.80],
   [1.000, 1396, 692, 7.20],
 ];
 
 const BEATS = [
   { at: 0.00, label: 'Nachtbahnhof · Halt zeigt Rot', caption: 'Willkommen am Gleis 1.' },
-  { at: 0.10, label: 'Ankunft aus der Ferne', caption: 'Ein Licht kommt durch die Nacht.' },
-  { at: 0.28, label: 'Zug fährt ein', caption: 'Der Nachtzug rollt an den Bahnsteig.' },
+  { at: 0.10, label: 'Bergstrecke · Ankunft aus der Ferne', caption: 'Ein Licht kommt aus dem Gebirge.' },
+  { at: 0.23, label: 'Tunnel · Einfahrt', caption: 'Der Nachtzug verschwindet im Berg.' },
+  { at: 0.34, label: 'Tunnelausfahrt · Zug fährt ein', caption: 'Licht bricht durch den Tunnel.' },
   { at: 0.54, label: 'Bremst am Gleis 1', caption: 'Bitte hinter der Sicherheitslinie bleiben.' },
   { at: 0.72, label: 'Durchsage · Einstieg', caption: 'Zugfahrer_DaveTV · Abfahrt um 20:15.' },
   { at: 0.86, label: 'Türen öffnen', caption: 'Bitte einsteigen. Gute Fahrt.' },
@@ -84,6 +87,15 @@ export function playIntro({ duration = 20000 } = {}) {
   const caption = el('intro-caption');
   const progress = el('intro-progress-bar');
   const signalBeam = el('signal-beam');
+  const weather = el('intro-weather');
+  const weatherIcon = weather.querySelector('.intro-weather__icon');
+
+  getGermanyConditions().then((conditions) => {
+    root.dataset.weather = conditions.kind;
+    root.dataset.daypart = conditions.daypart;
+    weatherIcon.dataset.weather = conditions.kind;
+    weather.lastElementChild.textContent = weatherCaption(conditions);
+  });
 
   el('intro-clock').textContent = DEPART;
   ticker.firstElementChild.innerHTML = TICKER;
@@ -171,6 +183,9 @@ export function playIntro({ duration = 20000 } = {}) {
 
   function render(p) {
     root.style.setProperty('--intro-p', p.toFixed(4));
+    root.classList.toggle('is-mountain', p < 0.20);
+    root.classList.toggle('is-tunnel', p >= 0.20 && p < 0.36);
+    root.classList.toggle('is-station', p >= 0.36);
 
     // ---- Kamera ----
     const cam = sampleCam(p);
