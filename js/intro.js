@@ -33,11 +33,11 @@ const CAM = [
 ];
 
 const BEATS = [
-  [0.00, 'Nachtbahnhof · Halt zeigt Rot'],
-  [0.20, 'Einfahrt Gleis 1'],
-  [0.48, 'Abfahrtstafel'],
-  [0.72, 'Bahnsteiguhr · Gong'],
-  [0.84, 'Ausfahrt frei · Türen öffnen'],
+  { at: 0.00, label: 'Nachtbahnhof · Halt zeigt Rot', caption: 'Willkommen am Gleis 1.' },
+  { at: 0.20, label: 'Einfahrt Gleis 1', caption: 'Der Nachtzug fährt ein.' },
+  { at: 0.48, label: 'Abfahrtstafel', caption: 'Zugfahrer_DaveTV wird aufgerufen.' },
+  { at: 0.72, label: 'Bahnsteiguhr · Gong', caption: 'Abfahrt um 20:15.' },
+  { at: 0.84, label: 'Ausfahrt frei · Türen öffnen', caption: 'Bitte einsteigen.' },
 ];
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -79,7 +79,9 @@ export function playIntro({ duration = 20000 } = {}) {
   const fade = el('intro-fade');
   const beatNo = el('intro-beat-no');
   const beatLabel = el('intro-beat-label');
+  const caption = el('intro-caption');
   const progress = el('intro-progress-bar');
+  const signalBeam = el('signal-beam');
 
   el('intro-clock').textContent = DEPART;
   ticker.firstElementChild.innerHTML = TICKER;
@@ -91,19 +93,20 @@ export function playIntro({ duration = 20000 } = {}) {
     el('flap-title').append(cell);
     return cell;
   });
+  flaps.forEach((cell, i) => cell.style.setProperty('--flap-delay', `${-i * 0.028}s`));
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sound = new IntroSound();
   const soundBtn = el('intro-sound');
 
   return new Promise((resolve) => {
-    let timer = null;
+    let frame = null;
     let done = false;
 
     const finish = () => {
       if (done) return;
       done = true;
-      clearInterval(timer);
+      cancelAnimationFrame(frame);
       sound.stop();
       document.removeEventListener('keydown', onKey);
       root.classList.add('is-out');
@@ -127,18 +130,18 @@ export function playIntro({ duration = 20000 } = {}) {
     const cues = { whoosh: false, gong: false, speak: false };
     const started = performance.now();
 
-    const tick = () => {
-      const p = clamp01((performance.now() - started) / duration);
+    const tick = (now) => {
+      const p = clamp01((now - started) / duration);
       if (p >= 0.18 && !cues.whoosh) { cues.whoosh = true; sound.whoosh(Math.min(5.2, duration * 0.00026)); }
       if (p >= 0.745 && !cues.gong) { cues.gong = true; sound.chime(); }
       if (p >= 0.80 && !cues.speak) { cues.speak = true; sound.speak(ANNOUNCEMENT); }
       render(p);
       if (p >= 1) finish();
+      else frame = requestAnimationFrame(tick);
     };
-    // Intervall statt requestAnimationFrame: läuft auch in Hintergrund-Tabs
-    // weiter, sodass das Intro nicht stehen bleibt.
-    timer = setInterval(tick, 1000 / 60);
-    tick();
+    // Der Browser-Renderzyklus vermeidet sichtbares Tearing. Nach einem
+    // Hintergrund-Tab wird über die echte Zeit trotzdem sauber abgeschlossen.
+    frame = requestAnimationFrame(tick);
 
     function setupSound() {
       const label = (state) => {
@@ -165,6 +168,8 @@ export function playIntro({ duration = 20000 } = {}) {
   });
 
   function render(p) {
+    root.style.setProperty('--intro-p', p.toFixed(4));
+
     // ---- Kamera ----
     const cam = sampleCam(p);
     camera.style.transform = `scale(${cam.s.toFixed(4)}) translate(${(-cam.x).toFixed(1)}px, ${(-cam.y).toFixed(1)}px)`;
@@ -187,6 +192,7 @@ export function playIntro({ duration = 20000 } = {}) {
       const settled = p >= 0.50 + 0.0075 * i + 0.085;
       const ch = !on ? '' : settled ? TITLE[i] : CHARS[(roll + i * 7) % CHARS.length];
       if (cell.textContent !== ch) cell.textContent = ch;
+      cell.classList.toggle('is-rolling', on && !settled);
       cell.classList.toggle('settled', settled);
     });
 
@@ -207,6 +213,8 @@ export function playIntro({ duration = 20000 } = {}) {
     const greenOn = p >= 0.826;
     red.classList.toggle('is-off', greenOn);
     green.classList.toggle('is-on', greenOn);
+    signalBeam.classList.toggle('is-green', greenOn);
+    root.classList.toggle('is-departing', greenOn);
 
     const doorK = ramp(p, 0.862, 0.075);
     doorLeft.style.transform = `translateX(${(-100 * doorK).toFixed(1)}%)`;
@@ -217,8 +225,9 @@ export function playIntro({ duration = 20000 } = {}) {
     fade.style.opacity = ramp(p, 0.915, 0.085).toFixed(3);
     progress.style.width = `${(p * 100).toFixed(2)}%`;
 
-    const beat = BEATS.filter(([t]) => p >= t).pop() ?? BEATS[0];
-    beatNo.textContent = `0${BEATS.indexOf(beat) + 1}`;
-    beatLabel.textContent = beat[1];
+    const beat = BEATS.filter(({ at }) => p >= at).pop() ?? BEATS[0];
+    beatNo.textContent = String(BEATS.indexOf(beat) + 1).padStart(2, '0');
+    beatLabel.textContent = beat.label;
+    if (caption.textContent !== beat.caption) caption.textContent = beat.caption;
   }
 }

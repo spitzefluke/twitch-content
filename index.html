@@ -45,15 +45,24 @@
        Die Bewegung steuert js/intro.js, hier steht nur das Bühnenbild.
   ================================================================= -->
   <section id="intro" class="intro" aria-label="Intro">
+    <div class="intro-cinematic" aria-hidden="true">
+      <span class="intro-cinematic__grain"></span>
+      <span class="intro-cinematic__vignette"></span>
+      <span class="intro-cinematic__scanlines"></span>
+    </div>
     <div class="intro-camera" id="intro-camera">
       <div class="intro-stage">
 
         <div class="sc-stars" aria-hidden="true"></div>
+        <div class="sc-moon" aria-hidden="true"></div>
+        <div class="sc-rain sc-rain--far" aria-hidden="true"></div>
+        <div class="sc-rain sc-rain--near" aria-hidden="true"></div>
         <div class="sc-skyline" aria-hidden="true"></div>
         <div class="sc-fence" aria-hidden="true"></div>
         <div class="sc-haze" aria-hidden="true"></div>
         <div class="sc-ground" aria-hidden="true"></div>
         <div class="sc-rails" aria-hidden="true"></div>
+        <div class="sc-rail-glint" aria-hidden="true"></div>
         <div class="sc-platform" aria-hidden="true"></div>
         <div class="sc-platform-edge" aria-hidden="true"></div>
         <div class="sc-wire" aria-hidden="true"></div>
@@ -108,6 +117,7 @@
           </div>
           <span class="sc-signal-pole"></span>
         </div>
+        <div class="sc-signal-beam" id="signal-beam" aria-hidden="true"></div>
 
         <!-- Zug: Lok + zwei Wagen -->
         <div class="sc-train" id="intro-train" aria-hidden="true">
@@ -176,6 +186,7 @@
 
     <div class="intro-fade" id="intro-fade" aria-hidden="true"></div>
     <p class="intro-beat" aria-hidden="true"><b id="intro-beat-no">01</b> · <span id="intro-beat-label"></span></p>
+    <p class="intro-caption" id="intro-caption" aria-live="polite"></p>
     <div class="intro-progress" aria-hidden="true"><span id="intro-progress-bar"></span></div>
     <button id="intro-sound" class="intro-sound" type="button" data-state="blocked" aria-pressed="false">Ton einschalten</button>
     <button class="intro-skip" type="button">Überspringen <kbd>Esc</kbd></button>
