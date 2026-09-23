@@ -20,6 +20,8 @@ const state = {
   ideasOn: false,
   spinning: false,
   queue: [],
+  held: [],
+  resetAuth: null,
   wheel: null,
   activeTile: null,
   spinSubscribed: false,
@@ -122,6 +124,16 @@ function setupAuthForms() {
   tabs.login.addEventListener('click', () => select('login'));
   tabs.register.addEventListener('click', () => select('register'));
 
+  // Nach dem Einsteigen alles leeren: Sonst steht das Passwort nach dem
+  // Abmelden noch im Formular, und ein Klick meldet wieder an.
+  state.resetAuth = () => {
+    forms.login.reset();
+    forms.register.reset();
+    formMsg(forms.login, '');
+    formMsg(forms.register, '');
+    select('login');
+  };
+
   forms.login.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
@@ -216,6 +228,7 @@ function formMsg(form, text, ok = false) {
 // ============================================================
 async function enterApp(user) {
   state.user = user;
+  state.resetAuth?.();
   $('#auth').hidden = true;
   $('#app').hidden = false;
 
@@ -727,6 +740,7 @@ async function spinFromWeb() {
     btn.disabled = false;
     btn.textContent = 'Rad drehen';
     setVariantInputsDisabled(false);
+    state.held.splice(0).forEach(addSpin);
     drainQueue();
   }
 }
@@ -738,7 +752,14 @@ function setVariantInputsDisabled(disabled) {
 // Neue Drehung über Realtime (z. B. Kanalpunkte-Einlösung auf Twitch)
 function handleIncomingSpin(spin) {
   if (state.spins.some((s) => s.id === spin.id)) return;
-  if (spin.source !== 'twitch') { addSpin(spin); return; }
+  if (spin.source !== 'twitch') {
+    // Bei der eigenen Drehung liefert Realtime die neue Zeile, während das
+    // Rad noch läuft. Erst nach dem Stopp eintragen, sonst steht das
+    // Ergebnis vorab unter „Letzte Drehungen“.
+    if (state.spinning) state.held.push(spin);
+    else addSpin(spin);
+    return;
+  }
   if ($('#wheel-dialog').open) {
     state.queue.push(spin);
     drainQueue();
@@ -762,6 +783,7 @@ async function drainQueue() {
   state.spinning = false;
   $('#spin-btn').disabled = false;
   setVariantInputsDisabled(false);
+  state.held.splice(0).forEach(addSpin);
   drainQueue();
 }
 
