@@ -283,6 +283,7 @@ function renderHeader() {
   $('#user-avatar').textContent = profile.username.slice(0, 1).toUpperCase();
   $('#user-role').hidden = !profile.is_admin;
   $('#admin-btn').hidden = !profile.is_admin;
+  $('#obs-btn').hidden = !profile.is_admin;
 
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
@@ -626,6 +627,12 @@ function setupDialogs() {
   $('#wheel-card').addEventListener('click', openWheel);
   $('#idea-form').addEventListener('submit', submitIdea);
   $('#twitch-btn').addEventListener('click', openTwitchDialog);
+  $('#obs-btn').addEventListener('click', openObsDialog);
+  $('#obs-options').addEventListener('change', updateObs);
+  $('#obs-copy').addEventListener('click', copyObsUrl);
+  // Vorschau beim Schließen entfernen: Sie dreht sonst im Hintergrund weiter.
+  $('#obs-dialog').addEventListener('close', () => $('#obs-preview iframe')?.remove());
+  new ResizeObserver(fitObsPreview).observe($('#obs-preview'));
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   $('#tile-edit-btn').addEventListener('click', () => showTileForm(true));
@@ -919,6 +926,64 @@ async function saveTile(e) {
 function toLocalInput(d) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ============================================================
+// OBS-Overlay
+// ============================================================
+function obsUrl({ preview = false } = {}) {
+  const f = $('#obs-options');
+  const url = new URL('overlay.html', location.href);
+  const p = url.searchParams;
+  p.set('wheel', f.wheel.value);
+  p.set('next', f.next.value);
+  if (f.scale.value !== '1') p.set('scale', f.scale.value);
+  if (preview || !f.sound.checked) p.set('sound', '0');
+  if (preview) p.set('test', '1');
+  return url.href;
+}
+
+async function openObsDialog() {
+  $('#obs-dialog').showModal();
+  updateObs();
+  const note = $('#obs-note');
+  if (state.api.demo) {
+    note.textContent = 'Demo-Modus: OBS läuft in einem eigenen Browser und bekommt die Drehungen von dieser Seite nicht mit. Die Vorschau hier funktioniert, weil sie im selben Browser läuft.';
+    note.hidden = false;
+  } else {
+    const ready = await state.api.overlayReady().catch(() => false);
+    note.textContent = 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260923000000_overlay.sql ausführen. Vorher bleibt das Overlay in OBS leer.';
+    note.hidden = ready;
+  }
+}
+
+function updateObs() {
+  $('#obs-url').value = obsUrl();
+  const box = $('#obs-preview');
+  box.querySelector('iframe')?.remove();
+  const frame = document.createElement('iframe');
+  frame.title = 'Vorschau des OBS-Overlays';
+  frame.tabIndex = -1;
+  frame.src = obsUrl({ preview: true });
+  box.append(frame);
+  fitObsPreview();
+}
+
+function fitObsPreview() {
+  const box = $('#obs-preview');
+  const frame = box.querySelector('iframe');
+  if (frame && box.clientWidth) frame.style.transform = `scale(${box.clientWidth / 1920})`;
+}
+
+async function copyObsUrl() {
+  const input = $('#obs-url');
+  try {
+    await navigator.clipboard.writeText(input.value);
+    toast('Adresse kopiert – jetzt in OBS einfügen.', 'ok');
+  } catch {
+    input.select();
+    toast('Adresse ist markiert – mit Strg+C kopieren.');
+  }
 }
 
 // ============================================================
