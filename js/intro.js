@@ -91,11 +91,13 @@ export function playIntro({ duration = 20000 } = {}) {
   const weather = el('intro-weather');
   const weatherIcon = weather.querySelector('.intro-weather__icon');
 
-  getGermanyConditions().then((conditions) => {
+  const conditionsPromise = getGermanyConditions();
+  conditionsPromise.then((conditions) => {
     root.dataset.weather = conditions.kind;
     root.dataset.daypart = conditions.daypart;
     weatherIcon.dataset.weather = conditions.kind;
     weather.lastElementChild.textContent = weatherCaption(conditions);
+    sound?.setWeatherProfile?.(conditions);
   });
 
   el('intro-clock').textContent = DEPART;
@@ -144,12 +146,14 @@ export function playIntro({ duration = 20000 } = {}) {
     }
 
     setupSound();
-    const cues = { whoosh: false, gong: false, speak: false };
+    const cues = { whoosh: false, rattle: false, tunnel: false, gong: false, speak: false };
     const started = performance.now();
 
     const tick = (now) => {
       const p = clamp01((now - started) / duration);
       if (p >= 0.08 && !cues.whoosh) { cues.whoosh = true; sound.whoosh(Math.min(6.2, duration * 0.0003)); }
+      if (p >= 0.10 && !cues.rattle) { cues.rattle = true; sound.railRattle(Math.min(17, duration * 0.48), .14); }
+      if (p >= 0.20 && !cues.tunnel) { cues.tunnel = true; sound.tunnelRush(Math.min(4.8, duration * 0.14)); }
       if (p >= 0.68 && !cues.speak) { cues.speak = true; sound.speak(ANNOUNCEMENT); }
       if (p >= 0.72 && !cues.gong) { cues.gong = true; sound.chime(); }
       if (now - lastPaint < FRAME_MS && p < 1) {

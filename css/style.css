@@ -1483,3 +1483,39 @@ code { font-family: var(--font-mono); font-size: .9em; }
   .intro-stage { transform: none; }
   .sc-wheel { animation-play-state: paused !important; }
 }
+
+
+/* Live weather presentation: precipitation is only visible when the API says so. */
+.intro[data-weather="clear"] .sc-rain,
+.intro[data-weather="cloudy"] .sc-rain,
+.intro[data-weather="fog"] .sc-rain { opacity: 0; }
+.intro[data-weather="clear"] .sc-haze { opacity: .36; }
+.intro[data-weather="fog"] .sc-rain { opacity: 0; }
+.intro[data-weather="rain"] .sc-rain--far,
+.intro[data-weather="drizzle"] .sc-rain--far { opacity: .26; }
+.intro[data-weather="storm"] .sc-rain--far { opacity: .38; }
+.intro[data-weather="snow"] .sc-rain--far { opacity: .2; }
+.intro[data-daypart="day"] .sc-moon,
+.intro[data-daypart="morning"] .sc-moon { opacity: .04; }
+.intro[data-daypart="day"] .sc-stars,
+.intro[data-daypart="morning"] .sc-stars { opacity: .32; }
+.intro[data-daypart="day"] .sc-lamp-cone { opacity: .3; }
+.intro[data-daypart="day"] .sc-mountains { filter: brightness(1.18) saturate(.88); }
+.intro[data-daypart="evening"] .sc-mountains { filter: sepia(.18) saturate(1.2) brightness(.92); }
+.intro[data-daypart="evening"] .sc-skyline { filter: sepia(.15) saturate(1.14); }
+.intro[data-weather="storm"]::before {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(214, 229, 255, .22);
+  animation: storm-flash 8s steps(1, end) infinite 2.4s;
+}
+@keyframes storm-flash {
+  0%, 90%, 100% { opacity: 0; }
+  91% { opacity: .72; }
+  92% { opacity: .08; }
+  93% { opacity: .42; }
+}

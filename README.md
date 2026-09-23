@@ -2,7 +2,7 @@
 
 Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_DaveTV**:
 
-- **Intro als filmische Deutschland-Fahrt** (aktuelle Tageszeit und Wetter → Gebirgsstrecke → Tunnel → Tunnelausfahrt → Zug fährt ein und bremst → Abfahrtstafel → realistische Bahnhofsdurchsage → Signal auf Grün → Türen öffnen → Einstiegssilhouette → Überblendung in die Seite) mit **Bahnhofs-Gong**, Wetteranzeige, Bergsilhouette, Tunnellicht, Regen, Lichtreflexen und dezenter Filmkörnung; überspringbar, einmal pro Browser-Sitzung und mit reduzierter Bewegung zugänglich
+- **Intro als filmische Deutschland-Fahrt** (aktuelle Tageszeit und Wetter → Gebirgsstrecke → Tunnel → Tunnelausfahrt → Zug fährt ein und bremst → Abfahrtstafel → realistische Bahnhofsdurchsage → Signal auf Grün → Türen öffnen → Einstiegssilhouette → Überblendung in die Seite) mit **Bahnhofs-Gong, Zugrattern, Wind, Tunnelhall und wetterabhängiger Klangkulisse**, Wetteranzeige, Bergsilhouette, Tunnellicht, Regen, Schnee, Gewitterblitzen, Lichtreflexen und dezenter Filmkörnung; überspringbar, einmal pro Browser-Sitzung und mit reduzierter Bewegung zugänglich
 - **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
 - **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)
