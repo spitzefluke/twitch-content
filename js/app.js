@@ -589,6 +589,11 @@ function updateAuthClock() {
   if (!el) return;
   const d = new Date();
   el.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const status = $('#status-updated');
+  if (status) {
+    status.dateTime = d.toISOString();
+    status.textContent = `aktualisiert ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  }
 }
 updateAuthClock();
 setInterval(() => { updateCountdowns(); updateAuthClock(); }, 1000);

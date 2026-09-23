@@ -172,10 +172,13 @@ export function playIntro({ duration = 20000 } = {}) {
 
     // ---- Kamera ----
     const cam = sampleCam(p);
-    camera.style.transform = `scale(${cam.s.toFixed(4)}) translate(${(-cam.x).toFixed(1)}px, ${(-cam.y).toFixed(1)}px)`;
+    const cameraJitter = p > 0.13 && p < 0.9 ? Math.sin(p * 118) * 0.8 : 0;
+    camera.style.transform = `scale(${cam.s.toFixed(4)}) translate(${(-cam.x + cameraJitter).toFixed(1)}px, ${(-cam.y + cameraJitter * .32).toFixed(1)}px)`;
 
     // ---- Zug rollt ein und bremst ----
-    train.style.transform = `translateX(${lerp(3300, 520, ramp(p, 0.14, 0.26)).toFixed(1)}px)`;
+    const trainK = ramp(p, 0.14, 0.26);
+    const carriageBounce = trainK > 0 && trainK < 1 ? Math.sin(trainK * 18) * (1 - trainK) * 2.2 : 0;
+    train.style.transform = `translate(${lerp(3300, 520, trainK).toFixed(1)}px, ${carriageBounce.toFixed(1)}px)`;
     headlight.style.opacity = (clamp01((p - 0.07) / 0.06) * (1 - ramp(p, 0.3, 0.1)) * 0.9).toFixed(3);
     brake.style.opacity = (clamp01((p - 0.26) / 0.06) * (1 - ramp(p, 0.44, 0.1)) * 0.55).toFixed(3);
 
