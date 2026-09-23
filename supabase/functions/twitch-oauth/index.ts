@@ -53,7 +53,18 @@ async function start(userId: string) {
 }
 
 function backToSite(params: Record<string, string>) {
-  const target = new URL(env("SITE_URL"));
+  const site = Deno.env.get("SITE_URL");
+  if (!site) {
+    // Ohne SITE_URL gibt es kein Ziel für die Rückleitung. Dann wenigstens
+    // lesbar sagen, was passiert ist, statt mit einem nackten 500 zu enden.
+    const outcome = params.twitch === "connected"
+      ? "Twitch ist verbunden."
+      : `Twitch-Verbindung fehlgeschlagen: ${params.detail ?? params.reason}`;
+    return new Response(`${outcome}\n\nIn Supabase fehlt das Secret SITE_URL – deshalb geht es nicht automatisch zurück zur Webseite.`, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  const target = new URL(site);
   for (const [k, v] of Object.entries(params)) target.searchParams.set(k, v);
   return Response.redirect(target.toString(), 302);
 }
@@ -99,16 +110,23 @@ async function handleCallback(url: URL) {
     // Verbindung zuerst speichern, damit eingehende Events sie schon finden
     const { error: upsertError } = await db.from("twitch_connection").upsert({ ...base, subscription_id: null });
     if (upsertError) throw upsertError;
+    // Wer hier ankommt, hat sich als der richtige Twitch-Kanal ausgewiesen:
+    // gleich zum Admin machen (Kacheln bearbeiten, OBS-Link) – auch wenn
+    // danach das Einrichten des Webhooks noch scheitern sollte.
+    await db.from("profiles").update({ is_admin: true }).eq("id", st.user_id);
 
     const subscriptionId = await ensureSubscription(me.id, reward.id);
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
-    await db.from("profiles").update({ is_admin: true }).eq("id", st.user_id);
 
     return backToSite({ twitch: "connected" });
   } catch (e) {
     console.error(e);
-    const reason = e instanceof CodedError ? e.code : "unknown";
-    return backToSite({ twitch: "error", reason });
+    if (e instanceof CodedError) return backToSite({ twitch: "error", reason: e.code });
+    // Unerwartete Fehler nicht als "unknown" verschlucken: Die Meldung
+    // (eigene Texte wie "Umgebungsvariable … fehlt" oder die Antwort von
+    // Twitch – keine Tokens) geht mit zurück und steht dann auf der Webseite.
+    const detail = String((e as { message?: string })?.message ?? e).slice(0, 200);
+    return backToSite({ twitch: "error", reason: "unknown", detail });
   }
 }
 

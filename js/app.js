@@ -61,7 +61,7 @@ async function boot() {
   const twitchReturn = params.get('twitch');
   if (twitchReturn) {
     history.replaceState(null, '', location.pathname);
-    queueMicrotask(() => showTwitchReturn(twitchReturn, params.get('reason')));
+    queueMicrotask(() => showTwitchReturn(twitchReturn, params.get('reason'), params.get('detail')));
   }
 
   if (adminHash) {
@@ -85,7 +85,7 @@ async function boot() {
   else showAuth();
 }
 
-function showTwitchReturn(status, reason) {
+function showTwitchReturn(status, reason, detail) {
   if (status === 'connected') {
     toast('Twitch ist verbunden. Die Kanalpunkte-Belohnung „Glücksrad“ ist jetzt aktiv.', 'ok', 7000);
     return;
@@ -97,7 +97,10 @@ function showTwitchReturn(status, reason) {
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal versuchen.',
   };
-  toast(`Twitch-Verbindung fehlgeschlagen: ${reasons[reason] ?? reason ?? 'Unbekannter Fehler.'}`, 'error', 9000);
+  // Bei unerwarteten Fehlern schickt die Edge Function die eigentliche Meldung mit.
+  const text = reasons[reason] ?? detail ?? (reason && reason !== 'unknown' ? reason : null)
+    ?? 'Unbekannter Fehler – Details in Supabase unter Edge Functions → twitch-oauth → Logs.';
+  toast(`Twitch-Verbindung fehlgeschlagen: ${text}`, 'error', 20000);
 }
 
 // ============================================================
