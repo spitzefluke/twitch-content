@@ -18,6 +18,7 @@ const ERRORS = [
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
   [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
+  [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/failed to fetch|networkerror/i, 'Keine Verbindung zum Server.'],
   [/provider is not enabled|unsupported provider/i, 'Diese Anmelde-Möglichkeit ist noch nicht eingerichtet.'],
   [/access.denied|user denied|cancel/i, 'Anmeldung abgebrochen.'],
@@ -151,6 +152,14 @@ async function createSupabaseApi() {
     },
     async twitchDisconnect() {
       await invoke('twitch-oauth', { action: 'disconnect' });
+    },
+    // Chat-Bot: eigener Twitch-Account, der die Ergebnisse in den Chat schreibt
+    async twitchConnectBot() {
+      const { url } = await invoke('twitch-oauth', { action: 'start_bot' });
+      location.href = url;
+    },
+    async twitchDisconnectBot() {
+      await invoke('twitch-oauth', { action: 'disconnect_bot' });
     },
   };
 }
@@ -294,5 +303,9 @@ function createLocalApi() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },
     async twitchDisconnect() {},
+    async twitchConnectBot() {
+      throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
+    },
+    async twitchDisconnectBot() {},
   };
 }

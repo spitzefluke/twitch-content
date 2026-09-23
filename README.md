@@ -10,7 +10,7 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown. Den Link gibt's im Dashboard unter **OBS**.
-- **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht und das Ergebnis im **Twitch-Chat** gepostet.
+- **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
 ## Aufbau
 
@@ -71,7 +71,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -132,7 +132,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 3. Auf Twitch mit `zugfahrer_davetv` anmelden und den Zugriff erlauben:
    - `channel:manage:redemptions` (Belohnung anlegen, Einlösungen erledigen)
    - `channel:read:redemptions` (Einlösungen empfangen)
-   - `user:write:chat` (Ergebnis im Chat posten)
+   - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
 4. Danach passiert automatisch Folgendes:
    - Die Belohnung „Glücksrad“ für 10.000 Kanalpunkte wird angelegt.
    - Der EventSub-Webhook wird registriert.
@@ -147,7 +147,18 @@ Löst ab jetzt ein Zuschauer die Belohnung ein, passiert Folgendes:
 4. Die Einlösung wird als erledigt markiert. Schlägt das Drehen fehl, bekommt der Zuschauer seine Punkte zurück.
 5. Ist die Webseite gerade offen, dreht sich das Rad dort live mit (Supabase Realtime).
 
-Dreht Dave selbst auf der Webseite, kann er mit dem Schalter „Ergebnis im Twitch-Chat posten“ bestimmen, ob das Ergebnis auch im Chat landet.
+Dreht Dave selbst auf der Webseite, kann er mit dem Schalter „Ergebnis als … im Chat posten“ bestimmen, ob das Ergebnis auch im Chat landet.
+
+### 6. Chat-Bot verbinden
+
+Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht Dave. Ohne verbundenen Bot bleibt der Chat still, das Rad dreht trotzdem.
+
+1. Auf Twitch einen eigenen Account für den Bot anlegen, z. B. `StellwerkBot`. Sein Name steht später im Chat.
+2. Auf twitch.tv mit **diesem Bot-Account** anmelden (in einem privaten Fenster geht es am einfachsten).
+3. Auf der Webseite als Admin anmelden, oben auf **Twitch** klicken und im Kasten **Chat-Bot** auf **„Bot verbinden“**.
+4. Twitch fragt jetzt den Bot-Account nach `user:write:chat` und `user:bot`. Erlauben.
+
+Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es Daves Recht `channel:bot` aus Schritt 5. Hat Dave schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StellwerkBot`).
 
 ## Social-Logins für Zuschauer
 
@@ -220,7 +231,8 @@ Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen
 
 - **Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.** Ohne diesen Status schlägt das Anlegen der Belohnung fehl.
 - Die Belohnung muss von dieser App angelegt werden, sonst darf die App die Einlösungen nicht als erledigt markieren. Existiert schon eine gleichnamige, manuell erstellte Belohnung, lösche sie vorher im Twitch-Dashboard.
-- Die Chat-Nachricht wird im Namen von Daves Account gesendet.
+- Die Chat-Nachricht schreibt der Chat-Bot (Schritt 6), nie Daves Account.
+- **Edge Functions immer mit `--no-verify-jwt` deployen** (oder über `supabase/config.toml`, die CLI liest das). Twitch schickt beim Zurückleiten nach der Freigabe und beim Webhook keinen Supabase-Login mit. Ist die JWT-Prüfung an, endet Dave nach der Freigabe auf einer Seite mit `Missing authorization header`.
 - **Glücksrad-Felder ändern:** in Supabase unter *Table Editor → wheel_variants → segments* (JSON mit `label` und `detail`). Die Werte in `js/defaults.js` gelten nur für den Demo-Modus.
 - **Weitere Kacheln:** neue Zeile in der Tabelle `tiles` mit `kind = 'countdown'` anlegen.
 - **Vorschläge:** stehen in `ideas`, die Stimmen in `idea_votes`. Solange die Migration `…_ideas.sql` nicht eingespielt ist, blendet die Seite den Bereich einfach aus.

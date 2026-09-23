@@ -1,13 +1,19 @@
 // Twitch mit dem Stellwerk verbinden.
-//   POST {action:"start"}      → liefert die Twitch-Login-URL (angemeldeter User nötig)
-//   GET  ?code=…&state=…       → OAuth-Callback von Twitch
-//   POST {action:"disconnect"} → Verbindung trennen (nur Admin)
+//   POST {action:"start"}          → Twitch-Login-URL für Daves Kanal (angemeldeter User nötig)
+//   POST {action:"start_bot"}      → Twitch-Login-URL für den Chat-Bot (nur Admin)
+//   GET  ?code=…&state=…           → OAuth-Callback von Twitch (für beide)
+//   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
+//   POST {action:"disconnect_bot"} → Chat-Bot trennen (nur Admin)
 import {
   CodedError, corsHeaders, db, env, getAppToken, getConnection, getUserFromRequest,
   helix, HelixError, json, twitchToken,
 } from "../_shared/twitch.ts";
 
-const SCOPES = ["channel:read:redemptions", "channel:manage:redemptions", "user:write:chat"];
+// Dave: Kanalpunkte verwalten und dem Bot erlauben, in seinem Chat zu schreiben.
+// Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
+const SCOPES = ["channel:read:redemptions", "channel:manage:redemptions", "channel:bot"];
+// Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
+const BOT_SCOPES = ["user:write:chat", "user:bot"];
 const EVENT_TYPE = "channel.channel_points_custom_reward_redemption.add";
 const redirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitch-oauth`;
 
@@ -22,8 +28,17 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Nicht angemeldet" }, 401);
     const { action } = await req.json().catch(() => ({}));
     try {
-      if (action === "start") return await start(user.id);
+      if (action === "start") return await start(user.id, "broadcaster");
+      if (action === "start_bot") {
+        if (!(await isAdmin(user.id))) return json({ error: "Nur Admins dürfen den Chat-Bot verbinden." }, 403);
+        return await start(user.id, "bot");
+      }
       if (action === "disconnect") return await disconnect(user.id);
+      if (action === "disconnect_bot") {
+        if (!(await isAdmin(user.id))) return json({ error: "Nur Admins dürfen den Chat-Bot trennen." }, 403);
+        await db.from("twitch_bot").delete().eq("id", 1);
+        return json({ ok: true });
+      }
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error(e);
@@ -33,9 +48,17 @@ Deno.serve(async (req) => {
   return json({ error: "Methode nicht erlaubt" }, 405);
 });
 
-async function start(userId: string) {
+async function isAdmin(userId: string) {
+  const { data } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  return !!data?.is_admin;
+}
+
+async function start(userId: string, kind: "broadcaster" | "bot") {
   const state = crypto.randomUUID() + crypto.randomUUID();
-  const { error } = await db.from("oauth_states").insert({ state, user_id: userId });
+  // "kind" nur beim Bot mitschicken: So klappt Daves Verbinden auch, solange
+  // die Migration …_chat_bot.sql (Spalte kind) noch nicht eingespielt ist.
+  const row = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  const { error } = await db.from("oauth_states").insert(row);
   if (error) throw error;
   // alte, nicht abgeschlossene Anfragen aufräumen
   await db.from("oauth_states").delete().lt("created_at", new Date(Date.now() - 3600_000).toISOString());
@@ -45,7 +68,7 @@ async function start(userId: string) {
     response_type: "code",
     client_id: env("TWITCH_CLIENT_ID"),
     redirect_uri: redirectUri(),
-    scope: SCOPES.join(" "),
+    scope: (kind === "bot" ? BOT_SCOPES : SCOPES).join(" "),
     state,
     force_verify: "true",
   }).toString();
@@ -85,6 +108,7 @@ async function handleCallback(url: URL) {
   try {
     const tok = await twitchToken({ grant_type: "authorization_code", code, redirect_uri: redirectUri() });
     const me = (await helix("users", tok.access_token)).data[0];
+    if (st.kind === "bot") return await saveBot(me, st.user_id);
 
     const expected = Deno.env.get("BROADCASTER_LOGIN")?.toLowerCase();
     if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
@@ -128,6 +152,23 @@ async function handleCallback(url: URL) {
     const detail = String((e as { message?: string })?.message ?? e).slice(0, 200);
     return backToSite({ twitch: "error", reason: "unknown", detail });
   }
+}
+
+// Der Bot braucht keine eigenen Tokens: Twitch merkt sich die Freigabe
+// (user:bot), gesendet wird später mit dem App-Token und seiner User-ID.
+async function saveBot(me: { id: string; login: string; display_name: string }, userId: string) {
+  const broadcaster = Deno.env.get("BROADCASTER_LOGIN")?.toLowerCase();
+  if (broadcaster && me.login.toLowerCase() === broadcaster) throw new CodedError("bot_is_broadcaster");
+  const { error } = await db.from("twitch_bot").upsert({
+    id: 1,
+    user_id: me.id,
+    login: me.login,
+    display_name: me.display_name,
+    connected_by: userId,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+  return backToSite({ twitch: "bot_connected", bot: me.display_name });
 }
 
 async function ensureReward(broadcasterId: string, token: string, knownId?: string | null) {

@@ -226,7 +226,7 @@ function render(data) {
   renderChart(data.spins_14d ?? []);
   renderVariants(data.spins_14d ?? [], data.variants ?? []);
   renderFeed(data.spins_recent ?? []);
-  renderTwitch(data.twitch);
+  renderTwitch(data.twitch, data);
   renderUsers();
 }
 
@@ -392,7 +392,7 @@ function renderFeed(spins) {
 }
 
 // ---------- Twitch ----------
-function renderTwitch(t) {
+function renderTwitch(t, data = {}) {
   const chip = (kind, label) => `<span class="chip chip--${kind}">${kind === 'ok' ? '✓' : kind === 'bad' ? '✕' : '!'} ${label}</span>`;
   const rows = [];
   if (!t) {
@@ -408,6 +408,17 @@ function renderTwitch(t) {
       ? `${chip('ok', 'Gültig')} bis ${new Date(exp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
       : `${chip('warn', 'Abgelaufen')} wird beim nächsten Einsatz erneuert`]);
     rows.push(['Rechte', (t.scopes ?? []).map((s) => `<code>${escapeHtml(s)}</code>`).join(' ') || '–']);
+  }
+  // Chat-Nachrichten schreibt ein eigener Bot-Account, nicht Dave.
+  const bot = data.twitch_bot;
+  if (data.twitch_bot_ready === false) {
+    rows.push(['Chat-Bot', `${chip('warn', 'Migration fehlt')} <small class="muted">supabase/migrations/…_chat_bot.sql ausführen</small>`]);
+  } else if (!bot) {
+    rows.push(['Chat-Bot', `${chip('bad', 'Nicht verbunden')}<br><small class="muted">Auf der Webseite unter „Twitch“ den Bot-Account verbinden. Ohne Bot bleibt der Chat still.</small>`]);
+  } else {
+    const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
+    rows.push(['Chat-Bot', `${chip('ok', 'Verbunden')} ${escapeHtml(bot.display_name ?? bot.login)}` +
+      (scopeOk ? '' : `<br><small class="muted">Dave muss einmal neu verbinden, damit der Bot in seinem Chat schreiben darf.</small>`)]);
   }
   $('#twitch-panel').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   $('#twitch-check').disabled = !t;

@@ -115,6 +115,8 @@ async function overview() {
   for (const r of [users, profiles, recent, total, twitchCount, last14d, conn, variants]) {
     if (r.error) throw r.error;
   }
+  // Getrennt abgefragt: Fehlt die Tabelle noch (Migration …_chat_bot.sql), bleibt der Rest heil.
+  const bot = await db.from("twitch_bot").select("login, display_name, updated_at").eq("id", 1).maybeSingle();
 
   const byId = new Map((profiles.data ?? []).map((p) => [p.id, p]));
   const userList = users.data.users.map((u) => ({
@@ -142,6 +144,8 @@ async function overview() {
     variants: variants.data,
     users: userList,
     twitch: conn.data,
+    twitch_bot: bot.error ? null : bot.data,
+    twitch_bot_ready: !bot.error,
   };
 }
 
