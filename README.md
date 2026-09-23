@@ -2,7 +2,7 @@
 
 Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_DaveTV**:
 
-- **Intro als Kamerafahrt** über einen Nachtbahnhof (Einfahrt auf Gleis 1 → Abfahrtstafel blättert auf → Bahnsteiguhr springt auf 20:15 → Signal auf Grün, Türen öffnen) mit **Bahnhofs-Gong und Durchsage**, Regen, Lichtreflexen und dezenter Filmkörnung; überspringbar, einmal pro Browser-Sitzung und mit reduzierter Bewegung zugänglich
+- **Intro als Ankunftssequenz** über einen Nachtbahnhof (Licht in der Ferne → Zug fährt ein und bremst → Abfahrtstafel → realistische Bahnhofsdurchsage → Signal auf Grün → Türen öffnen → Einstiegssilhouette → Überblendung in die Seite) mit **Bahnhofs-Gong**, Regen, Lichtreflexen und dezenter Filmkörnung; überspringbar, einmal pro Browser-Sitzung und mit reduzierter Bewegung zugänglich
 - **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
 - **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)

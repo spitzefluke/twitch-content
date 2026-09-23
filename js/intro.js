@@ -10,7 +10,7 @@ import { IntroSound } from './sound.js';
 
 const TITLE = 'ZUGFAHRER_DAVETV';
 const SUB = 'Content-Stellwerk · Bitte einsteigen';
-const ANNOUNCEMENT = 'Auf Gleis eins: das Content-Stellwerk von Zugfahrer Dave T V. Bitte einsteigen und Türen schließen!';
+const ANNOUNCEMENT = 'Achtung an Gleis eins. Der Nachtzug Zugfahrer Dave TV fährt ein. Bitte einsteigen. Die Türen schließen selbstständig. Nächster Halt: Content-Stellwerk.';
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_·';
 const DEPART = '20:15';
 const TICKER = 'Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güterzug · Community-Cup · Geisterzug-Special · Subathon · <b>Content-Stellwerk</b> · Bitte alle einsteigen …';
@@ -18,8 +18,8 @@ const TICKER = 'Nächste Halte: <b>Fortnite-Glücksrad</b> · Nachtschicht Güte
 // Kamera: [p, Blickpunkt-X, Blickpunkt-Y, Zoom] in Bühnen-Koordinaten
 const CAM = [
   [0.000, 1900, 470, 0.72],
-  [0.120, 2060, 500, 0.76],
-  [0.220, 2060, 560, 0.76],
+  [0.100, 2060, 500, 0.76],
+  [0.220, 1940, 540, 0.79],
   [0.320, 1520, 640, 0.95],
   [0.420, 1160, 656, 1.04],
   [0.500, 1280, 250, 0.78],
@@ -34,10 +34,11 @@ const CAM = [
 
 const BEATS = [
   { at: 0.00, label: 'Nachtbahnhof · Halt zeigt Rot', caption: 'Willkommen am Gleis 1.' },
-  { at: 0.20, label: 'Einfahrt Gleis 1', caption: 'Der Nachtzug fährt ein.' },
-  { at: 0.48, label: 'Abfahrtstafel', caption: 'Zugfahrer_DaveTV wird aufgerufen.' },
-  { at: 0.72, label: 'Bahnsteiguhr · Gong', caption: 'Abfahrt um 20:15.' },
-  { at: 0.84, label: 'Ausfahrt frei · Türen öffnen', caption: 'Bitte einsteigen.' },
+  { at: 0.10, label: 'Ankunft aus der Ferne', caption: 'Ein Licht kommt durch die Nacht.' },
+  { at: 0.28, label: 'Zug fährt ein', caption: 'Der Nachtzug rollt an den Bahnsteig.' },
+  { at: 0.54, label: 'Bremst am Gleis 1', caption: 'Bitte hinter der Sicherheitslinie bleiben.' },
+  { at: 0.72, label: 'Durchsage · Einstieg', caption: 'Zugfahrer_DaveTV · Abfahrt um 20:15.' },
+  { at: 0.86, label: 'Türen öffnen', caption: 'Bitte einsteigen. Gute Fahrt.' },
 ];
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -76,6 +77,7 @@ export function playIntro({ duration = 20000 } = {}) {
   const doorLeft = el('door-left');
   const doorRight = el('door-right');
   const interior = el('door-interior');
+  const passenger = el('sc-passenger');
   const fade = el('intro-fade');
   const beatNo = el('intro-beat-no');
   const beatLabel = el('intro-beat-label');
@@ -132,9 +134,9 @@ export function playIntro({ duration = 20000 } = {}) {
 
     const tick = (now) => {
       const p = clamp01((now - started) / duration);
-      if (p >= 0.18 && !cues.whoosh) { cues.whoosh = true; sound.whoosh(Math.min(5.2, duration * 0.00026)); }
-      if (p >= 0.745 && !cues.gong) { cues.gong = true; sound.chime(); }
-      if (p >= 0.80 && !cues.speak) { cues.speak = true; sound.speak(ANNOUNCEMENT); }
+      if (p >= 0.08 && !cues.whoosh) { cues.whoosh = true; sound.whoosh(Math.min(6.2, duration * 0.0003)); }
+      if (p >= 0.68 && !cues.speak) { cues.speak = true; sound.speak(ANNOUNCEMENT); }
+      if (p >= 0.72 && !cues.gong) { cues.gong = true; sound.chime(); }
       render(p);
       if (p >= 1) finish();
       else frame = requestAnimationFrame(tick);
@@ -178,9 +180,9 @@ export function playIntro({ duration = 20000 } = {}) {
     // ---- Zug rollt ein und bremst ----
     const trainK = ramp(p, 0.14, 0.26);
     const carriageBounce = trainK > 0 && trainK < 1 ? Math.sin(trainK * 18) * (1 - trainK) * 2.2 : 0;
-    train.style.transform = `translate(${lerp(3300, 520, trainK).toFixed(1)}px, ${carriageBounce.toFixed(1)}px)`;
-    headlight.style.opacity = (clamp01((p - 0.07) / 0.06) * (1 - ramp(p, 0.3, 0.1)) * 0.9).toFixed(3);
-    brake.style.opacity = (clamp01((p - 0.26) / 0.06) * (1 - ramp(p, 0.44, 0.1)) * 0.55).toFixed(3);
+    train.style.transform = `translate(${lerp(3900, 520, trainK).toFixed(1)}px, ${carriageBounce.toFixed(1)}px)`;
+    headlight.style.opacity = (clamp01((p - 0.04) / 0.12) * (1 - ramp(p, 0.47, 0.08)) * 0.95).toFixed(3);
+    brake.style.opacity = (clamp01((p - 0.38) / 0.06) * (1 - ramp(p, 0.60, 0.08)) * 0.72).toFixed(3);
 
     // ---- Abfahrtstafel ----
     const boardK = ramp(p, 0.455, 0.055);
@@ -223,6 +225,9 @@ export function playIntro({ duration = 20000 } = {}) {
     doorLeft.style.transform = `translateX(${(-100 * doorK).toFixed(1)}%)`;
     doorRight.style.transform = `translateX(${(100 * doorK).toFixed(1)}%)`;
     interior.style.opacity = doorK.toFixed(3);
+    const boardingK = ramp(p, 0.895, 0.07);
+    passenger.style.opacity = boardingK.toFixed(3);
+    passenger.style.transform = `translateX(${(58 * boardingK).toFixed(1)}px)`;
 
     // ---- Überblendung, Kapitel, Fortschritt ----
     fade.style.opacity = ramp(p, 0.915, 0.085).toFixed(3);

@@ -1305,3 +1305,31 @@ code { font-family: var(--font-mono); font-size: .9em; }
 @media (prefers-reduced-motion: reduce) {
   .sc-lamp-head, .sc-loco-light, .site-status__dot { animation: none; }
 }
+
+
+/* Boarding beat: a single human silhouette gives the door opening a readable purpose. */
+.sc-passenger {
+  left: 84px;
+  bottom: 14px;
+  z-index: 2;
+  width: 24px;
+  height: 72px;
+  opacity: 0;
+  border-radius: 12px 12px 3px 3px;
+  background: radial-gradient(circle at 50% 13%, #211b18 0 11px, transparent 12px), linear-gradient(90deg, transparent 0 5px, #2d241d 5px 19px, transparent 19px);
+  filter: drop-shadow(0 0 8px rgba(255, 211, 107, .35));
+  transition: opacity .15s linear;
+}
+.sc-passenger::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  bottom: -2px;
+  width: 9px;
+  height: 16px;
+  border-radius: 0 0 4px 4px;
+  background: #17151a;
+  box-shadow: 10px 0 #17151a;
+}
+.sc-train { transition: filter .3s ease; }
+.intro.is-departing .sc-train { filter: drop-shadow(0 10px 8px rgba(0,0,0,.42)); }

@@ -114,9 +114,9 @@ export class IntroSound {
     const say = () => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'de-DE';
-      u.rate = 0.95;
-      u.pitch = 0.95;
-      u.volume = 0.9;
+      u.rate = 0.88;
+      u.pitch = 0.9;
+      u.volume = 0.86;
       const de = synth.getVoices().find((v) => v.lang?.toLowerCase().startsWith('de'));
       if (de) u.voice = de;
       synth.speak(u);
