@@ -123,14 +123,16 @@ async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | 
   let text = "";
   if (kind === "throw") {
     const item = matchThrow(input);
-    if (!item) return refund(`„${input}“ kenne ich nicht. Werfen kannst du: ${THROW_ITEMS.map((i) => i.name).join(", ")}.`);
+    // Den eingetippten Text nie wiederholen: Sonst ließe sich der Bot (mit
+    // zurückerstatteten Punkten, also kostenlos) beliebigen Text schreiben lassen.
+    if (!item) return refund(`Das kenne ich nicht. Werfen kannst du: ${THROW_ITEMS.map((i) => i.name).join(", ")}.`);
     row = { kind: "throw", item: item.id };
     text = item.id === "flowers" ? `💐 ${event.user_name} schenkt Dave Blumen!` : `🎯 ${event.user_name} wirft: ${item.name}!`;
   } else {
     const board = matchBoardSound(input);
     const custom = board ? null : await matchCustomSound(input);
     if (!board && !custom) {
-      return refund(`Den Sound „${input}“ gibt es nicht. Zum Beispiel: ${BOARD_SOUNDS.map((b) => b.name).join(", ")} – eigene Sounds stehen auf der Webseite.`);
+      return refund(`Diesen Sound gibt es nicht. Zum Beispiel: ${BOARD_SOUNDS.map((b) => b.name).join(", ")} – eigene Sounds stehen auf der Webseite.`);
     }
     row = board ? { kind: "sound", item: board.id } : { kind: "sound", item: "custom", sound_path: custom!.path, label: custom!.name };
     text = `🔊 ${event.user_name} spielt „${board?.name ?? custom!.name}“`;

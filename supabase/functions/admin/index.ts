@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     if (body.action === "twitch_check") return json(await twitchCheck());
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
     if (body.action === "site_session") return json(await siteSession());
-    if (body.action === "bot_start") return json({ url: await startTwitchLogin(await siteAdminId(), "bot") });
+    if (body.action === "bot_start") return json({ url: await startTwitchLogin(await ensureSiteAdmin(), "bot") });
     if (body.action === "bot_disconnect") {
       const { error } = await db.from("twitch_bot").delete().eq("id", 1);
       if (error) throw error;
@@ -173,41 +173,53 @@ async function twitchCheck() {
 // und ist nur über diese Funktion (also mit dem Admin-Passwort) erreichbar.
 // example.com ist eine reservierte Domain – es wird nie eine Mail verschickt.
 const SITE_ADMIN_EMAIL = "stellwerk-admin@example.com";
+// Merkmal in app_metadata – das kann nur der Server setzen, nie ein Nutzer beim Registrieren.
+const SITE_ADMIN_MARK = "stellwerk_site_admin";
 
-async function ensureSiteAdmin() {
+async function findUserByEmail(email: string) {
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const user = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (user) return user;
+    if (data.users.length < 1000) break;
+  }
+  return null;
+}
+
+// Liefert die ID des internen Accounts (auch Absender beim Twitch-Login des Bots).
+// Hat sich jemand mit dieser E-Mail selbst registriert (dann fehlt das Merkmal),
+// wird dieser Account gelöscht und ein neuer angelegt – sonst bekäme er beim
+// nächsten Admin-Login die Admin-Rechte und könnte sich mit seinem eigenen
+// Passwort anmelden.
+async function ensureSiteAdmin(): Promise<string> {
+  const existing = await findUserByEmail(SITE_ADMIN_EMAIL);
+  if (existing?.app_metadata?.[SITE_ADMIN_MARK] === true) return existing.id;
+  if (existing) {
+    console.warn("Account mit der Admin-E-Mail ohne Merkmal gefunden – wird ersetzt:", existing.id);
+    const { error } = await db.auth.admin.deleteUser(existing.id);
+    if (error) throw error;
+  }
   const created = await db.auth.admin.createUser({
     email: SITE_ADMIN_EMAIL,
     email_confirm: true,
     user_metadata: { username: "Stellwerk-Admin" },
+    app_metadata: { [SITE_ADMIN_MARK]: true },
   });
-  if (created.error && !/already|registered|exists/i.test(created.error.message)) throw created.error;
-  return created.data?.user?.id ?? null;
-}
-
-// Der Twitch-Login des Bots braucht einen Supabase-User als Absender
-// (oauth_states.user_id) – das ist der interne Admin-Account.
-async function siteAdminId(): Promise<string> {
-  const id = await ensureSiteAdmin();
-  if (id) return id;
-  for (let page = 1; page <= 20; page++) {
-    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) throw error;
-    const user = data.users.find((u) => u.email === SITE_ADMIN_EMAIL);
-    if (user) return user.id;
-    if (data.users.length < 1000) break;
-  }
-  throw new Error("Interner Admin-Account nicht gefunden");
+  if (created.error || !created.data.user) throw created.error ?? new Error("Interner Admin-Account nicht angelegt");
+  return created.data.user.id;
 }
 
 async function siteSession() {
-  await ensureSiteAdmin();
+  const id = await ensureSiteAdmin();
 
   // Erzeugt nur den Einmal-Code, verschickt keine E-Mail
   const { data, error } = await db.auth.admin.generateLink({ type: "magiclink", email: SITE_ADMIN_EMAIL });
   if (error) throw error;
+  if (data.user.id !== id) throw new Error("Interner Admin-Account passt nicht – bitte erneut versuchen.");
 
   const { error: profileError } = await db.from("profiles")
-    .upsert({ id: data.user.id, username: "Stellwerk-Admin", is_admin: true });
+    .upsert({ id, username: "Stellwerk-Admin", is_admin: true });
   if (profileError) throw profileError;
 
   return { token_hash: data.properties.hashed_token };

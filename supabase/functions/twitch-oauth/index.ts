@@ -79,10 +79,19 @@ async function handleCallback(url: URL) {
     const me = (await helix("users", tok.access_token)).data[0];
     if (st.kind === "bot") return await saveBot(me, st.user_id);
 
-    const expected = Deno.env.get("BROADCASTER_LOGIN")?.toLowerCase();
+    // Wer Daves Kanal verbindet, wird Admin – also streng prüfen, wer das darf:
+    //   · Mit BROADCASTER_LOGIN nur genau dieser Twitch-Kanal.
+    //   · Ohne das Secret nur, wer schon Admin ist (sonst könnte sich jeder
+    //     Zuschauer mit seinem eigenen Kanal verbinden und Admin werden).
+    //   · Einen anderen Kanal an Stelle des bisherigen setzen darf nur ein Admin.
+    const expected = Deno.env.get("BROADCASTER_LOGIN")?.trim().toLowerCase();
     if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
+    const { data: starter } = await db.from("profiles").select("is_admin").eq("id", st.user_id).maybeSingle();
+    const starterIsAdmin = !!starter?.is_admin;
+    if (!expected && !starterIsAdmin) throw new CodedError("no_broadcaster_login");
 
     const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
+    if (previous && previous.broadcaster_id !== me.id && !starterIsAdmin) throw new CodedError("wrong_account");
     const reward = await ensureReward(me.id, tok.access_token, previous?.reward_id);
 
     const base = {
