@@ -3,7 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
-import { bingoState, nameFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { bingoState, drawCard, nameFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -46,6 +46,9 @@ const state = {
     card: null,
     lines: 0,           // volle Linien – steigt die Zahl, gibt es "Bingo!"
     subscribed: false,
+    tab: null,          // 'dave' oder 'mine'
+    mine: null,         // eigene Karte
+    mineLoaded: false,
   },
 };
 
@@ -1061,7 +1064,7 @@ function setupPrank() {
     b.querySelector('.prank-item-emoji').textContent = it.emoji;
     b.querySelector('.prank-item-name').textContent = it.name;
     b.setAttribute('aria-label', `${it.name} werfen`);
-    b.addEventListener('click', () => sendPrank('throw', it.id));
+    b.addEventListener('click', () => prankClick('throw', it));
     return b;
   }));
 
@@ -1076,7 +1079,7 @@ function setupPrank() {
     main.firstElementChild.textContent = sound.emoji;
     main.lastElementChild.textContent = sound.name;
     main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
-    main.addEventListener('click', () => sendPrank('sound', sound.id));
+    main.addEventListener('click', () => prankClick('sound', sound));
     const tryBtn = document.createElement('button');
     tryBtn.type = 'button';
     tryBtn.className = 'prank-try';
@@ -1116,6 +1119,7 @@ function setupPrank() {
   });
 
   $('#prank-admin').addEventListener('change', savePrankSettings);
+  $('#prank-sync').addEventListener('click', () => syncPrankRewards({ loud: true }));
   $('#prank-dialog').addEventListener('close', () => {
     $('#prank-stage').querySelectorAll('.pf-item, .pf-splat, .prank-bubble').forEach((el) => el.remove());
   });
@@ -1134,6 +1138,12 @@ function openPrank() {
   renderPrankDialog();
   $('#prank-dialog').showModal();
   if (state.prank.on) loadSounds();
+  // Startdatum erreicht oder an/aus geändert? Dann die Belohnungen auf Twitch nachziehen.
+  const { twitch, prank } = state;
+  if (state.profile?.is_admin && twitch.connected && twitch.prank_rewards) {
+    const shouldBeActive = prank.settings.enabled && !(tile?.target_at && Date.parse(tile.target_at) > Date.now());
+    if (shouldBeActive !== !!twitch.prank_rewards_active) syncPrankRewards();
+  }
 }
 
 function renderPrankDialog() {
@@ -1145,20 +1155,23 @@ function renderPrankDialog() {
     text = admin
       ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260924000000_pranks.sql ausführen. Bis dahin geht hier nichts raus.'
       : '„Ärgere den Dave“ ist noch nicht eingerichtet. Schau später noch mal vorbei.';
-  } else if (!settings.enabled) {
-    text = admin
-      ? 'Für Zuschauer gerade ausgeschaltet. Du als Admin kannst trotzdem werfen.'
-      : 'Dave hat das Ärgern gerade pausiert. Schau später noch mal vorbei.';
+  } else if (!settings.enabled && !admin) {
+    text = 'Dave hat das Ärgern gerade pausiert. Schau später noch mal vorbei.';
   }
   note.textContent = text;
   note.hidden = !text;
-  $('#prank-dialog').classList.toggle('is-off', !on || (!settings.enabled && !admin));
+  $('#prank-dialog').classList.toggle('is-off', !on);
+  $('#prank-dialog').classList.toggle('is-viewer', !admin);
+  renderPrankHowTo();
 
   const form = $('#prank-admin');
   form.hidden = !(admin && on);
   paintTileStart('prank');
+  if (admin && on) paintPrankSync();
   form.enabled.checked = settings.enabled;
   form.allow_uploads.checked = settings.allow_uploads;
+  form.throw_cost.value = settings.throw_cost ?? 500;
+  form.sound_cost.value = settings.sound_cost ?? 300;
   form.cooldown_seconds.value = String(settings.cooldown_seconds);
   if (form.cooldown_seconds.value !== String(settings.cooldown_seconds)) {
     // Wert außerhalb der Liste (z. B. direkt in der Datenbank gesetzt)
@@ -1173,7 +1186,7 @@ function renderPrankDialog() {
 
   renderPrankLog();
   renderSounds();
-  paintCooldown();
+  paintPrankButtons();
 }
 
 async function loadSounds() {
@@ -1206,7 +1219,7 @@ function renderSounds() {
     main.querySelector('b').textContent = `🔊 ${sound.name}`;
     main.querySelector('small').textContent = `von ${sound.author || 'anonym'} · ${Number(sound.duration).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`;
     main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
-    main.addEventListener('click', () => sendPrank('sound', 'custom', sound));
+    main.addEventListener('click', () => prankClick('custom', sound));
 
     const tryBtn = document.createElement('button');
     tryBtn.type = 'button';
@@ -1229,11 +1242,28 @@ function renderSounds() {
     }
     return li;
   }));
-  paintCooldown();
+  paintPrankButtons();
+}
+
+// Admins lösen direkt im Stream aus. Zuschauer bezahlen mit Kanalpunkten auf
+// Twitch – hier kopiert ein Klick den Namen zum Eintippen und zeigt eine Vorschau.
+function prankClick(kind, entry) {
+  if (state.profile?.is_admin) {
+    if (kind === 'custom') sendPrank('sound', 'custom', entry);
+    else sendPrank(kind, entry.id);
+    return;
+  }
+  const reward = kind === 'throw' ? '🍅 Wirf was auf Dave' : '🔊 Sound für Dave';
+  navigator.clipboard?.writeText(entry.name).catch(() => {});
+  toast(`„${entry.name}“ kopiert – auf Twitch bei „${reward}“ einfügen.`, 'ok', 4500);
+  const preview = { id: `preview-${Date.now()}`, created_at: new Date().toISOString(), requested_by: 'Du' };
+  if (kind === 'throw') showPrank({ ...preview, kind: 'throw', item: entry.id }, true);
+  else if (kind === 'custom') showPrank({ ...preview, kind: 'sound', item: 'custom', sound_path: entry.path, label: entry.name }, true);
+  else showPrank({ ...preview, kind: 'sound', item: entry.id }, true);
 }
 
 async function sendPrank(kind, item, sound = null) {
-  if (!state.prank.on || Date.now() < state.prank.until) return;
+  if (!state.prank.on) return;
   const dlg = $('#prank-dialog');
   dlg.classList.add('is-sending');
   try {
@@ -1241,17 +1271,36 @@ async function sendPrank(kind, item, sound = null) {
     state.prank.seen.add(row.id);
     addPrankLog(row);
     showPrank(row, true);
-    startCooldown(state.profile?.is_admin ? 0 : state.prank.settings.cooldown_seconds);
   } catch (err) {
     console.error(err);
-    if (err.wait) startCooldown(err.wait);
-    if (err.paused) {
-      state.prank.settings.enabled = false;
-      renderPrankDialog();
-    }
     toast(germanError(err), 'error', 6000);
   } finally {
     dlg.classList.remove('is-sending');
+  }
+}
+
+// Anleitung: Zuschauer über Kanalpunkte, Admins direkt
+function renderPrankHowTo() {
+  const box = $('#prank-howto');
+  const { settings } = state.prank;
+  const { twitch } = state;
+  const cost = (n) => `${Number(n ?? 0).toLocaleString('de-DE')} Punkte`;
+  const status = !twitch.connected
+    ? 'Die Belohnungen gibt es, sobald Dave Twitch verbunden hat.'
+    : twitch.prank_rewards === false || twitch.prank_rewards === undefined
+      ? 'Die Belohnungen sind auf Twitch noch nicht angelegt.'
+      : twitch.prank_rewards_active ? '' : 'Die Belohnungen sind auf Twitch gerade ausgeschaltet.';
+  box.innerHTML = state.profile?.is_admin
+    ? `<b>Du bist Admin:</b> Ein Klick löst direkt im Stream aus – ohne Kanalpunkte, z. B. zum Testen.
+       Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf Dave“ (${cost(settings.throw_cost)}) und „🔊 Sound für Dave“ (${cost(settings.sound_cost)}).`
+    : `<b>So ärgerst du Dave:</b> Im Twitch-Chat von Dave auf das Kanalpunkte-Symbol klicken und
+       <b>„🍅 Wirf was auf Dave“</b> (${cost(settings.throw_cost)}) oder <b>„🔊 Sound für Dave“</b> (${cost(settings.sound_cost)}) einlösen –
+       dann eintippen, was fliegen bzw. welcher Sound laufen soll. Ein Klick hier kopiert den Namen und zeigt eine Vorschau.
+       <a class="prank-twitch-link" target="_blank" rel="noopener" href="https://www.twitch.tv/${encodeURIComponent(CONFIG.CHANNEL)}">Zu Daves Twitch-Kanal ↗</a>`;
+  if (status) {
+    const p = document.createElement('small');
+    p.textContent = status;
+    box.append(p);
   }
 }
 
@@ -1334,28 +1383,16 @@ function renderPrankLog(newId = null) {
   }));
 }
 
-// ---------- Pause zwischen zwei Aktionen ----------
-function startCooldown(seconds) {
-  const p = state.prank;
-  clearInterval(p.timer);
-  p.total = seconds * 1000;
-  p.until = Date.now() + p.total;
-  paintCooldown();
-  if (seconds > 0) p.timer = setInterval(paintCooldown, 200);
-}
-
-function paintCooldown() {
-  const p = state.prank;
-  const left = Math.max(0, p.until - Date.now());
-  const cooling = left > 0;
-  const blocked = !p.on || (!p.settings.enabled && !state.profile?.is_admin);
-  document.querySelectorAll('#prank-dialog [data-prank-action]').forEach((b) => { b.disabled = cooling || blocked; });
-  $('#prank-meter').classList.toggle('is-cooling', cooling);
-  $('#prank-meter-bar').style.transform = `scaleX(${cooling && p.total ? left / p.total : 0})`;
-  $('#prank-meter-text').textContent = blocked
-    ? 'Gerade nicht verfügbar'
-    : cooling ? `Nachladen … ${Math.ceil(left / 1000)} s` : 'Bereit – such dir was aus!';
-  if (!cooling) clearInterval(p.timer);
+function paintPrankButtons() {
+  const off = !state.prank.on;
+  document.querySelectorAll('#prank-dialog [data-prank-action]').forEach((btn) => { btn.disabled = off; });
+  const admin = !!state.profile?.is_admin;
+  $('#prank-lead-throw').textContent = admin
+    ? 'Klick wirft sofort – es fliegt Dave im Stream vor die Kamera.'
+    : 'Das kannst du auf Dave werfen. Klick = Name kopieren und Vorschau.';
+  $('#prank-lead-sound').textContent = admin
+    ? 'Klick spielt den Sound im Stream. 🎧 hört nur hier probe.'
+    : 'Diese Sounds gibt es. Klick = Name kopieren, 🎧 = probehören.';
 }
 
 // ---------- Eigene Sounds ----------
@@ -1408,17 +1445,58 @@ async function deleteSound(sound, btn) {
 }
 
 // ---------- Einstellungen (Admins) ----------
+// Belohnungen auf Twitch an die Einstellungen angleichen (Kosten, Abklingzeit,
+// an/aus, Startdatum). Läuft nach jedem Speichern und auf Knopfdruck.
+async function syncPrankRewards({ loud = false } = {}) {
+  const status = $('#prank-sync-status');
+  const btn = $('#prank-sync');
+  btn.disabled = true;
+  status.textContent = 'Übertrage zu Twitch …';
+  try {
+    const r = await state.api.syncPrankRewards();
+    state.twitch = { ...state.twitch, prank_rewards: true, prank_rewards_active: r.active };
+    status.textContent = r.active
+      ? '✓ Auf Twitch aktiv – Zuschauer können einlösen.'
+      : r.started === false && r.starts_at
+        ? `✓ Auf Twitch angelegt, aber aus bis ${startLabel(r.starts_at)}. Danach hier einmal „Auf Twitch übernehmen“.`
+        : '✓ Auf Twitch angelegt, aber ausgeschaltet.';
+    if (loud) toast('Belohnungen auf Twitch aktualisiert.', 'ok');
+    renderPrankHowTo();
+  } catch (err) {
+    status.textContent = `✕ ${germanError(err)}`;
+    if (loud) toast(`Twitch: ${germanError(err)}`, 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function paintPrankSync() {
+  const { twitch } = state;
+  $('#prank-sync-status').textContent = !twitch.connected
+    ? 'Twitch ist nicht verbunden – erst wenn Dave verbunden hat, gibt es die Belohnungen.'
+    : twitch.prank_rewards === undefined
+      ? 'Für die Belohnungen fehlt noch die Migration …_channel_points.sql.'
+      : !twitch.prank_rewards
+        ? 'Noch nicht auf Twitch angelegt.'
+        : twitch.prank_rewards_active ? '✓ Auf Twitch aktiv.' : 'Auf Twitch angelegt, aber ausgeschaltet.';
+  $('#prank-sync').disabled = !twitch.connected;
+}
+
 async function savePrankSettings() {
   const form = $('#prank-admin');
+  const clampCost = (v, d) => Math.min(1000000, Math.max(1, Math.round(Number(v)) || d));
   const patch = {
     enabled: form.enabled.checked,
     allow_uploads: form.allow_uploads.checked,
     cooldown_seconds: Number(form.cooldown_seconds.value),
+    throw_cost: clampCost(form.throw_cost.value, 500),
+    sound_cost: clampCost(form.sound_cost.value, 300),
   };
   form.querySelectorAll('input, select').forEach((el) => { el.disabled = true; });
   try {
     state.prank.settings = await state.api.updatePrankSettings(patch);
     toast('Gespeichert.', 'ok', 2500);
+    if (state.twitch.connected) syncPrankRewards();
   } catch (err) {
     toast(`Speichern fehlgeschlagen: ${germanError(err)}`, 'error');
   } finally {
@@ -1435,6 +1513,11 @@ function setupBingo() {
   $('#bingo-clear-btn').addEventListener('click', clearBingo);
   $('#bingo-visible').addEventListener('change', (e) => updateBingoCard({ visible: e.target.checked }));
   $('#bingo-size').addEventListener('change', () => renderBingoDialog());
+  $('#my-bingo-new').addEventListener('click', newMyBingo);
+  document.querySelectorAll('.bingo-tabs [data-tab]').forEach((btn) => btn.addEventListener('click', () => {
+    state.bingo.tab = btn.dataset.tab;
+    renderBingoDialog();
+  }));
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
@@ -1452,21 +1535,37 @@ async function openBingo() {
   if (!state.bingo.on) return;
   // Frisch laden: Bilder und Haken können sich geändert haben.
   try {
-    const { items, card } = await state.api.getBingo();
+    const [{ items, card }, mine] = await Promise.all([
+      state.api.getBingo(),
+      state.api.getMyBingo().catch((err) => { console.warn('Eigene Karte:', err); return undefined; }),
+    ]);
     state.bingo.items = items;
     state.bingo.card = card;
     state.bingo.lines = bingoState(card).count;
+    state.bingo.mine = mine ?? null;
+    state.bingo.mineOn = mine !== undefined;
+    // Admins landen bei Daves Karte (dort richten sie alles ein), Zuschauer ohne
+    // laufende Stream-Karte gleich bei ihrer eigenen.
+    state.bingo.tab ??= card || state.profile?.is_admin ? 'dave' : 'mine';
     renderBingoDialog();
   } catch (err) {
     console.warn(err);
   }
 }
 
-function renderBingoDialog({ stamped = null } = {}) {
+function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
   const { on, card, items } = state.bingo;
   const admin = !!state.profile?.is_admin;
   const dlg = $('#bingo-dialog');
-  dlg.classList.toggle('is-admin', admin && on);
+  const tab = state.bingo.tab ?? 'dave';
+  const tabs = $('.bingo-tabs');
+  tabs.dataset.active = tab;
+  tabs.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  $('#bingo-pane-dave').hidden = tab !== 'dave';
+  $('#bingo-pane-mine').hidden = tab !== 'mine';
+  // Die Admin-Spalte gehört zu Daves Karte
+  dlg.classList.toggle('is-admin', admin && on && tab === 'dave');
+  renderMyBingo(myStamped);
 
   const note = $('#bingo-note');
   note.textContent = on ? '' : admin
@@ -1493,7 +1592,7 @@ function renderBingoDialog({ stamped = null } = {}) {
     : '';
   $('#bingo-help').hidden = !card;
 
-  $('#bingo-admin').hidden = !(admin && on);
+  $('#bingo-admin').hidden = !(admin && on && tab === 'dave');
   paintTileStart('bingo');
   if (admin && on) {
     $('#bingo-visible').checked = card?.visible ?? true;
@@ -1576,6 +1675,65 @@ function celebrateBingo() {
   void win.offsetWidth;
   win.classList.add('is-on');
   if (!$('#bingo-dialog').open) toast('BINGO! Eine Reihe ist voll.', 'ok', 5000);
+}
+
+// ---------- Eigene Karte: selbst ziehen, selbst abkreuzen ----------
+function renderMyBingo(stamped = null) {
+  const { mine, items, on } = state.bingo;
+  const grid = $('#my-bingo-grid');
+  const empty = $('#my-bingo-empty');
+  const st = bingoState(mine);
+  grid.hidden = !mine;
+  $('#my-bingo-status').textContent = mine
+    ? `${st.done} von ${st.total} abgekreuzt${st.count ? ` · ${st.count}× Bingo!` : ''}`
+    : '';
+  $('#my-bingo-new').textContent = mine ? 'Neue Karte ziehen' : 'Karte ziehen';
+  let text = '';
+  if (!on) text = 'Das Bingo ist noch nicht eingerichtet.';
+  else if (state.bingo.mineOn === false) text = 'Eigene Karten sind noch nicht eingerichtet (Migration …_channel_points.sql).';
+  else if (!mine) text = items.length ? 'Zieh dir deine eigene Karte aus Daves Item-Bildern.' : 'Dave hat noch keine Item-Bilder hochgeladen.';
+  empty.textContent = text;
+  empty.hidden = !text;
+  $('#my-bingo-new').disabled = !on || state.bingo.mineOn === false || !items.length;
+  if (mine) {
+    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped });
+  }
+}
+
+async function newMyBingo() {
+  const { mine } = state.bingo;
+  if (mine && bingoState(mine).done && !confirm('Neue Karte ziehen? Deine Kreuze gehen verloren.')) return;
+  try {
+    const card = drawCard(state.bingo.items, Number($('#my-bingo-size').value), $('#my-bingo-free').checked);
+    state.bingo.mine = await state.api.saveMyBingo(card);
+    renderBingoDialog();
+  } catch (err) {
+    toast(germanError(err), 'error', 6000);
+  }
+}
+
+async function toggleMyBingo(index) {
+  const before = state.bingo.mine;
+  if (!before || before.cells[index]?.free) return;
+  const marked = before.marked.includes(index) ? before.marked.filter((i) => i !== index) : [...before.marked, index];
+  const next = { ...before, marked };
+  // Sofort zeigen, im Hintergrund speichern – bei Fehler zurück
+  state.bingo.mine = next;
+  renderMyBingo(marked.includes(index) ? index : null);
+  if (bingoState(next).count > bingoState(before).count) {
+    const win = $('#my-bingo-win');
+    win.classList.remove('is-on');
+    void win.offsetWidth;
+    win.classList.add('is-on');
+    prankSfx()?.play('applause');
+  }
+  try {
+    await state.api.saveMyBingo(next);
+  } catch (err) {
+    state.bingo.mine = before;
+    renderMyBingo();
+    toast(`Nicht gespeichert: ${germanError(err)}`, 'error');
+  }
 }
 
 async function toggleBingoCell(index, node) {
@@ -1671,6 +1829,7 @@ async function saveTileStart(input) {
     const updated = await state.api.updateTile(tile.id, { target_at: target ? target.toISOString() : null });
     state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
     renderGrid();
+    if (input.dataset.tileStart === 'prank' && state.twitch.connected) syncPrankRewards();
     toast(target && target > new Date()
       ? `Zuschauer sehen bis ${startLabel(target.toISOString())} einen Countdown.`
       : 'Für alle freigeschaltet.', 'ok');

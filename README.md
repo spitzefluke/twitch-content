@@ -9,8 +9,8 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
-- **Ärgere den Dave**: Zuschauer werfen Bananen, Tomaten, Torten & Co. auf Daves Kamera oder spielen Sounds in den Stream – eingebaute (Zugpfeife, Tröte, Ba-dum-tss …) oder selbst hochgeladene. Zu sehen und zu hören im OBS-Overlay; Admins schalten es aus oder stellen die Pause zwischen zwei Aktionen ein.
-- **Fortnite-Bingo**: Admins laden Bilder von Fortnite-Items hoch, daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). Gefundene Items werden abgehakt, eine volle Reihe gibt „Bingo!“ – live im OBS-Overlay.
+- **Ärgere den Dave**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf Dave“ oder „🔊 Sound für Dave“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Daves Kamera, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
+- **Fortnite-Bingo**: Admins laden Bilder von Fortnite-Items hoch, daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). Daves Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown. Den Link gibt's im Dashboard unter **OBS**.
 - **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
@@ -73,7 +73,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -237,11 +237,12 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 Kachel im Fahrplan, jederzeit verfügbar. Einmal nötig: `supabase/migrations/20260924000000_pranks.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `sounds` für eigene Sounds.
 
+- **Kanalpunkte:** Beim Verbinden mit Twitch (und bei jedem Speichern der Einstellungen) legt die Seite in Daves Kanal zwei Belohnungen an: **„🍅 Wirf was auf Dave“** (Standard 500 Punkte) und **„🔊 Sound für Dave“** (300 Punkte). Zuschauer tippen beim Einlösen ein, was fliegen bzw. welcher Sound laufen soll – Tippfehler und Emojis werden erkannt. Unbekanntes gibt die Punkte zurück, der Chat-Bot sagt, was es gibt. Die Webseite zeigt Zuschauern die Liste zum Kopieren und eine Vorschau; direkt auslösen können dort nur Admins. Migration `20260925000000_channel_points.sql` nötig; bei Belohnungen, die schon vorher bestanden, einmal im Dialog „Auf Twitch übernehmen“ klicken.
 - **Werfen:** Banane, Tomate, Torte, Ei, Fisch, Quietscheente, Stinkesocke, Schneeball – oder Blumen, wenn man nett sein will. Im Overlay fliegt das Geschoss auf Daves Kamera und hinterlässt einen Fleck.
 - **Sounds:** neun eingebaute Töne (vom Browser erzeugt, keine Dateien) und eigene Sounds. Hochladen darf jeder Angemeldete bis zu 8 Sounds, je höchstens 10 Sekunden und 1 MB (MP3, OGG, WAV, M4A). Löschen kann man die eigenen, Admins alle.
-- **Für Admins** im Dialog: Ärgern für Zuschauer an/aus, eigene Sounds erlauben, Pause zwischen zwei Aktionen pro Person (Standard 20 Sekunden). Admins selbst haben keine Pause.
+- **Für Admins** im Dialog: Belohnungen an/aus, Kosten, Abklingzeit auf Twitch (Standard 20 Sekunden), eigene Sounds erlauben, Startdatum. „Auf Twitch übernehmen“ gleicht die Belohnungen an; vor dem Startdatum sind sie auf Twitch aus – danach beim nächsten Öffnen des Dialogs durch einen Admin automatisch an.
 
-Die Datenbank prüft Pause und Freigabe selbst (`send_prank`), am Browser vorbei geht nichts. Der Feed `pranks` enthält nur Anzeigename, Gegenstand und Sound – keine Nutzer-IDs –, damit OBS ihn ohne Anmeldung lesen kann.
+Direkt von der Webseite lässt die Datenbank nur Admins werfen (`send_prank`); alle anderen gehen über Kanalpunkte (`twitch-eventsub`). Der Feed `pranks` enthält nur Anzeigename, Gegenstand und Sound – keine Nutzer-IDs –, damit OBS ihn ohne Anmeldung lesen kann.
 
 ## Fortnite-Bingo
 
@@ -252,7 +253,7 @@ Kachel im Fahrplan. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql
 3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 Bilder, für 4×4 16, für 3×3 8.
 4. Im Stream die gefundenen Items auf der Karte anklicken. Eine volle Reihe, Spalte oder Diagonale zeigt „Bingo!“ – auf der Seite und im Overlay, mit Applaus.
 
-Zuschauer sehen die Karte nur an. **Im Stream zeigen** blendet sie im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
+Zuschauer sehen Daves Karte nur an. Unter **Meine Karte** zieht sich jeder seine eigene Karte aus denselben Bildern und kreuzt selbst ab (gespeichert in `bingo_player_cards`, nur für einen selbst sichtbar). **Im Stream zeigen** blendet Daves Karte im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 ## Startdatum für Zuschauer
 

@@ -132,6 +132,8 @@ export type Connection = {
   expires_at: string;
   reward_id: string | null;
   subscription_id: string | null;
+  prank_throw_reward_id?: string | null;
+  prank_sound_reward_id?: string | null;
 };
 
 // Verbindung laden und Token bei Bedarf erneuern

@@ -20,6 +20,7 @@ const ERRORS = [
   [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
+  [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
   [/relation "public\.bingo_(items|card)"|could not find the (table|function) '?public\.bingo_/i, 'In der Datenbank fehlt das Fortnite-Bingo: supabase/migrations/20260924120000_bingo.sql im SQL Editor ausführen.'],
   [/exceeded the maximum allowed size|payload too large|entity too large/i, 'Die Datei ist zu groß (höchstens 1 MB).'],
   [/mime type|invalid.*content.?type/i, 'Dieses Dateiformat geht nicht. Bitte MP3, OGG, WAV oder M4A nehmen.'],
@@ -148,14 +149,21 @@ async function createSupabaseApi() {
     // Fehlt die Migration …_pranks.sql, schlägt getPrankSettings fehl und
     // app.js zeigt statt der Aktionen einen Hinweis.
     async getPrankSettings() {
+      // throw_cost/sound_cost kamen mit …_channel_points.sql – fehlen sie noch, trotzdem laden
+      const { data, error } = await sb.from('prank_settings').select('enabled, cooldown_seconds, allow_uploads, throw_cost, sound_cost').eq('id', 1).single();
+      if (!error) return data;
       return unwrap(await sb.from('prank_settings').select('enabled, cooldown_seconds, allow_uploads').eq('id', 1).single());
     },
     async updatePrankSettings(patch) {
       return unwrap(await sb.from('prank_settings')
         .update({ ...patch, updated_at: new Date().toISOString() })
         .eq('id', 1)
-        .select('enabled, cooldown_seconds, allow_uploads')
+        .select('*')
         .single());
+    },
+    // Kanalpunkte-Belohnungen fürs Ärgern auf Twitch anlegen bzw. abgleichen (nur Admins)
+    async syncPrankRewards() {
+      return invoke('twitch-oauth', { action: 'sync_pranks' });
     },
     async getPranks(limit = 12) {
       return unwrap(await sb.from('pranks').select('*').order('created_at', { ascending: false }).limit(limit));
@@ -254,6 +262,19 @@ async function createSupabaseApi() {
     },
     async updateBingoCard(patch) {
       return unwrap(await sb.from('bingo_card').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', 1).select().single());
+    },
+    // Eigene Bingo-Karte (nur für einen selbst sichtbar)
+    async getMyBingo() {
+      return unwrap(await sb.from('bingo_player_cards').select('size, cells, marked, created_at').maybeSingle());
+    },
+    async saveMyBingo(card) {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) throw new Error('Bitte zuerst anmelden.');
+      return unwrap(await sb.from('bingo_player_cards')
+        .upsert({ user_id: user.id, size: card.size, cells: card.cells, marked: card.marked, created_at: card.created_at, updated_at: new Date().toISOString() })
+        .select('size, cells, marked, created_at')
+        .single());
     },
     onBingo(cb) {
       sb.channel('bingo-feed')
@@ -415,7 +436,12 @@ function createLocalApi() {
 
     // ---------- Ärgere den Dave (Demo) ----------
     // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
-    async getPrankSettings() { return store.get('prank_settings', { enabled: true, cooldown_seconds: 20, allow_uploads: true }); },
+    async getPrankSettings() {
+      return { enabled: true, cooldown_seconds: 20, allow_uploads: true, throw_cost: 500, sound_cost: 300, ...store.get('prank_settings', {}) };
+    },
+    async syncPrankRewards() {
+      throw new Error('Im Demo-Modus nicht verfügbar. Die Belohnungen braucht Twitch und Supabase.');
+    },
     async updatePrankSettings(patch) {
       const next = { ...(await this.getPrankSettings()), ...patch };
       store.set('prank_settings', next);
@@ -424,15 +450,8 @@ function createLocalApi() {
     async getPranks(limit = 12) { return store.get('pranks', []).slice(0, limit); },
     async sendPrank(kind, item, soundId = null) {
       const profile = await this.getProfile(current);
-      const cfg = await this.getPrankSettings();
-      if (!cfg.enabled && !profile.is_admin) {
-        throw Object.assign(new Error('Dave hat „Ärgere den Dave“ gerade pausiert.'), { paused: true });
-      }
-      const last = store.get('prank_last', {});
-      const left = Math.ceil(((last[current.email] ?? 0) + cfg.cooldown_seconds * 1000 - Date.now()) / 1000);
-      if (!profile.is_admin && left > 0) {
-        throw Object.assign(new Error(`Kurz durchatmen: noch ${left} Sekunden bis zur nächsten Aktion.`), { wait: left });
-      }
+      // wie send_prank: Zuschauer lösen über Kanalpunkte aus, hier nur Admins
+      if (!profile.is_admin) throw new Error('„Ärgere den Dave“ geht über Kanalpunkte im Twitch-Chat von Dave.');
       let sound = null;
       if (soundId) {
         sound = store.get('sounds', []).find((x) => x.id === soundId);
@@ -447,7 +466,6 @@ function createLocalApi() {
         label: sound?.name ?? '',
         requested_by: profile.username,
       };
-      store.set('prank_last', { ...last, [current.email]: Date.now() });
       store.set('pranks', [prank, ...store.get('pranks', [])].slice(0, 30));
       setTimeout(() => prankListeners.forEach((cb) => cb(prank)), 50);
       return prank;
@@ -535,6 +553,12 @@ function createLocalApi() {
       return saveCard({ ...store.get('bingo_card', null), ...patch });
     },
     onBingo(cb) { bingoListeners.push(cb); },
+    async getMyBingo() { return store.get(`my_bingo_${current?.email}`, null); },
+    async saveMyBingo(card) {
+      const next = { size: card.size, cells: card.cells, marked: card.marked, created_at: card.created_at };
+      store.set(`my_bingo_${current?.email}`, next);
+      return next;
+    },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
       const profile = await this.getProfile(current);
