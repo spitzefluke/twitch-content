@@ -1,6 +1,7 @@
 // Twitch mit dem Stellwerk verbinden.
 //   POST {action:"start"}          → Twitch-Login-URL für Daves Kanal (angemeldeter User nötig)
 //   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
+//   POST {action:"sync_pranks"}    → Kanalpunkte-Belohnungen fürs Ärgern anlegen/abgleichen (nur Admin)
 //   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für Daves Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
@@ -8,8 +9,9 @@ import {
   CodedError, corsHeaders, db, env, getAppToken, getConnection, getUserFromRequest,
   helix, HelixError, json, oauthRedirectUri, startTwitchLogin, twitchToken,
 } from "../_shared/twitch.ts";
+import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 
-const EVENT_TYPE = "channel.channel_points_custom_reward_redemption.add";
+const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -24,6 +26,7 @@ Deno.serve(async (req) => {
     try {
       if (action === "start") return json({ url: await startTwitchLogin(user.id, "broadcaster") });
       if (action === "disconnect") return await disconnect(user.id);
+      if (action === "sync_pranks") return await syncPranks(user.id);
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error(e);
@@ -79,7 +82,7 @@ async function handleCallback(url: URL) {
     const expected = Deno.env.get("BROADCASTER_LOGIN")?.toLowerCase();
     if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
 
-    const { data: previous } = await db.from("twitch_connection").select("reward_id").eq("id", 1).maybeSingle();
+    const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
     const reward = await ensureReward(me.id, tok.access_token, previous?.reward_id);
 
     const base = {
@@ -105,7 +108,20 @@ async function handleCallback(url: URL) {
     // danach das Einrichten des Webhooks noch scheitern sollte.
     await db.from("profiles").update({ is_admin: true }).eq("id", st.user_id);
 
-    const subscriptionId = await ensureSubscription(me.id, reward.id);
+    // Belohnungen fürs Ärgern: Scheitert das, bleibt das Glücksrad trotzdem verbunden.
+    try {
+      await syncPrankRewards({
+        ...base,
+        subscription_id: null,
+        prank_throw_reward_id: previous?.prank_throw_reward_id ?? null,
+        prank_sound_reward_id: previous?.prank_sound_reward_id ?? null,
+      });
+    } catch (e) {
+      console.error("Belohnungen fürs Ärgern nicht angelegt:", e);
+    }
+
+    // Ein Abo für alle Einlösungen – Glücksrad und Ärgern
+    const subscriptionId = await ensureRedemptionSubscription(me.id, eventsubCallback(), env("EVENTSUB_SECRET"));
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
 
     return backToSite({ twitch: "connected" });
@@ -180,29 +196,22 @@ async function ensureReward(broadcasterId: string, token: string, knownId?: stri
   }
 }
 
-async function ensureSubscription(broadcasterId: string, rewardId: string) {
-  const appToken = await getAppToken();
-  const existing = await helix("eventsub/subscriptions", appToken, { query: { type: EVENT_TYPE } });
-  for (const sub of existing.data ?? []) {
-    if (sub.condition?.broadcaster_user_id === broadcasterId) {
-      await helix("eventsub/subscriptions", appToken, { method: "DELETE", query: { id: sub.id } });
-    }
+// Admin: Belohnungen fürs Ärgern jetzt auf den Stand der Einstellungen bringen
+// (Kosten, Abklingzeit, an/aus, Startdatum) – und das Einlösungs-Abo prüfen.
+async function syncPranks(userId: string) {
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Belohnungen ändern." }, 403);
+  const conn = await getConnection();
+  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Dave muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
+  try {
+    const result = await syncPrankRewards(conn);
+    const subscriptionId = await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"));
+    await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+    return json(result);
+  } catch (e) {
+    console.error(e);
+    return json({ error: (e as Error).message }, e instanceof CodedError ? 400 : 500);
   }
-  // Twitch ruft dabei sofort twitch-eventsub zur Verifizierung auf
-  const created = await helix("eventsub/subscriptions", appToken, {
-    method: "POST",
-    body: {
-      type: EVENT_TYPE,
-      version: "1",
-      condition: { broadcaster_user_id: broadcasterId, reward_id: rewardId },
-      transport: {
-        method: "webhook",
-        callback: `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`,
-        secret: env("EVENTSUB_SECRET"),
-      },
-    },
-  });
-  return created.data[0].id as string;
 }
 
 async function disconnect(userId: string) {
@@ -216,11 +225,12 @@ async function disconnect(userId: string) {
       await helix("eventsub/subscriptions", appToken, { method: "DELETE", query: { id: conn.subscription_id } })
         .catch((e) => console.warn(e));
     }
-    if (conn.reward_id) {
-      // Belohnung deaktivieren statt löschen – beim erneuten Verbinden wird sie wieder aktiviert
+    // Belohnungen deaktivieren statt löschen – beim erneuten Verbinden werden sie wieder aktiviert
+    for (const rewardId of [conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id]) {
+      if (!rewardId) continue;
       await helix("channel_points/custom_rewards", conn.access_token, {
         method: "PATCH",
-        query: { broadcaster_id: conn.broadcaster_id, id: conn.reward_id },
+        query: { broadcaster_id: conn.broadcaster_id, id: rewardId },
         body: { is_enabled: false },
       }).catch((e) => console.warn(e));
     }

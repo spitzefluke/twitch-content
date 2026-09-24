@@ -147,41 +147,24 @@ create table if not exists public.prank_cooldowns (
 );
 alter table public.prank_cooldowns enable row level security;
 
--- Einziger Weg in den Feed: prüft Anmeldung, Pause und ob Dave das Ärgern erlaubt.
--- Admins sind von der Pause ausgenommen und dürfen auch, wenn es ausgeschaltet ist.
+-- Von der Webseite aus nur für Admins (Zuschauer: Kanalpunkte, siehe twitch-eventsub).
+-- Gleiche Fassung wie in …_channel_points.sql, damit die Reihenfolge beim
+-- erneuten Ausführen egal ist.
 create or replace function public.send_prank(p_kind text, p_item text, p_sound uuid default null)
 returns public.pranks language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
-  admin boolean := public.is_admin();
-  cfg public.prank_settings;
   who text;
-  last timestamptz;
-  wait_s int;
-  starts timestamptz;
   snd public.sounds;
   result public.pranks;
 begin
   if uid is null then
     raise exception 'Bitte zuerst anmelden.';
   end if;
-  select * into cfg from public.prank_settings where id = 1;
-  if not coalesce(cfg.enabled, true) and not admin then
-    raise exception 'Dave hat „Ärgere den Dave“ gerade pausiert.' using hint = 'paused';
-  end if;
-  -- Vor dem Start (Startdatum der Kachel) dürfen nur Admins.
-  select target_at into starts from public.tiles where kind = 'prank' order by position limit 1;
-  if not admin and starts > now() then
-    raise exception '„Ärgere den Dave“ startet erst am % Uhr.',
-      to_char(starts at time zone 'Europe/Berlin', 'DD.MM.YYYY "um" HH24:MI') using hint = 'locked';
-  end if;
-
-  if not admin and coalesce(cfg.cooldown_seconds, 0) > 0 then
-    select last_at into last from public.prank_cooldowns where user_id = uid for update;
-    if last is not null and last > now() - make_interval(secs => cfg.cooldown_seconds) then
-      wait_s := ceil(extract(epoch from (last + make_interval(secs => cfg.cooldown_seconds) - now())))::int;
-      raise exception 'Kurz durchatmen: noch % Sekunden bis zur nächsten Aktion.', wait_s using hint = 'cooldown:' || wait_s;
-    end if;
+  -- Zuschauer ärgern Dave über Kanalpunkte auf Twitch (Edge Function twitch-eventsub).
+  -- Direkt von der Webseite dürfen nur Admins auslösen, z. B. zum Testen.
+  if not public.is_admin() then
+    raise exception '„Ärgere den Dave“ geht über Kanalpunkte im Twitch-Chat von Dave.' using hint = 'points';
   end if;
 
   who := coalesce((select username from public.profiles where id = uid), 'jemand');
@@ -202,8 +185,6 @@ begin
     raise exception 'Unbekannte Aktion.';
   end if;
 
-  insert into public.prank_cooldowns (user_id, last_at) values (uid, now())
-    on conflict (user_id) do update set last_at = excluded.last_at;
   -- Das Overlay braucht nur die letzten Minuten, die Seite die letzten Einträge.
   delete from public.pranks where created_at < now() - interval '2 days';
   return result;

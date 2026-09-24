@@ -480,10 +480,7 @@
             <ellipse class="dave-mouth-hit" cx="110" cy="162" rx="8" ry="9" fill="#5a1a1a"/>
           </svg>
         </div>
-        <div class="prank-meter" id="prank-meter">
-          <span class="prank-meter-bar" id="prank-meter-bar"></span>
-          <span class="prank-meter-text" id="prank-meter-text">Bereit – such dir was aus!</span>
-        </div>
+        <div class="prank-howto" id="prank-howto"></div>
         <div class="history prank-log">
           <h3>Zuletzt im Stream</h3>
           <ol id="prank-log"></ol>
@@ -498,12 +495,12 @@
         </div>
 
         <section id="prank-pane-throw" class="prank-pane" role="tabpanel" aria-labelledby="prank-tab-throw">
-          <p class="prank-lead">Such dir was aus – es fliegt Dave im Stream direkt vor die Kamera.</p>
+          <p class="prank-lead" id="prank-lead-throw"></p>
           <div class="prank-items" id="prank-items"></div>
         </section>
 
         <section id="prank-pane-sound" class="prank-pane" role="tabpanel" aria-labelledby="prank-tab-sound" hidden>
-          <p class="prank-lead">Klick spielt den Sound im Stream. 🎧 hört nur hier probe.</p>
+          <p class="prank-lead" id="prank-lead-sound"></p>
           <div class="prank-board" id="prank-board"></div>
           <h3 class="prank-h3">Eigene Sounds</h3>
           <ul class="prank-sounds" id="prank-sounds"></ul>
@@ -530,14 +527,18 @@
           <label class="toggle">
             <input type="checkbox" name="enabled">
             <span class="toggle-ui" aria-hidden="true"></span>
-            Zuschauer dürfen Dave ärgern
+            Kanalpunkte-Belohnungen auf Twitch aktiv
           </label>
+          <div class="prank-costs">
+            <label class="field"><span>🍅 Werfen kostet</span><input type="number" name="throw_cost" min="1" max="1000000" step="1" inputmode="numeric"></label>
+            <label class="field"><span>🔊 Sound kostet</span><input type="number" name="sound_cost" min="1" max="1000000" step="1" inputmode="numeric"></label>
+          </div>
           <label class="toggle">
             <input type="checkbox" name="allow_uploads">
             <span class="toggle-ui" aria-hidden="true"></span>
             Alle dürfen eigene Sounds hochladen
           </label>
-          <label class="field"><span>Pause zwischen zwei Aktionen (pro Person)</span>
+          <label class="field"><span>Abklingzeit auf Twitch (nach jeder Einlösung)</span>
             <select name="cooldown_seconds">
               <option value="0">keine</option>
               <option value="5">5 Sekunden</option>
@@ -549,7 +550,11 @@
               <option value="300">5 Minuten</option>
             </select>
           </label>
-          <p class="form-hint">Admins haben keine Pause und dürfen auch, wenn es ausgeschaltet ist.</p>
+          <div class="prank-sync">
+            <p class="prank-sync-status" id="prank-sync-status" role="status"></p>
+            <button class="btn btn--ghost btn--sm" type="button" id="prank-sync">Auf Twitch übernehmen</button>
+          </div>
+          <p class="form-hint">Änderungen gehen beim Speichern automatisch zu Twitch. Du als Admin löst hier direkt aus, ohne Kanalpunkte.</p>
           <div class="tile-start">
             <label class="field"><span>Für Zuschauer freigeschaltet ab</span>
               <input type="datetime-local" data-tile-start="prank">
@@ -573,13 +578,48 @@
     <p class="prank-note" id="bingo-note" hidden></p>
     <div class="bingo-layout">
       <div class="bingo-main">
-        <div class="bingo-status" id="bingo-status" aria-live="polite"></div>
-        <div class="bingo-card-wrap">
-          <div class="bingo-grid" id="bingo-grid"></div>
-          <div class="bingo-win" id="bingo-win" aria-hidden="true">Bingo!</div>
+        <div class="segmented bingo-tabs" role="tablist" data-active="dave">
+          <button type="button" role="tab" id="bingo-tab-dave" aria-selected="true" aria-controls="bingo-pane-dave" data-tab="dave">Daves Karte</button>
+          <button type="button" role="tab" id="bingo-tab-mine" aria-selected="false" aria-controls="bingo-pane-mine" data-tab="mine">Meine Karte</button>
+          <span class="segmented-thumb" aria-hidden="true"></span>
         </div>
-        <p class="bingo-empty" id="bingo-empty" hidden>Noch keine Karte gezogen.</p>
-        <p class="bingo-help" id="bingo-help">Findet Dave ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
+
+        <!-- Daves Karte: die im Stream -->
+        <div class="bingo-pane" id="bingo-pane-dave" role="tabpanel" aria-labelledby="bingo-tab-dave">
+          <div class="bingo-status" id="bingo-status" aria-live="polite"></div>
+          <div class="bingo-card-wrap">
+            <div class="bingo-grid" id="bingo-grid"></div>
+            <div class="bingo-win" id="bingo-win" aria-hidden="true">Bingo!</div>
+          </div>
+          <p class="bingo-empty" id="bingo-empty" hidden>Noch keine Karte gezogen.</p>
+          <p class="bingo-help" id="bingo-help">Die Karte aus Daves Stream. Findet Dave ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
+        </div>
+
+        <!-- Meine Karte: selbst ziehen und selbst abkreuzen -->
+        <div class="bingo-pane" id="bingo-pane-mine" role="tabpanel" aria-labelledby="bingo-tab-mine" hidden>
+          <div class="bingo-mine-bar">
+            <label class="field"><span>Größe</span>
+              <select id="my-bingo-size">
+                <option value="3">3 × 3</option>
+                <option value="4">4 × 4</option>
+                <option value="5" selected>5 × 5</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="my-bingo-free" checked>
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Mitte frei
+            </label>
+            <button class="btn btn--primary" type="button" id="my-bingo-new">Neue Karte ziehen</button>
+          </div>
+          <div class="bingo-status" id="my-bingo-status" aria-live="polite"></div>
+          <div class="bingo-card-wrap">
+            <div class="bingo-grid" id="my-bingo-grid"></div>
+            <div class="bingo-win" id="my-bingo-win" aria-hidden="true">Bingo!</div>
+          </div>
+          <p class="bingo-empty" id="my-bingo-empty" hidden></p>
+          <p class="bingo-help">Deine eigene Karte – nur du siehst sie. Findet Dave im Stream eins deiner Items, klick es an und kreuz es ab. Nochmal klicken nimmt das Kreuz wieder weg.</p>
+        </div>
       </div>
 
       <div class="bingo-side" id="bingo-admin" hidden>

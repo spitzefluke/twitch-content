@@ -1,9 +1,13 @@
 // Webhook für Twitch EventSub.
-// Wird von Twitch aufgerufen, wenn ein Zuschauer die Kanalpunkte-Belohnung „Glücksrad“ einlöst –
-// funktioniert also auch, wenn niemand die Website offen hat.
+// Wird von Twitch aufgerufen, wenn ein Zuschauer in Daves Kanal Kanalpunkte einlöst:
+//   „Glücksrad“            → Rad drehen, Ergebnis in den Chat
+//   „🍅 Wirf was auf Dave“  → Wurf im OBS-Overlay (eingetippt: was fliegt)
+//   „🔊 Sound für Dave“     → Sound im OBS-Overlay (eingetippt: welcher)
+// Funktioniert also auch, wenn niemand die Website offen hat.
 import {
   chatText, CodedError, db, env, getConnection, helix, performSpin, sendChat, type Connection,
 } from "../_shared/twitch.ts";
+import { BOARD_SOUNDS, matchBoardSound, matchCustomSound, matchThrow, prankState, THROW_ITEMS } from "../_shared/pranks.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -63,12 +67,16 @@ type Redemption = {
   broadcaster_user_id: string;
   user_login: string;
   user_name: string;
+  user_input?: string;
   reward: { id: string; title: string; cost: number };
 };
 
 async function handleRedemption(event: Redemption) {
   const conn = await getConnection();
-  if (!conn || event.reward.id !== conn.reward_id) return;
+  if (!conn) return;
+  if (event.reward.id === conn.prank_throw_reward_id) return handlePrank(conn, event, "throw");
+  if (event.reward.id === conn.prank_sound_reward_id) return handlePrank(conn, event, "sound");
+  if (event.reward.id !== conn.reward_id) return; // andere Belohnungen gehen uns nichts an
 
   let spin;
   try {
@@ -93,4 +101,48 @@ function setStatus(conn: Connection, event: Redemption, status: "FULFILLED" | "C
     query: { broadcaster_id: conn.broadcaster_id, reward_id: event.reward.id, id: event.id },
     body: { status },
   });
+}
+
+// ---------- Ärgere den Dave ----------
+async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | "sound") {
+  const input = (event.user_input ?? "").slice(0, 100);
+  const refund = async (message: string) => {
+    await setStatus(conn, event, "CANCELED").catch(console.error); // Punkte zurück
+    await sendChat(conn, `@${event.user_login} ${message} Deine Kanalpunkte sind zurück.`).catch((e) => console.warn(e));
+  };
+
+  const { active, started, startsAt } = await prankState();
+  if (!active) {
+    const when = startsAt && !started
+      ? `startet erst am ${new Date(startsAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr.`
+      : "ist gerade pausiert.";
+    return refund(`„Ärgere den Dave“ ${when}`);
+  }
+
+  let row: Record<string, unknown> | null = null;
+  let text = "";
+  if (kind === "throw") {
+    const item = matchThrow(input);
+    if (!item) return refund(`„${input}“ kenne ich nicht. Werfen kannst du: ${THROW_ITEMS.map((i) => i.name).join(", ")}.`);
+    row = { kind: "throw", item: item.id };
+    text = item.id === "flowers" ? `💐 ${event.user_name} schenkt Dave Blumen!` : `🎯 ${event.user_name} wirft: ${item.name}!`;
+  } else {
+    const board = matchBoardSound(input);
+    const custom = board ? null : await matchCustomSound(input);
+    if (!board && !custom) {
+      return refund(`Den Sound „${input}“ gibt es nicht. Zum Beispiel: ${BOARD_SOUNDS.map((b) => b.name).join(", ")} – eigene Sounds stehen auf der Webseite.`);
+    }
+    row = board ? { kind: "sound", item: board.id } : { kind: "sound", item: "custom", sound_path: custom!.path, label: custom!.name };
+    text = `🔊 ${event.user_name} spielt „${board?.name ?? custom!.name}“`;
+  }
+
+  const { error } = await db.from("pranks").insert({ ...row, requested_by: event.user_name, redemption_id: event.id });
+  if (error) {
+    if (error.code === "23505") return; // Twitch hat erneut zugestellt
+    await setStatus(conn, event, "CANCELED").catch(console.error);
+    throw error;
+  }
+  await db.from("pranks").delete().lt("created_at", new Date(Date.now() - 2 * 86400_000).toISOString());
+  await sendChat(conn, text).catch((e) => console.warn("Chat:", e));
+  await setStatus(conn, event, "FULFILLED").catch(console.error);
 }

@@ -570,7 +570,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
   transition: transform .35s var(--ease-out);
 }
 .segmented[data-active="register"] .segmented-thumb,
-.segmented[data-active="sound"] .segmented-thumb { transform: translateX(100%); }
+.segmented[data-active="sound"] .segmented-thumb,
+.segmented[data-active="mine"] .segmented-thumb { transform: translateX(100%); }
 
 .auth-form { display: grid; gap: 15px; animation: view-in .35s var(--ease-out); }
 .field { display: grid; gap: 6px; }
@@ -1936,3 +1937,29 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .tile-start { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .tile-start[hidden] { display: none; }
 .tile-start input { background: var(--bg); }
+
+/* Ärgere den Dave über Kanalpunkte */
+.prank-howto {
+  display: block; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; color: #c4cad6;
+  background: rgba(145, 70, 255, .08); border: 1px solid rgba(145, 70, 255, .35);
+}
+.prank-howto b { color: var(--text); }
+.prank-howto small { display: block; margin-top: 6px; color: var(--amber-2); }
+.prank-twitch-link { display: inline-block; margin-top: 6px; color: #c9a8ff; font-weight: 600; }
+.prank-costs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.prank-costs input { background: var(--bg); }
+.prank-sync { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.prank-sync-status { margin: 0; font-size: 13px; color: #c4cad6; }
+#prank-dialog.is-viewer .prank-item:hover .prank-item-emoji { transform: rotate(-8deg) scale(1.08); }
+
+/* Bingo: eigene Karte */
+.bingo-tabs { margin-bottom: 0; }
+.bingo-pane { display: grid; gap: 12px; }
+.bingo-pane[hidden] { display: none; }
+.bingo-mine-bar { display: grid; grid-template-columns: minmax(0, 140px) auto minmax(0, 1fr); gap: 12px; align-items: end; }
+.bingo-mine-bar .toggle { min-height: 46px; }
+.bingo-mine-bar .btn { min-height: 46px; }
+@media (max-width: 560px) {
+  .bingo-mine-bar { grid-template-columns: minmax(0, 1fr) auto; }
+  .bingo-mine-bar .btn { grid-column: 1 / -1; }
+}

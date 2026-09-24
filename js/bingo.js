@@ -65,6 +65,25 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
   }));
 }
 
+// Zufällige Karte aus den hochgeladenen Bildern (für die eigene Karte).
+// Daves Karte zieht die Datenbank (bingo_new_card), mit derselben Regel.
+export function drawCard(items, size, free = true) {
+  const withFree = free && size % 2 === 1;
+  const need = size * size - (withFree ? 1 : 0);
+  if (items.length < need) {
+    throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – hochgeladen sind erst ${items.length}.`);
+  }
+  const pool = items.map(({ id, name, path }) => ({ id, name, path }));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const cells = pool.slice(0, need);
+  const center = Math.floor((size * size) / 2);
+  if (withFree) cells.splice(center, 0, { free: true });
+  return { size, cells, marked: withFree ? [center] : [], created_at: new Date().toISOString() };
+}
+
 // "chug-jug_legendary.png" → "Chug Jug Legendary"
 export function nameFromFile(fileName) {
   return fileName
