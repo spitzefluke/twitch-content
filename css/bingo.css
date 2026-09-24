@@ -1,0 +1,43 @@
+/* Fortnite-Bingo: die Karte (js/bingo.js). Gilt auf der Webseite und im OBS-Overlay.
+   --n = Felder pro Reihe, Größe über font-size des Rasters. */
+.bingo-grid {
+  --gap: .35em;
+  display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: var(--gap);
+}
+.bingo-cell {
+  position: relative; aspect-ratio: 1; overflow: hidden; min-width: 0;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center;
+  padding: .3em .25em .25em; border-radius: .6em;
+  background: linear-gradient(180deg, #2a5bd7, #13307a);
+  border: 1px solid rgba(255, 255, 255, .18);
+  color: #fff; font: inherit; text-align: center;
+  box-shadow: inset 0 -.25em 0 rgba(0, 0, 0, .25);
+}
+button.bingo-cell { cursor: pointer; transition: transform .15s var(--ease-spring, ease), filter .2s; }
+button.bingo-cell:hover { transform: translateY(-2px); filter: brightness(1.12); }
+button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2px; }
+.bingo-cell img { width: 100%; height: 100%; min-height: 0; object-fit: contain; filter: drop-shadow(0 .15em .2em rgba(0, 0, 0, .5)); }
+.bingo-name {
+  width: 100%; padding-top: .15em;
+  font-size: .62em; font-weight: 700; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .7);
+}
+.bingo-cell.is-free { background: linear-gradient(180deg, #ffc24a, #c26410); }
+.bingo-free { display: grid; place-items: center; font-size: 1.9em; line-height: 1; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
+.bingo-free b { font-size: .34em; text-transform: uppercase; letter-spacing: .08em; }
+/* Stempel wie mit einem Bingo-Marker */
+.bingo-stamp {
+  position: absolute; inset: 8%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 40% 38%, rgba(255, 90, 160, .8), rgba(255, 45, 125, .72) 60%, rgba(214, 20, 98, .7));
+  box-shadow: 0 0 0 .12em rgba(255, 255, 255, .25) inset;
+  display: grid; place-items: center;
+}
+.bingo-stamp::after { content: "✓"; font-size: 1.8em; font-weight: 900; color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, .35); }
+.bingo-cell.is-stamped .bingo-stamp { animation: bingo-stamp .45s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes bingo-stamp { 0% { transform: scale(1.8) rotate(-20deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.bingo-cell.is-line { border-color: #ffd36b; box-shadow: inset 0 -.25em 0 rgba(0, 0, 0, .25), 0 0 .8em rgba(255, 211, 107, .55); }
+.bingo-cell.is-line .bingo-stamp { background: radial-gradient(circle at 40% 38%, rgba(255, 214, 102, .85), rgba(255, 170, 30, .78)); }
+@media (prefers-reduced-motion: reduce) {
+  .bingo-cell.is-stamped .bingo-stamp { animation: none; }
+}

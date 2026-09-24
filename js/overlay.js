@@ -17,6 +17,8 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
+//   bingo=tr|…|0               Position der Bingo-Karte (Standard tr = oben rechts), 0 = aus
+//   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
 //   prank=0                    „Ärgere den Dave“ aus (Würfe und Sounds)
 //   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
@@ -25,6 +27,7 @@ import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
+import { bingoState, renderBingoGrid } from './bingo.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -58,6 +61,8 @@ const opt = {
   bg: number('bg', 94, 0, 100) / 100,
   accent: /^[0-9a-f]{6}$/i.test(accent) ? `#${accent}` : null,
   volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
+  bingo: position(params.get('bingo'), 'tr'),
+  bsize: number('bsize', 100, 50, 200) / 100,
   prank: flag('prank', true),
   cam: camera(params.get('cam')),
   psize: number('psize', 100, 50, 200) / 100,
@@ -82,12 +87,15 @@ root.setProperty('--ns', opt.nsize);
 root.setProperty('--m', `${opt.margin}px`);
 root.setProperty('--bga', opt.bg);
 root.setProperty('--ps', opt.psize);
+root.setProperty('--bs', opt.bsize);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
 $('ov-nlabel').textContent = opt.nlabel;
 if (opt.wheel) $('ov-spin').classList.add(`pos-${opt.wheel}`);
 else $('ov-spin').remove();
 if (opt.next) $('ov-next').classList.add(`pos-${opt.next}`);
+if (opt.bingo) $('ov-bingo').classList.add(`pos-${opt.bingo}`);
+else $('ov-bingo').remove();
 
 let variants = DEFAULT_VARIANTS;
 let tiles = [];
@@ -107,6 +115,7 @@ async function start() {
   if (opt.next) setupNext(source);
   if (opt.prank) setupPranks(source);
   else $('ov-pranks').remove();
+  if (opt.bingo) setupBingo(source);
 }
 
 // ============================================================
@@ -135,6 +144,13 @@ async function connect() {
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Würfe fehlgeschlagen'); });
     },
     soundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
+    bingoCard: async () => (await rows(sb.from('bingo_card').select('*').eq('id', 1).maybeSingle())) ?? null,
+    onBingo(cb) {
+      sb.channel('overlay-bingo')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
+    },
+    bingoUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`,
   };
 }
 
@@ -170,6 +186,11 @@ function demoSource() {
       });
     },
     soundUrl: (path) => read('sounds', []).find((x) => x.path === path)?.url ?? '',
+    bingoCard: async () => read('bingo_card', null),
+    onBingo(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
+    },
+    bingoUrl: (path) => read('bingo_items', []).find((i) => i.path === path)?.url ?? '',
   };
 }
 
@@ -414,6 +435,71 @@ function setupPranks(source) {
     setTimeout(fake, 4000);
     setInterval(fake, 7000);
   }
+}
+
+// ============================================================
+// Fortnite-Bingo
+// ============================================================
+// Zeigt die aktuelle Karte; neue Haken bekommen einen Stempel, eine volle
+// Linie ein großes "Bingo!". Ausgeblendete oder fehlende Karte = nichts zu sehen.
+async function setupBingo(source) {
+  const card$ = $('ov-bingo');
+  const grid = $('ov-bingo-grid');
+  const win = $('ov-bingo-win');
+  const sfx = new Sfx({ volume: opt.volume });
+  const urlFor = (path) => (path.startsWith('data:') ? path : source.bingoUrl(path));
+  let card = await source.bingoCard().catch((err) => { console.warn('Overlay: Bingo nicht verfügbar', err); return null; });
+  if (!card && opt.test) card = testCard();
+
+  function show(next, stamped = null) {
+    card = next;
+    const visible = !!card?.cells?.length && card.visible !== false;
+    card$.hidden = !visible;
+    if (!visible) return;
+    card$.style.setProperty('--n', card.size);
+    renderBingoGrid(grid, card, { urlFor, stamped });
+    const st = bingoState(card);
+    $('ov-bingo-progress').textContent = `${st.done}/${st.total}${st.count ? ` · ${st.count}× Bingo` : ''}`;
+  }
+
+  function update(next) {
+    const same = card && next && card.created_at === next.created_at;
+    const before = same ? bingoState(card).count : 0;
+    const known = new Set(same ? card.marked : []);
+    const stamped = same ? (next.marked ?? []).find((i) => !known.has(i)) ?? null : null;
+    show(next, stamped);
+    if (stamped !== null) sfx.hit('thud');
+    if (same && bingoState(next).count > before) {
+      win.classList.remove('is-on');
+      void win.offsetWidth;
+      win.classList.add('is-on');
+      sfx.play('applause');
+      sfx.play('gong');
+    }
+  }
+
+  show(card);
+  source.onBingo(update);
+
+  // Probe: alle 9 Sekunden ein zufälliges Feld abhaken (nur hier, nicht gespeichert)
+  if (opt.test) {
+    setInterval(() => {
+      if (!card) return;
+      const open = card.cells.map((c, i) => i).filter((i) => !card.cells[i].free && !card.marked.includes(i));
+      const marked = open.length ? [...card.marked, open[Math.floor(Math.random() * open.length)]] : card.cells.flatMap((c, i) => (c.free ? [i] : []));
+      update({ ...card, marked });
+    }, 9000);
+  }
+}
+
+// Probekarte für die Vorschau, solange noch keine echte gezogen ist
+function testCard() {
+  const items = [['🔫', 'Sturmgewehr'], ['💊', 'Medkit'], ['🧪', 'Schildtrank'], ['🎣', 'Angel'], ['🏹', 'Bogen'],
+    ['💣', 'Granate'], ['🍌', 'Banane'], ['🛡️', 'Schild'], ['🚗', 'Auto'], ['🔑', 'Tresorschlüssel'], ['🍄', 'Pilz'], ['📦', 'Truhe']];
+  const svg = (emoji) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="72" font-size="70" text-anchor="middle">${emoji}</text></svg>`)}`;
+  const cells = items.sort(() => Math.random() - 0.5).slice(0, 8).map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e) }));
+  cells.splice(4, 0, { free: true });
+  return { size: 3, cells, marked: [4], visible: true, created_at: 'test' };
 }
 
 // ============================================================

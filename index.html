@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/prank-fx.css">
+  <link rel="stylesheet" href="css/bingo.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -554,6 +555,73 @@
     </div>
   </dialog>
 
+  <!-- ============ FORTNITE-BINGO ============ -->
+  <dialog id="bingo-dialog" class="dialog dialog--bingo" aria-labelledby="bingo-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Fortnite · live im Stream</p>
+        <h2 id="bingo-title">Fortnite-Bingo</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <p class="prank-note" id="bingo-note" hidden></p>
+    <div class="bingo-layout">
+      <div class="bingo-main">
+        <div class="bingo-status" id="bingo-status" aria-live="polite"></div>
+        <div class="bingo-card-wrap">
+          <div class="bingo-grid" id="bingo-grid"></div>
+          <div class="bingo-win" id="bingo-win" aria-hidden="true">Bingo!</div>
+        </div>
+        <p class="bingo-empty" id="bingo-empty" hidden>Noch keine Karte gezogen.</p>
+        <p class="bingo-help" id="bingo-help">Findet Dave ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
+      </div>
+
+      <div class="bingo-side" id="bingo-admin" hidden>
+        <section class="bingo-box">
+          <h3 class="prank-h3">Karte</h3>
+          <div class="bingo-new">
+            <label class="field"><span>Größe</span>
+              <select id="bingo-size">
+                <option value="3">3 × 3</option>
+                <option value="4">4 × 4</option>
+                <option value="5" selected>5 × 5</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="bingo-free" checked>
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Mitte frei
+            </label>
+          </div>
+          <button class="btn btn--primary btn--block" type="button" id="bingo-new-btn">Neue Karte ziehen</button>
+          <div class="bingo-actions">
+            <button class="btn btn--ghost btn--sm" type="button" id="bingo-clear-btn">Haken entfernen</button>
+            <label class="toggle">
+              <input type="checkbox" id="bingo-visible" checked>
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Im Stream zeigen
+            </label>
+          </div>
+          <p class="form-hint">Felder auf der Karte anklicken, um sie abzuhaken.</p>
+        </section>
+
+        <section class="bingo-box">
+          <h3 class="prank-h3">Bilder <small id="bingo-count"></small></h3>
+          <form id="bingo-upload" class="sound-form" novalidate>
+            <label class="sound-file">
+              <input type="file" name="files" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+              <span class="sound-file-text">🖼️ Bilder wählen … (mehrere gehen)</span>
+            </label>
+            <p class="form-hint">PNG, JPG oder WEBP. Der Name kommt aus dem Dateinamen und lässt sich danach ändern.</p>
+            <p class="form-msg" role="alert"></p>
+            <button class="btn btn--outline btn--block" type="submit">Hochladen</button>
+          </form>
+          <ul class="bingo-items" id="bingo-items"></ul>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
   <!-- ============ IDEE / COUNTDOWN ============ -->
   <dialog id="tile-dialog" class="dialog dialog--tile" aria-labelledby="tile-dialog-title">
     <div class="tile-dialog-hero" id="tile-dialog-hero">
@@ -601,7 +669,7 @@
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
     <div class="obs-body">
-      <p class="obs-lead">Als Browserquelle in OBS einbinden. Sobald jemand das Glücksrad dreht – per Kanalpunkte oder hier auf der Seite –, erscheint es klein im Bild, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown.</p>
+      <p class="obs-lead">Als Browserquelle in OBS einbinden. Sobald jemand das Glücksrad dreht – per Kanalpunkte oder hier auf der Seite –, erscheint es klein im Bild, dreht sich und zeigt das Ergebnis. Dazu laufen die nächste Abfahrt mit Countdown, das Fortnite-Bingo und alles, was Zuschauer auf Dave werfen.</p>
       <p class="obs-note" id="obs-note" hidden></p>
 
       <div class="obs-layout">
@@ -669,6 +737,25 @@
           <label class="field obs-range"><span>Nächste Idee nach <output name="rotate-out"></output></span>
             <input type="range" name="rotate" min="5" max="60" step="1" value="12">
           </label>
+        </fieldset>
+
+        <fieldset class="obs-group">
+          <legend>Fortnite-Bingo</legend>
+          <label class="field"><span>Position</span>
+            <select name="bingo">
+              <option value="tr" selected>oben rechts</option>
+              <option value="tc">oben Mitte</option>
+              <option value="tl">oben links</option>
+              <option value="br">unten rechts</option>
+              <option value="bc">unten Mitte</option>
+              <option value="bl">unten links</option>
+              <option value="0">nicht zeigen</option>
+            </select>
+          </label>
+          <label class="field obs-range"><span>Größe <output name="bsize-out"></output></span>
+            <input type="range" name="bsize" min="50" max="200" step="5" value="100">
+          </label>
+          <p class="obs-hint obs-wide">Zu sehen, sobald eine Karte gezogen ist. Ausblenden geht auch direkt im Bingo-Dialog.</p>
         </fieldset>
 
         <fieldset class="obs-group">
