@@ -3,7 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
-import { bingoState, drawCard, nameFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { RARITIES, bingoState, drawCard, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1585,6 +1585,7 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
       urlFor: (path) => state.api.bingoUrl(path),
       onCell: admin ? toggleBingoCell : null,
       stamped,
+      rarityOf: bingoRarityOf,
     });
   }
   $('#bingo-status').textContent = card
@@ -1630,11 +1631,27 @@ function renderBingoItems() {
       const value = name.value.trim();
       if (!value) { name.value = item.name; return; }
       try {
-        await state.api.renameBingoItem(item.id, value);
+        await state.api.updateBingoItem(item.id, { name: value });
         item.name = value;
       } catch (err) {
         name.value = item.name;
         toast(`Umbenennen fehlgeschlagen: ${germanError(err)}`, 'error');
+      }
+    });
+    const rarity = document.createElement('select');
+    rarity.className = `bingo-rarity-pick${item.rarity ? ` r-${item.rarity}` : ''}`;
+    rarity.setAttribute('aria-label', `Seltenheit von „${item.name}“`);
+    rarity.append(new Option('– keine –', ''), ...RARITIES.map((r) => new Option(r.name, r.id)));
+    rarity.value = item.rarity ?? '';
+    rarity.addEventListener('change', async () => {
+      const value = rarity.value || null;
+      try {
+        await state.api.updateBingoItem(item.id, { rarity: value });
+        item.rarity = value;
+        renderBingoDialog();
+      } catch (err) {
+        rarity.value = item.rarity ?? '';
+        toast(`Seltenheit nicht gespeichert: ${germanError(err)}`, 'error');
       }
     });
     const del = document.createElement('button');
@@ -1654,7 +1671,7 @@ function renderBingoItems() {
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    li.append(img, name, del);
+    li.append(img, name, rarity, del);
     return li;
   }));
 }
@@ -1677,6 +1694,12 @@ function celebrateBingo() {
   if (!$('#bingo-dialog').open) toast('BINGO! Eine Reihe ist voll.', 'ok', 5000);
 }
 
+// Aktuelle Seltenheit aus der Bilderliste (ein Admin kann sie nachträglich ändern)
+function bingoRarityOf(cell) {
+  const item = state.bingo.items.find((i) => i.id === cell.id);
+  return item ? item.rarity ?? null : undefined;
+}
+
 // ---------- Eigene Karte: selbst ziehen, selbst abkreuzen ----------
 function renderMyBingo(stamped = null) {
   const { mine, items, on } = state.bingo;
@@ -1696,7 +1719,7 @@ function renderMyBingo(stamped = null) {
   empty.hidden = !text;
   $('#my-bingo-new').disabled = !on || state.bingo.mineOn === false || !items.length;
   if (mine) {
-    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped });
+    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped, rarityOf: bingoRarityOf });
   }
 }
 
@@ -1796,7 +1819,7 @@ async function uploadBingoImages(e) {
       formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
       try {
         const blob = await shrinkImage(file);
-        const item = await state.api.addBingoItem(blob, nameFromFile(file.name));
+        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), rarityFromFile(file.name));
         state.bingo.items = [...state.bingo.items, item];
         done++;
       } catch (err) {
@@ -2054,6 +2077,7 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
   for (const key of OBS_PARTS) f.elements[key === 'wheel' ? 'wsize' : key === 'next' ? 'nsize' : 'bsize'].disabled = !f.elements[`${key}_on`].checked;
   f.psize.disabled = !f.prank.checked;
+  f.bstyle.disabled = !f.bingo_on.checked;
   saveObs(values);
   $('#obs-url').value = obsUrl();
 

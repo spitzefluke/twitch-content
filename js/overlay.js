@@ -21,6 +21,7 @@
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
 //   bingo=tr|…|0               Position der Bingo-Karte (Standard tr = oben rechts), 0 = aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
+//   bstyle=classic|neon|paper  Design der Bingo-Karte: bunt (Standard), Neon oder Papier
 //   prank=0                    „Ärgere den Dave“ aus (Würfe und Sounds)
 //   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
@@ -69,6 +70,7 @@ const opt = {
   volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
   bingo: position(params.get('bingo'), 'tr'),
   bsize: number('bsize', 100, 50, 200) / 100,
+  bstyle: ['neon', 'paper'].includes(params.get('bstyle')) ? params.get('bstyle') : 'classic',
   prank: flag('prank', true),
   cam: camera(params.get('cam')),
   psize: number('psize', 100, 50, 200) / 100,
@@ -102,7 +104,10 @@ if (opt.wheel) place($('ov-spin'), opt.wheel);
 else $('ov-spin').remove();
 if (opt.next) place($('ov-next'), opt.next);
 else $('ov-next').remove();
-if (opt.bingo) place($('ov-bingo'), opt.bingo);
+if (opt.bingo) {
+  place($('ov-bingo'), opt.bingo);
+  $('ov-bingo').classList.add(`bingo-style-${opt.bstyle}`);
+}
 else $('ov-bingo').remove();
 if (opt.edit) setupEdit();
 
@@ -177,6 +182,7 @@ async function connect() {
     },
     soundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
     bingoCard: async () => (await rows(sb.from('bingo_card').select('*').eq('id', 1).maybeSingle())) ?? null,
+    bingoItems: () => rows(sb.from('bingo_items').select('*')),
     onBingo(cb) {
       sb.channel('overlay-bingo')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
@@ -219,6 +225,7 @@ function demoSource() {
     },
     soundUrl: (path) => read('sounds', []).find((x) => x.path === path)?.url ?? '',
     bingoCard: async () => read('bingo_card', null),
+    bingoItems: async () => read('bingo_items', []),
     onBingo(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
     },
@@ -499,6 +506,14 @@ async function setupBingo(source) {
   const urlFor = (path) => (path.startsWith('data:') ? path : source.bingoUrl(path));
   let card = await source.bingoCard().catch((err) => { console.warn('Overlay: Bingo nicht verfügbar', err); return null; });
   if (!card && opt.test) card = testCard();
+  // Aktuelle Seltenheit der Bilder – ein Admin kann sie nachträglich ändern
+  let items = new Map();
+  const loadItems = async () => {
+    const list = await source.bingoItems().catch(() => []);
+    items = new Map(list.map((i) => [i.id, i.rarity ?? null]));
+  };
+  await loadItems();
+  const rarityOf = (cell) => (items.has(cell.id) ? items.get(cell.id) : undefined);
 
   function show(next, stamped = null) {
     card = next;
@@ -506,13 +521,14 @@ async function setupBingo(source) {
     card$.hidden = !visible;
     if (!visible) return;
     card$.style.setProperty('--n', card.size);
-    renderBingoGrid(grid, card, { urlFor, stamped });
+    renderBingoGrid(grid, card, { urlFor, stamped, rarityOf });
     const st = bingoState(card);
     $('ov-bingo-progress').textContent = `${st.done}/${st.total}${st.count ? ` · ${st.count}× Bingo` : ''}`;
   }
 
-  function update(next) {
+  async function update(next) {
     const same = card && next && card.created_at === next.created_at;
+    if (!same) await loadItems(); // neue Karte: vielleicht neue Bilder
     const before = same ? bingoState(card).count : 0;
     const known = new Set(same ? card.marked : []);
     const stamped = same ? (next.marked ?? []).find((i) => !known.has(i)) ?? null : null;
@@ -546,7 +562,9 @@ function testCard() {
   const items = [['🔫', 'Sturmgewehr'], ['💊', 'Medkit'], ['🧪', 'Schildtrank'], ['🎣', 'Angel'], ['🏹', 'Bogen'],
     ['💣', 'Granate'], ['🍌', 'Banane'], ['🛡️', 'Schild'], ['🚗', 'Auto'], ['🔑', 'Tresorschlüssel'], ['🍄', 'Pilz'], ['📦', 'Truhe']];
   const svg = (emoji) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="72" font-size="70" text-anchor="middle">${emoji}</text></svg>`)}`;
-  const cells = items.sort(() => Math.random() - 0.5).slice(0, 8).map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e) }));
+  const rarities = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common', 'exotic', null];
+  const cells = items.sort(() => Math.random() - 0.5).slice(0, 8)
+    .map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e), ...(rarities[i] ? { rarity: rarities[i] } : {}) }));
   cells.splice(4, 0, { free: true });
   return { size: 3, cells, marked: [4], visible: true, created_at: 'test' };
 }

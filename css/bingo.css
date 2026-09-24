@@ -24,11 +24,74 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
   text-shadow: 0 1px 2px rgba(0, 0, 0, .7);
 }
 .bingo-cell.is-free { background: linear-gradient(180deg, #ffc24a, #c26410); }
+
+/* ---------- Seltenheit (wie in Fortnite) ---------- */
+.bingo-cell.r-common    { background: linear-gradient(180deg, #9aa0ab, #4b515d); }
+.bingo-cell.r-uncommon  { background: linear-gradient(180deg, #7bd02f, #26751a); }
+.bingo-cell.r-rare      { background: linear-gradient(180deg, #4fb6ff, #1a57b4); }
+.bingo-cell.r-epic      { background: linear-gradient(180deg, #c46cff, #5d1fa6); }
+.bingo-cell.r-legendary { background: linear-gradient(180deg, #ffa24c, #b0460f); box-shadow: inset 0 -.25em 0 rgba(0, 0, 0, .25), 0 0 .6em rgba(255, 150, 60, .35); }
+.bingo-cell.r-exotic    { background: linear-gradient(180deg, #7fe8f5, #1b8ea3); box-shadow: inset 0 -.25em 0 rgba(0, 0, 0, .25), 0 0 .6em rgba(110, 230, 245, .35); }
+/* Mythisch: Gold mit Schimmer, der über das Feld läuft */
+.bingo-cell.r-mythic {
+  background: linear-gradient(180deg, #fff09a, #f2b92b 45%, #b27208);
+  border-color: #fff4b8;
+  box-shadow: inset 0 -.25em 0 rgba(120, 70, 0, .35), 0 0 .9em rgba(255, 214, 90, .7), 0 0 .2em #fff4b8;
+}
+.bingo-cell.r-mythic::before {
+  content: ""; position: absolute; inset: -40%; pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .7) 50%, transparent 60%);
+  animation: bingo-shine 2.8s ease-in-out infinite;
+}
+@keyframes bingo-shine { 0% { transform: translateX(-60%); } 60%, 100% { transform: translateX(60%); } }
+.bingo-cell.r-mythic .bingo-name { color: #3b2400; text-shadow: 0 1px 0 rgba(255, 255, 255, .5); }
+
+/* Items ohne Seltenheit: bunt, aber in Farben, die es bei Waffen nicht gibt */
+.bingo-cell.fun-pink  { background: linear-gradient(180deg, #ff7ab8, #b12a6c); }
+.bingo-cell.fun-teal  { background: linear-gradient(180deg, #3ee0c3, #0f7c6a); }
+.bingo-cell.fun-red   { background: linear-gradient(180deg, #ff5a6a, #a3182d); }
+
+/* Farbe je Seltenheit als Variable – die Designs im Overlay (Neon, Papier) nutzen sie */
+.bingo-cell { --rc: #4f7cff; }
+.bingo-cell.r-common { --rc: #9aa0ab; }
+.bingo-cell.r-uncommon { --rc: #7bd02f; }
+.bingo-cell.r-rare { --rc: #4fb6ff; }
+.bingo-cell.r-epic { --rc: #c46cff; }
+.bingo-cell.r-legendary { --rc: #ffa24c; }
+.bingo-cell.r-mythic { --rc: #ffd84a; }
+.bingo-cell.r-exotic { --rc: #7fe8f5; }
+.bingo-cell.fun-pink { --rc: #ff7ab8; }
+.bingo-cell.fun-teal { --rc: #3ee0c3; }
+.bingo-cell.fun-red { --rc: #ff5a6a; }
+.bingo-cell.is-free { --rc: #ffc24a; }
+
+.bingo-rarity {
+  position: absolute; left: 50%; top: .2em; z-index: 1; transform: translateX(-50%);
+  max-width: 94%; padding: .05em .45em; border-radius: .5em;
+  background: rgba(0, 0, 0, .42); color: #fff;
+  font-size: .45em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.bingo-cell.r-mythic .bingo-rarity { background: #3b2400; color: #ffe27a; }
+.bingo-cell:has(.bingo-rarity) img { padding-top: .5em; }
+
+/* B-I-N-G-O über den Spalten (nur 5 × 5) */
+.bingo-letter {
+  display: grid; place-items: center; padding: .1em 0 .05em;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 1.5em; font-weight: 800; line-height: 1;
+  color: #fff; text-shadow: 0 .08em 0 rgba(0, 0, 0, .35);
+  border-radius: .35em;
+}
+.bingo-letter--0 { background: linear-gradient(180deg, #4fb6ff, #1a57b4); }
+.bingo-letter--1 { background: linear-gradient(180deg, #ff7ab8, #b12a6c); }
+.bingo-letter--2 { background: linear-gradient(180deg, #7bd02f, #26751a); }
+.bingo-letter--3 { background: linear-gradient(180deg, #ffa24c, #b0460f); }
+.bingo-letter--4 { background: linear-gradient(180deg, #c46cff, #5d1fa6); }
 .bingo-free { display: grid; place-items: center; font-size: 1.9em; line-height: 1; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
 .bingo-free b { font-size: .34em; text-transform: uppercase; letter-spacing: .08em; }
 /* Stempel wie mit einem Bingo-Marker */
 .bingo-stamp {
-  position: absolute; inset: 8%; border-radius: 50%; pointer-events: none;
+  position: absolute; inset: 8%; z-index: 2; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle at 40% 38%, rgba(255, 90, 160, .8), rgba(255, 45, 125, .72) 60%, rgba(214, 20, 98, .7));
   box-shadow: 0 0 0 .12em rgba(255, 255, 255, .25) inset;
   display: grid; place-items: center;
@@ -40,4 +103,5 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
 .bingo-cell.is-line .bingo-stamp { background: radial-gradient(circle at 40% 38%, rgba(255, 214, 102, .85), rgba(255, 170, 30, .78)); }
 @media (prefers-reduced-motion: reduce) {
   .bingo-cell.is-stamped .bingo-stamp { animation: none; }
+  .bingo-cell.r-mythic::before { animation: none; opacity: 0; }
 }

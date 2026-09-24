@@ -148,6 +148,84 @@ p { margin: 0; }
   100% { opacity: 0; transform: scale(1.1) rotate(-6deg); }
 }
 
+/* ---------- Bingo-Design: Neon ---------- */
+.ov-bingo.bingo-style-neon {
+  --c: #b06bff;
+  background: rgba(7, 5, 18, calc(.6 + .35 * var(--bga)));
+  border: 2px solid #9b5cff;
+  box-shadow: 0 0 1.4em rgba(155, 92, 255, .55), inset 0 0 1.2em rgba(155, 92, 255, .18);
+}
+.ov-bingo.bingo-style-neon .ov-head { background: rgba(0, 0, 0, .5); color: #d8c4ff; border-bottom-color: rgba(155, 92, 255, .4); }
+.ov-bingo.bingo-style-neon .bingo-cell,
+.ov-bingo.bingo-style-neon .bingo-cell.is-free {
+  background: rgba(10, 10, 24, .92);
+  border: .13em solid var(--rc);
+  box-shadow: 0 0 .55em color-mix(in srgb, var(--rc) 80%, transparent), inset 0 0 .7em color-mix(in srgb, var(--rc) 30%, transparent);
+}
+.ov-bingo.bingo-style-neon .bingo-name { color: var(--rc); text-shadow: 0 0 .45em color-mix(in srgb, var(--rc) 80%, transparent); }
+.ov-bingo.bingo-style-neon .bingo-free { color: var(--rc); text-shadow: 0 0 .5em var(--rc); }
+.ov-bingo.bingo-style-neon .bingo-rarity { background: transparent; color: var(--rc); border: 1px solid var(--rc); text-shadow: 0 0 .4em var(--rc); }
+.ov-bingo.bingo-style-neon .bingo-cell.r-mythic { box-shadow: 0 0 1.1em rgba(255, 216, 74, .9), inset 0 0 1em rgba(255, 216, 74, .35); }
+.ov-bingo.bingo-style-neon .bingo-cell.r-mythic .bingo-rarity { background: transparent; color: #ffe27a; }
+.ov-bingo.bingo-style-neon .bingo-stamp {
+  background: transparent; border: .22em solid #ff3d8b;
+  box-shadow: 0 0 .7em #ff3d8b, inset 0 0 .6em rgba(255, 61, 139, .6);
+}
+.ov-bingo.bingo-style-neon .bingo-stamp::after { color: #ff8cc0; text-shadow: 0 0 .5em #ff3d8b; }
+.ov-bingo.bingo-style-neon .bingo-cell.is-line { border-color: #fff; }
+.ov-bingo.bingo-style-neon .bingo-cell.is-line .bingo-stamp {
+  background: transparent; border-color: #fff; box-shadow: 0 0 .8em #ff3d8b, 0 0 .3em #fff, inset 0 0 .6em rgba(255, 61, 139, .7);
+}
+.ov-bingo.bingo-style-neon .bingo-letter { background: none; color: var(--lc); text-shadow: 0 0 .3em var(--lc), 0 0 .8em var(--lc); }
+.ov-bingo.bingo-style-neon .bingo-letter--0 { --lc: #4fb6ff; }
+.ov-bingo.bingo-style-neon .bingo-letter--1 { --lc: #ff5fa8; }
+.ov-bingo.bingo-style-neon .bingo-letter--2 { --lc: #7bff4f; }
+.ov-bingo.bingo-style-neon .bingo-letter--3 { --lc: #ffb03c; }
+.ov-bingo.bingo-style-neon .bingo-letter--4 { --lc: #c46cff; }
+.ov-bingo.bingo-style-neon .ov-bingo-win { color: #ff5fa8; text-shadow: 0 0 .2em #ff5fa8, 0 0 .6em #ff3d8b, 0 0 1.2em #b06bff; }
+
+/* ---------- Bingo-Design: Papier (Bingo-Halle) ---------- */
+.ov-bingo.bingo-style-paper {
+  --c: #d8322a;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(120, 90, 40, .12) 1px, transparent 1.5px) 0 0 / .8em .8em,
+    linear-gradient(180deg, #fffaf0, #f3e8cf);
+  border: 1px solid #e0cfa6;
+  box-shadow: 0 1em 2.5em -1em rgba(0, 0, 0, .7), 0 0 0 .35em rgba(255, 250, 240, .6);
+  color: #2b2418;
+}
+.ov-bingo.bingo-style-paper .ov-head { background: #d8322a; color: #fff6e0; border-bottom: 0; }
+.ov-bingo.bingo-style-paper .ov-head .ov-sep { color: rgba(255, 246, 224, .6); }
+.ov-bingo.bingo-style-paper .ov-head .ov-who { color: #fff; }
+.ov-bingo.bingo-style-paper .ov-dot { background: #fff6e0; box-shadow: none; }
+.ov-bingo.bingo-style-paper .bingo-cell,
+.ov-bingo.bingo-style-paper .bingo-cell.is-free {
+  background: #fffdf7;
+  border: 1px solid #e3d6b8;
+  box-shadow: inset 0 .38em 0 var(--rc), 0 .08em .15em rgba(80, 60, 20, .15);
+  color: #2b2418;
+}
+.ov-bingo.bingo-style-paper .bingo-name { color: #3a3020; text-shadow: none; }
+.ov-bingo.bingo-style-paper .bingo-cell img { filter: drop-shadow(0 .08em .1em rgba(0, 0, 0, .25)); }
+.ov-bingo.bingo-style-paper .bingo-free { color: #d8322a; text-shadow: none; }
+.ov-bingo.bingo-style-paper .bingo-rarity { top: .45em; background: var(--rc); color: #1e1a10; }
+.ov-bingo.bingo-style-paper .bingo-cell.r-mythic { box-shadow: inset 0 .38em 0 #f2b92b, 0 0 .7em rgba(242, 185, 43, .7); border-color: #f2c14e; }
+.ov-bingo.bingo-style-paper .bingo-cell.r-mythic .bingo-rarity { background: linear-gradient(90deg, #fff09a, #f2b92b); color: #3b2400; }
+/* Stempel wie mit dem Bingo-Marker: rot, etwas unregelmäßig */
+.ov-bingo.bingo-style-paper .bingo-stamp {
+  inset: 10%; border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
+  background: radial-gradient(circle at 45% 40%, rgba(230, 40, 40, .75), rgba(200, 20, 30, .62) 70%, rgba(200, 20, 30, .45));
+  box-shadow: none; mix-blend-mode: multiply;
+}
+.ov-bingo.bingo-style-paper .bingo-stamp::after { content: none; }
+.ov-bingo.bingo-style-paper .bingo-cell.is-line { border-color: #d8322a; box-shadow: inset 0 .38em 0 var(--rc), 0 0 0 .12em #d8322a; }
+.ov-bingo.bingo-style-paper .bingo-cell.is-line .bingo-stamp {
+  background: radial-gradient(circle at 45% 40%, rgba(230, 40, 40, .8), rgba(190, 15, 25, .7) 70%, rgba(190, 15, 25, .5));
+}
+.ov-bingo.bingo-style-paper .bingo-letter { background: #d8322a; color: #fff6e0; text-shadow: none; }
+.ov-bingo.bingo-style-paper .bingo-letter--1, .ov-bingo.bingo-style-paper .bingo-letter--3 { background: #1f4fa3; }
+.ov-bingo.bingo-style-paper .ov-bingo-win { color: #d8322a; text-shadow: 0 .06em 0 #fff6e0, 0 .12em .3em rgba(0, 0, 0, .35); }
+
 /* ---------- Ärgere den Dave ---------- */
 .ov-pranks { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
 .ov-prank-feed {
