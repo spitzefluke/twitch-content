@@ -1029,6 +1029,10 @@ code { font-family: var(--font-mono); font-size: .9em; }
   padding: 10px 12px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line);
 }
 .obs-part-label { font-size: 14px; color: #cdd3df; }
+.obs-style { grid-template-columns: minmax(0, 1fr); }
+.obs-style select {
+  width: 100%; min-height: 34px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg);
+}
 .obs-size { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
 .obs-size output, .obs-range output { font-family: var(--font-mono); font-size: 12px; color: var(--text); text-align: right; }
 .obs-options input[type="range"] { width: 100%; accent-color: var(--amber); cursor: pointer; }
@@ -1916,9 +1920,20 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .bingo-box .sound-form { padding: 12px; }
 .bingo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
-.bingo-items li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.bingo-items li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.bingo-rarity-pick {
+  min-height: 36px; max-width: 128px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2);
+  border-left: 6px solid var(--line-2); background: var(--bg); font-size: 13px;
+}
+.bingo-rarity-pick.r-common { border-left-color: #9aa0ab; }
+.bingo-rarity-pick.r-uncommon { border-left-color: #7bd02f; }
+.bingo-rarity-pick.r-rare { border-left-color: #4fb6ff; }
+.bingo-rarity-pick.r-epic { border-left-color: #c46cff; }
+.bingo-rarity-pick.r-legendary { border-left-color: #ffa24c; }
+.bingo-rarity-pick.r-mythic { border-left-color: #ffd84a; box-shadow: 0 0 8px rgba(255, 214, 90, .45); }
+.bingo-rarity-pick.r-exotic { border-left-color: #7fe8f5; }
 .bingo-items li.empty { display: block; color: var(--dim); font-size: 14px; }
-.bingo-items img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: linear-gradient(180deg, #2a5bd7, #13307a); }
+.bingo-items img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: var(--bg); }
 .bingo-items input {
   min-width: 0; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg);
 }
