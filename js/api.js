@@ -3,6 +3,8 @@
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, cardCell, fullBetLines } from './bingo.js';
+import { DEFAULT_PET } from './pet.js';
+import { DEFAULT_STAGE } from './questions.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -22,6 +24,8 @@ const ERRORS = [
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
+  [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
+  [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
   [/column .*rarity|'rarity' column/i, 'In der Datenbank fehlt die Seltenheit fürs Bingo: supabase/migrations/20260925120000_bingo_rarity.sql im SQL Editor ausführen.'],
@@ -302,6 +306,64 @@ async function createSupabaseApi() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
         .subscribe();
     },
+    // ---------- Unangenehme Fragen ----------
+    // Zuschauer sehen nur ihre eigenen Fragen, Admins alle (RLS).
+    async getQuestions() {
+      return unwrap(await sb.from('questions').select('*').order('created_at', { ascending: false }).limit(300));
+    },
+    async askQuestion(text, anonymous) {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) throw new Error('Bitte zuerst anmelden.');
+      return unwrap(await sb.from('questions').insert({ text, anonymous, user_id: user.id }).select('*').single());
+    },
+    async deleteQuestion(id) {
+      unwrap(await sb.from('questions').delete().eq('id', id));
+    },
+    async reviewQuestion(id, status) {
+      return unwrap(await sb.from('questions').update({ status, reviewed_at: new Date().toISOString() }).eq('id', id).select('*').single());
+    },
+    async getQuestionStage() {
+      return unwrap(await sb.from('question_stage').select('*').eq('id', 1).maybeSingle());
+    },
+    async showQuestion(id) { return unwrap(await sb.rpc('question_show', { p_id: id })); },
+    async resolveQuestion(outcome) { return unwrap(await sb.rpc('question_resolve', { p_outcome: outcome })); },
+    async hideQuestion() { return unwrap(await sb.rpc('question_hide')); },
+    async savePunishments(punishments) {
+      return unwrap(await sb.from('question_stage').update({ punishments }).eq('id', 1).select('*').single());
+    },
+    onQuestions(cb) {
+      sb.channel('questions-feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, (p) => cb(p))
+        .subscribe();
+    },
+    onQuestionStage(cb) {
+      sb.channel('question-stage')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
+        .subscribe();
+    },
+    // ---------- Daves Dino ----------
+    async getPet() {
+      return unwrap(await sb.from('pet').select('*').eq('id', 1).maybeSingle());
+    },
+    async getPetEvents(limit = 20) {
+      return unwrap(await sb.from('pet_events').select('*').order('created_at', { ascending: false }).limit(limit));
+    },
+    async petAction(kind) { return unwrap(await sb.rpc('pet_action', { p_kind: kind })); },
+    async petSay(text) { return unwrap(await sb.rpc('pet_say', { p_text: text })); },
+    async updatePet(patch) {
+      return unwrap(await sb.from('pet').update(patch).eq('id', 1).select('*').single());
+    },
+    onPet(cb) {
+      sb.channel('pet-feed')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
+        .subscribe();
+    },
+    onPetEvents(cb) {
+      sb.channel('pet-events')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(p.new))
+        .subscribe();
+    },
     onSpin(cb) {
       sb.channel('spins-feed')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, (p) => cb(p.new))
@@ -374,6 +436,30 @@ function createLocalApi() {
     store.set('bingo_card', next);
     setTimeout(() => bingoListeners.forEach((cb) => cb(next)), 30);
     return next;
+  }
+
+  // Fragen und Dino im Demo-Modus: in localStorage, Overlay im selben Browser liest mit
+  const demoListeners = {};
+  const emitDemo = (key, payload) => setTimeout(() => (demoListeners[key] ?? []).forEach((cb) => cb(payload)), 30);
+  const isAdminNow = () => !!store.get('users', {})[current?.email]?.is_admin;
+  const demoStage = () => ({ ...DEFAULT_STAGE, ...store.get('question_stage', {}) });
+  function saveStage(patch) {
+    const next = { ...demoStage(), ...patch, updated_at: new Date().toISOString() };
+    store.set('question_stage', next);
+    emitDemo('question_stage', next);
+    return next;
+  }
+  function savePet(pet) {
+    const next = { ...pet, updated_at: new Date().toISOString() };
+    store.set('pet', next);
+    emitDemo('pet', next);
+    return next;
+  }
+  function addPetEvent(ev) {
+    const row = { id: nextId++, created_at: new Date().toISOString(), ...ev };
+    store.set('pet_events', [row, ...store.get('pet_events', [])].slice(0, 40));
+    emitDemo('pet_events', row);
+    return row;
   }
 
   const sessionEmail = store.get('session', null);
@@ -601,6 +687,95 @@ function createLocalApi() {
       return saveCard({ ...store.get('bingo_card', null), ...patch });
     },
     onBingo(cb) { bingoListeners.push(cb); },
+    // ---------- Unangenehme Fragen (Demo) ----------
+    async getQuestions() {
+      const all = store.get('questions', []);
+      return isAdminNow() ? all : all.filter((q) => q.user_id === current?.email);
+    },
+    async askQuestion(text, anonymous) {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const profile = store.get('users', {})[current.email];
+      const mine = store.get('questions', []).filter((q) => q.user_id === current.email && Date.now() - Date.parse(q.created_at) < 86400000);
+      if (!profile?.is_admin && mine.length >= 3) throw new Error('Du hast heute schon 3 Fragen gestellt. Morgen geht es weiter.');
+      const q = {
+        id: nextId++, text: text.trim(), anonymous: !!anonymous, author: profile?.username ?? 'Zuschauer', user_id: current.email,
+        status: 'pending', outcome: null, punishment: null, created_at: new Date().toISOString(), reviewed_at: null, shown_at: null,
+      };
+      store.set('questions', [q, ...store.get('questions', [])]);
+      emitDemo('questions', { eventType: 'INSERT', new: q });
+      return q;
+    },
+    async deleteQuestion(id) {
+      store.set('questions', store.get('questions', []).filter((q) => q.id !== id));
+      emitDemo('questions', { eventType: 'DELETE', old: { id } });
+    },
+    async reviewQuestion(id, status) {
+      await requireAdmin();
+      let row = null;
+      store.set('questions', store.get('questions', []).map((q) => (q.id === id ? (row = { ...q, status, reviewed_at: new Date().toISOString() }) : q)));
+      emitDemo('questions', { eventType: 'UPDATE', new: row });
+      return row;
+    },
+    async getQuestionStage() { return demoStage(); },
+    async showQuestion(id) {
+      await requireAdmin();
+      const q = store.get('questions', []).find((x) => x.id === id);
+      if (!q) throw new Error('Diese Frage gibt es nicht mehr.');
+      if (!['approved', 'done'].includes(q.status)) throw new Error('Die Frage muss erst freigegeben werden.');
+      return saveStage({ question_id: q.id, text: q.text, author: q.anonymous ? 'Anonym' : q.author, state: 'ask', punishment: null });
+    },
+    async resolveQuestion(outcome) {
+      await requireAdmin();
+      const stage = demoStage();
+      if (!stage.question_id || stage.state === 'hidden') throw new Error('Im Stream steht gerade keine Frage.');
+      const punishment = outcome === 'punished' ? stage.punishments[randomInt(stage.punishments.length)] : null;
+      store.set('questions', store.get('questions', []).map((q) => (q.id === stage.question_id ? { ...q, status: 'done', outcome, punishment } : q)));
+      emitDemo('questions', { eventType: 'UPDATE', new: store.get('questions', []).find((q) => q.id === stage.question_id) });
+      return saveStage({ state: outcome, punishment });
+    },
+    async hideQuestion() { await requireAdmin(); return saveStage({ state: 'hidden' }); },
+    async savePunishments(punishments) {
+      await requireAdmin();
+      const list = punishments.map((p) => p.trim().slice(0, 100)).filter(Boolean).slice(0, 50);
+      if (!list.length) throw new Error('Es braucht mindestens eine Bestrafung.');
+      return saveStage({ punishments: list });
+    },
+    onQuestions(cb) { (demoListeners.questions ??= []).push(cb); },
+    onQuestionStage(cb) { (demoListeners.question_stage ??= []).push(cb); },
+    // ---------- Daves Dino (Demo) ----------
+    async getPet() { return { ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...store.get('pet', {}) }; },
+    async getPetEvents(limit = 20) { return store.get('pet_events', []).slice(0, limit); },
+    async petAction(kind) {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const profile = store.get('users', {})[current.email];
+      const key = `pet_cd_${current.email}_${kind}`;
+      const wait = kind === 'feed' ? 600000 : 60000;
+      const last = store.get(key, 0);
+      if (!profile?.is_admin && Date.now() - last < wait) {
+        throw new Error(`Kurz warten – noch ${Math.ceil((last + wait - Date.now()) / 1000)} Sekunden.`);
+      }
+      store.set(key, Date.now());
+      if (kind === 'feed') {
+        const pet = await this.getPet();
+        savePet({ ...pet, last_fed_at: new Date().toISOString(), last_fed_by: profile?.username ?? 'Zuschauer', fed_count: (pet.fed_count ?? 0) + 1 });
+      }
+      return addPetEvent({ kind, who: profile?.username ?? 'Zuschauer', text: '' });
+    },
+    async petSay(text) {
+      await requireAdmin();
+      const t = String(text ?? '').trim();
+      if (!t || t.length > 100) throw new Error('Bitte 1 bis 100 Zeichen.');
+      return addPetEvent({ kind: 'say', who: store.get('users', {})[current.email]?.username ?? 'Admin', text: t });
+    },
+    async updatePet(patch) {
+      await requireAdmin();
+      const next = { ...(await this.getPet()), ...patch };
+      if (patch.phrases) next.phrases = patch.phrases.map((p) => p.trim().slice(0, 80)).filter(Boolean).slice(0, 50);
+      if (patch.name !== undefined) next.name = String(patch.name).trim().slice(0, 20) || 'Rexi';
+      return savePet(next);
+    },
+    onPet(cb) { (demoListeners.pet ??= []).push(cb); },
+    onPetEvents(cb) { (demoListeners.pet_events ??= []).push(cb); },
     async getMyBingo() { return store.get(`my_bingo_${current?.email}`, null); },
     async saveMyBingo(card) {
       const next = { size: card.size, cells: card.cells, marked: card.marked, created_at: card.created_at };

@@ -4,6 +4,8 @@ import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
+import { DEFAULT_PET, Dino, dinoSvg, hungerOf, isHungry, runDino } from './pet.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -49,6 +51,24 @@ const state = {
     tab: null,          // 'dave' oder 'mine'
     mine: null,         // eigene Karte
     mineLoaded: false,
+  },
+  // Unangenehme Fragen
+  questions: {
+    on: false,          // Migration …_questions_pet.sql eingespielt?
+    error: '',
+    list: [],           // eigene Fragen, für Admins alle
+    stage: null,        // was gerade im Stream steht
+    subscribed: false,
+  },
+  // Daves Dino
+  pet: {
+    on: false,
+    data: null,
+    events: [],
+    subscribed: false,
+    dino: null,         // läuft im Dialog, solange er offen ist
+    stopBrain: null,
+    sfx: null,
   },
 };
 
@@ -336,6 +356,9 @@ async function enterApp(user) {
     state.bingo.subscribed = true;
     api.onBingo((card) => applyBingoCard(card));
   }
+  // Fragen und Dino laden im Hintergrund – fehlen sie noch, bleiben die Kacheln einfach ruhig.
+  loadQuestions();
+  loadPet();
 }
 
 function leaveApp() {
@@ -384,9 +407,9 @@ function renderHeader() {
 const LIVE_WINDOW = 6 * 60 * 60 * 1000;
 const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
-// "Ärgere den Dave" und das Bingo haben ein Startdatum für Zuschauer (target_at).
+// "Ärgere den Dave", Bingo, Fragen und Dino haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
-const isLocked = (t) => (t.kind === 'prank' || t.kind === 'bingo')
+const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet'].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
 
@@ -578,7 +601,7 @@ function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
-  const build = { prank: buildPrankTile, bingo: buildBingoTile };
+  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -830,6 +853,8 @@ function setupDialogs() {
   $('#tile-form').addEventListener('submit', saveTile);
   setupPrank();
   setupBingo();
+  setupQuestions();
+  setupPet();
   document.querySelectorAll('[data-tile-start]').forEach((input) => {
     input.addEventListener('change', (e) => { e.stopPropagation(); saveTileStart(input); });
   });
@@ -1984,7 +2009,514 @@ async function uploadBingoImages(e) {
   });
 }
 
-// ---------- Startdatum für Zuschauer (Ärgere den Dave, Bingo) ----------
+// ============================================================
+// Kacheln für Fragen und Dino
+// ============================================================
+function buildActionTile(tile, i, { cls, cta, onClick }) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = `tile tile--${tile.kind} theme-${tile.theme} ${cls ?? ''}`;
+  el.style.setProperty('--i', i);
+  el.dataset.id = tile.id;
+  const bg = document.createElement('div');
+  bg.className = 'tile-bg';
+  const img = safeUrl(tile.background);
+  if (img) bg.style.backgroundImage = `url(${JSON.stringify(img)})`;
+  el.append(bg, div('tile-shade'), div('tile-shine'));
+  const body = div('tile-body');
+  const tag = document.createElement('span');
+  tag.className = 'tile-tag';
+  tag.textContent = 'Jederzeit · live';
+  const title = document.createElement('h3');
+  title.className = 'tile-title';
+  title.textContent = tile.title;
+  const desc = document.createElement('p');
+  desc.className = 'tile-desc';
+  desc.textContent = tile.description;
+  const row = div('prank-tile-row');
+  const status = document.createElement('span');
+  status.className = 'tile-live-status';
+  const go = document.createElement('span');
+  go.className = 'prank-cta';
+  go.textContent = cta;
+  row.append(status, go);
+  body.append(tag, title, desc, ...[startNote(tile)].filter(Boolean), row);
+  el.append(body);
+  el.addEventListener('click', onClick);
+  if (finePointer && !reducedMotion) addTilt(el);
+  return el;
+}
+
+function buildQuestionsTile(tile, i) {
+  const el = buildActionTile(tile, i, { cls: 'tile--q', cta: 'Frage stellen →', onClick: openQuestions });
+  paintQuestionsTile(el);
+  return el;
+}
+
+function paintQuestionsTile(el = $('.tile--questions')) {
+  const label = el?.querySelector('.tile-live-status');
+  if (!label) return;
+  const { stage, list, on } = state.questions;
+  const pending = state.profile?.is_admin ? list.filter((q) => q.status === 'pending').length : 0;
+  label.textContent = !on ? '❓ Frag Dave was'
+    : stage?.state === 'ask' ? '🔴 Gerade im Stream'
+      : pending ? `📝 ${pending} zu prüfen`
+        : '❓ Frag Dave was';
+}
+
+function buildPetTile(tile, i) {
+  const el = buildActionTile(tile, i, { cls: 'tile--dino', cta: 'Zum Dino →', onClick: openPet });
+  const mini = document.createElement('span');
+  mini.className = 'pet-tile-dino';
+  mini.innerHTML = dinoSvg();
+  el.querySelector('.tile-body').prepend(mini);
+  paintPetTile(el);
+  return el;
+}
+
+function paintPetTile(el = $('.tile--pet')) {
+  const label = el?.querySelector('.tile-live-status');
+  if (!label) return;
+  const pet = state.pet.data;
+  const hungry = state.pet.on && isHungry(pet);
+  label.textContent = !state.pet.on ? '🦖 Wohnt im Stream' : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
+  el.classList.toggle('is-hungry', hungry);
+}
+
+// ============================================================
+// Unangenehme Fragen
+// ============================================================
+function setupQuestions() {
+  const form = $('#q-form');
+  form.addEventListener('submit', submitQuestion);
+  form.text.addEventListener('input', () => { $('#q-count').textContent = `${form.text.value.length} / 200`; });
+  document.querySelectorAll('[data-q-resolve]').forEach((b) => b.addEventListener('click', () => resolveQuestion(b.dataset.qResolve, b)));
+  $('#q-hide').addEventListener('click', hideQuestion);
+  $('#q-punish-form').addEventListener('submit', savePunishments);
+}
+
+async function loadQuestions() {
+  try {
+    const [list, stage] = await Promise.all([state.api.getQuestions(), state.api.getQuestionStage()]);
+    Object.assign(state.questions, { list, stage: stage ?? DEFAULT_STAGE, on: true, error: '' });
+  } catch (err) {
+    console.warn('Unangenehme Fragen nicht verfügbar:', err);
+    Object.assign(state.questions, { on: false, error: germanError(err) });
+  }
+  if (state.questions.on && !state.questions.subscribed) {
+    state.questions.subscribed = true;
+    state.api.onQuestions(applyQuestionChange);
+    state.api.onQuestionStage((stage) => {
+      if (!stage) return;
+      state.questions.stage = stage;
+      paintQuestionsTile();
+      if ($('#questions-dialog').open) renderQuestionsDialog();
+    });
+  }
+  paintQuestionsTile();
+  if ($('#questions-dialog').open) renderQuestionsDialog();
+}
+
+function applyQuestionChange(p) {
+  const { list } = state.questions;
+  if (p.eventType === 'DELETE') {
+    state.questions.list = list.filter((q) => q.id !== p.old?.id);
+  } else if (p.new) {
+    const known = list.some((q) => q.id === p.new.id);
+    state.questions.list = known ? list.map((q) => (q.id === p.new.id ? p.new : q)) : [p.new, ...list];
+    if (!known && p.new.status === 'pending' && state.profile?.is_admin && p.new.user_id !== state.user?.id) {
+      toast(`Neue Frage von ${p.new.author || 'jemandem'} – bitte prüfen.`, 'ok');
+    }
+  }
+  paintQuestionsTile();
+  if ($('#questions-dialog').open) renderQuestionsDialog();
+}
+
+async function openQuestions() {
+  const tile = tileByKind('questions');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
+  renderQuestionsDialog();
+  $('#questions-dialog').showModal();
+  await loadQuestions();
+}
+
+function renderQuestionsDialog() {
+  const admin = !!state.profile?.is_admin;
+  const { list, stage, on } = state.questions;
+  const dlg = $('#questions-dialog');
+  dlg.classList.toggle('is-admin', admin && on);
+  const note = $('#questions-note');
+  note.textContent = on ? '' : admin
+    ? (state.questions.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260928000000_questions_pet.sql ausführen.')
+    : 'Die Fragen sind noch nicht eingerichtet. Schau später noch mal vorbei.';
+  note.hidden = on;
+  paintQuestionCard($('#q-stage-card'), stage);
+  $('#q-form').querySelectorAll('textarea, input, button').forEach((el) => { el.disabled = !on; });
+
+  const mine = list.filter((q) => q.user_id === state.user?.id);
+  fillQuestionList($('#q-mine'), mine, 'Du hast noch keine Frage gestellt.', (q) => {
+    const actions = [];
+    if (q.status === 'pending') actions.push(qButton('Zurückziehen', 'btn--ghost', () => withdrawQuestion(q)));
+    return actions;
+  }, { showStatus: true });
+
+  $('#q-admin').hidden = !(admin && on);
+  paintTileStart('questions');
+  if (!(admin && on)) return;
+
+  const pending = list.filter((q) => q.status === 'pending').reverse();
+  const approved = list.filter((q) => q.status === 'approved').reverse();
+  const done = list.filter((q) => q.status === 'done').slice(0, 20);
+  $('#q-pending-count').textContent = pending.length ? `· ${pending.length}` : '';
+  $('#q-approved-count').textContent = approved.length ? `· ${approved.length}` : '';
+  fillQuestionList($('#q-pending'), pending, 'Nichts zu prüfen.', (q) => [
+    qButton('✓ Freigeben', 'btn--primary', () => reviewQuestion(q, 'approved')),
+    qButton('✕ Ablehnen', 'btn--ghost', () => reviewQuestion(q, 'rejected')),
+  ], { showAuthor: true });
+  fillQuestionList($('#q-approved'), approved, 'Keine freigegebene Frage übrig.', (q) => [
+    qButton('▶ Im Stream zeigen', 'btn--primary', () => showQuestion(q)),
+  ], { showAuthor: true });
+  fillQuestionList($('#q-done'), done, 'Noch keine Frage beantwortet.', (q) => [
+    qButton('Nochmal zeigen', 'btn--ghost', () => showQuestion(q)),
+  ], { showAuthor: true, showStatus: true });
+
+  const live = stage?.state === 'ask';
+  document.querySelectorAll('[data-q-resolve]').forEach((b) => { b.disabled = !live; });
+  $('#q-hide').disabled = !stage || stage.state === 'hidden';
+  $('#q-controls-hint').textContent = live
+    ? 'Die Frage steht im Stream. Antwortet Dave nicht, zieht „Bestrafung“ eine zufällige Strafe aus der Liste.'
+    : stage?.state && stage.state !== 'hidden' ? 'Das Ergebnis steht im Stream. „Ausblenden“ nimmt die Karte raus.' : 'Eine freigegebene Frage mit „Im Stream zeigen“ starten.';
+  const punish = $('#q-punish-form');
+  if (document.activeElement !== punish.list) punish.list.value = (stage?.punishments ?? DEFAULT_STAGE.punishments).join('\n');
+}
+
+function qButton(label, cls, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `btn ${cls} btn--sm`;
+  b.textContent = label;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function fillQuestionList(list, items, empty, actions, { showAuthor = false, showStatus = false } = {}) {
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = empty;
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...items.map((q) => {
+    const li = document.createElement('li');
+    li.className = `q-item q-item--${q.status}`;
+    const text = document.createElement('p');
+    text.className = 'q-text';
+    text.textContent = q.text;
+    const meta = document.createElement('p');
+    meta.className = 'q-meta';
+    const parts = [];
+    if (showAuthor) parts.push(`${q.author || 'Zuschauer'}${q.anonymous ? ' (anonym im Stream)' : ''}`);
+    if (showStatus) parts.push(q.status === 'done' ? (OUTCOME_LABEL[q.outcome] ?? STATUS_LABEL.done) : STATUS_LABEL[q.status] ?? q.status);
+    if (q.status === 'done' && q.outcome === 'punished' && q.punishment) parts.push(q.punishment);
+    parts.push(new Date(q.created_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }));
+    meta.textContent = parts.join(' · ');
+    const row = div('q-actions');
+    row.append(...actions(q));
+    li.append(text, meta, row);
+    return li;
+  }));
+}
+
+async function submitQuestion(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const text = form.text.value.trim();
+  if (text.length < 5) return formMsg(form, 'Bitte mindestens 5 Zeichen.');
+  await withLoading(form, async () => {
+    const q = await state.api.askQuestion(text, form.anonymous.checked);
+    if (!state.questions.list.some((x) => x.id === q.id)) state.questions.list = [q, ...state.questions.list];
+    form.reset();
+    $('#q-count').textContent = '0 / 200';
+    renderQuestionsDialog();
+    formMsg(form, 'Danke! Deine Frage wird jetzt geprüft.', true);
+  });
+}
+
+async function withdrawQuestion(q) {
+  if (!confirm('Frage zurückziehen?')) return;
+  try {
+    await state.api.deleteQuestion(q.id);
+    state.questions.list = state.questions.list.filter((x) => x.id !== q.id);
+    renderQuestionsDialog();
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+}
+
+async function reviewQuestion(q, status) {
+  try {
+    const row = await state.api.reviewQuestion(q.id, status);
+    state.questions.list = state.questions.list.map((x) => (x.id === q.id ? row : x));
+    paintQuestionsTile();
+    renderQuestionsDialog();
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+}
+
+async function showQuestion(q) {
+  const { stage } = state.questions;
+  if (stage?.state === 'ask' && stage.question_id !== q.id && !confirm('Im Stream steht noch eine offene Frage. Trotzdem die neue zeigen?')) return;
+  try {
+    state.questions.stage = await state.api.showQuestion(q.id);
+    toast('Die Frage steht jetzt im Stream.', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  paintQuestionsTile();
+  renderQuestionsDialog();
+}
+
+async function resolveQuestion(outcome, btn) {
+  btn.disabled = true;
+  try {
+    state.questions.stage = await state.api.resolveQuestion(outcome);
+    await loadQuestions();
+    if (outcome === 'punished') toast(`😈 Bestrafung: ${state.questions.stage.punishment}`, 'ok', 8000);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  renderQuestionsDialog();
+}
+
+async function hideQuestion() {
+  try {
+    state.questions.stage = await state.api.hideQuestion();
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  paintQuestionsTile();
+  renderQuestionsDialog();
+}
+
+async function savePunishments(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const list = form.list.value.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!list.length) return formMsg(form, 'Es braucht mindestens eine Bestrafung.');
+  await withLoading(form, async () => {
+    state.questions.stage = await state.api.savePunishments(list);
+    formMsg(form, `${state.questions.stage.punishments.length} Bestrafungen gespeichert.`, true);
+  });
+}
+
+// ============================================================
+// Daves Dino
+// ============================================================
+function setupPet() {
+  $('#pet-feed').addEventListener('click', (e) => petAction('feed', e.currentTarget));
+  $('#pet-pet').addEventListener('click', (e) => petAction('pet', e.currentTarget));
+  $('#pet-say-form').addEventListener('submit', petSay);
+  $('#pet-settings').addEventListener('submit', savePetSettings);
+  // Der Dino läuft nur, solange der Dialog offen ist
+  $('#pet-dialog').addEventListener('close', () => {
+    state.pet.stopBrain?.();
+    state.pet.dino?.destroy();
+    state.pet.dino = null;
+    state.pet.stopBrain = null;
+  });
+  // Hunger ändert sich mit der Zeit – Kachel ab und zu nachziehen
+  setInterval(() => { paintPetTile(); if ($('#pet-dialog').open) paintPetMeter(); }, 30000);
+}
+
+async function loadPet() {
+  try {
+    const [data, events] = await Promise.all([state.api.getPet(), state.api.getPetEvents(20)]);
+    if (!data) throw new Error('Daves Dino fehlt in der Datenbank.');
+    Object.assign(state.pet, { data, events, on: true });
+  } catch (err) {
+    console.warn('Daves Dino nicht verfügbar:', err);
+    state.pet.on = false;
+    state.pet.error = germanError(err);
+  }
+  if (state.pet.on && !state.pet.subscribed) {
+    state.pet.subscribed = true;
+    state.api.onPet((data) => {
+      state.pet.data = data;
+      paintPetTile();
+      if ($('#pet-dialog').open) renderPetDialog();
+    });
+    state.api.onPetEvents((ev) => {
+      if (state.pet.events.some((x) => x.id === ev.id)) return;
+      state.pet.events = [ev, ...state.pet.events].slice(0, 20);
+      if ($('#pet-dialog').open) {
+        renderPetLog();
+        petReact(ev);
+      }
+    });
+  }
+  paintPetTile();
+  if ($('#pet-dialog').open) renderPetDialog();
+}
+
+async function openPet() {
+  const tile = tileByKind('pet');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
+  renderPetDialog();
+  $('#pet-dialog').showModal();
+  startPetStage();
+  await loadPet();
+}
+
+function startPetStage() {
+  if (state.pet.dino || !state.pet.on) return;
+  state.pet.sfx ??= new Sfx({ volume: 0.6 });
+  const stage = $('#pet-stage');
+  const size = Math.max(100, Math.min(160, stage.clientWidth * 0.26));
+  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, reducedMotion });
+  // In der Vorschau knabbert er an den Namen, die zuletzt da waren
+  state.pet.stopBrain = runDino(state.pet.dino, {
+    getPet: () => state.pet.data,
+    names: () => [...new Set(state.pet.events.map((e) => e.who).filter(Boolean))],
+    idleEvery: [14, 28],
+    nibbleEvery: [18, 30],
+  });
+}
+
+function petReact(ev) {
+  const dino = state.pet.dino;
+  if (!dino) return;
+  if (ev.kind === 'feed') dino.eat(ev.who);
+  else if (ev.kind === 'pet') dino.cuddle(ev.who);
+  else if (ev.kind === 'say') dino.say(ev.text, 5000);
+}
+
+function renderPetDialog() {
+  const admin = !!state.profile?.is_admin;
+  const { on, data } = state.pet;
+  const note = $('#pet-note');
+  note.textContent = on ? '' : admin
+    ? (state.pet.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260928000000_questions_pet.sql ausführen.')
+    : 'Der Dino ist noch nicht eingezogen. Schau später noch mal vorbei.';
+  note.hidden = on;
+  $('#pet-title').textContent = on ? `Daves Dino: ${data.name}` : 'Daves Dino';
+  $('#pet-feed').disabled = !on;
+  $('#pet-pet').disabled = !on;
+  if (on) {
+    startPetStage();
+    state.pet.dino?.setName(data.name);
+    paintPetMeter();
+  }
+  renderPetLog();
+  $('#pet-admin').hidden = !(admin && on);
+  $('#pet-dialog').classList.toggle('is-admin', admin && on);
+  paintTileStart('pet');
+  if (!(admin && on)) return;
+  const f = $('#pet-settings');
+  if (!f.contains(document.activeElement)) {
+    f.name.value = data.name;
+    f.hungry_after.value = data.hungry_after;
+    f.phrases.value = (data.phrases ?? []).join('\n');
+  }
+}
+
+function paintPetMeter() {
+  const pet = state.pet.data;
+  if (!pet) return;
+  const h = hungerOf(pet);
+  const fill = $('#pet-meter-fill');
+  fill.style.width = `${Math.round(Math.min(1, h) * 100)}%`;
+  fill.classList.toggle('is-hungry', h >= 1);
+  const since = pet.last_fed_at ? Math.round((Date.now() - Date.parse(pet.last_fed_at)) / 60000) : null;
+  $('#pet-status').textContent = h >= 1
+    ? `${pet.name} hat Hunger und knabbert im Stream an den Zuschauern! Schnell füttern.`
+    : `${pet.name} ist satt${pet.last_fed_by ? ` – zuletzt gefüttert von ${pet.last_fed_by}` : ''}${since !== null ? (since < 1 ? ' gerade eben' : ` vor ${since} Min`) : ''}. Hunger in etwa ${Math.max(1, Math.round((1 - h) * pet.hungry_after))} Min.`;
+  state.pet.dino?.setHungry(h >= 1);
+}
+
+function renderPetLog() {
+  const list = $('#pet-log');
+  const events = state.pet.events;
+  if (!events.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch nichts passiert.';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...events.slice(0, 10).map((ev) => {
+    const li = document.createElement('li');
+    const icon = document.createElement('span');
+    icon.className = 'prank-log-icon';
+    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : '💬';
+    const main = document.createElement('span');
+    main.className = 'h-main';
+    main.textContent = ev.kind === 'feed' ? `${ev.who} hat gefüttert`
+      : ev.kind === 'pet' ? `${ev.who} hat gestreichelt`
+        : `„${ev.text}“`;
+    const time = document.createElement('time');
+    time.dateTime = ev.created_at;
+    time.textContent = new Date(ev.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    li.append(icon, main, time);
+    return li;
+  }));
+}
+
+async function petAction(kind, btn) {
+  btn.disabled = true;
+  try {
+    const ev = await state.api.petAction(kind);
+    if (!state.pet.events.some((x) => x.id === ev.id)) {
+      state.pet.events = [ev, ...state.pet.events].slice(0, 20);
+      petReact(ev);
+    }
+    if (kind === 'feed') state.pet.data = await state.api.getPet();
+    renderPetDialog();
+    paintPetTile();
+  } catch (err) {
+    toast(germanError(err), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function petSay(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const text = form.text.value.trim();
+  if (!text) return;
+  try {
+    const ev = await state.api.petSay(text);
+    if (!state.pet.events.some((x) => x.id === ev.id)) {
+      state.pet.events = [ev, ...state.pet.events].slice(0, 20);
+      petReact(ev);
+    }
+    form.reset();
+    renderPetLog();
+    toast('Der Dino sagt es jetzt im Stream.', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+}
+
+async function savePetSettings(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const name = form.name.value.trim();
+  const hungry = Math.round(Number(form.hungry_after.value));
+  if (!name) return formMsg(form, 'Bitte einen Namen eingeben.');
+  if (!(hungry >= 5 && hungry <= 720)) return formMsg(form, 'Hunger nach 5 bis 720 Minuten.');
+  await withLoading(form, async () => {
+    const phrases = form.phrases.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    state.pet.data = await state.api.updatePet({ name, hungry_after: hungry, phrases });
+    formMsg(form, 'Gespeichert.', true);
+    renderPetDialog();
+    paintPetTile();
+  });
+}
+
+// ---------- Startdatum für Zuschauer (Ärgere den Dave, Bingo, Fragen, Dino) ----------
 function paintTileStart(kind) {
   const input = document.querySelector(`[data-tile-start="${kind}"]`);
   const tile = tileByKind(kind);
@@ -2018,7 +2550,7 @@ async function saveTileStart(input) {
 // ============================================================
 const THEME_BG = {
   tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
-  prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg',
+  prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg',
 };
 
 function openTile(id) {
@@ -2101,8 +2633,9 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo'];
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', dsize: '%', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest'];
+const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 
 function setupObs() {
@@ -2151,10 +2684,10 @@ function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
-  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo nur wenn geändert.
+  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo und Fragen nur wenn geändert.
   for (const key of OBS_PARTS) {
     const value = f.elements[`${key}_on`].checked ? f.elements[key].value : '0';
-    if (key !== 'bingo' || value !== f.elements.bingo.defaultValue) p.set(key, value);
+    if (!['bingo', 'quest'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
   }
   for (const el of obsFields()) {
     if (OBS_PARTS.includes(el.name) || el.name.endsWith('_on')) continue;
@@ -2224,8 +2757,9 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   const values = {};
   for (const el of obsFields()) values[el.name] = el.type === 'checkbox' ? el.checked : el.value;
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
-  for (const key of OBS_PARTS) f.elements[key === 'wheel' ? 'wsize' : key === 'next' ? 'nsize' : 'bsize'].disabled = !f.elements[`${key}_on`].checked;
+  for (const key of OBS_PARTS) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
   f.psize.disabled = !f.prank.checked;
+  f.dsize.disabled = !f.pet.checked;
   f.bstyle.disabled = !f.bingo_on.checked;
   saveObs(values);
   $('#obs-url').value = obsUrl();

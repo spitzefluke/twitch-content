@@ -1,0 +1,96 @@
+/* Daves Dino (js/pet.js) – im OBS-Overlay und in der Vorschau auf der Webseite.
+   --ds = Größe des Dinos in px, der Behälter braucht position: relative/fixed. */
+.dino {
+  --ds: 150px;
+  position: absolute; left: 0; bottom: 0; z-index: 2;
+  width: var(--ds); height: calc(var(--ds) * .79);
+  pointer-events: none; will-change: transform;
+}
+.dino-body { width: 100%; height: 100%; transition: transform .25s ease; transform-origin: 50% 50%; }
+.dino-body.is-left { transform: scaleX(-1); }
+.dino-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 calc(var(--ds) * .03) calc(var(--ds) * .04) rgba(0, 0, 0, .45)); }
+
+/* Laufen: Beine im Wechsel, Körper wippt */
+.dino-leg { transform-box: fill-box; transform-origin: 50% 0; }
+.dino.is-walking .dino-leg-a { animation: dino-step .42s ease-in-out infinite; }
+.dino.is-walking .dino-leg-b { animation: dino-step .42s ease-in-out infinite reverse; }
+.dino.is-walking .dino-svg { animation: dino-bob .42s ease-in-out infinite; }
+@keyframes dino-step { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-18deg); } }
+@keyframes dino-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3%); } }
+.dino-tail { transform-box: fill-box; transform-origin: 100% 60%; animation: dino-tail 1.6s ease-in-out infinite; }
+@keyframes dino-tail { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-8deg); } }
+
+/* Kopf, Kiefer, Augen */
+.dino-jaw { transform-box: view-box; transform-origin: 84px 46px; transition: transform .12s ease; }
+.dino.is-talking .dino-jaw { animation: dino-talk .22s ease-in-out 5; }
+.dino.is-chomp .dino-jaw { transform: rotate(24deg); }
+@keyframes dino-talk { 50% { transform: rotate(14deg); } }
+.dino-eye { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .08s; }
+.dino.is-blink .dino-eye { transform: scaleY(.1); }
+.dino-brow { opacity: 0; transition: opacity .3s; }
+.dino.is-hungry .dino-brow { opacity: 1; }
+.dino.is-hungry .dino-pupil { transform: translate(1px, 1px); }
+.dino.is-happy .dino-svg { animation: dino-hop .5s ease-out 2; }
+@keyframes dino-hop { 40% { transform: translateY(-14%); } }
+.dino-head { transform-box: view-box; transform-origin: 90px 40px; }
+.dino.is-hungry:not(.is-walking) .dino-head { animation: dino-sniff 1.4s ease-in-out infinite; }
+@keyframes dino-sniff { 50% { transform: rotate(-5deg); } }
+
+/* Name unter den Füßen */
+.dino-tag {
+  position: absolute; left: 50%; bottom: calc(var(--ds) * -.12); transform: translateX(-50%);
+  padding: .05em .55em; border-radius: 999px; white-space: nowrap;
+  background: rgba(15, 20, 30, .8); color: #c9f0a8;
+  font: 800 calc(var(--ds) * .1)/1.3 "Barlow Condensed", "Arial Narrow", sans-serif; letter-spacing: .04em; text-transform: uppercase;
+}
+.dino.is-hungry .dino-tag::after { content: " · Hunger!"; color: #ffb3b3; }
+
+/* Sprechblase */
+.dino-bubble {
+  position: absolute; left: 50%; bottom: calc(100% + var(--ds) * .06); transform: translateX(calc(-50% + var(--bx, 0px)));
+  width: max-content; max-width: calc(var(--ds) * 2.4);
+  padding: .45em .75em; border-radius: .8em;
+  background: #fff; color: #1b1f27; border: 3px solid #1b1f27;
+  font: 800 calc(var(--ds) * .12)/1.25 "Barlow", system-ui, sans-serif; text-align: center;
+  box-shadow: 0 .25em .6em rgba(0, 0, 0, .35);
+}
+.dino-bubble::after {
+  content: ""; position: absolute; left: calc(50% - var(--bx, 0px)); top: 100%; width: .9em; height: .9em; margin: -.45em 0 0 -.45em;
+  background: #fff; border: 3px solid #1b1f27; border-width: 0 3px 3px 0; transform: rotate(45deg);
+}
+.dino-bubble.is-in { animation: dino-pop .35s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes dino-pop { from { transform: translateX(calc(-50% + var(--bx, 0px))) scale(.6); opacity: 0; } to { transform: translateX(calc(-50% + var(--bx, 0px))) scale(1); opacity: 1; } }
+
+/* Knabbern: Namensschild auf dem Boden */
+.dino-snack {
+  --ds: 150px;
+  position: absolute; bottom: calc(var(--ds) * .05); z-index: 1;
+  padding: .3em .8em; border-radius: .5em;
+  background: #9146ff; color: #fff; border: 3px solid #1b1f27;
+  font: 800 calc(var(--ds) * .14)/1.2 "Barlow Condensed", "Arial Narrow", sans-serif; white-space: nowrap;
+  box-shadow: 0 .2em .5em rgba(0, 0, 0, .35);
+  opacity: 0;
+}
+.dino-snack::before { content: "@"; opacity: .7; }
+.dino-snack.is-in { animation: dino-drop .5s cubic-bezier(.34, 1.56, .64, 1) forwards; }
+.dino-snack.is-bitten { animation: dino-wobble .3s ease-in-out infinite; opacity: 1;
+  -webkit-mask: radial-gradient(circle at 100% 20%, transparent .55em, #000 .6em); mask: radial-gradient(circle at 100% 20%, transparent .55em, #000 .6em); }
+.dino-snack.is-gone { animation: dino-fall 1.2s ease-in forwards; opacity: 1; }
+@keyframes dino-drop { from { opacity: 0; transform: translateY(-120%); } to { opacity: 1; transform: none; } }
+@keyframes dino-wobble { 50% { transform: rotate(-6deg); } }
+@keyframes dino-fall { to { transform: translateY(160%) rotate(35deg); opacity: 0; } }
+
+/* Futter und Herzchen */
+.dino-food, .dino-heart {
+  --ds: 150px;
+  position: absolute; z-index: 3; pointer-events: none; line-height: 1;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+.dino-food { bottom: calc(var(--ds) * .3); font-size: calc(var(--ds) * .3); animation: dino-food .65s ease-in forwards; }
+@keyframes dino-food { from { transform: translateY(calc(var(--ds) * -3)) rotate(-40deg); } to { transform: none; } }
+.dino-heart { bottom: calc(var(--ds) * .7); font-size: calc(var(--ds) * .18); animation: dino-heart 2s ease-out both; }
+@keyframes dino-heart { from { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(calc(var(--ds) * -.9)) scale(1.1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dino.is-walking .dino-leg-a, .dino.is-walking .dino-leg-b, .dino.is-walking .dino-svg, .dino-tail { animation: none; }
+}

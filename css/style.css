@@ -576,14 +576,14 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .auth-form { display: grid; gap: 15px; animation: view-in .35s var(--ease-out); }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
-.field input, .field textarea, .field select {
+.field input, .field textarea, .field select, .q-punish-form textarea, .pet-say-form input {
   width: 100%; min-height: 46px; padding: 10px 14px;
   border-radius: var(--radius-sm); border: 1px solid var(--line-2); background: var(--bg-2);
   transition: border-color .2s, box-shadow .2s;
 }
 .field textarea { resize: vertical; min-height: 84px; }
-.field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 184, 28, .18); }
-.field input::placeholder, .field textarea::placeholder { color: var(--dim); }
+.field input:focus, .field textarea:focus, .field select:focus, .q-punish-form textarea:focus, .pet-say-form input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 184, 28, .18); }
+.field input::placeholder, .field textarea::placeholder, .pet-say-form input::placeholder { color: var(--dim); }
 .form-msg { min-height: 1.2em; font-size: 14px; color: #ff9d95; }
 .form-msg.is-ok { color: #9ff0c3; }
 .form-msg:empty { display: none; }
@@ -776,6 +776,10 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .theme-prank  { --tile-glow: rgba(255, 70, 70, .45); }
 .theme-bingo .tile-bg { background-image: url("../assets/bg-bingo.svg"); }
 .theme-bingo  { --tile-glow: rgba(79, 195, 255, .45); }
+.theme-questions .tile-bg { background-image: url("../assets/bg-questions.svg"); }
+.theme-questions { --tile-glow: rgba(255, 95, 168, .45); }
+.theme-pet .tile-bg { background-image: url("../assets/bg-pet.svg"); }
+.theme-pet { --tile-glow: rgba(92, 195, 107, .45); }
 
 .tile-tag {
   align-self: flex-start;
@@ -1999,4 +2003,85 @@ code { font-family: var(--font-mono); font-size: .9em; }
 @media (max-width: 560px) {
   .bingo-mine-bar { grid-template-columns: minmax(0, 1fr) auto; }
   .bingo-mine-bar .btn { grid-column: 1 / -1; }
+}
+
+/* ==========================================================
+   Unangenehme Fragen
+   ========================================================== */
+.tile--questions .tile-tag::before { background: #ff5fa8; box-shadow: 0 0 8px #ff5fa8; }
+.tile--questions .prank-cta { background: #ff5fa8; color: #2a0616; }
+.tile--pet .tile-tag::before { background: #5cc36b; box-shadow: 0 0 8px #5cc36b; }
+.tile--pet .prank-cta { background: #5cc36b; color: #06210c; }
+.tile--questions:hover .prank-cta, .tile--pet:hover .prank-cta { transform: translateX(3px); }
+.tile-live-status { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; color: #f4e9ff; }
+.tile--pet.is-hungry .tile-live-status { color: #ffb3b3; }
+.pet-tile-dino { position: absolute; right: 14px; top: -64px; width: 86px; pointer-events: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .45)); }
+.pet-tile-dino .dino-svg { width: 100%; height: auto; }
+.tile--pet .tile-body { position: relative; }
+.tile--pet:hover .pet-tile-dino { animation: dino-hop .5s ease-out; }
+.tile--pet.is-hungry .pet-tile-dino .dino-brow { opacity: 1; }
+
+.dialog--questions, .dialog--pet { width: min(96vw, 1080px); }
+.q-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(18px, 3vw, 32px); padding: 18px 24px 26px; align-items: start; }
+.dialog--questions.is-admin .q-layout, .dialog--pet.is-admin .pet-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.q-main, .q-side, .pet-main { display: grid; gap: 14px; align-content: start; }
+.q-side[hidden] { display: none; }
+
+/* Karte „Gerade im Stream“ (gleich aufgebaut wie im Overlay) */
+.qcard {
+  position: relative; padding: 18px 20px; border-radius: 16px;
+  background: linear-gradient(160deg, #3a0f45, #1b0a26); border: 1px solid rgba(255, 95, 168, .35);
+  display: grid; gap: 6px;
+}
+.qcard-kicker { margin: 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #ff9cc9; }
+.qcard-author { margin: 0; font-size: 13px; color: var(--muted); }
+.qcard-text { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.2; }
+.qcard-result { margin: 4px 0 0; padding: 8px 12px; border-radius: 10px; font-weight: 700; background: rgba(255, 255, 255, .08); }
+.qcard[data-state="punished"] .qcard-result { background: rgba(255, 90, 78, .2); color: #ffb3ad; }
+.qcard[data-state="answered"] .qcard-result { background: rgba(92, 195, 107, .2); color: #bdf5c4; }
+.qcard-empty { margin: 0; color: var(--dim); }
+.qcard[data-state="hidden"] .qcard-author, .qcard[data-state="hidden"] .qcard-text { display: none; }
+.qcard:not([data-state="hidden"]) .qcard-empty { display: none; }
+
+.q-form { display: grid; gap: 10px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2); }
+.q-form textarea, .q-punish-form textarea, .pet-settings textarea { width: 100%; resize: vertical; min-height: 70px; }
+.q-form-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.q-count { font-family: var(--font-mono); font-size: 12px; color: var(--dim); }
+.q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 320px; overflow: auto; }
+.q-list li.empty { color: var(--dim); font-size: 14px; }
+.q-item { padding: 10px 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); display: grid; gap: 6px; }
+.q-item--rejected { opacity: .6; }
+.q-text { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.q-meta { margin: 0; font-size: 12px; color: var(--muted); }
+.q-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-actions:empty { display: none; }
+.q-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.q-punish-form { display: grid; gap: 8px; }
+
+/* ==========================================================
+   Daves Dino
+   ========================================================== */
+.pet-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(18px, 3vw, 32px); padding: 18px 24px 26px; align-items: start; }
+.pet-stage {
+  position: relative; overflow: hidden; height: 260px; border-radius: 18px; border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, transparent 78%, #14503f 78%, #0d3a2e),
+    radial-gradient(circle at 80% 20%, rgba(255, 211, 107, .35), transparent 40%),
+    linear-gradient(180deg, #1c6b5a, #0f3b36);
+}
+.pet-stage .dino, .pet-stage .dino-snack, .pet-stage .dino-food { bottom: 12%; }
+.pet-stage .dino-heart { bottom: 55%; }
+.pet-meter { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-weight: 600; font-size: 14px; color: var(--muted); }
+.pet-meter-bar { height: 12px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); overflow: hidden; }
+.pet-meter-fill { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #5cc36b, #ffd36b); transition: width .6s var(--ease-out); }
+.pet-meter-fill.is-hungry { background: linear-gradient(90deg, #ffb03c, #ff5a4e); animation: pet-pulse 1.2s ease-in-out infinite; }
+@keyframes pet-pulse { 50% { opacity: .6; } }
+.pet-status { margin: 0; font-size: 14px; min-height: 1.4em; }
+.pet-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.pet-say-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.pet-settings { display: grid; gap: 10px; }
+
+@media (max-width: 860px) {
+  .dialog--questions.is-admin .q-layout, .dialog--pet.is-admin .pet-layout { grid-template-columns: minmax(0, 1fr); }
+  .pet-stage { height: 200px; }
 }
