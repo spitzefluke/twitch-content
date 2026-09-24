@@ -462,6 +462,9 @@ async function connectBot() {
   botMsg('');
   try {
     const { url } = await call('bot_start');
+    // Merken, dass gerade der Bot verbunden wird: Landet der Rückweg auf der
+    // Startseite, schickt sie ihn hierher weiter (js/app.js, boot).
+    try { sessionStorage.setItem('zd_bot_flow', '1'); } catch { /* egal */ }
     location.href = url; // weiter zu Twitch, zurück kommt es auf admin.html
   } catch (err) {
     if (err.status === 401) { logout(err.message); return; }
@@ -496,6 +499,7 @@ function botError(err) {
 
 // Twitch leitet nach der Freigabe hierher zurück (?twitch=bot_connected bzw. ?twitch=error).
 function showBotReturn() {
+  try { sessionStorage.removeItem('zd_bot_flow'); } catch { /* egal */ }
   const params = new URLSearchParams(location.search);
   const status = params.get('twitch');
   if (!status) return;

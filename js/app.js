@@ -56,6 +56,15 @@ boot();
 // ============================================================
 async function boot() {
   const params = new URLSearchParams(location.search);
+
+  // Rückweg vom Chat-Bot-Verbinden: Das Ergebnis gehört in den Admin-Bereich,
+  // auch wenn die Weiterleitung hier auf der Startseite gelandet ist.
+  let botFlow = false;
+  try { botFlow = sessionStorage.getItem('zd_bot_flow') === '1'; sessionStorage.removeItem('zd_bot_flow'); } catch { /* ignorieren */ }
+  if (params.has('twitch') && (botFlow || params.get('twitch') === 'bot_connected' || params.get('reason') === 'bot_is_broadcaster')) {
+    location.replace(`admin.html${location.search}`);
+    return;
+  }
   const apiPromise = Promise.resolve(createApi());
 
   // Einmal-Code vom Admin-Bereich ("Webseite als Admin öffnen")
