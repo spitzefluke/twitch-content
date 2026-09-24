@@ -669,159 +669,144 @@
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
     <div class="obs-body">
-      <p class="obs-lead">Als Browserquelle in OBS einbinden. Sobald jemand das Glücksrad dreht – per Kanalpunkte oder hier auf der Seite –, erscheint es klein im Bild, dreht sich und zeigt das Ergebnis. Dazu laufen die nächste Abfahrt mit Countdown, das Fortnite-Bingo und alles, was Zuschauer auf Dave werfen.</p>
+      <p class="obs-lead">Ein Link für OBS mit allem, was im Stream laufen soll: Glücksrad, nächste Abfahrt, Fortnite-Bingo und die Würfe der Zuschauer.</p>
       <p class="obs-note" id="obs-note" hidden></p>
 
-      <div class="obs-layout">
+      <!-- 1. Verbindung zu OBS: echtes Bild in der Vorschau, Kamera erkennen, Quelle anlegen -->
+      <section class="obs-connect" id="obs-connect" data-state="off">
+        <div class="obs-connect-head">
+          <span class="obs-dot" aria-hidden="true"></span>
+          <div>
+            <b id="obs-ws-title">Mit OBS verbinden</b>
+            <small id="obs-ws-status">Dann siehst du unten dein echtes OBS-Bild, die Seite findet Daves Kamera und richtet das Overlay in OBS ein.</small>
+          </div>
+        </div>
+        <form class="obs-connect-form" id="obs-ws-form" novalidate>
+          <label class="field"><span>WebSocket-Passwort aus OBS</span>
+            <input type="password" name="password" autocomplete="off" placeholder="leer lassen, wenn keins gesetzt ist">
+          </label>
+          <button class="btn btn--primary" type="submit">Verbinden</button>
+        </form>
+        <p class="form-msg obs-ws-msg" id="obs-ws-msg" role="alert"></p>
+        <div class="obs-connected" id="obs-connected" hidden>
+          <label class="field"><span>Daves Kamera in OBS</span>
+            <select id="obs-cam-source"></select>
+          </label>
+          <button class="btn btn--primary" type="button" id="obs-apply">In OBS übernehmen</button>
+          <button class="btn btn--ghost btn--sm" type="button" id="obs-ws-disconnect">Trennen</button>
+        </div>
+        <details class="obs-help">
+          <summary>So geht das Verbinden</summary>
+          <ol>
+            <li>OBS auf diesem PC öffnen (OBS 28 oder neuer).</li>
+            <li>In OBS <b>Werkzeuge → WebSocket-Servereinstellungen</b> öffnen und <b>„WebSocket-Server aktivieren“</b> anhaken.</li>
+            <li>Dort auf <b>„Verbindungsinfo anzeigen“</b> klicken, das <b>Passwort</b> kopieren und hier einfügen.</li>
+            <li>Fragt der Browser, ob die Seite auf Geräte im lokalen Netzwerk zugreifen darf: <b>Zulassen</b>.</li>
+          </ol>
+          <p>Das Passwort bleibt nur in diesem Browser gespeichert. Die Verbindung geht direkt zu OBS auf deinem PC, nicht ins Internet.</p>
+        </details>
+        <button class="obs-share" id="obs-share" type="button">Ohne Verbindung: stattdessen das OBS-Fenster teilen</button>
+      </section>
+
+      <!-- 2. Vorschau: Karten und Kamera-Rahmen mit der Maus verschieben -->
+      <div class="obs-preview" id="obs-preview">
+        <img class="obs-bg" id="obs-shot" alt="" hidden>
+        <video class="obs-bg" id="obs-video" muted playsinline hidden></video>
+        <span class="obs-preview-label" id="obs-preview-label">Beispielbild</span>
+      </div>
+      <p class="obs-hint obs-drag-hint">Karten mit der Maus an ihren Platz ziehen – sie rasten am Rand und in der Mitte ein. Den <b class="obs-red">roten Rahmen</b> auf Daves Kamera legen, unten rechts in der Größe anpassen: Dort landen die Würfe.</p>
+
+      <!-- 3. Was ist zu sehen – und wie groß -->
       <form class="obs-options" id="obs-options">
-        <fieldset class="obs-group">
-          <legend>Glücksrad</legend>
-          <label class="field"><span>Position</span>
-            <select name="wheel">
-            <option value="br">unten rechts</option>
-            <option value="bc">unten Mitte</option>
-            <option value="bl">unten links</option>
-            <option value="tr">oben rechts</option>
-            <option value="tc">oben Mitte</option>
-            <option value="tl">oben links</option>
-            <option value="0">nicht zeigen</option>
-            </select>
-          </label>
-          <label class="field obs-range"><span>Größe <output name="wsize-out"></output></span>
-            <input type="range" name="wsize" min="50" max="200" step="5" value="100">
-          </label>
-          <label class="field"><span>Zeigen bei</span>
-            <select name="from">
-              <option value="all">allen Drehungen</option>
-              <option value="twitch">nur Kanalpunkten</option>
-              <option value="web">nur Drehungen auf der Seite</option>
-            </select>
-          </label>
-          <label class="field obs-range"><span>Ergebnis stehen lassen <output name="hold-out"></output></span>
-            <input type="range" name="hold" min="3" max="30" step="1" value="9">
-          </label>
-          <label class="field obs-wide"><span>Überschrift</span>
-            <input type="text" name="wlabel" maxlength="40" placeholder="Glücksrad">
-          </label>
-          <label class="toggle obs-wide">
-            <input type="checkbox" name="always">
-            <span class="toggle-ui" aria-hidden="true"></span>
-            Immer sichtbar, nicht nur beim Drehen
-          </label>
-          <label class="toggle obs-wide">
-            <input type="checkbox" name="vcolor" checked>
-            <span class="toggle-ui" aria-hidden="true"></span>
-            Rahmen in der Farbe der Glücksrad-Variante
-          </label>
-        </fieldset>
+        <div class="obs-parts">
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="wheel_on" checked><span class="toggle-ui" aria-hidden="true"></span>Glücksrad</label>
+            <label class="obs-size"><span class="sr-only">Größe Glücksrad</span><input type="range" name="wsize" min="50" max="200" step="5" value="100"><output name="wsize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="next_on" checked><span class="toggle-ui" aria-hidden="true"></span>Nächste Abfahrt</label>
+            <label class="obs-size"><span class="sr-only">Größe Nächste Abfahrt</span><input type="range" name="nsize" min="50" max="200" step="5" value="100"><output name="nsize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="bingo_on" checked><span class="toggle-ui" aria-hidden="true"></span>Fortnite-Bingo</label>
+            <label class="obs-size"><span class="sr-only">Größe Bingo-Karte</span><input type="range" name="bsize" min="50" max="200" step="5" value="100"><output name="bsize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="prank" checked><span class="toggle-ui" aria-hidden="true"></span>Würfe &amp; Sounds</label>
+            <label class="obs-size"><span class="sr-only">Größe der Würfe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <span class="obs-part-label">🔊 Lautstärke</span>
+            <label class="obs-size"><span class="sr-only">Lautstärke</span><input type="range" name="vol" min="0" max="100" step="5" value="100"><output name="vol-out"></output></label>
+          </div>
+        </div>
+        <!-- Positionen setzt die Vorschau (verschieben); Standard = Ecken -->
+        <input type="text" name="wheel" value="br" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="next" value="bl" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
-        <fieldset class="obs-group">
-          <legend>Nächste Abfahrt</legend>
-          <label class="field"><span>Position</span>
-            <select name="next">
-            <option value="br">unten rechts</option>
-            <option value="bc">unten Mitte</option>
-            <option value="bl" selected>unten links</option>
-            <option value="tr">oben rechts</option>
-            <option value="tc">oben Mitte</option>
-            <option value="tl">oben links</option>
-            <option value="0">nicht zeigen</option>
-            </select>
-          </label>
-          <label class="field obs-range"><span>Größe <output name="nsize-out"></output></span>
-            <input type="range" name="nsize" min="50" max="200" step="5" value="100">
-          </label>
-          <label class="field"><span>Überschrift</span>
-            <input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt">
-          </label>
-          <label class="field obs-range"><span>Nächste Idee nach <output name="rotate-out"></output></span>
-            <input type="range" name="rotate" min="5" max="60" step="1" value="12">
-          </label>
-        </fieldset>
-
-        <fieldset class="obs-group">
-          <legend>Fortnite-Bingo</legend>
-          <label class="field"><span>Position</span>
-            <select name="bingo">
-              <option value="tr" selected>oben rechts</option>
-              <option value="tc">oben Mitte</option>
-              <option value="tl">oben links</option>
-              <option value="br">unten rechts</option>
-              <option value="bc">unten Mitte</option>
-              <option value="bl">unten links</option>
-              <option value="0">nicht zeigen</option>
-            </select>
-          </label>
-          <label class="field obs-range"><span>Größe <output name="bsize-out"></output></span>
-            <input type="range" name="bsize" min="50" max="200" step="5" value="100">
-          </label>
-          <p class="obs-hint obs-wide">Zu sehen, sobald eine Karte gezogen ist. Ausblenden geht auch direkt im Bingo-Dialog.</p>
-        </fieldset>
-
-        <fieldset class="obs-group">
-          <legend>Ärgere den Dave</legend>
-          <label class="toggle obs-wide">
-            <input type="checkbox" name="prank" checked>
-            <span class="toggle-ui" aria-hidden="true"></span>
-            Würfe und Sounds der Zuschauer zeigen
-          </label>
-          <label class="field"><span>Daves Kamera</span>
-            <select id="obs-cam-preset">
-              <option value="35,25,30,40">Mitte</option>
-              <option value="73,72,25,25">unten rechts</option>
-              <option value="2,72,25,25">unten links</option>
-              <option value="73,3,25,25">oben rechts</option>
-              <option value="2,3,25,25">oben links</option>
-              <option value="0,0,100,100">ganzes Bild</option>
-              <option value="custom" hidden>eigener Rahmen</option>
-            </select>
-          </label>
-          <label class="field obs-range"><span>Größe der Würfe <output name="psize-out"></output></span>
-            <input type="range" name="psize" min="50" max="200" step="5" value="100">
-          </label>
-          <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
-          <p class="obs-hint obs-wide">Genauer: In der Vorschau einen Rahmen um die Stelle ziehen, an der Daves Kamera im Stream sitzt. Dort landen die Würfe.</p>
-        </fieldset>
-
-        <fieldset class="obs-group">
-          <legend>Aussehen &amp; Ton</legend>
-          <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
-            <input type="range" name="margin" min="0" max="200" step="4" value="40">
-          </label>
-          <label class="field obs-range"><span>Hintergrund <output name="bg-out"></output></span>
-            <input type="range" name="bg" min="0" max="100" step="2" value="94">
-          </label>
-          <label class="field obs-range"><span>Lautstärke <output name="vol-out"></output></span>
-            <input type="range" name="vol" min="0" max="100" step="5" value="100">
-          </label>
-          <label class="field obs-color"><span>Akzentfarbe</span>
-            <input type="color" name="accent" value="#ffb81c">
-          </label>
-        </fieldset>
-
+        <details class="obs-more">
+          <summary>Mehr Einstellungen</summary>
+          <div class="obs-more-grid">
+            <label class="field"><span>Glücksrad zeigen bei</span>
+              <select name="from">
+                <option value="all">allen Drehungen</option>
+                <option value="twitch">nur Kanalpunkten</option>
+                <option value="web">nur Drehungen auf der Seite</option>
+              </select>
+            </label>
+            <label class="field obs-range"><span>Ergebnis stehen lassen <output name="hold-out"></output></span>
+              <input type="range" name="hold" min="3" max="30" step="1" value="9">
+            </label>
+            <label class="field"><span>Überschrift Glücksrad</span>
+              <input type="text" name="wlabel" maxlength="40" placeholder="Glücksrad">
+            </label>
+            <label class="field"><span>Überschrift Nächste Abfahrt</span>
+              <input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt">
+            </label>
+            <label class="field obs-range"><span>Nächste Idee nach <output name="rotate-out"></output></span>
+              <input type="range" name="rotate" min="5" max="60" step="1" value="12">
+            </label>
+            <label class="field obs-range"><span>Kartenhintergrund <output name="bg-out"></output></span>
+              <input type="range" name="bg" min="0" max="100" step="2" value="94">
+            </label>
+            <label class="field obs-color"><span>Akzentfarbe</span>
+              <input type="color" name="accent" value="#ffb81c">
+            </label>
+            <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
+              <input type="range" name="margin" min="0" max="200" step="4" value="40">
+            </label>
+            <label class="toggle obs-wide">
+              <input type="checkbox" name="always">
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Glücksrad immer sichtbar, nicht nur beim Drehen
+            </label>
+            <label class="toggle obs-wide">
+              <input type="checkbox" name="vcolor" checked>
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Glücksrad in der Farbe der Variante
+            </label>
+          </div>
+        </details>
         <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
       </form>
 
-      <div class="obs-side">
-        <div class="obs-preview" id="obs-preview" aria-label="Vorschau mit Probe-Drehung und Probe-Würfen. Rahmen ziehen legt Daves Kamera fest.">
-          <span class="obs-preview-label">Vorschau · Probe-Drehung und Probe-Würfe</span>
-          <span class="obs-cam" id="obs-cam"><span>Daves Kamera</span></span>
-        </div>
-        <div class="obs-url">
-          <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
-          <button id="obs-copy" class="btn btn--primary" type="button">Kopieren</button>
-        </div>
-        <p class="obs-hint">Nach jeder Änderung die Adresse neu kopieren und in OBS in der Browserquelle ersetzen. Mehrere Quellen gehen auch – z. B. eine nur mit dem Glücksrad für eine andere Szene.</p>
+      <!-- 4. Ergebnis -->
+      <div class="obs-url">
+        <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
+        <button id="obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
       </div>
-      </div>
-
-      <ol class="obs-steps">
-        <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken und <b>Browser</b> wählen.</li>
-        <li>Adresse oben einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b> eintragen.</li>
-        <li>Für den Ton <b>„Audio über OBS steuern“</b> anhaken – dann taucht er im Audio-Mixer auf.</li>
-        <li>Die Browserquelle in der Quellen-Liste <b>über</b> Daves Kamera schieben – sonst fliegen die Würfe hinter ihm vorbei.</li>
-        <li>Zum Ausrichten hängst du <code>&amp;test=1</code> an die Adresse: Dann dreht sich alle 20 Sekunden ein Probe-Rad. Danach wieder entfernen.</li>
-      </ol>
+      <details class="obs-manual">
+        <summary>Ohne Verbindung von Hand einrichten</summary>
+        <ol class="obs-steps">
+          <li>Adresse oben <b>kopieren</b>.</li>
+          <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken, <b>Browser</b> wählen, Adresse einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b>.</li>
+          <li><b>„Audio über OBS steuern“</b> anhaken – dann ist der Ton im Audio-Mixer regelbar.</li>
+          <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über Daves Kamera.</li>
+          <li>Nach Änderungen hier die Adresse neu kopieren und in der Browserquelle ersetzen.</li>
+        </ol>
+      </details>
     </div>
   </dialog>
 

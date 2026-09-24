@@ -4,7 +4,9 @@
 // Daneben läuft "Nächste Abfahrt" mit den kommenden Content-Ideen.
 //
 // Die Adresse baut der OBS-Dialog im Dashboard. Optionen, z. B. overlay.html?wheel=br&wsize=120
-//   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus
+//   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus;
+//                              oder frei: wheel=62.5,70 (linke obere Ecke in Prozent des Bildes) –
+//                              so speichert es der OBS-Dialog, wenn man die Karte in der Vorschau verschiebt
 //   next=…|0                   Position "Nächste Abfahrt" (Standard bl)
 //   wsize=100 / nsize=100      Größe der Karten in Prozent (50 – 200); scale=1.2 gilt für beide
 //   hold=9                     Sekunden, die das Ergebnis stehen bleibt (3 – 60)
@@ -23,6 +25,8 @@
 //   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
+//   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
+//                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
@@ -35,7 +39,9 @@ const TILES_REFRESH_MS = 60000;
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
 const params = new URLSearchParams(location.search);
-const position = (value, fallback) => (value === '0' || value === 'off' ? null : POSITIONS.includes(value) ? value : fallback);
+const FREE = /^\d{1,3}(\.\d+)?,\d{1,3}(\.\d+)?$/;
+const position = (value, fallback) => (value === '0' || value === 'off' ? null
+  : POSITIONS.includes(value) || FREE.test(value ?? '') ? value : fallback);
 const flag = (name, fallback) => (params.has(name) ? !['0', 'false', 'off'].includes(params.get(name)) : fallback);
 const number = (name, fallback, min, max) => {
   const raw = params.get(name);
@@ -67,6 +73,7 @@ const opt = {
   cam: camera(params.get('cam')),
   psize: number('psize', 100, 50, 200) / 100,
   test: flag('test', false),
+  edit: flag('edit', false),
 };
 
 // Kamera-Bereich "links,oben,Breite,Höhe" in Prozent des Bildes
@@ -91,11 +98,36 @@ root.setProperty('--bs', opt.bsize);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
 $('ov-nlabel').textContent = opt.nlabel;
-if (opt.wheel) $('ov-spin').classList.add(`pos-${opt.wheel}`);
+if (opt.wheel) place($('ov-spin'), opt.wheel);
 else $('ov-spin').remove();
-if (opt.next) $('ov-next').classList.add(`pos-${opt.next}`);
-if (opt.bingo) $('ov-bingo').classList.add(`pos-${opt.bingo}`);
+if (opt.next) place($('ov-next'), opt.next);
+else $('ov-next').remove();
+if (opt.bingo) place($('ov-bingo'), opt.bingo);
 else $('ov-bingo').remove();
+if (opt.edit) setupEdit();
+
+// Ecke (br, tl, …) per CSS-Klasse, freie Position als linke obere Ecke in Prozent.
+// Frei platzierte Karten bleiben immer ganz im Bild, auch wenn sie wachsen.
+function place(el, pos) {
+  if (!FREE.test(pos)) { el.classList.add(`pos-${pos}`); return; }
+  const [x, y] = pos.split(',').map(Number);
+  el.classList.add('pos-free');
+  el.dataset.x = x;
+  el.dataset.y = y;
+  keepInside(el);
+  new ResizeObserver(() => keepInside(el)).observe(el);
+  addEventListener('resize', () => keepInside(el));
+}
+
+function keepInside(el) {
+  if (!el.classList.contains('pos-free')) return;
+  const W = innerWidth;
+  const H = innerHeight;
+  const left = Math.min((Number(el.dataset.x) / 100) * W, Math.max(0, W - el.offsetWidth));
+  const top = Math.min((Number(el.dataset.y) / 100) * H, Math.max(0, H - el.offsetHeight));
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+}
 
 let variants = DEFAULT_VARIANTS;
 let tiles = [];
@@ -276,6 +308,19 @@ function setupSpins(source) {
     await wait(700);
   }
 
+  // Beim Einrichten steht das Rad still mit einem Beispiel-Ergebnis da.
+  if (opt.edit) {
+    const v = variants[0];
+    card.style.setProperty('--c', opt.variantColor ? v.color : 'var(--accent)');
+    $('ov-who').textContent = '@Beispiel löst Kanalpunkte ein';
+    $('ov-variant').textContent = v.name;
+    $('ov-result').textContent = v.segments[0].label;
+    $('ov-detail').textContent = v.segments[0].detail;
+    card.classList.add('is-in', 'is-done');
+    requestAnimationFrame(() => wheel.resize());
+    return;
+  }
+
   source.onSpin(enqueue);
 
   if (opt.test) {
@@ -312,8 +357,11 @@ function setupNext(source) {
 
   function pick() {
     const list = upcoming();
-    if (!list.length) { current = null; card.hidden = true; return; }
-    current = list[index % list.length];
+    if (!list.length && opt.edit) {
+      // Zum Einrichten auch ohne geplanten Termin zeigen, wo die Karte sitzt
+      current = { title: 'Hier steht die nächste Idee', target_at: new Date(Date.now() + 3 * 86400e3 + 4 * 3600e3).toISOString() };
+    } else if (!list.length) { current = null; card.hidden = true; return; } else current = null;
+    current ??= list[index % list.length];
     card.hidden = false;
     $('ov-next-title').textContent = current.title;
     const d = new Date(current.target_at);
@@ -402,6 +450,7 @@ function setupPranks(source) {
 
   function handle(p) {
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
+    place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {
       const b = box();
       // Ziel: Gesichtshöhe, also eher die obere Mitte des Kamerabilds
@@ -453,7 +502,7 @@ async function setupBingo(source) {
 
   function show(next, stamped = null) {
     card = next;
-    const visible = !!card?.cells?.length && card.visible !== false;
+    const visible = !!card?.cells?.length && (card.visible !== false || opt.edit);
     card$.hidden = !visible;
     if (!visible) return;
     card$.style.setProperty('--n', card.size);
@@ -500,6 +549,101 @@ function testCard() {
   const cells = items.sort(() => Math.random() - 0.5).slice(0, 8).map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e) }));
   cells.splice(4, 0, { free: true });
   return { size: 3, cells, marked: [4], visible: true, created_at: 'test' };
+}
+
+// ============================================================
+// Einrichten (edit=1): Karten und Kamera-Rahmen mit der Maus verschieben
+// ============================================================
+// Läuft nur in der Vorschau des OBS-Dialogs. Jede fertige Bewegung geht per
+// postMessage an die Seite, die daraus die Adresse für OBS baut.
+function setupEdit() {
+  document.body.classList.add('is-edit');
+  if (opt.prank) {
+    const cam = document.createElement('div');
+    cam.id = 'ov-cam';
+    cam.className = 'ov-cam-frame';
+    cam.dataset.drag = 'cam';
+    cam.innerHTML = '<span>Daves Kamera</span><i class="ov-cam-handle" data-resize title="Größe ändern"></i>';
+    document.body.append(cam);
+    setCam(opt.cam);
+  }
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo']]) {
+    if ($(id)) $(id).dataset.drag = key;
+  }
+  addEventListener('pointerdown', startDrag);
+  // Die Seite schickt den Kamera-Bereich, wenn sie ihn aus OBS ausgelesen hat.
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || e.data?.type !== 'stellwerk-cam') return;
+    opt.cam = camera(e.data.value);
+    setCam(opt.cam);
+  });
+}
+
+function setCam({ x, y, w, h }) {
+  const cam = $('ov-cam');
+  if (cam) Object.assign(cam.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
+}
+
+function startDrag(e) {
+  const el = e.target.closest('[data-drag]');
+  if (!el || e.button !== 0) return;
+  e.preventDefault();
+  const resize = !!e.target.closest('[data-resize]');
+  const W = innerWidth;
+  const H = innerHeight;
+  const r = el.getBoundingClientRect();
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  let moved = false;
+  el.setPointerCapture(e.pointerId);
+  el.classList.add('is-dragging');
+
+  const move = (ev) => {
+    const dx = ev.clientX - e.clientX;
+    const dy = ev.clientY - e.clientY;
+    moved ||= Math.abs(dx) + Math.abs(dy) > 2;
+    if (resize) {
+      el.style.width = `${clamp(r.width + dx, 60, W - r.left)}px`;
+      el.style.height = `${clamp(r.height + dy, 60, H - r.top)}px`;
+      return;
+    }
+    let left = clamp(r.left + dx, 0, W - r.width);
+    let top = clamp(r.top + dy, 0, H - r.height);
+    // Einrasten am Rand (im eingestellten Abstand) und in der Mitte
+    const snap = (v, size, total) => {
+      for (const t of [opt.margin, (total - size) / 2, total - size - opt.margin, 0, total - size]) {
+        if (Math.abs(v - t) < 18) return t;
+      }
+      return v;
+    };
+    left = snap(left, r.width, W);
+    top = snap(top, r.height, H);
+    el.classList.remove(...POSITIONS.map((p) => `pos-${p}`));
+    el.classList.add('pos-free');
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  };
+
+  const up = () => {
+    el.removeEventListener('pointermove', move);
+    el.classList.remove('is-dragging');
+    if (!moved) return;
+    const pct = (v, total) => Math.round((v / total) * 1000) / 10;
+    const b = el.getBoundingClientRect();
+    const key = el.dataset.drag;
+    const value = key === 'cam'
+      ? [pct(b.left, W), pct(b.top, H), pct(b.width, W), pct(b.height, H)].join(',')
+      : `${pct(b.left, W)},${pct(b.top, H)}`;
+    if (key !== 'cam') {
+      el.dataset.x = pct(b.left, W);
+      el.dataset.y = pct(b.top, H);
+    } else {
+      opt.cam = camera(value);
+    }
+    parent.postMessage({ type: 'stellwerk-obs', key, value }, location.origin);
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up, { once: true });
+  el.addEventListener('pointercancel', up, { once: true });
 }
 
 // ============================================================

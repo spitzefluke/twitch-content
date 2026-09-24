@@ -760,18 +760,7 @@ function setupDialogs() {
   $('#wheel-card').addEventListener('click', openWheel);
   $('#idea-form').addEventListener('submit', submitIdea);
   $('#twitch-btn').addEventListener('click', openTwitchDialog);
-  $('#obs-btn').addEventListener('click', openObsDialog);
-  $('#obs-options').addEventListener('input', () => updateObs());
-  $('#obs-options').addEventListener('change', () => updateObs());
-  $('#obs-options').addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
-  $('#obs-copy').addEventListener('click', copyObsUrl);
-  // Vorschau beim Schließen entfernen: Sie dreht sonst im Hintergrund weiter.
-  $('#obs-dialog').addEventListener('close', () => {
-    clearTimeout(obsPreviewTimer);
-    $('#obs-preview iframe')?.remove();
-  });
-  new ResizeObserver(fitObsPreview).observe($('#obs-preview'));
-  setupObsCam();
+  setupObs();
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   $('#tile-edit-btn').addEventListener('click', () => showTileForm(true));
@@ -1678,10 +1667,46 @@ function toLocalInput(d) {
 // OBS-Overlay
 // ============================================================
 // Jede Einstellung landet nur in der Adresse, wenn sie vom Standard abweicht.
-// Die Standards stehen als value/checked/selected im Formular (index.html)
-// und in js/overlay.js – beide gleich halten.
+// Die Standards stehen als value/checked im Formular (index.html) und in
+// js/overlay.js – beide gleich halten. Positionen setzt die Vorschau: Karten
+// und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
-const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%', psize: '%', bsize: '%' };
+const OBS_WS_KEY = 'zd_obs_ws';
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo'];
+const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
+
+function setupObs() {
+  const form = $('#obs-options');
+  $('#obs-btn').addEventListener('click', openObsDialog);
+  form.addEventListener('input', () => updateObs());
+  form.addEventListener('change', () => updateObs());
+  form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
+  $('#obs-copy').addEventListener('click', copyObsUrl);
+  $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
+  $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
+  $('#obs-apply').addEventListener('click', applyObs);
+  $('#obs-cam-source').addEventListener('change', useObsCamera);
+  $('#obs-share').addEventListener('click', shareObsWindow);
+  // Vorschau und Bildabruf beim Schließen beenden – sie liefen sonst im Hintergrund weiter.
+  $('#obs-dialog').addEventListener('close', () => {
+    clearTimeout(obsPreviewTimer);
+    clearTimeout(obs.shotTimer);
+    $('#obs-preview iframe')?.remove();
+    stopObsShare();
+  });
+  new ResizeObserver(fitObsPreview).observe($('#obs-preview'));
+
+  // Verschieben in der Vorschau meldet das Overlay per postMessage.
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || e.data?.type !== 'stellwerk-obs') return;
+    const field = form.elements[e.data.key];
+    if (!field || typeof e.data.value !== 'string') return;
+    field.value = e.data.value;
+    if (e.data.key === 'cam') $('#obs-cam-source').value = '';
+    updateObs({ fromPreview: true });
+  });
+}
 
 function obsFields() {
   return [...$('#obs-options').elements].filter((el) => el.name && !el.name.endsWith('-out'));
@@ -1697,17 +1722,20 @@ function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
-  p.set('wheel', f.wheel.value);
-  p.set('next', f.next.value);
+  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo nur wenn geändert.
+  for (const key of OBS_PARTS) {
+    const value = f.elements[`${key}_on`].checked ? f.elements[key].value : '0';
+    if (key !== 'bingo' || value !== f.elements.bingo.defaultValue) p.set(key, value);
+  }
   for (const el of obsFields()) {
-    if (el.name === 'wheel' || el.name === 'next') continue;
+    if (OBS_PARTS.includes(el.name) || el.name.endsWith('_on')) continue;
     const value = el.type === 'checkbox' ? el.checked : el.value.trim();
     if (value === obsDefault(el) || value === '') continue;
     if (el.type === 'checkbox') p.set(el.name, value ? '1' : '0');
     else if (el.type === 'color') p.set(el.name, value.slice(1));
     else p.set(el.name, value);
   }
-  if (preview) { p.set('vol', '0'); p.set('test', '1'); }
+  if (preview) { p.set('vol', '0'); p.set('test', '1'); p.set('edit', '1'); }
   return url.href;
 }
 
@@ -1715,6 +1743,10 @@ function loadObs() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(OBS_KEY)); } catch { /* ohne Speicher: Standards */ }
   if (!saved || typeof saved !== 'object') return;
+  // Ältere gespeicherte Einstellungen: "0" als Position hieß "nicht zeigen".
+  for (const key of OBS_PARTS) {
+    if (saved[key] === '0') { saved[`${key}_on`] = false; delete saved[key]; }
+  }
   for (const el of obsFields()) {
     if (!(el.name in saved)) continue;
     if (el.type === 'checkbox') el.checked = Boolean(saved[el.name]);
@@ -1733,6 +1765,16 @@ async function openObsDialog() {
   loadObs();
   $('#obs-dialog').showModal();
   updateObs({ now: true });
+  paintObsConnection();
+  // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
+  const saved = readObsLogin();
+  if (saved && !obs.ws?.connected) {
+    $('#obs-ws-form').password.value = saved.password ?? '';
+    connectObs({ quiet: true });
+  } else if (obs.ws?.connected) {
+    pollObsShot();
+  }
+
   const note = $('#obs-note');
   if (state.api.demo) {
     note.textContent = 'Demo-Modus: OBS läuft in einem eigenen Browser und bekommt die Drehungen von dieser Seite nicht mit. Die Vorschau hier funktioniert, weil sie im selben Browser läuft.';
@@ -1748,16 +1790,20 @@ async function openObsDialog() {
 
 let obsPreviewTimer = 0;
 
-function updateObs({ now = false } = {}) {
+function updateObs({ now = false, fromPreview = false } = {}) {
   const f = $('#obs-options');
   const values = {};
   for (const el of obsFields()) values[el.name] = el.type === 'checkbox' ? el.checked : el.value;
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
+  for (const key of OBS_PARTS) f.elements[key === 'wheel' ? 'wsize' : key === 'next' ? 'nsize' : 'bsize'].disabled = !f.elements[`${key}_on`].checked;
+  f.psize.disabled = !f.prank.checked;
   saveObs(values);
   $('#obs-url').value = obsUrl();
-  paintObsCam();
 
-  // Die Vorschau lädt neu – beim Ziehen eines Reglers erst, wenn er kurz ruht.
+  // Hat die Vorschau selbst die Änderung gemeldet (verschoben), zeigt sie sie
+  // schon – nicht neu laden, sonst springt alles zurück.
+  const frame = $('#obs-preview iframe');
+  if (fromPreview && frame) { frame.dataset.src = obsUrl({ preview: true }); return; }
   clearTimeout(obsPreviewTimer);
   obsPreviewTimer = setTimeout(renderObsPreview, now ? 0 : 350);
 }
@@ -1769,76 +1815,10 @@ function renderObsPreview() {
   if (old?.dataset.src === src) return;
   old?.remove();
   const frame = document.createElement('iframe');
-  frame.title = 'Vorschau des OBS-Overlays';
-  frame.tabIndex = -1;
+  frame.title = 'Vorschau des OBS-Overlays – Karten lassen sich verschieben';
   frame.src = frame.dataset.src = src;
   box.append(frame);
   fitObsPreview();
-}
-
-// ---------- Daves Kamera: Vorlage wählen oder in der Vorschau einen Rahmen ziehen ----------
-function paintObsCam() {
-  const f = $('#obs-options');
-  const [x, y, w, h] = f.cam.value.split(',').map(Number);
-  const frame = $('#obs-cam');
-  frame.hidden = !f.prank.checked;
-  Object.assign(frame.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
-  const preset = $('#obs-cam-preset');
-  preset.value = [...preset.options].some((o) => o.value === f.cam.value) ? f.cam.value : 'custom';
-  preset.disabled = !f.prank.checked;
-}
-
-function setupObsCam() {
-  const f = $('#obs-options');
-  const box = $('#obs-preview');
-  // Die Vorlage hat keinen name, landet also nicht selbst in der Adresse – sie setzt nur "cam".
-  const preset = $('#obs-cam-preset');
-  const pick = (e) => {
-    e.stopPropagation();
-    if (preset.value === 'custom' || preset.value === f.cam.value) return;
-    f.cam.value = preset.value;
-    updateObs();
-  };
-  preset.addEventListener('input', pick);
-  preset.addEventListener('change', pick);
-  let start = null;
-  const pct = (e) => {
-    const r = box.getBoundingClientRect();
-    return [
-      Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)),
-      Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)),
-    ];
-  };
-  const rect = (a, b) => {
-    const x = Math.min(a[0], b[0]);
-    const y = Math.min(a[1], b[1]);
-    return [x, y, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])].map((n) => Math.round(n));
-  };
-  box.addEventListener('pointerdown', (e) => {
-    if (!f.prank.checked || e.button !== 0) return;
-    start = pct(e);
-    box.setPointerCapture(e.pointerId);
-    box.classList.add('is-drawing');
-  });
-  box.addEventListener('pointermove', (e) => {
-    if (!start) return;
-    const [x, y, w, h] = rect(start, pct(e));
-    Object.assign($('#obs-cam').style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
-  });
-  const end = (e) => {
-    if (!start) return;
-    const [x, y, w, h] = rect(start, pct(e));
-    start = null;
-    box.classList.remove('is-drawing');
-    // Ein Klick ohne Ziehen setzt einen Rahmen in typischer Kamera-Größe um den Punkt.
-    const cam = w < 3 || h < 3
-      ? [Math.max(0, Math.min(75, x - 12.5)), Math.max(0, Math.min(75, y - 12.5)), 25, 25].map(Math.round)
-      : [x, y, w, h];
-    f.cam.value = cam.join(',');
-    updateObs();
-  };
-  box.addEventListener('pointerup', end);
-  box.addEventListener('pointercancel', () => { start = null; box.classList.remove('is-drawing'); paintObsCam(); });
 }
 
 function fitObsPreview() {
@@ -1856,6 +1836,164 @@ async function copyObsUrl() {
     input.select();
     toast('Adresse ist markiert – mit Strg+C kopieren.');
   }
+}
+
+// ---------- Verbindung zu OBS (WebSocket) ----------
+function readObsLogin() {
+  try { return JSON.parse(localStorage.getItem(OBS_WS_KEY)); } catch { return null; }
+}
+
+async function connectObs({ quiet = false } = {}) {
+  const form = $('#obs-ws-form');
+  const btn = form.querySelector('button[type="submit"]');
+  const msg = $('#obs-ws-msg');
+  msg.textContent = '';
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  $('#obs-connect').dataset.state = 'busy';
+  try {
+    const { ObsSocket } = await import('./obs-ws.js');
+    obs.ws ??= new ObsSocket();
+    obs.ws.onClose = () => { disconnectObs(false); msg.textContent = 'Verbindung zu OBS getrennt.'; };
+    const password = form.password.value;
+    await obs.ws.connect({ password });
+    try { localStorage.setItem(OBS_WS_KEY, JSON.stringify({ password })); } catch { /* nur Komfort */ }
+    stopObsShare();
+    obs.scene = await obs.ws.programScene();
+    await loadObsSources({ pick: true });
+    paintObsConnection();
+    pollObsShot();
+  } catch (err) {
+    console.warn(err);
+    obs.ws?.close();
+    $('#obs-connect').dataset.state = 'off';
+    if (!quiet) msg.textContent = err.message;
+    paintObsConnection();
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+  }
+}
+
+function disconnectObs(forget) {
+  clearTimeout(obs.shotTimer);
+  obs.ws?.close();
+  obs.scene = null;
+  if (forget) {
+    try { localStorage.removeItem(OBS_WS_KEY); } catch { /* egal */ }
+    $('#obs-ws-form').password.value = '';
+  }
+  $('#obs-shot').hidden = true;
+  paintObsConnection();
+}
+
+function paintObsConnection() {
+  const on = !!obs.ws?.connected;
+  const box = $('#obs-connect');
+  box.dataset.state = on ? 'on' : box.dataset.state === 'busy' ? 'busy' : 'off';
+  $('#obs-ws-form').hidden = on;
+  $('#obs-connected').hidden = !on;
+  $('#obs-share').hidden = on;
+  $('#obs-ws-title').textContent = on ? 'Mit OBS verbunden' : 'Mit OBS verbinden';
+  $('#obs-ws-status').textContent = on
+    ? `Vorschau zeigt die Szene „${obs.scene ?? '…'}“. „In OBS übernehmen“ legt die Browserquelle „Stellwerk-Overlay“ an bzw. aktualisiert sie.`
+    : 'Dann siehst du unten dein echtes OBS-Bild, die Seite findet Daves Kamera und richtet das Overlay in OBS ein.';
+  $('#obs-preview-label').textContent = on ? `Live aus OBS · ${obs.scene ?? ''}` : obs.stream ? 'Geteiltes Fenster' : 'Beispielbild';
+  $('#obs-preview').classList.toggle('has-shot', on || !!obs.stream);
+}
+
+// Bildquellen der aktuellen Szene; die wahrscheinliche Kamera wird vorgeschlagen.
+async function loadObsSources({ pick = false } = {}) {
+  obs.sources = await obs.ws.sources(obs.scene);
+  const select = $('#obs-cam-source');
+  const current = select.value;
+  select.replaceChildren(
+    new Option('– selbst in der Vorschau festlegen –', ''),
+    ...obs.sources.map((src, i) => new Option(`${src.camera ? '📷 ' : ''}${src.name}${src.enabled ? '' : ' (ausgeblendet)'}`, String(i))),
+  );
+  const guess = obs.sources.findIndex((src) => src.camera && src.enabled);
+  if (pick && guess >= 0) {
+    select.value = String(guess);
+    useObsCamera();
+  } else if (!pick) {
+    select.value = current;
+  }
+}
+
+function useObsCamera() {
+  const src = obs.sources[Number($('#obs-cam-source').value)];
+  if (!$('#obs-cam-source').value || !src) return;
+  const { x, y, w, h } = src.rect;
+  const f = $('#obs-options');
+  f.cam.value = [x, y, w, h].join(',');
+  f.prank.checked = true;
+  $('#obs-preview iframe')?.contentWindow?.postMessage({ type: 'stellwerk-cam', value: f.cam.value }, location.origin);
+  updateObs({ fromPreview: true });
+}
+
+// Programmbild etwa jede Sekunde holen, solange der Dialog offen ist.
+function pollObsShot() {
+  clearTimeout(obs.shotTimer);
+  const tick = async () => {
+    if (!obs.ws?.connected || !$('#obs-dialog').open) return;
+    try {
+      const scene = await obs.ws.programScene();
+      if (scene !== obs.scene) {
+        obs.scene = scene;
+        await loadObsSources({ pick: false });
+        paintObsConnection();
+      }
+      const img = $('#obs-shot');
+      img.src = await obs.ws.screenshot(scene);
+      img.hidden = false;
+    } catch (err) {
+      console.warn('OBS-Bild:', err);
+    }
+    obs.shotTimer = setTimeout(tick, 1000);
+  };
+  tick();
+}
+
+async function applyObs() {
+  const btn = $('#obs-apply');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  try {
+    const { scene, created } = await obs.ws.applyOverlay(obsUrl());
+    toast(created
+      ? `Fertig: „Stellwerk-Overlay“ liegt jetzt in der Szene „${scene}“ ganz oben.`
+      : `Fertig: „Stellwerk-Overlay“ ist aktualisiert und liegt in „${scene}“ ganz oben.`, 'ok', 6000);
+  } catch (err) {
+    toast(`OBS: ${err.message}`, 'error', 7000);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+  }
+}
+
+// ---------- Ohne Verbindung: ein Fenster teilen ----------
+// Z. B. in OBS Rechtsklick auf die Vorschau → „Fenster-Projektor (Programm)“ und dieses Fenster teilen.
+async function shareObsWindow() {
+  try {
+    obs.stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: false });
+  } catch {
+    return; // abgebrochen
+  }
+  const video = $('#obs-video');
+  video.srcObject = obs.stream;
+  video.hidden = false;
+  video.play().catch(() => {});
+  obs.stream.getVideoTracks()[0]?.addEventListener('ended', stopObsShare);
+  paintObsConnection();
+}
+
+function stopObsShare() {
+  obs.stream?.getTracks().forEach((t) => t.stop());
+  obs.stream = null;
+  const video = $('#obs-video');
+  video.srcObject = null;
+  video.hidden = true;
+  if ($('#obs-dialog').open) paintObsConnection();
 }
 
 // ============================================================
