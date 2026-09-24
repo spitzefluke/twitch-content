@@ -13,6 +13,7 @@ export const ITEMS = [
   { id: 'snowball', name: 'Schneeball', acc: 'einen Schneeball', emoji: '❄️', hit: 'poof', splat: '#eef7ff' },
   { id: 'undies', name: 'Rote Unterhose', acc: 'eine rote Unterhose', emoji: '🩲', hit: 'slap', stick: true, svg: 'undies' },
   { id: 'nuke', name: 'Nuke', acc: 'eine Nuke', emoji: '☢️', hit: 'boom', boom: true, svg: 'nuke' },
+  { id: 'flashbang', name: 'Flashbang', acc: 'eine Flashbang', emoji: '💥', hit: 'tink', flashbang: true, svg: 'flashbang' },
   { id: 'flowers', name: 'Blumen', acc: 'Blumen', emoji: '💐', hit: 'bling', nice: true },
 ];
 
@@ -35,6 +36,18 @@ const ICONS = {
       <path d="M60 52 53 40a14 14 0 0 1 14 0z"/><path d="M60 52l14 0a14 14 0 0 1-7 12z"/><path d="M60 52l-7 12a14 14 0 0 1-7-12z"/></g>
   </g></svg>`,
 };
+
+ICONS.flashbang = `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 50) rotate(-20) translate(-50 -50)">
+    <rect x="30" y="30" width="40" height="60" rx="7" fill="#7f8b99" stroke="#1f252d" stroke-width="3"/>
+    <rect x="30" y="44" width="40" height="7" fill="#1f252d" opacity=".55"/>
+    <rect x="30" y="68" width="40" height="7" fill="#1f252d" opacity=".55"/>
+    <rect x="37" y="33" width="7" height="54" rx="3" fill="#b9c3cf" opacity=".6"/>
+    <rect x="36" y="18" width="28" height="14" rx="3" fill="#4b5560" stroke="#1f252d" stroke-width="3"/>
+    <path d="M62 20h8c4 0 6 3 6 7v34" fill="none" stroke="#c9d2dc" stroke-width="6" stroke-linecap="round"/>
+    <path d="M62 20h8c4 0 6 3 6 7v34" fill="none" stroke="#1f252d" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    <circle cx="30" cy="16" r="9" fill="none" stroke="#e8c33a" stroke-width="4"/>
+    <path d="M37 21l4 3" stroke="#e8c33a" stroke-width="4" stroke-linecap="round"/>
+  </g></svg>`;
 
 // Symbol eines Gegenstands in `el`: Zeichnung oder Emoji
 export function setItemIcon(el, it) {
@@ -210,6 +223,20 @@ export class Sfx {
         s.tone(1300, { at: 0.2, to: 900, attack: 0.01, hold: 0.05, release: 0.1, peak: 0.22 });
       },
       poof() { s.noise({ freq: 2500, to: 600, attack: 0.02, release: 0.35, peak: 0.35 }); },
+      // Flashbang: klimpert metallisch beim Aufkommen
+      tink() {
+        s.tone(2600, { type: 'triangle', release: 0.12, peak: 0.25 });
+        s.tone(3900, { at: 0.02, type: 'sine', release: 0.2, peak: 0.12 });
+        s.tone(2750, { at: 0.22, type: 'triangle', release: 0.1, peak: 0.16 });
+      },
+      // …und dann: Knall und das Pfeifen im Ohr
+      bang() {
+        s.noise({ type: 'highpass', freq: 1200, release: 0.18, peak: 0.9 });
+        s.noise({ freq: 3000, to: 200, attack: 0.005, release: 0.6, peak: 0.6 });
+        s.tone(120, { to: 40, release: 0.35, peak: 0.6 });
+        s.tone(3520, { at: 0.15, attack: 0.3, hold: 1.2, release: 3.5, peak: 0.07 });
+        s.tone(3535, { at: 0.15, attack: 0.3, hold: 1.2, release: 3.5, peak: 0.05 });
+      },
       // Nuke: Knall, dann tiefes Grollen
       boom() {
         s.noise({ type: 'highpass', freq: 1800, release: 0.12, peak: 0.5 });
@@ -359,6 +386,18 @@ export function throwItem(layer, { item, x, y, size = 110, sfx = null, onHit = n
       await explode(layer, tx, ty, size, reducedMotion);
       return;
     }
+    if (it.flashbang) {
+      // Fällt runter, liegt kurz da – dann wird alles weiß.
+      await el.animate([
+        { transform: `${end} scale(1.2, 0.85)` },
+        { transform: `${end} translateY(${size * 0.5}px) rotate(${dir * 50}deg)`, offset: 0.4 },
+        { transform: `${end} translateY(${size * 0.62}px) rotate(${dir * 70}deg)` },
+      ], { duration: 800, easing: 'cubic-bezier(.3,.6,.4,1)', fill: 'forwards' }).finished;
+      el.remove();
+      sfx?.hit('bang');
+      await whiteout(layer, reducedMotion);
+      return;
+    }
     if (it.stick) {
       // Banane und Unterhose bleiben kurz kleben und rutschen dann ab.
       await el.animate([
@@ -506,4 +545,24 @@ function explode(layer, x, y, size, reducedMotion = false) {
     });
   }
   return Promise.all(runs.map((a) => a.finished)).then(() => made.forEach((el) => el.remove()));
+}
+
+// Flashbang: der ganze Bildschirm wird schlagartig weiß und blendet dann langsam
+// wieder auf. Bewusst nur EIN Blitz ohne Flackern (kein Stroboskop).
+function whiteout(layer, reducedMotion = false) {
+  const el = document.createElement('span');
+  el.className = 'pf-whiteout';
+  layer.append(el);
+  const frames = reducedMotion
+    ? [{ opacity: 0 }, { opacity: 0.85, offset: 0.1 }, { opacity: 0.85, offset: 0.35 }, { opacity: 0 }]
+    : [
+      { opacity: 0 },
+      { opacity: 1, offset: 0.01 },
+      { opacity: 1, offset: 0.32 }, // gut 1,5 Sekunden nur Weiß
+      { opacity: 0.92, offset: 0.45 },
+      { opacity: 0.55, offset: 0.7 },
+      { opacity: 0 },
+    ];
+  return el.animate(frames, { duration: reducedMotion ? 2500 : 5000, easing: 'linear', fill: 'forwards' })
+    .finished.then(() => el.remove());
 }

@@ -13,6 +13,7 @@ export const THROW_ITEMS: { id: string; name: string; alias: string[] }[] = [
   { id: "sock", name: "Stinkesocke", alias: ["socke", "socken", "🧦"] },
   { id: "snowball", name: "Schneeball", alias: ["schnee", "❄️", "❄"] },
   { id: "undies", name: "Rote Unterhose", alias: ["unterhose", "unterhosen", "rote unterhosen", "buxe", "schluepfer", "slip", "🩲"] },
+  { id: "flashbang", name: "Flashbang", alias: ["flash", "blendgranate", "blend", "flashbang granate", "💥", "⚡"] },
   { id: "nuke", name: "Nuke", alias: ["atombombe", "bombe", "atom", "rakete", "☢️", "☢", "💣", "🚀"] },
   { id: "flowers", name: "Blumen", alias: ["blume", "strauss", "blumenstrauss", "💐", "🌹"] },
 ];

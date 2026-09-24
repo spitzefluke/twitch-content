@@ -478,7 +478,7 @@ function setupPranks(source) {
   source.onPrank(handle);
 
   if (opt.test) {
-    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke'];
+    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke', 'flashbang'];
     const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
     let n = 0;
     const fake = () => {
