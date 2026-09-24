@@ -19,6 +19,10 @@ const ERRORS = [
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
   [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
+  [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
+  [/exceeded the maximum allowed size|payload too large|entity too large/i, 'Die Datei ist zu groß (höchstens 1 MB).'],
+  [/mime type|invalid.*content.?type/i, 'Dieses Dateiformat geht nicht. Bitte MP3, OGG, WAV oder M4A nehmen.'],
+  [/row-level security/i, 'Das ist gerade nicht erlaubt.'],
   [/failed to fetch|networkerror/i, 'Keine Verbindung zum Server.'],
   [/provider is not enabled|unsupported provider/i, 'Diese Anmelde-Möglichkeit ist noch nicht eingerichtet.'],
   [/access.denied|user denied|cancel/i, 'Anmeldung abgebrochen.'],
@@ -138,6 +142,78 @@ async function createSupabaseApi() {
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
     },
+
+    // ---------- Ärgere den Dave ----------
+    // Fehlt die Migration …_pranks.sql, schlägt getPrankSettings fehl und
+    // app.js zeigt statt der Aktionen einen Hinweis.
+    async getPrankSettings() {
+      return unwrap(await sb.from('prank_settings').select('enabled, cooldown_seconds, allow_uploads').eq('id', 1).single());
+    },
+    async updatePrankSettings(patch) {
+      return unwrap(await sb.from('prank_settings')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('id', 1)
+        .select('enabled, cooldown_seconds, allow_uploads')
+        .single());
+    },
+    async getPranks(limit = 12) {
+      return unwrap(await sb.from('pranks').select('*').order('created_at', { ascending: false }).limit(limit));
+    },
+    // Pause, An/Aus und Name prüft die Datenbank (send_prank), nicht der Browser.
+    async sendPrank(kind, item, soundId = null) {
+      const { data, error } = await sb.rpc('send_prank', { p_kind: kind, p_item: item, p_sound: soundId });
+      if (error) {
+        const err = new Error(error.message);
+        const wait = /^cooldown:(\d+)$/.exec(error.hint ?? '');
+        if (wait) err.wait = Number(wait[1]);
+        if (error.hint === 'paused') err.paused = true;
+        throw err;
+      }
+      return data;
+    },
+    onPrank(cb) {
+      sb.channel('pranks-feed')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pranks' }, (p) => cb(p.new))
+        .subscribe();
+    },
+    soundUrl(path) {
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`;
+    },
+    async getSounds() {
+      const { data: session } = await sb.auth.getSession();
+      const uid = session.session?.user?.id;
+      const rows = unwrap(await sb.from('sounds')
+        .select('id, name, path, duration, author, user_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(80));
+      return rows.map((r) => ({ ...r, mine: r.user_id === uid, url: this.soundUrl(r.path) }));
+    },
+    async uploadSound(file, name, duration) {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) throw new Error('Bitte zuerst anmelden.');
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? 'mp3').toLowerCase();
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      unwrap(await sb.storage.from('sounds').upload(path, file, {
+        contentType: file.type || 'audio/mpeg',
+        cacheControl: '31536000',
+        upsert: false,
+      }));
+      const { data, error } = await sb.from('sounds')
+        .insert({ name, path, duration, user_id: user.id })
+        .select('id, name, path, duration, author, user_id, created_at')
+        .single();
+      if (error) {
+        await sb.storage.from('sounds').remove([path]).catch(() => {});
+        throw error;
+      }
+      return { ...data, mine: true, url: this.soundUrl(path) };
+    },
+    async deleteSound(sound) {
+      unwrap(await sb.from('sounds').delete().eq('id', sound.id));
+      const { error } = await sb.storage.from('sounds').remove([sound.path]);
+      if (error) console.warn('Sound-Datei nicht gelöscht:', error);
+    },
     onSpin(cb) {
       sb.channel('spins-feed')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, (p) => cb(p.new))
@@ -170,6 +246,7 @@ function createLocalApi() {
   };
   let listeners = [];
   let spinListeners = [];
+  const prankListeners = [];
   let current = null;
   let nextId = Date.now();
 
@@ -277,6 +354,75 @@ function createLocalApi() {
     },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
     async overlayReady() { return true; },
+
+    // ---------- Ärgere den Dave (Demo) ----------
+    // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
+    async getPrankSettings() { return store.get('prank_settings', { enabled: true, cooldown_seconds: 20, allow_uploads: true }); },
+    async updatePrankSettings(patch) {
+      const next = { ...(await this.getPrankSettings()), ...patch };
+      store.set('prank_settings', next);
+      return next;
+    },
+    async getPranks(limit = 12) { return store.get('pranks', []).slice(0, limit); },
+    async sendPrank(kind, item, soundId = null) {
+      const profile = await this.getProfile(current);
+      const cfg = await this.getPrankSettings();
+      if (!cfg.enabled && !profile.is_admin) {
+        throw Object.assign(new Error('Dave hat „Ärgere den Dave“ gerade pausiert.'), { paused: true });
+      }
+      const last = store.get('prank_last', {});
+      const left = Math.ceil(((last[current.email] ?? 0) + cfg.cooldown_seconds * 1000 - Date.now()) / 1000);
+      if (!profile.is_admin && left > 0) {
+        throw Object.assign(new Error(`Kurz durchatmen: noch ${left} Sekunden bis zur nächsten Aktion.`), { wait: left });
+      }
+      let sound = null;
+      if (soundId) {
+        sound = store.get('sounds', []).find((x) => x.id === soundId);
+        if (!sound) throw new Error('Diesen Sound gibt es nicht mehr.');
+      }
+      const prank = {
+        id: nextId++,
+        created_at: new Date().toISOString(),
+        kind,
+        item: sound ? 'custom' : item,
+        sound_path: sound?.path ?? null,
+        label: sound?.name ?? '',
+        requested_by: profile.username,
+      };
+      store.set('prank_last', { ...last, [current.email]: Date.now() });
+      store.set('pranks', [prank, ...store.get('pranks', [])].slice(0, 30));
+      setTimeout(() => prankListeners.forEach((cb) => cb(prank)), 50);
+      return prank;
+    },
+    onPrank(cb) { prankListeners.push(cb); },
+    soundUrl(path) { return store.get('sounds', []).find((x) => x.path === path)?.url ?? ''; },
+    async getSounds() {
+      return store.get('sounds', []).map((x) => ({ ...x, mine: x.user_id === current?.email }));
+    },
+    // Demo: Die Datei landet als data:-URL im localStorage – der ist klein, daher höchstens 400 KB.
+    async uploadSound(file, name, duration) {
+      if (file.size > 400 * 1024) throw new Error('Im Demo-Modus höchstens 400 KB (live: 1 MB).');
+      const mine = store.get('sounds', []).filter((x) => x.user_id === current.email);
+      if (mine.length >= 8) throw new Error('Du hast schon 8 Sounds hochgeladen. Lösch einen, um Platz zu schaffen.');
+      const url = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
+        reader.readAsDataURL(file);
+      });
+      const profile = await this.getProfile(current);
+      const id = `demo-${nextId++}`;
+      const sound = { id, name, path: `demo/${id}`, duration, author: profile.username, user_id: current.email, created_at: new Date().toISOString(), url };
+      try {
+        localStorage.setItem('zd_sounds', JSON.stringify([sound, ...store.get('sounds', [])]));
+      } catch {
+        throw new Error('Der Speicher im Browser ist voll. Lösch einen Sound oder nimm eine kürzere Datei.');
+      }
+      return { ...sound, mine: true };
+    },
+    async deleteSound(sound) {
+      store.set('sounds', store.get('sounds', []).filter((x) => x.id !== sound.id));
+    },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
       const profile = await this.getProfile(current);

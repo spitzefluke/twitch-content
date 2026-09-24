@@ -10,12 +10,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/overlay.css">
+  <link rel="stylesheet" href="css/prank-fx.css">
   <script type="module" src="js/overlay.js"></script>
 </head>
 <!-- Als Browserquelle in OBS einbinden (1920 × 1080). Der Hintergrund ist
      durchsichtig, sichtbar sind nur die beiden Karten. Optionen stehen in js/overlay.js,
      die Adresse baut der OBS-Dialog im Dashboard. -->
 <body>
+
+  <!-- Ärgere den Dave: Würfe landen auf Daves Kamera (Bereich per ?cam=) -->
+  <div class="ov-pranks" id="ov-pranks" aria-hidden="true">
+    <div class="ov-prank-feed" id="ov-prank-feed"></div>
+  </div>
 
   <!-- Glücksrad: erscheint nur, wenn gedreht wird -->
   <section class="ov-card ov-spin" id="ov-spin" aria-live="polite">
