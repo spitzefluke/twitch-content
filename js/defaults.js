@@ -68,8 +68,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'prank',
     position: 2,
+    kind: 'prank',
+    title: 'Ärgere den Dave',
+    description: 'Bananen, Tomaten, Torten – wirf was auf Dave oder spiel ihm deine eigenen Sounds in den Stream.',
+    theme: 'prank',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 3,
     kind: 'countdown',
     title: 'Nachtschicht Güterzug',
     description: 'Train Sim World: Langstrecke durch die Nacht – ohne Pause bis zum Zielbahnhof.',
@@ -79,7 +89,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-2',
-    position: 3,
+    position: 4,
     kind: 'countdown',
     title: 'Fortnite Community-Cup',
     description: 'Zuschauer gegen Dave – mit Glücksrad-Regeln in jeder Runde.',
@@ -89,7 +99,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-3',
-    position: 4,
+    position: 5,
     kind: 'countdown',
     title: 'Geisterzug-Special',
     description: 'Halloween-Stream: Horror-Games und eine Fahrt ins Ungewisse.',
@@ -99,7 +109,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 5,
+    position: 6,
     kind: 'countdown',
     title: 'Subathon: Endstation?',
     description: 'Jeder Sub verlängert die Fahrt. Wo liegt die Endstation?',

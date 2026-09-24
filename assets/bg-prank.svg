@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<radialGradient id="bg" cx=".5" cy=".35" r=".85"><stop offset="0" stop-color="#3a1030"/><stop offset=".55" stop-color="#1c0a1e"/><stop offset="1" stop-color="#0a0610"/></radialGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4" stop-opacity=".55"/><stop offset="1" stop-color="#fff3c4" stop-opacity="0"/></linearGradient>
+<radialGradient id="pool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffe7a0" stop-opacity=".45"/><stop offset="1" stop-color="#ffe7a0" stop-opacity="0"/></radialGradient>
+<linearGradient id="curtainL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e0b16"/><stop offset=".5" stop-color="#b3172b"/><stop offset="1" stop-color="#6d0d1a"/></linearGradient>
+<linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b2418"/><stop offset="1" stop-color="#1a0f0a"/></linearGradient>
+<filter id="blur"><feGaussianBlur stdDeviation="10"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="1.4"/></filter>
+</defs>
+<rect width="800" height="500" fill="url(#bg)"/>
+<!-- Bühnenboden -->
+<path d="M0 395 H800 V500 H0Z" fill="url(#floor)"/>
+<g stroke="#57352a" stroke-width="2" opacity=".6"><path d="M0 420 H800M0 450 H800M0 482 H800"/></g>
+<!-- Scheinwerfer -->
+<path d="M360 -10 L440 -10 L560 400 L240 400Z" fill="url(#beam)" opacity=".7"/>
+<ellipse cx="400" cy="400" rx="190" ry="34" fill="url(#pool)"/>
+<!-- Zielscheibe -->
+<g transform="translate(400 250)">
+  <circle r="120" fill="#f4ecd8"/>
+  <circle r="96" fill="#c8202e"/>
+  <circle r="72" fill="#f4ecd8"/>
+  <circle r="48" fill="#c8202e"/>
+  <circle r="24" fill="#f4ecd8"/>
+  <circle r="120" fill="none" stroke="#2a1a14" stroke-width="6"/>
+  <!-- Flecken -->
+  <path d="M-58 -40 l14 -22 6 20 22 -12 -8 22 24 6 -22 12 12 20 -24 -6 -2 24 -14 -20 -18 14 2 -24 -24 -4 20 -12z" fill="#e2301f" filter="url(#soft)"/>
+  <rect x="-44" y="-10" width="8" height="42" rx="4" fill="#e2301f"/>
+  <path d="M40 18 l12 -18 4 18 20 -8 -8 18 20 8 -20 8 10 16 -20 -6 -4 20 -10 -18 -16 10 2 -20 -20 -6 18 -8z" fill="#ffc62e" filter="url(#soft)"/>
+  <rect x="58" y="40" width="7" height="34" rx="3.5" fill="#ffc62e"/>
+  <circle cx="-74" cy="-78" r="6" fill="#e2301f"/><circle cx="-20" cy="-72" r="4" fill="#e2301f"/>
+  <circle cx="96" cy="-6" r="5" fill="#ffc62e"/><circle cx="24" cy="58" r="4" fill="#ffc62e"/>
+</g>
+<!-- fliegende Tomaten und Bananen mit Flugbahn -->
+<g fill="none" stroke="#fff3c4" stroke-width="2.5" stroke-dasharray="4 10" stroke-linecap="round" opacity=".45">
+  <path d="M60 470 Q150 160 300 190"/>
+  <path d="M760 470 Q690 150 520 170"/>
+</g>
+<g transform="translate(248 196) rotate(-20)">
+  <circle r="26" fill="#e2301f"/><circle cx="-8" cy="-8" r="8" fill="#ff7a6b" opacity=".6"/>
+  <path d="M-10 -24 l10 6 10 -6 -4 10 8 4 -12 2 -2 10 -4 -10 -12 -2 8 -4z" fill="#3fa34d"/>
+</g>
+<g transform="translate(574 170) rotate(30)">
+  <path d="M-40 6 C-30 34 30 34 44 -6 C36 8 -20 20 -40 6Z" fill="#ffd93b" stroke="#b58b00" stroke-width="3"/>
+  <rect x="40" y="-12" width="10" height="10" rx="2" fill="#6b4b12"/>
+</g>
+<!-- Vorhänge -->
+<path d="M0 0 H170 C150 120 190 260 150 500 H0Z" fill="url(#curtainL)"/>
+<path d="M800 0 H630 C650 120 610 260 650 500 H800Z" fill="url(#curtainL)"/>
+<g stroke="#4a0710" stroke-width="3" opacity=".5" fill="none">
+  <path d="M40 0 C30 160 60 330 40 500M95 0 C85 170 110 330 90 500M740 0 C760 160 730 330 752 500M690 0 C700 170 676 330 700 500"/>
+</g>
+<path d="M0 0 H800 V52 C700 80 600 40 500 70 C420 90 380 90 300 70 C200 40 100 80 0 52Z" fill="#8e1222"/>
+<path d="M0 52 C100 80 200 40 300 70 C380 90 420 90 500 70 C600 40 700 80 800 52" fill="none" stroke="#ffb81c" stroke-width="4" opacity=".8"/>
+<g filter="url(#blur)" opacity=".35"><ellipse cx="400" cy="120" rx="160" ry="40" fill="#ffb81c"/></g>
+</svg>

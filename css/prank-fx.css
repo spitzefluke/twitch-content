@@ -1,0 +1,17 @@
+/* „Ärgere den Dave“: Wurfgegenstände und Flecken (js/prank-fx.js).
+   Gilt auf der Webseite (Bühne im Dialog) und im OBS-Overlay. */
+.pf-item {
+  position: absolute; left: 0; top: 0; z-index: 3;
+  line-height: 1; pointer-events: none; user-select: none; will-change: transform;
+  filter: drop-shadow(0 .08em .12em rgba(0, 0, 0, .45));
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+.pf-spark { z-index: 4; filter: none; }
+.pf-splat { position: absolute; z-index: 2; overflow: visible; pointer-events: none; transform-origin: 50% 50%; }
+.pf-splat path, .pf-splat circle { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.pf-splat--cloud { filter: blur(6px); opacity: .85; }
+.pf-drip { transform-box: fill-box; transform-origin: 50% 0; animation: pf-drip 2.6s cubic-bezier(.5, 0, .9, .7) both; }
+@keyframes pf-drip { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .pf-drip { animation: none; }
+}

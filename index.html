@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/prank-fx.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -432,6 +433,127 @@
     </div>
   </dialog>
 
+  <!-- ============ ÄRGERE DEN DAVE ============ -->
+  <dialog id="prank-dialog" class="dialog dialog--prank" aria-labelledby="prank-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Jederzeit · live im Stream</p>
+        <h2 id="prank-title">Ärgere den Dave</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <p class="prank-note" id="prank-note" hidden></p>
+    <div class="prank-layout">
+      <div class="prank-main">
+        <!-- Bühne: zeigt jeden Wurf auch hier, mit einem gezeichneten Dave -->
+        <div class="prank-stage" id="prank-stage">
+          <svg class="dave" id="prank-dave" viewBox="0 0 220 240" aria-hidden="true">
+            <path d="M28 240 C34 192 70 174 110 174 C150 174 186 192 192 240Z" fill="#26335a"/>
+            <path d="M92 174 L110 206 L128 174" fill="#ffb81c"/>
+            <circle cx="110" cy="214" r="4" fill="#ffb81c"/><circle cx="110" cy="230" r="4" fill="#ffb81c"/>
+            <rect x="96" y="150" width="28" height="30" rx="8" fill="#e2ad78"/>
+            <circle cx="55" cy="120" r="12" fill="#e9b884"/><circle cx="165" cy="120" r="12" fill="#e9b884"/>
+            <ellipse cx="110" cy="114" rx="56" ry="62" fill="#f1c28f"/>
+            <ellipse cx="80" cy="140" rx="10" ry="6" fill="#ff8a7a" opacity=".35"/>
+            <ellipse cx="140" cy="140" rx="10" ry="6" fill="#ff8a7a" opacity=".35"/>
+            <path d="M50 112 C46 40 174 40 170 112" fill="none" stroke="#9146ff" stroke-width="8" stroke-linecap="round"/>
+            <path d="M52 80 C52 34 168 34 168 80Z" fill="#1f2a44"/>
+            <rect x="52" y="70" width="116" height="12" fill="#ffb81c"/>
+            <circle cx="110" cy="56" r="9" fill="#ffb81c"/><circle cx="110" cy="56" r="4" fill="#1f2a44"/>
+            <path d="M44 84 Q110 100 176 84 L172 95 Q110 110 48 95Z" fill="#111827"/>
+            <rect x="40" y="104" width="16" height="30" rx="7" fill="#9146ff"/>
+            <rect x="164" y="104" width="16" height="30" rx="7" fill="#9146ff"/>
+            <path d="M48 132 C52 158 70 164 86 160" fill="none" stroke="#2b2f3b" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="88" cy="160" r="5" fill="#2b2f3b"/>
+            <path d="M76 106 Q88 100 98 106 M122 106 Q132 100 144 106" fill="none" stroke="#5a3417" stroke-width="4" stroke-linecap="round"/>
+            <g class="dave-eyes">
+              <ellipse cx="88" cy="120" rx="7" ry="9" fill="#1b1b1b"/><ellipse cx="132" cy="120" rx="7" ry="9" fill="#1b1b1b"/>
+              <circle cx="90" cy="116" r="2.4" fill="#fff"/><circle cx="134" cy="116" r="2.4" fill="#fff"/>
+            </g>
+            <g class="dave-eyes-hit" fill="none" stroke="#1b1b1b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M80 113 L94 120 L80 127"/><path d="M140 113 L126 120 L140 127"/>
+            </g>
+            <path d="M110 124 Q104 138 112 140" fill="none" stroke="#c98d5a" stroke-width="3" stroke-linecap="round"/>
+            <path d="M82 150 C92 138 106 142 110 148 C114 142 128 138 138 150 C128 156 118 153 110 151 C102 153 92 156 82 150Z" fill="#6b3f1f"/>
+            <path class="dave-mouth" d="M96 158 Q110 170 124 158" fill="none" stroke="#5a1a1a" stroke-width="4" stroke-linecap="round"/>
+            <ellipse class="dave-mouth-hit" cx="110" cy="162" rx="8" ry="9" fill="#5a1a1a"/>
+          </svg>
+        </div>
+        <div class="prank-meter" id="prank-meter">
+          <span class="prank-meter-bar" id="prank-meter-bar"></span>
+          <span class="prank-meter-text" id="prank-meter-text">Bereit – such dir was aus!</span>
+        </div>
+        <div class="history prank-log">
+          <h3>Zuletzt im Stream</h3>
+          <ol id="prank-log"></ol>
+        </div>
+      </div>
+
+      <div class="prank-side">
+        <div class="segmented prank-tabs" role="tablist" data-active="throw">
+          <button type="button" role="tab" id="prank-tab-throw" aria-selected="true" aria-controls="prank-pane-throw" data-tab="throw">Werfen</button>
+          <button type="button" role="tab" id="prank-tab-sound" aria-selected="false" aria-controls="prank-pane-sound" data-tab="sound">Sounds</button>
+          <span class="segmented-thumb" aria-hidden="true"></span>
+        </div>
+
+        <section id="prank-pane-throw" class="prank-pane" role="tabpanel" aria-labelledby="prank-tab-throw">
+          <p class="prank-lead">Such dir was aus – es fliegt Dave im Stream direkt vor die Kamera.</p>
+          <div class="prank-items" id="prank-items"></div>
+        </section>
+
+        <section id="prank-pane-sound" class="prank-pane" role="tabpanel" aria-labelledby="prank-tab-sound" hidden>
+          <p class="prank-lead">Klick spielt den Sound im Stream. 🎧 hört nur hier probe.</p>
+          <div class="prank-board" id="prank-board"></div>
+          <h3 class="prank-h3">Eigene Sounds</h3>
+          <ul class="prank-sounds" id="prank-sounds"></ul>
+          <form id="sound-form" class="sound-form" novalidate>
+            <label class="sound-file">
+              <input type="file" name="file" accept="audio/*,.mp3,.ogg,.wav,.m4a">
+              <span class="sound-file-text">🎵 Sound-Datei wählen …</span>
+            </label>
+            <label class="field"><span>Name</span><input name="name" maxlength="30" placeholder="z. B. Daves Lachen" autocomplete="off"></label>
+            <p class="form-hint">MP3, OGG, WAV oder M4A · höchstens 10 Sekunden und 1 MB · bis zu 8 Sounds pro Person</p>
+            <p class="form-msg" role="alert"></p>
+            <button class="btn btn--outline btn--block" type="submit">Hochladen</button>
+          </form>
+          <p class="prank-uploads-off" id="prank-uploads-off" hidden>Eigene Sounds hochladen ist gerade ausgeschaltet.</p>
+          <label class="toggle">
+            <input type="checkbox" id="prank-listen" checked>
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Auf dieser Seite mithören
+          </label>
+        </section>
+
+        <form id="prank-admin" class="prank-admin" hidden>
+          <h3 class="prank-h3">Für Admins</h3>
+          <label class="toggle">
+            <input type="checkbox" name="enabled">
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Zuschauer dürfen Dave ärgern
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="allow_uploads">
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Alle dürfen eigene Sounds hochladen
+          </label>
+          <label class="field"><span>Pause zwischen zwei Aktionen (pro Person)</span>
+            <select name="cooldown_seconds">
+              <option value="0">keine</option>
+              <option value="5">5 Sekunden</option>
+              <option value="10">10 Sekunden</option>
+              <option value="20">20 Sekunden</option>
+              <option value="30">30 Sekunden</option>
+              <option value="60">1 Minute</option>
+              <option value="120">2 Minuten</option>
+              <option value="300">5 Minuten</option>
+            </select>
+          </label>
+          <p class="form-hint">Admins haben keine Pause und dürfen auch, wenn es ausgeschaltet ist.</p>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
   <!-- ============ IDEE / COUNTDOWN ============ -->
   <dialog id="tile-dialog" class="dialog dialog--tile" aria-labelledby="tile-dialog-title">
     <div class="tile-dialog-hero" id="tile-dialog-hero">
@@ -550,6 +672,31 @@
         </fieldset>
 
         <fieldset class="obs-group">
+          <legend>Ärgere den Dave</legend>
+          <label class="toggle obs-wide">
+            <input type="checkbox" name="prank" checked>
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Würfe und Sounds der Zuschauer zeigen
+          </label>
+          <label class="field"><span>Daves Kamera</span>
+            <select id="obs-cam-preset">
+              <option value="35,25,30,40">Mitte</option>
+              <option value="73,72,25,25">unten rechts</option>
+              <option value="2,72,25,25">unten links</option>
+              <option value="73,3,25,25">oben rechts</option>
+              <option value="2,3,25,25">oben links</option>
+              <option value="0,0,100,100">ganzes Bild</option>
+              <option value="custom" hidden>eigener Rahmen</option>
+            </select>
+          </label>
+          <label class="field obs-range"><span>Größe der Würfe <output name="psize-out"></output></span>
+            <input type="range" name="psize" min="50" max="200" step="5" value="100">
+          </label>
+          <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
+          <p class="obs-hint obs-wide">Genauer: In der Vorschau einen Rahmen um die Stelle ziehen, an der Daves Kamera im Stream sitzt. Dort landen die Würfe.</p>
+        </fieldset>
+
+        <fieldset class="obs-group">
           <legend>Aussehen &amp; Ton</legend>
           <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
             <input type="range" name="margin" min="0" max="200" step="4" value="40">
@@ -569,8 +716,9 @@
       </form>
 
       <div class="obs-side">
-        <div class="obs-preview" id="obs-preview" aria-label="Vorschau mit Probe-Drehung">
-          <span class="obs-preview-label">Vorschau · Probe-Drehung alle 20 Sekunden</span>
+        <div class="obs-preview" id="obs-preview" aria-label="Vorschau mit Probe-Drehung und Probe-Würfen. Rahmen ziehen legt Daves Kamera fest.">
+          <span class="obs-preview-label">Vorschau · Probe-Drehung und Probe-Würfe</span>
+          <span class="obs-cam" id="obs-cam"><span>Daves Kamera</span></span>
         </div>
         <div class="obs-url">
           <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
@@ -584,6 +732,7 @@
         <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken und <b>Browser</b> wählen.</li>
         <li>Adresse oben einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b> eintragen.</li>
         <li>Für den Ton <b>„Audio über OBS steuern“</b> anhaken – dann taucht er im Audio-Mixer auf.</li>
+        <li>Die Browserquelle in der Quellen-Liste <b>über</b> Daves Kamera schieben – sonst fliegen die Würfe hinter ihm vorbei.</li>
         <li>Zum Ausrichten hängst du <code>&amp;test=1</code> an die Adresse: Dann dreht sich alle 20 Sekunden ein Probe-Rad. Danach wieder entfernen.</li>
       </ol>
     </div>

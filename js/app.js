@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
+import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -25,6 +26,18 @@ const state = {
   wheel: null,
   activeTile: null,
   spinSubscribed: false,
+  // Ärgere den Dave
+  prank: {
+    on: false,          // Migration …_pranks.sql eingespielt?
+    settings: { enabled: true, cooldown_seconds: 20, allow_uploads: true },
+    sounds: [],
+    log: [],
+    seen: new Set(),    // eigene Aktionen kommen auch über Realtime – nicht doppelt zeigen
+    until: 0,           // Ende der Pause bis zur nächsten Aktion
+    timer: 0,
+    subscribed: false,
+    sfx: null,
+  },
 };
 
 boot();
@@ -236,7 +249,7 @@ async function enterApp(user) {
   $('#app').hidden = false;
 
   const api = state.api;
-  const [profile, tiles, variants, twitch, spins, ideas] = await Promise.all([
+  const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
@@ -245,12 +258,18 @@ async function enterApp(user) {
     // Die Vorschläge-Tabellen kamen später dazu: fehlen sie in der Datenbank,
     // bleibt der Bereich einfach aus, statt einen Fehler zu zeigen.
     api.getIdeas().catch((err) => { console.warn('Vorschläge nicht verfügbar:', err); return null; }),
+    // Genauso „Ärgere den Dave“ (Migration …_pranks.sql)
+    api.getPrankSettings().catch((err) => { console.warn('Ärgere den Dave nicht verfügbar:', err); return null; }),
+    api.getPranks().catch(() => []),
   ]);
   if (!state.user) return; // zwischenzeitlich abgemeldet
   Object.assign(state, { profile, tiles, variants, twitch, spins });
   state.ideas = ideas ?? [];
   state.ideasOn = ideas !== null;
   state.variantId ??= variants[0]?.id;
+  state.prank.on = prankSettings !== null;
+  if (prankSettings) state.prank.settings = prankSettings;
+  state.prank.log = prankLog;
 
   renderHeader();
   renderHero();
@@ -262,6 +281,10 @@ async function enterApp(user) {
   if (!state.spinSubscribed) {
     state.spinSubscribed = true;
     api.onSpin(handleIncomingSpin);
+  }
+  if (state.prank.on && !state.prank.subscribed) {
+    state.prank.subscribed = true;
+    api.onPrank(handleIncomingPrank);
   }
 }
 
@@ -482,8 +505,49 @@ async function submitIdea(e) {
 // ---------- Kacheln ----------
 function renderGrid() {
   const grid = $('#grid');
-  grid.replaceChildren(...state.tiles.filter(isPlanned).map((tile, i) => buildTile(tile, i)));
+  const shown = state.tiles.filter((t) => isPlanned(t) || t.kind === 'prank');
+  grid.replaceChildren(...shown.map((tile, i) => (tile.kind === 'prank' ? buildPrankTile(tile, i) : buildTile(tile, i))));
   updateCountdowns();
+}
+
+// „Ärgere den Dave“: kein Termin, geht jederzeit – statt Countdown die Wurfgeschosse.
+function buildPrankTile(tile, i) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'tile tile--prank theme-prank';
+  el.style.setProperty('--i', i);
+  el.dataset.id = tile.id;
+
+  const bg = document.createElement('div');
+  bg.className = 'tile-bg';
+  const img = safeUrl(tile.background);
+  if (img) bg.style.backgroundImage = `url(${JSON.stringify(img)})`;
+  el.append(bg, div('tile-shade'), div('tile-shine'));
+
+  const body = div('tile-body');
+  const tag = document.createElement('span');
+  tag.className = 'tile-tag';
+  tag.textContent = 'Jederzeit · live';
+  const title = document.createElement('h3');
+  title.className = 'tile-title';
+  title.textContent = tile.title;
+  const desc = document.createElement('p');
+  desc.className = 'tile-desc';
+  desc.textContent = tile.description;
+  const row = div('prank-tile-row');
+  const ammo = document.createElement('span');
+  ammo.className = 'prank-ammo';
+  ammo.setAttribute('aria-hidden', 'true');
+  ammo.textContent = '🍌🍅🥧🔊';
+  const cta = document.createElement('span');
+  cta.className = 'prank-cta';
+  cta.textContent = 'Dave ärgern →';
+  row.append(ammo, cta);
+  body.append(tag, title, desc, row);
+  el.append(body);
+  el.addEventListener('click', openPrank);
+  if (finePointer && !reducedMotion) addTilt(el);
+  return el;
 }
 
 function buildTile(tile, i) {
@@ -640,11 +704,13 @@ function setupDialogs() {
     $('#obs-preview iframe')?.remove();
   });
   new ResizeObserver(fitObsPreview).observe($('#obs-preview'));
+  setupObsCam();
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   $('#tile-edit-btn').addEventListener('click', () => showTileForm(true));
   $('#tile-cancel-btn').addEventListener('click', () => showTileForm(false));
   $('#tile-form').addEventListener('submit', saveTile);
+  setupPrank();
 }
 
 function closeDialog(dlg) {
@@ -862,6 +928,385 @@ function renderHistory(newId) {
 }
 
 // ============================================================
+// Ärgere den Dave
+// ============================================================
+const LISTEN_KEY = 'zd_prank_listen';
+
+function setupPrank() {
+  // Wurfgeschosse
+  $('#prank-items').replaceChildren(...ITEMS.map((it) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `prank-item${it.nice ? ' is-nice' : ''}`;
+    b.dataset.prankAction = '';
+    b.innerHTML = '<span class="prank-item-emoji" aria-hidden="true"></span><span class="prank-item-name"></span>';
+    b.querySelector('.prank-item-emoji').textContent = it.emoji;
+    b.querySelector('.prank-item-name').textContent = it.name;
+    b.setAttribute('aria-label', `${it.name} werfen`);
+    b.addEventListener('click', () => sendPrank('throw', it.id));
+    return b;
+  }));
+
+  // Eingebaute Sounds: großer Knopf = im Stream abspielen, 🎧 = nur hier probehören
+  $('#prank-board').replaceChildren(...BOARD.map((sound) => {
+    const wrap = div('prank-sfx');
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'prank-sfx-main';
+    main.dataset.prankAction = '';
+    main.innerHTML = '<span aria-hidden="true"></span><b></b>';
+    main.firstElementChild.textContent = sound.emoji;
+    main.lastElementChild.textContent = sound.name;
+    main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
+    main.addEventListener('click', () => sendPrank('sound', sound.id));
+    const tryBtn = document.createElement('button');
+    tryBtn.type = 'button';
+    tryBtn.className = 'prank-try';
+    tryBtn.textContent = '🎧';
+    tryBtn.title = 'Nur hier probehören';
+    tryBtn.setAttribute('aria-label', `„${sound.name}“ nur hier probehören`);
+    tryBtn.addEventListener('click', () => prankSfx(true)?.play(sound.id));
+    wrap.append(main, tryBtn);
+    return wrap;
+  }));
+
+  // Reiter
+  const tabs = $('.prank-tabs');
+  tabs.querySelectorAll('[data-tab]').forEach((btn) => btn.addEventListener('click', () => {
+    const name = btn.dataset.tab;
+    tabs.dataset.active = name;
+    tabs.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+    $('#prank-pane-throw').hidden = name !== 'throw';
+    $('#prank-pane-sound').hidden = name !== 'sound';
+  }));
+
+  const listen = $('#prank-listen');
+  try { listen.checked = localStorage.getItem(LISTEN_KEY) !== 'off'; } catch { /* Standard: an */ }
+  listen.addEventListener('change', () => {
+    try { localStorage.setItem(LISTEN_KEY, listen.checked ? 'on' : 'off'); } catch { /* nur Komfort */ }
+  });
+
+  const form = $('#sound-form');
+  form.addEventListener('submit', uploadSound);
+  form.file.addEventListener('change', () => {
+    const file = form.file.files[0];
+    $('.sound-file-text', form).textContent = file ? `🎵 ${file.name}` : '🎵 Sound-Datei wählen …';
+    // Namen aus dem Dateinamen vorschlagen – aber nichts überschreiben, was jemand selbst getippt hat.
+    if (file && (!form.name.value.trim() || form.name.dataset.auto === form.name.value)) {
+      form.name.value = form.name.dataset.auto = file.name.replace(/\.[^.]+$/, '').slice(0, 30);
+    }
+  });
+
+  $('#prank-admin').addEventListener('change', savePrankSettings);
+  $('#prank-dialog').addEventListener('close', () => {
+    $('#prank-stage').querySelectorAll('.pf-item, .pf-splat, .prank-bubble').forEach((el) => el.remove());
+  });
+}
+
+// Ton nur, wenn gewollt – oder immer beim Probehören (force)
+function prankSfx(force = false) {
+  if (!force && !$('#prank-listen').checked) return null;
+  state.prank.sfx ??= new Sfx({ volume: 0.8 });
+  return state.prank.sfx;
+}
+
+function openPrank() {
+  renderPrankDialog();
+  $('#prank-dialog').showModal();
+  if (state.prank.on) loadSounds();
+}
+
+function renderPrankDialog() {
+  const { on, settings } = state.prank;
+  const admin = !!state.profile?.is_admin;
+  const note = $('#prank-note');
+  let text = '';
+  if (!on) {
+    text = admin
+      ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260924000000_pranks.sql ausführen. Bis dahin geht hier nichts raus.'
+      : '„Ärgere den Dave“ ist noch nicht eingerichtet. Schau später noch mal vorbei.';
+  } else if (!settings.enabled) {
+    text = admin
+      ? 'Für Zuschauer gerade ausgeschaltet. Du als Admin kannst trotzdem werfen.'
+      : 'Dave hat das Ärgern gerade pausiert. Schau später noch mal vorbei.';
+  }
+  note.textContent = text;
+  note.hidden = !text;
+  $('#prank-dialog').classList.toggle('is-off', !on || (!settings.enabled && !admin));
+
+  const form = $('#prank-admin');
+  form.hidden = !(admin && on);
+  form.enabled.checked = settings.enabled;
+  form.allow_uploads.checked = settings.allow_uploads;
+  form.cooldown_seconds.value = String(settings.cooldown_seconds);
+  if (form.cooldown_seconds.value !== String(settings.cooldown_seconds)) {
+    // Wert außerhalb der Liste (z. B. direkt in der Datenbank gesetzt)
+    const opt = new Option(`${settings.cooldown_seconds} Sekunden`, String(settings.cooldown_seconds));
+    form.cooldown_seconds.add(opt);
+    form.cooldown_seconds.value = opt.value;
+  }
+
+  const uploads = settings.allow_uploads || admin;
+  $('#sound-form').hidden = !uploads;
+  $('#prank-uploads-off').hidden = uploads;
+
+  renderPrankLog();
+  renderSounds();
+  paintCooldown();
+}
+
+async function loadSounds() {
+  try {
+    state.prank.sounds = await state.api.getSounds();
+  } catch (err) {
+    console.warn('Sounds nicht geladen:', err);
+  }
+  renderSounds();
+}
+
+function renderSounds() {
+  const list = $('#prank-sounds');
+  const { sounds } = state.prank;
+  if (!sounds.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch keine eigenen Sounds – lad den ersten hoch.';
+    list.replaceChildren(li);
+    return;
+  }
+  const admin = !!state.profile?.is_admin;
+  list.replaceChildren(...sounds.map((sound) => {
+    const li = document.createElement('li');
+    const main = document.createElement('button');
+    main.type = 'button';
+    main.className = 'prank-sound-main';
+    main.dataset.prankAction = '';
+    main.innerHTML = '<b></b><small></small>';
+    main.querySelector('b').textContent = `🔊 ${sound.name}`;
+    main.querySelector('small').textContent = `von ${sound.author || 'anonym'} · ${Number(sound.duration).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`;
+    main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
+    main.addEventListener('click', () => sendPrank('sound', 'custom', sound));
+
+    const tryBtn = document.createElement('button');
+    tryBtn.type = 'button';
+    tryBtn.className = 'prank-try';
+    tryBtn.textContent = '🎧';
+    tryBtn.title = 'Nur hier probehören';
+    tryBtn.setAttribute('aria-label', `„${sound.name}“ nur hier probehören`);
+    tryBtn.addEventListener('click', () => prankSfx(true).playUrl(sound.url));
+    li.append(main, tryBtn);
+
+    if (sound.mine || admin) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'prank-try prank-del';
+      del.textContent = '🗑';
+      del.title = 'Löschen';
+      del.setAttribute('aria-label', `„${sound.name}“ löschen`);
+      del.addEventListener('click', () => deleteSound(sound, del));
+      li.append(del);
+    }
+    return li;
+  }));
+  paintCooldown();
+}
+
+async function sendPrank(kind, item, sound = null) {
+  if (!state.prank.on || Date.now() < state.prank.until) return;
+  const dlg = $('#prank-dialog');
+  dlg.classList.add('is-sending');
+  try {
+    const row = await state.api.sendPrank(kind, item, sound?.id ?? null);
+    state.prank.seen.add(row.id);
+    addPrankLog(row);
+    showPrank(row, true);
+    startCooldown(state.profile?.is_admin ? 0 : state.prank.settings.cooldown_seconds);
+  } catch (err) {
+    console.error(err);
+    if (err.wait) startCooldown(err.wait);
+    if (err.paused) {
+      state.prank.settings.enabled = false;
+      renderPrankDialog();
+    }
+    toast(germanError(err), 'error', 6000);
+  } finally {
+    dlg.classList.remove('is-sending');
+  }
+}
+
+// Andere Zuschauer ärgern Dave: steht im Verlauf und fliegt über die Bühne (ohne Ton).
+function handleIncomingPrank(row) {
+  if (state.prank.seen.has(row.id)) return;
+  state.prank.seen.add(row.id);
+  addPrankLog(row);
+  if ($('#prank-dialog').open) showPrank(row, false);
+}
+
+function showPrank(row, own) {
+  if (!$('#prank-dialog').open) return;
+  const stage = $('#prank-stage');
+  const dave = $('#prank-dave');
+  const sfx = own ? prankSfx() : null;
+  if (row.kind === 'throw') {
+    // Ziel: Daves Gesicht in der Zeichnung
+    const s = stage.getBoundingClientRect();
+    const d = dave.getBoundingClientRect();
+    throwItem(stage, {
+      item: row.item,
+      x: d.left - s.left + d.width * 0.5,
+      y: d.top - s.top + d.height * 0.5,
+      size: Math.max(44, Math.min(80, s.width * 0.14)),
+      sfx,
+      reducedMotion,
+      onHit: () => {
+        dave.classList.remove('is-hit');
+        void dave.getBoundingClientRect();
+        dave.classList.add('is-hit');
+        clearTimeout(dave.hitTimer);
+        dave.hitTimer = setTimeout(() => dave.classList.remove('is-hit'), 1100);
+      },
+    });
+  } else {
+    if (sfx) {
+      if (row.item === 'custom') sfx.playUrl(state.api.soundUrl(row.sound_path));
+      else sfx.play(row.item);
+    }
+    const bubble = document.createElement('span');
+    bubble.className = 'prank-bubble';
+    bubble.textContent = `${prankEmoji(row)} ${row.item === 'custom' ? row.label : prankText(row).replace(/^.* spielt /, '')}`;
+    stage.append(bubble);
+    setTimeout(() => bubble.remove(), 2600);
+  }
+}
+
+function addPrankLog(row) {
+  const log = state.prank.log;
+  if (log.some((p) => p.id === row.id)) return;
+  log.unshift(row);
+  log.length = Math.min(log.length, 12);
+  renderPrankLog(row.id);
+}
+
+function renderPrankLog(newId = null) {
+  const list = $('#prank-log');
+  if (!state.prank.log.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch ist Dave unbehelligt …';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...state.prank.log.map((p) => {
+    const li = document.createElement('li');
+    if (p.id === newId) li.className = 'is-new';
+    const icon = document.createElement('span');
+    icon.className = 'prank-log-icon';
+    icon.textContent = prankEmoji(p);
+    const main = document.createElement('span');
+    main.className = 'h-main';
+    main.textContent = prankText(p);
+    const time = document.createElement('time');
+    time.dateTime = p.created_at;
+    time.textContent = new Date(p.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    li.append(icon, main, time);
+    return li;
+  }));
+}
+
+// ---------- Pause zwischen zwei Aktionen ----------
+function startCooldown(seconds) {
+  const p = state.prank;
+  clearInterval(p.timer);
+  p.total = seconds * 1000;
+  p.until = Date.now() + p.total;
+  paintCooldown();
+  if (seconds > 0) p.timer = setInterval(paintCooldown, 200);
+}
+
+function paintCooldown() {
+  const p = state.prank;
+  const left = Math.max(0, p.until - Date.now());
+  const cooling = left > 0;
+  const blocked = !p.on || (!p.settings.enabled && !state.profile?.is_admin);
+  document.querySelectorAll('#prank-dialog [data-prank-action]').forEach((b) => { b.disabled = cooling || blocked; });
+  $('#prank-meter').classList.toggle('is-cooling', cooling);
+  $('#prank-meter-bar').style.transform = `scaleX(${cooling && p.total ? left / p.total : 0})`;
+  $('#prank-meter-text').textContent = blocked
+    ? 'Gerade nicht verfügbar'
+    : cooling ? `Nachladen … ${Math.ceil(left / 1000)} s` : 'Bereit – such dir was aus!';
+  if (!cooling) clearInterval(p.timer);
+}
+
+// ---------- Eigene Sounds ----------
+async function uploadSound(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const file = form.file.files[0];
+  if (!file) return formMsg(form, 'Bitte zuerst eine Sound-Datei wählen.');
+  if (!/^audio\//.test(file.type) && !/\.(mp3|ogg|oga|wav|m4a|aac|webm|flac)$/i.test(file.name)) {
+    return formMsg(form, 'Das ist keine Audio-Datei. Bitte MP3, OGG, WAV oder M4A nehmen.');
+  }
+  if (file.size > 1024 * 1024) return formMsg(form, 'Die Datei ist zu groß (höchstens 1 MB).');
+  const name = (form.name.value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 30);
+  await withLoading(form, async () => {
+    const duration = await audioDuration(file);
+    if (duration > MAX_SOUND_SECONDS + 0.4) {
+      throw new Error(`Der Sound ist ${duration.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Sekunden lang – erlaubt sind höchstens ${MAX_SOUND_SECONDS}.`);
+    }
+    const sound = await state.api.uploadSound(file, name, Math.round(Math.min(duration, MAX_SOUND_SECONDS) * 10) / 10);
+    state.prank.sounds = [sound, ...state.prank.sounds];
+    renderSounds();
+    form.reset();
+    $('.sound-file-text', form).textContent = '🎵 Sound-Datei wählen …';
+    toast(`„${sound.name}“ ist hochgeladen und kann jetzt abgespielt werden.`, 'ok');
+  });
+}
+
+// Länge ermitteln – gleichzeitig der Test, ob der Browser die Datei abspielen kann.
+async function audioDuration(file) {
+  try {
+    const ctx = new OfflineAudioContext(1, 1, 44100);
+    const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+    return buf.duration;
+  } catch {
+    throw new Error('Die Datei lässt sich nicht abspielen. Bitte MP3, OGG, WAV oder M4A nehmen.');
+  }
+}
+
+async function deleteSound(sound, btn) {
+  if (!confirm(`„${sound.name}“ wirklich löschen?`)) return;
+  btn.disabled = true;
+  try {
+    await state.api.deleteSound(sound);
+    state.prank.sounds = state.prank.sounds.filter((x) => x.id !== sound.id);
+    renderSounds();
+  } catch (err) {
+    btn.disabled = false;
+    toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
+  }
+}
+
+// ---------- Einstellungen (Admins) ----------
+async function savePrankSettings() {
+  const form = $('#prank-admin');
+  const patch = {
+    enabled: form.enabled.checked,
+    allow_uploads: form.allow_uploads.checked,
+    cooldown_seconds: Number(form.cooldown_seconds.value),
+  };
+  form.querySelectorAll('input, select').forEach((el) => { el.disabled = true; });
+  try {
+    state.prank.settings = await state.api.updatePrankSettings(patch);
+    toast('Gespeichert.', 'ok', 2500);
+  } catch (err) {
+    toast(`Speichern fehlgeschlagen: ${germanError(err)}`, 'error');
+  } finally {
+    form.querySelectorAll('input, select').forEach((el) => { el.disabled = false; });
+    renderPrankDialog();
+  }
+}
+
+// ============================================================
 // Countdown-Kachel: Details & Bearbeiten
 // ============================================================
 const THEME_BG = { tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg' };
@@ -944,7 +1389,7 @@ function toLocalInput(d) {
 // Die Standards stehen als value/checked/selected im Formular (index.html)
 // und in js/overlay.js – beide gleich halten.
 const OBS_KEY = 'obs_options';
-const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%' };
+const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%', psize: '%' };
 
 function obsFields() {
   return [...$('#obs-options').elements].filter((el) => el.name && !el.name.endsWith('-out'));
@@ -1018,6 +1463,7 @@ function updateObs({ now = false } = {}) {
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
   saveObs(values);
   $('#obs-url').value = obsUrl();
+  paintObsCam();
 
   // Die Vorschau lädt neu – beim Ziehen eines Reglers erst, wenn er kurz ruht.
   clearTimeout(obsPreviewTimer);
@@ -1036,6 +1482,71 @@ function renderObsPreview() {
   frame.src = frame.dataset.src = src;
   box.append(frame);
   fitObsPreview();
+}
+
+// ---------- Daves Kamera: Vorlage wählen oder in der Vorschau einen Rahmen ziehen ----------
+function paintObsCam() {
+  const f = $('#obs-options');
+  const [x, y, w, h] = f.cam.value.split(',').map(Number);
+  const frame = $('#obs-cam');
+  frame.hidden = !f.prank.checked;
+  Object.assign(frame.style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
+  const preset = $('#obs-cam-preset');
+  preset.value = [...preset.options].some((o) => o.value === f.cam.value) ? f.cam.value : 'custom';
+  preset.disabled = !f.prank.checked;
+}
+
+function setupObsCam() {
+  const f = $('#obs-options');
+  const box = $('#obs-preview');
+  // Die Vorlage hat keinen name, landet also nicht selbst in der Adresse – sie setzt nur "cam".
+  const preset = $('#obs-cam-preset');
+  const pick = (e) => {
+    e.stopPropagation();
+    if (preset.value === 'custom' || preset.value === f.cam.value) return;
+    f.cam.value = preset.value;
+    updateObs();
+  };
+  preset.addEventListener('input', pick);
+  preset.addEventListener('change', pick);
+  let start = null;
+  const pct = (e) => {
+    const r = box.getBoundingClientRect();
+    return [
+      Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)),
+      Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)),
+    ];
+  };
+  const rect = (a, b) => {
+    const x = Math.min(a[0], b[0]);
+    const y = Math.min(a[1], b[1]);
+    return [x, y, Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])].map((n) => Math.round(n));
+  };
+  box.addEventListener('pointerdown', (e) => {
+    if (!f.prank.checked || e.button !== 0) return;
+    start = pct(e);
+    box.setPointerCapture(e.pointerId);
+    box.classList.add('is-drawing');
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const [x, y, w, h] = rect(start, pct(e));
+    Object.assign($('#obs-cam').style, { left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` });
+  });
+  const end = (e) => {
+    if (!start) return;
+    const [x, y, w, h] = rect(start, pct(e));
+    start = null;
+    box.classList.remove('is-drawing');
+    // Ein Klick ohne Ziehen setzt einen Rahmen in typischer Kamera-Größe um den Punkt.
+    const cam = w < 3 || h < 3
+      ? [Math.max(0, Math.min(75, x - 12.5)), Math.max(0, Math.min(75, y - 12.5)), 25, 25].map(Math.round)
+      : [x, y, w, h];
+    f.cam.value = cam.join(',');
+    updateObs();
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', () => { start = null; box.classList.remove('is-drawing'); paintObsCam(); });
 }
 
 function fitObsPreview() {

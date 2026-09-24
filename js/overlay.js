@@ -17,10 +17,14 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
-//   test=1                     alle 20 Sekunden eine Probe-Drehung, zum Einrichten in OBS
+//   prank=0                    „Ärgere den Dave“ aus (Würfe und Sounds)
+//   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
+//   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
+//   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
+import { Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -54,8 +58,19 @@ const opt = {
   bg: number('bg', 94, 0, 100) / 100,
   accent: /^[0-9a-f]{6}$/i.test(accent) ? `#${accent}` : null,
   volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
+  prank: flag('prank', true),
+  cam: camera(params.get('cam')),
+  psize: number('psize', 100, 50, 200) / 100,
   test: flag('test', false),
 };
+
+// Kamera-Bereich "links,oben,Breite,Höhe" in Prozent des Bildes
+function camera(value) {
+  const parts = (value ?? '').split(',').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return { x: 35, y: 25, w: 30, h: 40 };
+  const [x, y, w, h] = parts.map((n) => Math.min(100, Math.max(0, n)));
+  return { x, y, w: Math.max(2, Math.min(w, 100 - x)), h: Math.max(2, Math.min(h, 100 - y)) };
+}
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -66,6 +81,7 @@ root.setProperty('--ws', opt.wsize);
 root.setProperty('--ns', opt.nsize);
 root.setProperty('--m', `${opt.margin}px`);
 root.setProperty('--bga', opt.bg);
+root.setProperty('--ps', opt.psize);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
 $('ov-nlabel').textContent = opt.nlabel;
@@ -89,6 +105,8 @@ async function start() {
 
   if (opt.wheel) setupSpins(source);
   if (opt.next) setupNext(source);
+  if (opt.prank) setupPranks(source);
+  else $('ov-pranks').remove();
 }
 
 // ============================================================
@@ -111,6 +129,12 @@ async function connect() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'overlay_spins' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fehlgeschlagen'); });
     },
+    onPrank(cb) {
+      sb.channel('overlay-pranks')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pranks' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Würfe fehlgeschlagen'); });
+    },
+    soundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
   };
 }
 
@@ -134,6 +158,18 @@ function demoSource() {
         }
       });
     },
+    onPrank(cb) {
+      const known = new Set(read('pranks', []).map((p) => p.id));
+      addEventListener('storage', (e) => {
+        if (e.key !== 'zd_pranks') return;
+        for (const prank of read('pranks', []).reverse()) {
+          if (known.has(prank.id)) continue;
+          known.add(prank.id);
+          cb(prank);
+        }
+      });
+    },
+    soundUrl: (path) => read('sounds', []).find((x) => x.path === path)?.url ?? '',
   };
 }
 
@@ -289,6 +325,95 @@ function setupNext(source) {
     pick();
   }, TILES_REFRESH_MS);
   addEventListener('storage', (e) => { if (e.key === 'zd_tiles') source.tiles().then((t) => { tiles = t; pick(); }); });
+}
+
+// ============================================================
+// Ärgere den Dave
+// ============================================================
+// Würfe fliegen sofort (auch mehrere gleichzeitig), Sounds laufen nacheinander.
+function setupPranks(source) {
+  const layer = $('ov-pranks');
+  const feed = $('ov-prank-feed');
+  const sfx = new Sfx({ volume: opt.volume });
+  const box = () => ({
+    x: (opt.cam.x / 100) * layer.clientWidth,
+    y: (opt.cam.y / 100) * layer.clientHeight,
+    w: (opt.cam.w / 100) * layer.clientWidth,
+    h: (opt.cam.h / 100) * layer.clientHeight,
+  });
+
+  // Die Meldungen stehen über der Kamera – oder darunter, wenn oben kein Platz ist.
+  const place = () => {
+    const b = box();
+    const above = b.y > 90;
+    feed.style.left = `${b.x + b.w / 2}px`;
+    feed.style.top = above ? '' : `${b.y + b.h + 12}px`;
+    feed.style.bottom = above ? `${layer.clientHeight - b.y + 12}px` : '';
+    feed.classList.toggle('is-below', !above);
+  };
+  place();
+  addEventListener('resize', place);
+
+  const say = (p) => {
+    const el = document.createElement('p');
+    el.className = 'ov-prank-msg';
+    el.innerHTML = '<span aria-hidden="true"></span><b></b>';
+    el.firstChild.textContent = prankEmoji(p);
+    el.lastChild.textContent = prankText(p);
+    feed.append(el);
+    while (feed.children.length > 4) feed.firstChild.remove();
+    setTimeout(() => el.remove(), 4200);
+  };
+
+  const sounds = [];
+  let playing = false;
+  async function playSounds() {
+    playing = true;
+    while (sounds.length) {
+      const p = sounds.shift();
+      say(p);
+      if (p.item === 'custom') await sfx.playUrl(source.soundUrl(p.sound_path));
+      else { sfx.play(p.item); await wait(1800); }
+      await wait(250);
+    }
+    playing = false;
+  }
+
+  function handle(p) {
+    if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
+    if (p.kind === 'throw') {
+      const b = box();
+      // Ziel: Gesichtshöhe, also eher die obere Mitte des Kamerabilds
+      say(p);
+      throwItem(layer, {
+        item: p.item,
+        x: b.x + b.w * (0.5 + (Math.random() - 0.5) * 0.35),
+        y: b.y + b.h * (0.42 + (Math.random() - 0.5) * 0.3),
+        size: Math.max(60, Math.min(b.w, b.h) * 0.42) * opt.psize,
+        sfx,
+      });
+    } else if (sounds.length < 6) {
+      sounds.push(p);
+      if (!playing) playSounds();
+    }
+  }
+
+  source.onPrank(handle);
+
+  if (opt.test) {
+    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish'];
+    const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
+    let n = 0;
+    const fake = () => {
+      const who = names[Math.floor(Math.random() * names.length)];
+      const now = new Date().toISOString();
+      handle(n++ % 4 === 3
+        ? { id: `test-${n}`, created_at: now, kind: 'sound', item: 'rimshot', requested_by: who }
+        : { id: `test-${n}`, created_at: now, kind: 'throw', item: items[Math.floor(Math.random() * items.length)], requested_by: who });
+    };
+    setTimeout(fake, 4000);
+    setInterval(fake, 7000);
+  }
 }
 
 // ============================================================

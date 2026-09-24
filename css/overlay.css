@@ -125,6 +125,29 @@ p { margin: 0; }
 .ov-countdown b { font-family: var(--font-mono); font-size: 1.35em; font-weight: 700; line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
 .ov-countdown i { font-style: normal; font-size: .6em; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #8b95ab; }
 
+/* ---------- Ärgere den Dave ---------- */
+.ov-pranks { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+.ov-prank-feed {
+  position: absolute; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: .4rem;
+  font-size: calc(16px * var(--ps, 1));
+}
+.ov-prank-feed.is-below { flex-direction: column-reverse; }
+.ov-prank-msg {
+  display: flex; align-items: center; gap: .5em; padding: .45em .95em .45em .7em; border-radius: 999px;
+  background: rgba(12, 16, 25, max(.75, var(--bga))); border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 .6em 1.4em -.6em rgba(0, 0, 0, .8);
+  font-size: 1.15em; white-space: nowrap;
+  animation: ov-msg 4.2s var(--ease-out) both;
+}
+.ov-prank-msg span { font-size: 1.3em; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.ov-prank-msg b { font-weight: 600; }
+@keyframes ov-msg {
+  0% { opacity: 0; transform: translateY(.6em) scale(.9); }
+  8%, 82% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-.4em); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
