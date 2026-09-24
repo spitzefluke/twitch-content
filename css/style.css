@@ -1920,7 +1920,19 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .bingo-box .sound-form { padding: 12px; }
 .bingo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
-.bingo-items li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+/* Pro Bild: oben Name, Kopieren, Löschen – darunter Seltenheit und Zahl im Icon */
+.bingo-items li {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) 78px auto auto; gap: 6px 8px; align-items: center;
+  grid-template-areas: "img name name copy del" "img rarity amount amount amount";
+  padding-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+.bingo-items li:last-child { border-bottom: 0; }
+.bingo-items li > img { grid-area: img; }
+.bingo-items li > input:not(.bingo-amount-pick) { grid-area: name; }
+.bingo-items li > .bingo-rarity-pick { grid-area: rarity; max-width: none; }
+.bingo-items li > .bingo-amount-pick { grid-area: amount; width: 78px; }
+.bingo-items li > button:not(.prank-del) { grid-area: copy; }
+.bingo-items li > .prank-del { grid-area: del; }
 .bingo-rarity-pick {
   min-height: 36px; max-width: 128px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2);
   border-left: 6px solid var(--line-2); background: var(--bg); font-size: 13px;

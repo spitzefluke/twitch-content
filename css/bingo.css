@@ -73,6 +73,16 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
   overflow: hidden; text-overflow: ellipsis;
 }
 .bingo-cell.r-mythic .bingo-rarity { background: #3b2400; color: #ffe27a; }
+/* Zahl im Icon (z. B. 5 Kills): groß unten rechts auf dem Bild, wie der Stapel-Zähler in Fortnite */
+.bingo-amount {
+  position: absolute; right: .12em; bottom: 1.05em; z-index: 1;
+  min-width: 1.35em; padding: 0 .12em;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 1.35em; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; text-align: right; color: #fff;
+  -webkit-text-stroke: .06em #111; paint-order: stroke fill;
+  text-shadow: 0 .05em 0 #111, 0 0 .25em rgba(0, 0, 0, .6);
+}
+.bingo-cell.r-mythic .bingo-amount { color: #fff6c9; }
 .bingo-cell:has(.bingo-rarity) img { padding-top: .5em; }
 
 /* B-I-N-G-O über den Spalten (nur 5 × 5) */

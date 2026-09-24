@@ -21,13 +21,30 @@ export function rarityFromFile(fileName) {
   return hit?.id ?? null;
 }
 
-// Name ohne das Seltenheits-Wort: "scar_legendary.png" → "Scar"
+// Zahl im Icon, z. B. bei Kills: "kill_5.png", "5-kills.png", "elim x10.png" → 5 bzw. 10
+const AMOUNT = /^(?:x|×)?(\d{1,3})(?:x|×)?$/i;
+export const MAX_AMOUNT = 999;
+export function amountFromFile(fileName) {
+  const words = fileName.replace(/\.[^.]+$/, '').split(/[-_\s]+/);
+  const hit = words.map((w) => AMOUNT.exec(w)).find((m) => m && Number(m[1]) >= 1);
+  return hit ? Number(hit[1]) : null;
+}
+
+// Name ohne Seltenheits-Wort und ohne Zahl: "scar_legendary.png" → "Scar", "kill_5.png" → "Kill"
 function stripRarity(fileName) {
   // Farbwörter (gold, blau …) bleiben im Namen – "Gold Scar" heißt wirklich so.
   const colors = ['grau', 'gray', 'grey', 'gruen', 'grün', 'green', 'blau', 'blue', 'lila', 'purple', 'gold', 'orange'];
   const all = RARITIES.flatMap((r) => r.words).filter((w) => !colors.includes(w));
-  return fileName.replace(/\.[^.]+$/, '').split(/([-_\s]+)/)
-    .filter((part) => !all.includes(part.toLowerCase())).join('').replace(/[-_\s]+$/, '');
+  const parts = fileName.replace(/\.[^.]+$/, '').split(/([-_\s]+)/);
+  // Nur die erste Zahl ist die Zahl im Icon (wie in amountFromFile)
+  const numberAt = parts.findIndex((part, i) => i % 2 === 0 && AMOUNT.test(part) && Number(AMOUNT.exec(part)[1]) >= 1);
+  return parts.filter((part, i) => i !== numberAt && !all.includes(part.toLowerCase()))
+    .join('').replace(/^[-_\s]+|[-_\s]+$/g, '');
+}
+
+// Was von einem Bild in eine Karte kommt (ohne leere Felder)
+export function cardCell({ id, name, path, rarity, amount }) {
+  return { id, name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}) };
 }
 
 // Alle Reihen, Spalten und die beiden Diagonalen als Listen von Feld-Nummern
@@ -64,9 +81,9 @@ function funColor(id = '') {
 }
 
 // Zeichnet die Karte in `el`. Mit onCell werden die Felder zu Knöpfen.
-// rarityOf(cell) liefert die aktuelle Seltenheit (falls ein Admin sie nachträglich
-// geändert hat); sonst gilt, was beim Ziehen in der Karte gespeichert wurde.
-export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = null, rarityOf = null } = {}) {
+// itemOf(cell) liefert das Bild aus der aktuellen Liste (falls ein Admin Seltenheit
+// oder Zahl nachträglich geändert hat); sonst gilt, was beim Ziehen in der Karte steht.
+export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = null, itemOf = null } = {}) {
   const { cells: winning } = bingoState(card);
   const marked = new Set(card.marked ?? []);
   el.style.setProperty('--n', card.size);
@@ -83,8 +100,9 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
   el.replaceChildren(...letters, ...card.cells.map((cell, i) => {
     const node = document.createElement(onCell && !cell.free ? 'button' : 'div');
     node.className = 'bingo-cell';
-    const live = cell.free ? null : rarityOf?.(cell);
-    const rarity = cell.free ? null : live !== undefined ? live : cell.rarity ?? null;
+    const live = cell.free ? null : itemOf?.(cell) ?? cell;
+    const rarity = live?.rarity ?? null;
+    const amount = live?.amount ?? null;
     if (!cell.free) node.classList.add(rarity ? `r-${rarity}` : funColor(cell.id));
     if (onCell && !cell.free) {
       node.type = 'button';
@@ -104,7 +122,14 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
       name.className = 'bingo-name';
       name.textContent = cell.name;
       node.append(img, name);
-      node.title = rarity ? `${cell.name} · ${rarityName(rarity)}` : cell.name;
+      node.title = [cell.name, amount, rarity && rarityName(rarity)].filter(Boolean).join(' · ');
+      if (amount) {
+        // Die Zahl steht groß im Icon, z. B. 5 auf dem Kill-Symbol
+        const num = document.createElement('span');
+        num.className = 'bingo-amount';
+        num.textContent = amount;
+        node.append(num);
+      }
       if (rarity) {
         const badge = document.createElement('span');
         badge.className = 'bingo-rarity';
@@ -133,7 +158,7 @@ export function drawCard(items, size, free = true) {
   if (items.length < need) {
     throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – hochgeladen sind erst ${items.length}.`);
   }
-  const pool = items.map(({ id, name, path, rarity }) => (rarity ? { id, name, path, rarity } : { id, name, path }));
+  const pool = items.map(cardCell);
   for (let i = pool.length - 1; i > 0; i--) {
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -144,7 +169,7 @@ export function drawCard(items, size, free = true) {
   return { size, cells, marked: withFree ? [center] : [], created_at: new Date().toISOString() };
 }
 
-// "chug-jug_legendary.png" → "Chug Jug" (die Seltenheit steckt extra in rarityFromFile)
+// "chug-jug_legendary.png" → "Chug Jug" (Seltenheit und Zahl stecken extra in rarityFromFile/amountFromFile)
 export function nameFromFile(fileName) {
   return (stripRarity(fileName) || fileName)
     .replace(/\.[^.]+$/, '')

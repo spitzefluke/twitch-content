@@ -3,7 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
-import { RARITIES, bingoState, drawCard, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1585,7 +1585,7 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
       urlFor: (path) => state.api.bingoUrl(path),
       onCell: admin ? toggleBingoCell : null,
       stamped,
-      rarityOf: bingoRarityOf,
+      itemOf: bingoItemOf,
     });
   }
   $('#bingo-status').textContent = card
@@ -1654,6 +1654,60 @@ function renderBingoItems() {
         toast(`Seltenheit nicht gespeichert: ${germanError(err)}`, 'error');
       }
     });
+    // Zahl im Icon, z. B. 5 auf dem Kill-Symbol = 5 Kills
+    const amount = document.createElement('input');
+    amount.type = 'number';
+    amount.className = 'bingo-amount-pick';
+    amount.min = '1';
+    amount.max = String(MAX_AMOUNT);
+    amount.step = '1';
+    amount.inputMode = 'numeric';
+    amount.placeholder = 'Zahl';
+    amount.value = item.amount ?? '';
+    amount.title = 'Zahl im Icon, z. B. 5 für 5 Kills – leer lassen für keine';
+    amount.setAttribute('aria-label', `Zahl im Icon von „${item.name}“`);
+    amount.addEventListener('change', async () => {
+      const raw = amount.value.trim();
+      const value = raw === '' ? null : Math.round(Number(raw));
+      if (value !== null && !(value >= 1 && value <= MAX_AMOUNT)) {
+        amount.value = item.amount ?? '';
+        toast(`Die Zahl muss zwischen 1 und ${MAX_AMOUNT} liegen.`, 'error');
+        return;
+      }
+      try {
+        await state.api.updateBingoItem(item.id, { amount: value });
+        item.amount = value;
+        renderBingoDialog();
+      } catch (err) {
+        amount.value = item.amount ?? '';
+        toast(`Zahl nicht gespeichert: ${germanError(err)}`, 'error');
+      }
+    });
+    // Kopie mit anderer Zahl: ein Kill-Symbol für 3, 5 und 10 Kills
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'prank-try';
+    copy.textContent = '⧉';
+    copy.title = 'Kopie mit anderer Zahl';
+    copy.setAttribute('aria-label', `„${item.name}“ mit anderer Zahl kopieren`);
+    copy.addEventListener('click', async () => {
+      const answer = prompt(`Kopie von „${item.name}“ – welche Zahl soll im Icon stehen?`, String(Math.min(MAX_AMOUNT, (item.amount ?? 0) + 1)));
+      if (answer === null) return;
+      const value = answer.trim() === '' ? null : Math.round(Number(answer));
+      if (value !== null && !(value >= 1 && value <= MAX_AMOUNT)) {
+        toast(`Die Zahl muss zwischen 1 und ${MAX_AMOUNT} liegen.`, 'error');
+        return;
+      }
+      copy.disabled = true;
+      try {
+        const created = await state.api.copyBingoItem(item, { amount: value });
+        state.bingo.items = [...state.bingo.items, created];
+        renderBingoDialog();
+      } catch (err) {
+        copy.disabled = false;
+        toast(`Kopieren fehlgeschlagen: ${germanError(err)}`, 'error');
+      }
+    });
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
@@ -1671,7 +1725,7 @@ function renderBingoItems() {
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    li.append(img, name, rarity, del);
+    li.append(img, name, copy, del, rarity, amount);
     return li;
   }));
 }
@@ -1694,10 +1748,9 @@ function celebrateBingo() {
   if (!$('#bingo-dialog').open) toast('BINGO! Eine Reihe ist voll.', 'ok', 5000);
 }
 
-// Aktuelle Seltenheit aus der Bilderliste (ein Admin kann sie nachträglich ändern)
-function bingoRarityOf(cell) {
-  const item = state.bingo.items.find((i) => i.id === cell.id);
-  return item ? item.rarity ?? null : undefined;
+// Das Bild aus der aktuellen Liste – ein Admin kann Seltenheit und Zahl nachträglich ändern
+function bingoItemOf(cell) {
+  return state.bingo.items.find((i) => i.id === cell.id);
 }
 
 // ---------- Eigene Karte: selbst ziehen, selbst abkreuzen ----------
@@ -1719,7 +1772,7 @@ function renderMyBingo(stamped = null) {
   empty.hidden = !text;
   $('#my-bingo-new').disabled = !on || state.bingo.mineOn === false || !items.length;
   if (mine) {
-    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped, rarityOf: bingoRarityOf });
+    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped, itemOf: bingoItemOf });
   }
 }
 
@@ -1819,7 +1872,7 @@ async function uploadBingoImages(e) {
       formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
       try {
         const blob = await shrinkImage(file);
-        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), rarityFromFile(file.name));
+        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), { rarity: rarityFromFile(file.name), amount: amountFromFile(file.name) });
         state.bingo.items = [...state.bingo.items, item];
         done++;
       } catch (err) {

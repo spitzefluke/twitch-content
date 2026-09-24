@@ -56,6 +56,9 @@ alter table public.bingo_items enable row level security;
 -- Seltenheit wie in Fortnite (bei Waffen); leer bei Items ohne Seltenheit
 alter table public.bingo_items add column if not exists rarity text
   check (rarity is null or rarity in ('common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic'));
+-- Zahl im Icon, z. B. 5 auf dem Kill-Symbol = 5 Kills; leer = keine Zahl
+alter table public.bingo_items add column if not exists amount int
+  check (amount is null or amount between 1 and 999);
 
 drop policy if exists "bingo_items: lesen für alle" on public.bingo_items;
 create policy "bingo_items: lesen für alle" on public.bingo_items
@@ -72,7 +75,7 @@ create policy "bingo_items: löschen nur admin" on public.bingo_items
 grant select on public.bingo_items to anon;
 
 -- ---------- Die Karte ----------
--- cells: pro Feld {id, name, path} bzw. {free: true} für die freie Mitte.
+-- cells: pro Feld {id, name, path, rarity?, amount?} bzw. {free: true} für die freie Mitte.
 -- Name und Bild stehen in der Karte selbst – löscht man ein Bild, bleibt die Karte heil.
 create table if not exists public.bingo_card (
   id int primary key default 1 check (id = 1),
@@ -117,9 +120,10 @@ begin
   end if;
 
   select jsonb_agg(cell order by pos) into picked from (
-    select jsonb_strip_nulls(jsonb_build_object('id', id, 'name', name, 'path', path, 'rarity', rarity)) as cell,
+    -- Alles vom Bild außer dem Datum (id, name, path, rarity, amount …); leere Felder fallen weg
+    select jsonb_strip_nulls(to_jsonb(b) - 'created_at') as cell,
            case when free and n - 1 >= center then n else n - 1 end as pos
-    from (select id, name, path, rarity, row_number() over (order by random()) as n from public.bingo_items) r
+    from (select b, row_number() over (order by random()) as n from public.bingo_items b) r
     where n <= need
     union all
     select jsonb_build_object('free', true), center where free

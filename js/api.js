@@ -2,6 +2,7 @@
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
+import { cardCell } from './bingo.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -21,6 +22,7 @@ const ERRORS = [
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
+  [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
   [/column .*rarity|'rarity' column/i, 'In der Datenbank fehlt die Seltenheit fürs Bingo: supabase/migrations/20260925120000_bingo_rarity.sql im SQL Editor ausführen.'],
   [/relation "public\.bingo_(items|card)"|could not find the (table|function) '?public\.bingo_/i, 'In der Datenbank fehlt das Fortnite-Bingo: supabase/migrations/20260924120000_bingo.sql im SQL Editor ausführen.'],
   [/exceeded the maximum allowed size|payload too large|entity too large/i, 'Die Datei ist zu groß (höchstens 1 MB).'],
@@ -236,13 +238,24 @@ async function createSupabaseApi() {
       ]);
       return { items: unwrap(items).map((i) => ({ ...i, url: this.bingoUrl(i.path) })), card: unwrap(card) };
     },
-    async addBingoItem(blob, name, rarity = null) {
+    async addBingoItem(blob, name, { rarity = null, amount = null } = {}) {
       const ext = blob.type === 'image/webp' ? 'webp' : 'png';
       const path = `${crypto.randomUUID()}.${ext}`;
       unwrap(await sb.storage.from('bingo').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
-      // Seltenheit nur mitschicken, wenn es eine gibt – so klappt das Hochladen
-      // auch, solange die Migration …_bingo_rarity.sql noch fehlt.
-      const { data, error } = await sb.from('bingo_items').insert(rarity ? { name, path, rarity } : { name, path }).select('*').single();
+      return this.insertBingoItem({ name, path, rarity, amount });
+    },
+    // Dasselbe Bild noch einmal, z. B. mit anderer Zahl. Die Datei wird kopiert,
+    // damit Löschen des einen Eintrags das Bild des anderen nicht mitnimmt.
+    async copyBingoItem(item, patch = {}) {
+      const path = `${crypto.randomUUID()}.${item.path.split('.').pop()}`;
+      unwrap(await sb.storage.from('bingo').copy(item.path, path));
+      return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, ...patch });
+    },
+    async insertBingoItem({ name, path, rarity, amount }) {
+      // Seltenheit und Zahl nur mitschicken, wenn es sie gibt – so klappt das Hochladen
+      // auch, solange die Migrationen …_bingo_rarity.sql / …_bingo_amount.sql noch fehlen.
+      const row = { name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}) };
+      const { data, error } = await sb.from('bingo_items').insert(row).select('*').single();
       if (error) {
         await sb.storage.from('bingo').remove([path]).catch(() => {});
         throw error;
@@ -507,7 +520,7 @@ function createLocalApi() {
     // Bilder liegen als data:-URL in zd_bingo_items, die Karte in zd_bingo_card.
     bingoUrl(path) { return store.get('bingo_items', []).find((i) => i.path === path)?.url ?? ''; },
     async getBingo() { return { items: store.get('bingo_items', []), card: store.get('bingo_card', null) }; },
-    async addBingoItem(blob, name, rarity = null) {
+    async addBingoItem(blob, name, { rarity = null, amount = null } = {}) {
       await requireAdmin();
       const url = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -515,8 +528,15 @@ function createLocalApi() {
         reader.onerror = () => reject(new Error('Bild konnte nicht gelesen werden.'));
         reader.readAsDataURL(blob);
       });
+      return this.insertBingoItem({ name, rarity, amount, url });
+    },
+    async copyBingoItem(item, patch = {}) {
+      await requireAdmin();
+      return this.insertBingoItem({ name: item.name, rarity: item.rarity, amount: item.amount, url: item.url, ...patch });
+    },
+    async insertBingoItem({ name, rarity = null, amount = null, url }) {
       const id = `demo-${nextId++}`;
-      const item = { id, name, rarity, path: `demo/${id}`, url, created_at: new Date().toISOString() };
+      const item = { id, name, rarity, amount, path: `demo/${id}`, url, created_at: new Date().toISOString() };
       try {
         localStorage.setItem('zd_bingo_items', JSON.stringify([...store.get('bingo_items', []), item]));
       } catch {
@@ -538,8 +558,7 @@ function createLocalApi() {
       const withFree = free && size % 2 === 1;
       const need = size * size - (withFree ? 1 : 0);
       if (items.length < need) throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – hochgeladen sind erst ${items.length}.`);
-      const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, need)
-        .map(({ id, name, path, rarity }) => (rarity ? { id, name, path, rarity } : { id, name, path }));
+      const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, need).map(cardCell);
       const center = Math.floor((size * size) / 2);
       if (withFree) shuffled.splice(center, 0, { free: true });
       return saveCard({ id: 1, size, cells: shuffled, marked: withFree ? [center] : [], visible: true, created_at: new Date().toISOString() });

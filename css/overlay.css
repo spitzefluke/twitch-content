@@ -167,6 +167,7 @@ p { margin: 0; }
 .ov-bingo.bingo-style-neon .bingo-rarity { background: transparent; color: var(--rc); border: 1px solid var(--rc); text-shadow: 0 0 .4em var(--rc); }
 .ov-bingo.bingo-style-neon .bingo-cell.r-mythic { box-shadow: 0 0 1.1em rgba(255, 216, 74, .9), inset 0 0 1em rgba(255, 216, 74, .35); }
 .ov-bingo.bingo-style-neon .bingo-cell.r-mythic .bingo-rarity { background: transparent; color: #ffe27a; }
+.ov-bingo.bingo-style-neon .bingo-amount { color: #fff; -webkit-text-stroke: 0; text-shadow: 0 0 .15em var(--rc), 0 0 .45em var(--rc), 0 0 .8em var(--rc); }
 .ov-bingo.bingo-style-neon .bingo-stamp {
   background: transparent; border: .22em solid #ff3d8b;
   box-shadow: 0 0 .7em #ff3d8b, inset 0 0 .6em rgba(255, 61, 139, .6);
@@ -211,6 +212,7 @@ p { margin: 0; }
 .ov-bingo.bingo-style-paper .bingo-rarity { top: .45em; background: var(--rc); color: #1e1a10; }
 .ov-bingo.bingo-style-paper .bingo-cell.r-mythic { box-shadow: inset 0 .38em 0 #f2b92b, 0 0 .7em rgba(242, 185, 43, .7); border-color: #f2c14e; }
 .ov-bingo.bingo-style-paper .bingo-cell.r-mythic .bingo-rarity { background: linear-gradient(90deg, #fff09a, #f2b92b); color: #3b2400; }
+.ov-bingo.bingo-style-paper .bingo-amount { color: #2a2418; -webkit-text-stroke: .09em #fffdf5; text-shadow: none; }
 /* Stempel wie mit dem Bingo-Marker: rot, etwas unregelmäßig */
 .ov-bingo.bingo-style-paper .bingo-stamp {
   inset: 10%; border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;

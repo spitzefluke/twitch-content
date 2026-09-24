@@ -506,14 +506,14 @@ async function setupBingo(source) {
   const urlFor = (path) => (path.startsWith('data:') ? path : source.bingoUrl(path));
   let card = await source.bingoCard().catch((err) => { console.warn('Overlay: Bingo nicht verfügbar', err); return null; });
   if (!card && opt.test) card = testCard();
-  // Aktuelle Seltenheit der Bilder – ein Admin kann sie nachträglich ändern
+  // Aktuelle Bilder – ein Admin kann Seltenheit und Zahl nachträglich ändern
   let items = new Map();
   const loadItems = async () => {
     const list = await source.bingoItems().catch(() => []);
-    items = new Map(list.map((i) => [i.id, i.rarity ?? null]));
+    items = new Map(list.map((i) => [i.id, i]));
   };
   await loadItems();
-  const rarityOf = (cell) => (items.has(cell.id) ? items.get(cell.id) : undefined);
+  const itemOf = (cell) => items.get(cell.id);
 
   function show(next, stamped = null) {
     card = next;
@@ -521,7 +521,7 @@ async function setupBingo(source) {
     card$.hidden = !visible;
     if (!visible) return;
     card$.style.setProperty('--n', card.size);
-    renderBingoGrid(grid, card, { urlFor, stamped, rarityOf });
+    renderBingoGrid(grid, card, { urlFor, stamped, itemOf });
     const st = bingoState(card);
     $('ov-bingo-progress').textContent = `${st.done}/${st.total}${st.count ? ` · ${st.count}× Bingo` : ''}`;
   }
@@ -563,8 +563,8 @@ function testCard() {
     ['💣', 'Granate'], ['🍌', 'Banane'], ['🛡️', 'Schild'], ['🚗', 'Auto'], ['🔑', 'Tresorschlüssel'], ['🍄', 'Pilz'], ['📦', 'Truhe']];
   const svg = (emoji) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="72" font-size="70" text-anchor="middle">${emoji}</text></svg>`)}`;
   const rarities = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common', 'exotic', null];
-  const cells = items.sort(() => Math.random() - 0.5).slice(0, 8)
-    .map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e), ...(rarities[i] ? { rarity: rarities[i] } : {}) }));
+  const cells = [['💀', 'Kill', 5], ...items.sort(() => Math.random() - 0.5).slice(0, 7)].sort(() => Math.random() - 0.5)
+    .map(([e, name, amount], i) => ({ id: `t${i}`, name, path: svg(e), ...(rarities[i] ? { rarity: rarities[i] } : {}), ...(amount ? { amount } : {}) }));
   cells.splice(4, 0, { free: true });
   return { size: 3, cells, marked: [4], visible: true, created_at: 'test' };
 }
