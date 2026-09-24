@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/prank-fx.css">
   <link rel="stylesheet" href="css/bingo.css">
+  <link rel="stylesheet" href="css/pet.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -693,6 +694,147 @@
     </div>
   </dialog>
 
+  <!-- Unangenehme Fragen: Zuschauer fragen, Admins prüfen, Dave antwortet im Stream -->
+  <dialog id="questions-dialog" class="dialog dialog--questions" aria-labelledby="questions-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Live im Stream · von Admins geprüft</p>
+        <h2 id="questions-title">Unangenehme Fragen</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <p class="prank-note" id="questions-note" hidden></p>
+    <div class="q-layout">
+      <div class="q-main">
+        <!-- Was gerade im Stream steht -->
+        <section class="qcard" id="q-stage-card" data-state="hidden" aria-live="polite">
+          <p class="qcard-kicker">❓ Gerade im Stream</p>
+          <p class="qcard-author"></p>
+          <p class="qcard-text"></p>
+          <p class="qcard-result" hidden></p>
+          <p class="qcard-empty">Gerade steht keine Frage im Stream.</p>
+        </section>
+
+        <form class="q-form" id="q-form" novalidate>
+          <label class="field"><span>Deine Frage an Dave</span>
+            <textarea name="text" rows="3" maxlength="200" required placeholder="Was war dein peinlichster Moment im Stream?"></textarea>
+          </label>
+          <div class="q-form-row">
+            <label class="toggle"><input type="checkbox" name="anonymous"><span class="toggle-ui" aria-hidden="true"></span>Im Stream anonym</label>
+            <span class="q-count" id="q-count">0 / 200</span>
+          </div>
+          <p class="form-hint">Admins prüfen jede Frage, bevor Dave sie sieht. Beantwortet er sie nicht, muss er eine Bestrafung machen. Höchstens 3 Fragen pro Tag.</p>
+          <p class="form-msg" role="alert"></p>
+          <button class="btn btn--primary btn--block" type="submit">Frage abschicken</button>
+        </form>
+
+        <h3 class="prank-h3">Deine Fragen</h3>
+        <ul class="q-list" id="q-mine"></ul>
+      </div>
+
+      <div class="q-side" id="q-admin" hidden>
+        <section class="bingo-box">
+          <h3 class="prank-h3">Im Stream</h3>
+          <div class="q-controls" id="q-controls">
+            <button class="btn btn--ghost btn--sm" type="button" data-q-resolve="answered">✅ Beantwortet</button>
+            <button class="btn btn--primary btn--sm" type="button" data-q-resolve="punished">😈 Bestrafung ziehen</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-q-resolve="skipped">⏭ Überspringen</button>
+            <button class="btn btn--ghost btn--sm" type="button" id="q-hide">Ausblenden</button>
+          </div>
+          <p class="form-hint" id="q-controls-hint"></p>
+        </section>
+
+        <section class="bingo-box">
+          <h3 class="prank-h3">Zu prüfen <small id="q-pending-count"></small></h3>
+          <ul class="q-list" id="q-pending"></ul>
+        </section>
+
+        <section class="bingo-box">
+          <h3 class="prank-h3">Freigegeben <small id="q-approved-count"></small></h3>
+          <ul class="q-list" id="q-approved"></ul>
+        </section>
+
+        <section class="bingo-box">
+          <h3 class="prank-h3">Bestrafungen <small>eine pro Zeile</small></h3>
+          <form id="q-punish-form" class="q-punish-form" novalidate>
+            <textarea name="list" rows="7"></textarea>
+            <p class="form-msg" role="alert"></p>
+            <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
+          </form>
+        </section>
+
+        <section class="bingo-box">
+          <h3 class="prank-h3">Erledigt</h3>
+          <ul class="q-list" id="q-done"></ul>
+        </section>
+
+        <div class="tile-start">
+          <label class="field"><span>Für Zuschauer freigeschaltet ab</span>
+            <input type="datetime-local" data-tile-start="questions">
+          </label>
+          <p class="form-hint">Bis dahin sehen Zuschauer auf der Kachel einen Countdown. Leer lassen = sofort für alle.</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Daves Dino: füttern, streicheln – im Overlay läuft er durchs Bild -->
+  <dialog id="pet-dialog" class="dialog dialog--pet" aria-labelledby="pet-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Tamagotchi · läuft im Stream herum</p>
+        <h2 id="pet-title">Daves Dino</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <p class="prank-note" id="pet-note" hidden></p>
+    <div class="pet-layout">
+      <div class="pet-main">
+        <div class="pet-stage" id="pet-stage"></div>
+        <div class="pet-meter">
+          <span class="pet-meter-label" id="pet-meter-label">Hunger</span>
+          <span class="pet-meter-bar"><span class="pet-meter-fill" id="pet-meter-fill"></span></span>
+        </div>
+        <p class="pet-status" id="pet-status" aria-live="polite"></p>
+        <div class="pet-actions">
+          <button class="btn btn--primary" type="button" id="pet-feed">🍖 Füttern</button>
+          <button class="btn btn--ghost" type="button" id="pet-pet">🤚 Streicheln</button>
+        </div>
+        <p class="form-hint">Füttern geht alle 10 Minuten, Streicheln jede Minute. Hat der Dino Hunger, knabbert er im Stream an den Zuschauern.</p>
+        <div class="history prank-log">
+          <h3>Zuletzt</h3>
+          <ol id="pet-log"></ol>
+        </div>
+      </div>
+
+      <div class="q-side" id="pet-admin" hidden>
+        <section class="bingo-box">
+          <h3 class="prank-h3">Dino sagt im Stream</h3>
+          <form id="pet-say-form" class="pet-say-form" novalidate>
+            <input type="text" name="text" maxlength="100" placeholder="Du Flitzpiepe!" aria-label="Was der Dino sagen soll">
+            <button class="btn btn--primary btn--sm" type="submit">Sagen</button>
+          </form>
+        </section>
+        <section class="bingo-box">
+          <h3 class="prank-h3">Einstellungen</h3>
+          <form id="pet-settings" class="pet-settings" novalidate>
+            <label class="field"><span>Name</span><input type="text" name="name" maxlength="20" required></label>
+            <label class="field"><span>Hunger nach (Minuten ohne Futter)</span><input type="number" name="hungry_after" min="5" max="720" step="5" required></label>
+            <label class="field"><span>Sprüche – einer pro Zeile</span><textarea name="phrases" rows="9"></textarea></label>
+            <p class="form-msg" role="alert"></p>
+            <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
+          </form>
+        </section>
+        <div class="tile-start">
+          <label class="field"><span>Für Zuschauer freigeschaltet ab</span>
+            <input type="datetime-local" data-tile-start="pet">
+          </label>
+          <p class="form-hint">Bis dahin sehen Zuschauer auf der Kachel einen Countdown. Leer lassen = sofort für alle.</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- ============ IDEE / COUNTDOWN ============ -->
   <dialog id="tile-dialog" class="dialog dialog--tile" aria-labelledby="tile-dialog-title">
     <div class="tile-dialog-hero" id="tile-dialog-hero">
@@ -807,6 +949,14 @@
             <label class="obs-size"><span class="sr-only">Größe der Würfe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
           </div>
           <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="quest_on" checked><span class="toggle-ui" aria-hidden="true"></span>Unangenehme Fragen</label>
+            <label class="obs-size"><span class="sr-only">Größe der Fragen-Karte</span><input type="range" name="qsize" min="50" max="200" step="5" value="100"><output name="qsize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="pet" checked><span class="toggle-ui" aria-hidden="true"></span>Daves Dino</label>
+            <label class="obs-size"><span class="sr-only">Größe des Dinos</span><input type="range" name="dsize" min="50" max="200" step="5" value="100"><output name="dsize-out"></output></label>
+          </div>
+          <div class="obs-part">
             <span class="obs-part-label">🎨 Bingo-Design</span>
             <label class="obs-size obs-style"><span class="sr-only">Design der Bingo-Karte</span>
               <select name="bstyle">
@@ -825,6 +975,7 @@
         <input type="text" name="wheel" value="br" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="next" value="bl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
         <details class="obs-more">

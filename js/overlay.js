@@ -25,6 +25,10 @@
 //   prank=0                    „Ärgere den Dave“ aus (Würfe und Sounds)
 //   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
+//   quest=tc|…|0               Position der Karte „Unangenehme Frage“ (Standard tc = oben Mitte), 0 = aus
+//   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
+//   pet=0                      Daves Dino aus (läuft sonst unten durchs Bild)
+//   dsize=100                  Größe des Dinos in Prozent (50 – 200)
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -33,6 +37,8 @@ import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
+import { paintQuestionCard } from './questions.js';
+import { DEFAULT_PET, Dino, runDino } from './pet.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -74,6 +80,10 @@ const opt = {
   prank: flag('prank', true),
   cam: camera(params.get('cam')),
   psize: number('psize', 100, 50, 200) / 100,
+  quest: position(params.get('quest'), 'tc'),
+  qsize: number('qsize', 100, 50, 200) / 100,
+  pet: flag('pet', true),
+  dsize: number('dsize', 100, 50, 200) / 100,
   test: flag('test', false),
   edit: flag('edit', false),
 };
@@ -97,6 +107,8 @@ root.setProperty('--m', `${opt.margin}px`);
 root.setProperty('--bga', opt.bg);
 root.setProperty('--ps', opt.psize);
 root.setProperty('--bs', opt.bsize);
+root.setProperty('--qs', opt.qsize);
+root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
 $('ov-nlabel').textContent = opt.nlabel;
@@ -109,6 +121,9 @@ if (opt.bingo) {
   $('ov-bingo').classList.add(`bingo-style-${opt.bstyle}`);
 }
 else $('ov-bingo').remove();
+if (opt.quest) place($('ov-quest'), opt.quest);
+else $('ov-quest').remove();
+if (!opt.pet) $('ov-pet').remove();
 if (opt.edit) setupEdit();
 
 // Ecke (br, tl, …) per CSS-Klasse, freie Position als linke obere Ecke in Prozent.
@@ -153,6 +168,8 @@ async function start() {
   if (opt.prank) setupPranks(source);
   else $('ov-pranks').remove();
   if (opt.bingo) setupBingo(source);
+  if (opt.quest) setupQuestions(source);
+  if (opt.pet) setupPet(source);
 }
 
 // ============================================================
@@ -189,6 +206,34 @@ async function connect() {
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
     },
     bingoUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`,
+    questionStage: async () => (await rows(sb.from('question_stage').select('*').eq('id', 1).maybeSingle())) ?? null,
+    onQuestionStage(cb) {
+      sb.channel('overlay-question')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Fragen fehlgeschlagen'); });
+    },
+    pet: async () => {
+      const row = await rows(sb.from('pet').select('*').eq('id', 1).maybeSingle());
+      if (!row) throw new Error('Kein Dino in der Datenbank');
+      return row;
+    },
+    onPet(cb) {
+      sb.channel('overlay-pet')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
+    },
+    // An wem darf der Dino knabbern? Wer zuletzt gefüttert, geworfen oder gedreht hat.
+    async recentNames() {
+      const since = new Date(Date.now() - 86400000).toISOString();
+      const names = (q, key) => rows(q).then((r) => r.map((x) => x[key])).catch(() => []);
+      const lists = await Promise.all([
+        names(sb.from('pet_events').select('who').gte('created_at', since).limit(60), 'who'),
+        names(sb.from('pranks').select('requested_by').gte('created_at', since).limit(60), 'requested_by'),
+        names(sb.from('overlay_spins').select('requested_by').gte('created_at', since).limit(60), 'requested_by'),
+      ]);
+      return [...new Set(lists.flat().filter(Boolean))];
+    },
   };
 }
 
@@ -230,6 +275,27 @@ function demoSource() {
       addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
     },
     bingoUrl: (path) => read('bingo_items', []).find((i) => i.path === path)?.url ?? '',
+    questionStage: async () => read('question_stage', null),
+    onQuestionStage(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
+    },
+    pet: async () => ({ ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...read('pet', {}) }),
+    onPet(cb) {
+      const known = new Set(read('pet_events', []).map((x) => x.id));
+      addEventListener('storage', (e) => {
+        if (e.key === 'zd_pet') cb(read('pet', null));
+        if (e.key !== 'zd_pet_events') return;
+        for (const ev of read('pet_events', []).reverse()) {
+          if (known.has(ev.id)) continue;
+          known.add(ev.id);
+          cb(null, ev);
+        }
+      });
+    },
+    async recentNames() {
+      const names = [...read('pet_events', []).map((x) => x.who), ...read('pranks', []).map((x) => x.requested_by), ...read('spins', []).map((x) => x.requested_by)];
+      return [...new Set(names.filter(Boolean))];
+    },
   };
 }
 
@@ -586,6 +652,104 @@ async function setupBingo(source) {
   }
 }
 
+// ============================================================
+// Unangenehme Fragen
+// ============================================================
+// Die Karte erscheint, sobald ein Admin eine Frage zeigt: erst die Frage (Gong),
+// dann das Ergebnis – beantwortet (Applaus) oder Bestrafung (Buzzer).
+async function setupQuestions(source) {
+  const card = $('ov-quest');
+  const sfx = new Sfx({ volume: opt.volume });
+  let last = null;
+  const show = (stage, { sound = true } = {}) => {
+    const state = stage?.state ?? 'hidden';
+    const visible = state !== 'hidden' && !!stage?.text;
+    card.hidden = !visible;
+    if (!visible) { last = stage; return; }
+    const isNew = !last || last.question_id !== stage.question_id || last.state === 'hidden';
+    const changed = !last || last.state !== state || isNew;
+    paintQuestionCard(card, stage);
+    if (isNew) {
+      card.classList.remove('is-new');
+      void card.offsetWidth;
+      card.classList.add('is-new');
+    }
+    if (sound && changed) {
+      if (state === 'ask') sfx.play('gong');
+      else if (state === 'punished') { sfx.play('buzzer'); sfx.hit('thud'); }
+      else if (state === 'answered') sfx.play('applause');
+    }
+    last = stage;
+  };
+
+  let stage = await source.questionStage().catch((err) => { console.warn('Overlay: Fragen nicht verfügbar', err); return null; });
+  if (opt.test || opt.edit) {
+    const samples = [
+      { question_id: 't1', text: 'Was war dein peinlichster Moment im Stream?', author: 'Lokfuehrer_Lena' },
+      { question_id: 't2', text: 'Wie oft hast du schon wegen einem Zug verschlafen?', author: 'Anonym' },
+    ];
+    let n = 0;
+    const next = () => {
+      const q = samples[n % samples.length];
+      const step = Math.floor(n / samples.length) % 2 ? 'answered' : 'punished';
+      show({ ...q, state: 'ask' });
+      if (!opt.edit) setTimeout(() => show({ ...q, state: step, punishment: '10 Liegestütze – jetzt sofort' }), 6000);
+      n++;
+    };
+    if (!stage || stage.state === 'hidden' || opt.edit) next();
+    else show(stage, { sound: false });
+    if (opt.test) setInterval(next, 14000);
+  } else {
+    show(stage, { sound: false });
+  }
+  source.onQuestionStage((next) => { if (next) show(next); });
+}
+
+// ============================================================
+// Daves Dino
+// ============================================================
+async function setupPet(source) {
+  const layer = $('ov-pet');
+  let pet;
+  try {
+    pet = await source.pet();
+  } catch (err) {
+    console.warn('Overlay: kein Dino (Migration …_questions_pet.sql fehlt?)', err);
+    layer.remove();
+    return;
+  }
+  const sfx = new Sfx({ volume: opt.volume * 0.8 });
+  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name });
+  if (opt.test) {
+    // Probe: Sprüche und Knabbern im Schnelldurchlauf
+    pet = { ...pet, last_fed_at: new Date(Date.now() - 86400000).toISOString() };
+  }
+  runDino(dino, {
+    getPet: () => pet,
+    names: async () => {
+      const list = await source.recentNames().catch(() => []);
+      return list.length ? list : opt.test ? ['Lokfuehrer_Lena', 'SchienenSeb', 'Bahnhofskater'] : [];
+    },
+    idleEvery: opt.test ? [8, 14] : [45, 90],
+    nibbleEvery: opt.test ? [16, 24] : [40, 75],
+  });
+  source.onPet((row, ev) => {
+    if (row) {
+      pet = row;
+      dino.setName(row.name);
+    }
+    if (!ev || Date.now() - Date.parse(ev.created_at) > STALE_MS) return;
+    if (ev.kind === 'feed') {
+      pet = { ...pet, last_fed_at: ev.created_at, last_fed_by: ev.who };
+      dino.eat(ev.who);
+    } else if (ev.kind === 'pet') {
+      dino.cuddle(ev.who);
+    } else if (ev.kind === 'say') {
+      dino.say(ev.text, 5500);
+    }
+  });
+}
+
 // Probekarte für die Vorschau, solange noch keine echte gezogen ist
 function testCard() {
   const items = [['🔫', 'Sturmgewehr'], ['💊', 'Medkit'], ['🧪', 'Schildtrank'], ['🎣', 'Angel'], ['🏹', 'Bogen'],
@@ -614,7 +778,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);

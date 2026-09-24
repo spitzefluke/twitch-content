@@ -289,3 +289,34 @@ p { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Unangenehme Fragen ---------- */
+.ov-quest {
+  --c: #ff5fa8;
+  font-size: calc(16px * var(--qs, 1));
+  width: 38em; max-width: calc(100vw - 2 * var(--m));
+  animation: ov-in .6s var(--ease-out) both;
+}
+.ov-quest .qcard-author { color: #ff9cc9; overflow: hidden; text-overflow: ellipsis; }
+.ov-quest-body { padding: 1.1em 1.4em 1.3em; display: grid; gap: .7em; }
+.ov-quest .qcard-text {
+  margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 2em; line-height: 1.12; color: #fff;
+  text-wrap: balance; overflow-wrap: anywhere;
+}
+.ov-quest .qcard-result {
+  margin: 0; padding: .55em .8em; border-radius: .7em; font-weight: 800; font-size: 1.2em;
+  background: rgba(255, 255, 255, .1); animation: ov-quest-pop .6s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.ov-quest[data-state="punished"] { --c: #ff5a4e; }
+.ov-quest[data-state="punished"] .qcard-result { background: rgba(255, 90, 78, .25); color: #ffd0cb; box-shadow: 0 0 1.5em rgba(255, 90, 78, .4); }
+.ov-quest[data-state="answered"] { --c: #5cc36b; }
+.ov-quest[data-state="answered"] .qcard-result { background: rgba(92, 195, 107, .22); color: #c9f5cf; }
+.ov-quest.is-new { animation: ov-quest-in .7s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes ov-quest-in { from { transform: translateY(-1.5em) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ov-quest-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Daves Dino ---------- */
+.ov-pet {
+  position: fixed; left: var(--m); right: var(--m); bottom: calc(var(--m) * .5); z-index: 4;
+  height: calc(var(--dsz) * 2.2); pointer-events: none;
+}

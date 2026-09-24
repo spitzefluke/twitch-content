@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -229,6 +229,10 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `prank=0` | „Ärgere den Dave“ ausblenden (keine Würfe, keine Sounds) |
 | `cam=73,72,25,25` | Daves Kamera im Bild: links, oben, Breite, Höhe in Prozent – dort landen die Würfe |
 | `psize=150` | Größe der Wurfgeschosse in Prozent |
+| `quest=tc` / … / `0` | Position der Karte „Unangenehme Frage“ (Standard oben Mitte), `0` = aus |
+| `qsize=120` | Größe der Fragen-Karte in Prozent |
+| `pet=0` | Daves Dino ausblenden |
+| `dsize=130` | Größe des Dinos in Prozent |
 | `test=1` | alle 20 Sekunden eine Probe-Drehung – nur zum Ausrichten, danach wieder entfernen |
 
 **Daves Kamera:** Im OBS-Dialog unter „Ärgere den Dave“ eine Vorlage wählen oder in der Vorschau einen Rahmen um die Stelle ziehen, an der die Kamera im Stream sitzt. In OBS die Browserquelle **über** die Kamera-Quelle schieben, sonst fliegt alles hinter Dave vorbei. Läuft das Overlay in mehreren Browserquellen, bei allen außer einer `prank=0` setzen – sonst kommt jeder Sound doppelt.
@@ -272,9 +276,30 @@ Die Zuschauer tippen, welche Reihe auf Daves Karte zuerst voll wird – wer rich
 
 Einmal nötig: Migration `20260926120000_bingo_bet.sql` ausführen, die Edge Function `bingo-bet` deployen (geht automatisch beim Merge) und **Dave muss Twitch einmal neu verbinden** – für Vorhersagen braucht die Seite die neue Berechtigung `channel:manage:predictions`. Vorhersagen gibt es nur für Affiliates und Partner.
 
+## Unangenehme Fragen
+
+Zuschauer schreiben auf der Webseite Fragen an Dave (höchstens 3 pro Tag, auf Wunsch „anonym im Stream“). Jede Frage landet erst bei den Admins:
+
+1. Im Dialog **Unangenehme Fragen** unter „Zu prüfen“ **Freigeben** oder **Ablehnen**. Neue Fragen melden sich bei Admins mit einer Nachricht.
+2. Unter „Freigegeben“ **▶ Im Stream zeigen** – die Frage erscheint groß im OBS-Overlay (mit Gong).
+3. Dave antwortet → **✅ Beantwortet** (Applaus). Kneift er → **😈 Bestrafung ziehen**: Die Datenbank lost eine Strafe aus der Liste aus, sie steht im Overlay (mit Buzzer). **⏭ Überspringen** geht auch.
+4. **Ausblenden** nimmt die Karte aus dem Bild.
+
+Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer sehen nur ihre eigenen Fragen und deren Stand; den echten Namen hinter „Anonym“ sehen nur Admins.
+
+## Daves Dino
+
+Ein kleiner Dino (Standardname „Rexi“) läuft im OBS-Overlay unten durchs Bild und sagt ab und zu einen Spruch („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zuschauer **füttern** (alle 10 Minuten) und **streicheln** (jede Minute) ihn auf der Webseite – im Stream fällt dann Futter vom Himmel bzw. steigen Herzchen auf, und der Dino bedankt sich mit Namen.
+
+Wird er eine Weile nicht gefüttert (Standard 45 Minuten), bekommt er **Hunger**: Er meckert und **knabbert an den Zuschauern** – ein Namensschild von jemandem, der zuletzt gefüttert, geworfen oder gedreht hat, fällt ins Bild, der Dino läuft hin und beißt hinein.
+
+Admins stellen im Dialog Name, Hunger-Zeit und die Sprüche ein und können den Dino über **Dino sagt im Stream** sofort etwas sagen lassen.
+
+Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
+
 ## Startdatum für Zuschauer
 
-„Ärgere den Dave“ und das Fortnite-Bingo können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
+„Ärgere den Dave“, das Fortnite-Bingo, die Unangenehmen Fragen und Daves Dino können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
 
 ## Admin-Bereich
 

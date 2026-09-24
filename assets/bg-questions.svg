@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a1463"/><stop offset=".6" stop-color="#2a0b3d"/><stop offset="1" stop-color="#12061d"/></linearGradient>
+<radialGradient id="spot" cx=".5" cy=".3" r=".55"><stop offset="0" stop-color="#ff5fa8" stop-opacity=".55"/><stop offset="1" stop-color="#ff5fa8" stop-opacity="0"/></radialGradient>
+<filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000" flood-opacity=".55"/></filter>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#spot)"/>
+<path d="M300 0 L500 0 L620 500 L180 500 Z" fill="#fff" opacity=".05"/>
+<g filter="url(#shadow)" font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="middle">
+<text x="400" y="330" font-size="300" fill="#ffd36b" transform="rotate(-8 400 250)">?</text>
+<text x="170" y="210" font-size="130" fill="#ff5fa8" transform="rotate(-18 170 160)">?</text>
+<text x="640" y="230" font-size="150" fill="#9146ff" transform="rotate(14 640 170)">?</text>
+<text x="110" y="440" font-size="90" fill="#4fc3ff" transform="rotate(10 110 400)">!</text>
+<text x="700" y="450" font-size="100" fill="#ff5a5a" transform="rotate(-12 700 400)">!</text>
+</g>
+<g fill="#fff" opacity=".6"><circle cx="90" cy="70" r="3"/><circle cx="720" cy="90" r="2.5"/><circle cx="560" cy="60" r="2"/><circle cx="260" cy="420" r="2.5"/></g>
+</svg>
