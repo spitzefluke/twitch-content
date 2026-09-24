@@ -380,6 +380,27 @@ function renderHeader() {
 const LIVE_WINDOW = 6 * 60 * 60 * 1000;
 const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
+// "Ärgere den Dave" und das Bingo haben ein Startdatum für Zuschauer (target_at).
+// Admins können vorher schon alles benutzen und testen.
+const isLocked = (t) => (t.kind === 'prank' || t.kind === 'bingo')
+  && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
+const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
+
+function startLabel(iso) {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
+}
+
+// Für Admins auf der Kachel: ab wann Zuschauer mitmachen können
+function startNote(tile) {
+  if (!state.profile?.is_admin || !tile.target_at || Date.parse(tile.target_at) <= Date.now()) return null;
+  const note = document.createElement('span');
+  note.className = 'tile-note';
+  const d = new Date(tile.target_at);
+  note.textContent = `🔒 Zuschauer ab ${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  note.title = `Zuschauer sehen bis ${startLabel(tile.target_at)} einen Countdown`;
+  return note;
+}
 
 // Der nächste Termin, der noch bevorsteht – sonst der, der gerade läuft.
 function nextDeparture() {
@@ -552,9 +573,12 @@ async function submitIdea(e) {
 function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
+  // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
   const build = { prank: buildPrankTile, bingo: buildBingoTile };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
-  grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] ?? buildTile)(tile, i)));
+  grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
+  // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
+  state.unlockAt = Math.min(...shown.filter(isLocked).map((t) => Date.parse(t.target_at)), Infinity);
   updateCountdowns();
 }
 
@@ -591,7 +615,7 @@ function buildPrankTile(tile, i) {
   cta.className = 'prank-cta';
   cta.textContent = 'Dave ärgern →';
   row.append(ammo, cta);
-  body.append(tag, title, desc, row);
+  body.append(tag, title, desc, ...[startNote(tile)].filter(Boolean), row);
   el.append(body);
   el.addEventListener('click', openPrank);
   if (finePointer && !reducedMotion) addTilt(el);
@@ -628,7 +652,7 @@ function buildBingoTile(tile, i) {
   cta.className = 'prank-cta bingo-cta';
   cta.textContent = 'Karte ansehen →';
   row.append(progress, cta);
-  body.append(tag, title, desc, row);
+  body.append(tag, title, desc, ...[startNote(tile)].filter(Boolean), row);
   el.append(body);
   el.addEventListener('click', openBingo);
   if (finePointer && !reducedMotion) addTilt(el);
@@ -663,7 +687,7 @@ function buildTile(tile, i) {
   const body = div('tile-body');
   const tag = document.createElement('span');
   tag.className = 'tile-tag';
-  tag.textContent = 'Abfahrt in';
+  tag.textContent = tile.kind === 'countdown' ? 'Abfahrt in' : 'Startet in';
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
@@ -773,7 +797,11 @@ function updateAuthClock() {
   }
 }
 updateAuthClock();
-setInterval(() => { updateCountdowns(); updateAuthClock(); }, 1000);
+setInterval(() => {
+  updateCountdowns();
+  updateAuthClock();
+  if (state.unlockAt && Date.now() >= state.unlockAt) renderGrid();
+}, 1000);
 
 // ============================================================
 // Dialoge allgemein
@@ -798,6 +826,9 @@ function setupDialogs() {
   $('#tile-form').addEventListener('submit', saveTile);
   setupPrank();
   setupBingo();
+  document.querySelectorAll('[data-tile-start]').forEach((input) => {
+    input.addEventListener('change', (e) => { e.stopPropagation(); saveTileStart(input); });
+  });
 }
 
 function closeDialog(dlg) {
@@ -1098,6 +1129,8 @@ function prankSfx(force = false) {
 }
 
 function openPrank() {
+  const tile = tileByKind('prank');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
   renderPrankDialog();
   $('#prank-dialog').showModal();
   if (state.prank.on) loadSounds();
@@ -1123,6 +1156,7 @@ function renderPrankDialog() {
 
   const form = $('#prank-admin');
   form.hidden = !(admin && on);
+  paintTileStart('prank');
   form.enabled.checked = settings.enabled;
   form.allow_uploads.checked = settings.allow_uploads;
   form.cooldown_seconds.value = String(settings.cooldown_seconds);
@@ -1411,6 +1445,8 @@ function setupBingo() {
 }
 
 async function openBingo() {
+  const tile = tileByKind('bingo');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
   renderBingoDialog();
   $('#bingo-dialog').showModal();
   if (!state.bingo.on) return;
@@ -1458,6 +1494,7 @@ function renderBingoDialog({ stamped = null } = {}) {
   $('#bingo-help').hidden = !card;
 
   $('#bingo-admin').hidden = !(admin && on);
+  paintTileStart('bingo');
   if (admin && on) {
     $('#bingo-visible').checked = card?.visible ?? true;
     $('#bingo-visible').disabled = !card;
@@ -1617,10 +1654,41 @@ async function uploadBingoImages(e) {
   });
 }
 
+// ---------- Startdatum für Zuschauer (Ärgere den Dave, Bingo) ----------
+function paintTileStart(kind) {
+  const input = document.querySelector(`[data-tile-start="${kind}"]`);
+  const tile = tileByKind(kind);
+  input.closest('.tile-start').hidden = !tile;
+  if (tile && document.activeElement !== input) input.value = tile.target_at ? toLocalInput(new Date(tile.target_at)) : '';
+}
+
+async function saveTileStart(input) {
+  const tile = tileByKind(input.dataset.tileStart);
+  if (!tile) return;
+  const target = input.value ? new Date(input.value) : null;
+  input.disabled = true;
+  try {
+    const updated = await state.api.updateTile(tile.id, { target_at: target ? target.toISOString() : null });
+    state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
+    renderGrid();
+    toast(target && target > new Date()
+      ? `Zuschauer sehen bis ${startLabel(target.toISOString())} einen Countdown.`
+      : 'Für alle freigeschaltet.', 'ok');
+  } catch (err) {
+    toast(`Speichern fehlgeschlagen: ${germanError(err)}`, 'error');
+  } finally {
+    input.disabled = false;
+    paintTileStart(input.dataset.tileStart);
+  }
+}
+
 // ============================================================
 // Countdown-Kachel: Details & Bearbeiten
 // ============================================================
-const THEME_BG = { tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg' };
+const THEME_BG = {
+  tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
+  prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg',
+};
 
 function openTile(id) {
   const tile = state.tiles.find((t) => t.id === id);
@@ -1638,13 +1706,13 @@ function fillTileDialog(tile) {
   $('#tile-dialog-desc').textContent = tile.description;
   const date = tile.target_at ? new Date(tile.target_at) : null;
   $('#tile-dialog-date').textContent = date
-    ? `Abfahrt · ${date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })} · ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+    ? `${tile.kind === 'countdown' ? 'Abfahrt' : 'Start'} · ${date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })} · ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
     : 'Termin folgt';
   const cd = $('#tile-dialog-countdown');
   cd.dataset.target = tile.target_at ?? '';
   cd.replaceChildren();
   renderCountdown(cd, tile.target_at);
-  $('#tile-edit-btn').hidden = !state.profile?.is_admin;
+  $('#tile-edit-btn').hidden = !state.profile?.is_admin || tile.kind !== 'countdown';
 }
 
 function showTileForm(show) {

@@ -1926,3 +1926,13 @@ code { font-family: var(--font-mono); font-size: .9em; }
   .dialog--bingo.is-admin .bingo-layout { grid-template-columns: minmax(0, 1fr); }
   .bingo-layout { padding-left: 16px; padding-right: 16px; }
 }
+
+/* Startdatum für Zuschauer */
+.tile-note {
+  align-self: flex-start; margin-top: 10px; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  background: rgba(10, 13, 19, .7); border: 1px solid rgba(255, 184, 28, .35);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--amber-2);
+}
+.tile-start { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.tile-start[hidden] { display: none; }
+.tile-start input { background: var(--bg); }

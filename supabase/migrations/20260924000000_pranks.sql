@@ -158,6 +158,7 @@ declare
   who text;
   last timestamptz;
   wait_s int;
+  starts timestamptz;
   snd public.sounds;
   result public.pranks;
 begin
@@ -167,6 +168,12 @@ begin
   select * into cfg from public.prank_settings where id = 1;
   if not coalesce(cfg.enabled, true) and not admin then
     raise exception 'Dave hat „Ärgere den Dave“ gerade pausiert.' using hint = 'paused';
+  end if;
+  -- Vor dem Start (Startdatum der Kachel) dürfen nur Admins.
+  select target_at into starts from public.tiles where kind = 'prank' order by position limit 1;
+  if not admin and starts > now() then
+    raise exception '„Ärgere den Dave“ startet erst am % Uhr.',
+      to_char(starts at time zone 'Europe/Berlin', 'DD.MM.YYYY "um" HH24:MI') using hint = 'locked';
   end if;
 
   if not admin and coalesce(cfg.cooldown_seconds, 0) > 0 then
