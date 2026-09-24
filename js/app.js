@@ -146,6 +146,7 @@ function showTwitchReturn(status, reason, detail) {
   }
   const reasons = {
     wrong_account: `Nur der Kanal ${CONFIG.CHANNEL} kann verbunden werden.`,
+    no_broadcaster_login: 'In Supabase fehlt das Secret BROADCASTER_LOGIN (Daves Twitch-Name). Ohne es darf sich aus Sicherheitsgründen nur ein Admin verbinden. Secret unter Edge Functions → Secrets eintragen und erneut verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → Verwalten) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen, speichern und noch einmal verbinden.`,
     not_affiliate: 'Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.',
     reward_exists: 'Es gibt schon eine manuell erstellte Belohnung „Glücksrad“. Bitte im Twitch-Dashboard löschen und erneut verbinden.',
