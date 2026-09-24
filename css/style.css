@@ -969,27 +969,80 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .twitch-dialog-body { padding: 16px 24px 24px; display: grid; gap: 16px; }
 
 /* ---------- OBS-Overlay ---------- */
-.dialog--obs { width: min(94vw, 1080px); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.dialog--obs { width: min(96vw, 1040px); }
 .obs-body { padding: 16px 24px 24px; display: grid; gap: 16px; }
 .obs-lead { color: #c4cad6; }
-.obs-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
-.obs-side { position: sticky; top: 0; display: grid; gap: 12px; }
 .obs-hint { font-size: 13px; color: var(--muted); }
-.obs-options { display: grid; gap: 14px; }
-.obs-group {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end;
-  margin: 0; padding: 14px 16px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2);
+.obs-note { padding: 10px 14px; border-radius: 12px; background: rgba(255, 184, 28, .08); border: 1px solid rgba(255, 184, 28, .3); color: #ffe2a3; font-size: 14px; }
+
+/* 1. Verbindung */
+.obs-connect { display: grid; gap: 12px; padding: 14px 16px; border-radius: 16px; background: var(--bg-2); border: 1px solid var(--line); }
+.obs-connect[data-state="on"] { border-color: rgba(61, 220, 132, .45); }
+.obs-connect-head { display: flex; gap: 12px; align-items: flex-start; }
+.obs-connect-head b { display: block; font-size: 16px; }
+.obs-connect-head small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.obs-dot { flex: none; width: 12px; height: 12px; margin-top: 5px; border-radius: 50%; background: var(--dim); }
+.obs-connect[data-state="busy"] .obs-dot { background: var(--amber); animation: blink 1s steps(1) infinite; }
+.obs-connect[data-state="on"] .obs-dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
+.obs-connect-form, .obs-connected { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.obs-connected { grid-template-columns: minmax(0, 1fr) auto auto; }
+.obs-connect-form[hidden], .obs-connected[hidden] { display: none; }
+.obs-ws-msg:empty { display: none; }
+.obs-help { font-size: 13px; color: #c4cad6; }
+.obs-help summary, .obs-more summary, .obs-manual summary { cursor: pointer; color: var(--amber-2); font-weight: 600; font-size: 14px; }
+.obs-help ol { margin: 8px 0; padding-left: 20px; display: grid; gap: 4px; }
+.obs-help p { color: var(--muted); }
+.obs-share { justify-self: start; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; }
+.obs-share:hover { color: var(--text); }
+.obs-share[hidden] { display: none; }
+
+/* 2. Vorschau: Karten lassen sich dort verschieben */
+.obs-preview {
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(7, 9, 15, .15), rgba(7, 9, 15, .55)),
+    url("../assets/bg-storm.svg") center / cover;
 }
-.obs-group legend {
-  padding: 0 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber-2);
+.obs-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.obs-bg[hidden] { display: none; }
+/* color-scheme wie im Overlay (hell): Bei abweichendem Schema legt der
+   Browser einen deckenden Hintergrund hinter das iframe. */
+.obs-preview iframe {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0;
+  transform-origin: 0 0; color-scheme: normal; background: transparent;
 }
-.obs-group .field select, .obs-group .field input[type="text"] { background: var(--bg); }
+.obs-preview-label {
+  position: absolute; left: 10px; top: 10px; z-index: 2; padding: 3px 8px; border-radius: 999px; pointer-events: none;
+  background: rgba(7, 9, 15, .75); font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.obs-preview.has-shot .obs-preview-label { color: #9ff0c3; }
+.obs-drag-hint { margin-top: -8px; }
+.obs-red { color: #ff7a6e; }
+
+/* 3. Was ist zu sehen */
+.obs-options { display: grid; gap: 12px; }
+.obs-parts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+.obs-part {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr); gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line);
+}
+.obs-part-label { font-size: 14px; color: #cdd3df; }
+.obs-size { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+.obs-size output, .obs-range output { font-family: var(--font-mono); font-size: 12px; color: var(--text); text-align: right; }
+.obs-options input[type="range"] { width: 100%; accent-color: var(--amber); cursor: pointer; }
+.obs-options input[type="range"]:disabled { opacity: .35; cursor: default; }
+.obs-more { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); }
+.obs-more[open] summary { margin-bottom: 12px; }
+.obs-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; align-items: end; }
+.obs-more .field select, .obs-more .field input[type="text"] { background: var(--bg); }
 .obs-wide { grid-column: 1 / -1; }
 .obs-range > span { display: flex; justify-content: space-between; gap: 8px; }
-.obs-range output { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
-.obs-range input[type="range"] { min-height: 46px; padding: 0; border: 0; background: none; box-shadow: none; accent-color: var(--amber); cursor: pointer; }
+.obs-range input[type="range"] { min-height: 46px; padding: 0; border: 0; background: none; box-shadow: none; }
 .obs-color input[type="color"] { padding: 4px; cursor: pointer; background: var(--bg); }
 .obs-reset { justify-self: start; }
+
+/* 4. Ergebnis */
 .obs-url { display: flex; gap: 8px; }
 .obs-url input {
   flex: 1; min-width: 0; min-height: 46px; padding: 10px 14px;
@@ -997,47 +1050,16 @@ code { font-family: var(--font-mono); font-size: .9em; }
   font-family: var(--font-mono); font-size: 13px; color: var(--amber-2);
 }
 .obs-url input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 184, 28, .18); }
-/* Die Vorschau zeigt das Overlay über einem angedeuteten Spielbild,
-   damit die durchsichtigen Stellen erkennbar sind. */
-.obs-preview {
-  position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
-  background:
-    linear-gradient(180deg, rgba(7, 9, 15, .15), rgba(7, 9, 15, .55)),
-    url("../assets/bg-storm.svg") center / cover;
-}
-/* color-scheme wie im Overlay (hell): Bei abweichendem Schema legt der
-   Browser einen deckenden Hintergrund hinter das iframe. */
-.obs-preview iframe {
-  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0;
-  transform-origin: 0 0; pointer-events: none; color-scheme: normal; background: transparent;
-}
-.obs-preview { cursor: crosshair; touch-action: none; }
-.obs-cam {
-  position: absolute; z-index: 1; pointer-events: none;
-  border: 2px dashed rgba(255, 90, 78, .9); border-radius: 6px; background: rgba(255, 90, 78, .1);
-  transition: left .2s, top .2s, width .2s, height .2s;
-}
-.obs-preview.is-drawing .obs-cam { transition: none; }
-.obs-cam span {
-  position: absolute; left: 4px; top: 4px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 90, 78, .9);
-  font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #1a0604; white-space: nowrap;
-}
-.obs-cam[hidden] { display: none; }
-.obs-preview-label {
-  position: absolute; left: 10px; top: 10px; z-index: 2; padding: 3px 8px; border-radius: 999px;
-  background: rgba(7, 9, 15, .7); font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-}
-.obs-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: #c4cad6; font-size: 14px; }
+.obs-manual { font-size: 14px; }
+.obs-steps { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; color: #c4cad6; font-size: 14px; }
 .obs-steps b { color: var(--text); }
-.obs-note { padding: 10px 14px; border-radius: 12px; background: rgba(255, 184, 28, .08); border: 1px solid rgba(255, 184, 28, .3); color: #ffe2a3; font-size: 14px; }
-@media (max-width: 860px) {
-  .obs-layout { grid-template-columns: minmax(0, 1fr); }
-  /* Auf schmalen Bildschirmen zuerst Vorschau und Adresse, darunter die Einstellungen. */
-  .obs-side { position: static; order: -1; }
+@media (max-width: 760px) {
+  .obs-parts, .obs-more-grid { grid-template-columns: minmax(0, 1fr); }
+  .obs-connected { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .obs-body { padding-left: 16px; padding-right: 16px; }
-  .obs-group { grid-template-columns: minmax(0, 1fr); }
+  .obs-connect-form { grid-template-columns: minmax(0, 1fr); }
 }
 .twitch-dialog-body p { color: #c4cad6; }
 .twitch-dialog-body .bot-note {

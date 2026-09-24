@@ -196,20 +196,21 @@ Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mi
 
 ## OBS-Overlay
 
-Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Dort stellst du Position, Größe, Überschriften, Farben, Hintergrund, Anzeigedauer und Lautstärke ein, siehst alles sofort in der Vorschau und kopierst die fertige Adresse. Die Einstellungen merkt sich der Browser.
+Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Am einfachsten auf dem PC, auf dem OBS läuft:
 
-In OBS:
+1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
+2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt Daves Kamera in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
+3. **Karten verschieben:** Glücksrad, nächste Abfahrt und Bingo in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Darunter: was zu sehen ist, Größen, Lautstärke – der Rest unter „Mehr Einstellungen“.
+4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„Stellwerk-Overlay“** an (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera. Nach Änderungen einfach noch einmal klicken – dann wird nur die Adresse aktualisiert.
 
-1. Unter **Quellen** auf **+** klicken → **Browser**.
-2. Die kopierte Adresse einfügen, **Breite 1920**, **Höhe 1080**.
-3. Optional **„Audio über OBS steuern“** anhaken, dann erscheinen Tick und Gong im Audio-Mixer.
+Das Passwort bleibt nur in diesem Browser; die Verbindung geht direkt an OBS auf `127.0.0.1:4455`, nicht ins Internet. Ohne Verbindung geht es auch: „OBS-Fenster teilen“ zeigt ein geteiltes Fenster (z. B. einen Fenster-Projektor) als Hintergrund der Vorschau, und die Adresse lässt sich kopieren und von Hand als Browserquelle (Breite 1920, Höhe 1080) einfügen.
 
 Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad taucht nur auf, wenn jemand dreht – per Kanalpunkte oder auf der Webseite –, und verschwindet nach dem Ergebnis wieder (außer mit `always=1`). Für verschiedene Szenen kannst du mehrere Browserquellen mit unterschiedlichen Adressen anlegen.
 
 | Option in der Adresse | Wirkung |
 |---|---|
-| `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` / `0` | Position Glücksrad (unten rechts, unten Mitte, unten links, oben …, aus) |
-| `next=bl` / … / `0` | Position „Nächste Abfahrt“ |
+| `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` / `0` | Position Glücksrad (unten rechts, unten Mitte, unten links, oben …, aus) – oder frei wie `wheel=62.5,70` (linke obere Ecke in Prozent; so speichert es das Verschieben in der Vorschau) |
+| `next=bl` / … / `0` | Position „Nächste Abfahrt“ (auch frei wie beim Glücksrad) |
 | `wsize=120`, `nsize=80` | Größe der Karten in Prozent (50 bis 200); `scale=1.2` gilt für beide |
 | `from=twitch` / `web` | nur Kanalpunkte-Drehungen bzw. nur Drehungen auf der Seite zeigen |
 | `hold=15` | Sekunden, die das Ergebnis stehen bleibt (3 bis 60) |
