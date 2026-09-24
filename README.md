@@ -163,8 +163,8 @@ Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht Dave. Ohne
 
 1. Auf Twitch einen eigenen Account für den Bot anlegen, z. B. `StellwerkBot`. Sein Name steht später im Chat.
 2. Auf twitch.tv mit **diesem Bot-Account** anmelden (in einem privaten Fenster geht es am einfachsten).
-3. Auf der Webseite als Admin anmelden, oben auf **Twitch** klicken und im Kasten **Chat-Bot** auf **„Bot verbinden“**.
-4. Twitch fragt jetzt den Bot-Account nach `user:write:chat` und `user:bot`. Erlauben.
+3. Im selben Fenster den **Admin-Bereich** (`admin.html`) öffnen, mit dem Admin-Passwort anmelden und im Kasten **Twitch → Chat-Bot** auf **„Bot verbinden“** klicken. Nur dort geht das – auf der Webseite gibt es den Knopf nicht.
+4. Twitch fragt jetzt den Bot-Account nach `user:write:chat` und `user:bot`. Erlauben. Danach geht es zurück in den Admin-Bereich, dort steht „Chat-Bot … ist verbunden“.
 
 Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es Daves Recht `channel:bot` aus Schritt 5. Hat Dave schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StellwerkBot`).
 

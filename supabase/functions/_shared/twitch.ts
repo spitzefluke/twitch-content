@@ -39,6 +39,37 @@ export async function getUserFromRequest(req: Request) {
 }
 
 // ---------- Twitch API ----------
+// Dave: Kanalpunkte verwalten und dem Bot erlauben, in seinem Chat zu schreiben.
+// Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
+export const BROADCASTER_SCOPES = ["channel:read:redemptions", "channel:manage:redemptions", "channel:bot"];
+// Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
+export const BOT_SCOPES = ["user:write:chat", "user:bot"];
+export const oauthRedirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitch-oauth`;
+
+// Twitch-Login starten. Den Rückweg (twitch-oauth, GET) findet der state:
+// Daves Kanal geht zurück auf die Webseite, der Bot in den Admin-Bereich.
+export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bot") {
+  const state = crypto.randomUUID() + crypto.randomUUID();
+  // "kind" nur beim Bot mitschicken: So klappt Daves Verbinden auch, solange
+  // die Migration …_chat_bot.sql (Spalte kind) noch nicht eingespielt ist.
+  const row = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  const { error } = await db.from("oauth_states").insert(row);
+  if (error) throw error;
+  // alte, nicht abgeschlossene Anfragen aufräumen
+  await db.from("oauth_states").delete().lt("created_at", new Date(Date.now() - 3600_000).toISOString());
+
+  const auth = new URL("https://id.twitch.tv/oauth2/authorize");
+  auth.search = new URLSearchParams({
+    response_type: "code",
+    client_id: env("TWITCH_CLIENT_ID"),
+    redirect_uri: oauthRedirectUri(),
+    scope: (kind === "bot" ? BOT_SCOPES : BROADCASTER_SCOPES).join(" "),
+    state,
+    force_verify: "true",
+  }).toString();
+  return auth.toString();
+}
+
 export async function twitchToken(params: Record<string, string>) {
   const res = await fetch("https://id.twitch.tv/oauth2/token", {
     method: "POST",

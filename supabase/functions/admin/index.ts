@@ -5,7 +5,9 @@
 //   POST {action:"twitch_check", token}     → Status des EventSub-Webhooks direkt bei Twitch
 //   POST {action:"set_admin", token, user_id, is_admin}
 //   POST {action:"site_session", token}     → Einmal-Code, mit dem admin.html auf der Webseite anmeldet
-import { corsHeaders, db, env, getAppToken, helix, json } from "../_shared/twitch.ts";
+//   POST {action:"bot_start", token}        → Twitch-Login-URL für den Chat-Bot (zurück nach admin.html)
+//   POST {action:"bot_disconnect", token}   → Chat-Bot trennen
+import { corsHeaders, db, env, getAppToken, helix, json, startTwitchLogin } from "../_shared/twitch.ts";
 
 const SESSION_HOURS = 12;
 const MAX_FAILURES = 10; // pro 15 Minuten, danach Sperre
@@ -76,6 +78,12 @@ Deno.serve(async (req) => {
     if (body.action === "twitch_check") return json(await twitchCheck());
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
     if (body.action === "site_session") return json(await siteSession());
+    if (body.action === "bot_start") return json({ url: await startTwitchLogin(await siteAdminId(), "bot") });
+    if (body.action === "bot_disconnect") {
+      const { error } = await db.from("twitch_bot").delete().eq("id", 1);
+      if (error) throw error;
+      return json({ ok: true });
+    }
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {
     console.error(e);
@@ -166,13 +174,33 @@ async function twitchCheck() {
 // example.com ist eine reservierte Domain – es wird nie eine Mail verschickt.
 const SITE_ADMIN_EMAIL = "stellwerk-admin@example.com";
 
-async function siteSession() {
+async function ensureSiteAdmin() {
   const created = await db.auth.admin.createUser({
     email: SITE_ADMIN_EMAIL,
     email_confirm: true,
     user_metadata: { username: "Stellwerk-Admin" },
   });
   if (created.error && !/already|registered|exists/i.test(created.error.message)) throw created.error;
+  return created.data?.user?.id ?? null;
+}
+
+// Der Twitch-Login des Bots braucht einen Supabase-User als Absender
+// (oauth_states.user_id) – das ist der interne Admin-Account.
+async function siteAdminId(): Promise<string> {
+  const id = await ensureSiteAdmin();
+  if (id) return id;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const user = data.users.find((u) => u.email === SITE_ADMIN_EMAIL);
+    if (user) return user.id;
+    if (data.users.length < 1000) break;
+  }
+  throw new Error("Interner Admin-Account nicht gefunden");
+}
+
+async function siteSession() {
+  await ensureSiteAdmin();
 
   // Erzeugt nur den Einmal-Code, verschickt keine E-Mail
   const { data, error } = await db.auth.admin.generateLink({ type: "magiclink", email: SITE_ADMIN_EMAIL });
