@@ -61,7 +61,7 @@ async function boot() {
   const twitchReturn = params.get('twitch');
   if (twitchReturn) {
     history.replaceState(null, '', location.pathname);
-    queueMicrotask(() => showTwitchReturn(twitchReturn, params.get('reason'), params.get('detail'), params.get('bot')));
+    queueMicrotask(() => showTwitchReturn(twitchReturn, params.get('reason'), params.get('detail')));
   }
 
   if (adminHash) {
@@ -85,13 +85,9 @@ async function boot() {
   else showAuth();
 }
 
-function showTwitchReturn(status, reason, detail, bot) {
+function showTwitchReturn(status, reason, detail) {
   if (status === 'connected') {
     toast('Twitch ist verbunden. Die Kanalpunkte-Belohnung „Glücksrad“ ist jetzt aktiv.', 'ok', 7000);
-    return;
-  }
-  if (status === 'bot_connected') {
-    toast(`Chat-Bot ${bot ?? ''} ist verbunden. Ab jetzt schreibt er die Ergebnisse in den Chat.`, 'ok', 8000);
     return;
   }
   const reasons = {
@@ -100,7 +96,6 @@ function showTwitchReturn(status, reason, detail, bot) {
     reward_exists: 'Es gibt schon eine manuell erstellte Belohnung „Glücksrad“. Bitte im Twitch-Dashboard löschen und erneut verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal versuchen.',
-    bot_is_broadcaster: 'Der Chat-Bot braucht einen eigenen Twitch-Account, nicht Daves. Auf twitch.tv mit dem Bot-Account anmelden und noch einmal verbinden.',
   };
   // Bei unerwarteten Fehlern schickt die Edge Function die eigentliche Meldung mit.
   const text = reasons[reason] ?? detail ?? (reason && reason !== 'unknown' ? reason : null)
@@ -718,7 +713,7 @@ function renderWheelPanel() {
 
   const info = $('#reward-info');
   if (twitch.connected && twitch.reward_active) {
-    info.innerHTML = `<span class="ri-icon">✦</span><span>Zuschauer können die Kanalpunkte-Belohnung <b>„${escapeHtml(twitch.reward_title ?? 'Glücksrad')}“</b> für <b>${Number(twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte</b> einlösen. Das Rad dreht dann eine zufällige Variante${twitch.bot_connected ? `, und <b>${escapeHtml(twitch.bot_name ?? twitch.bot_login ?? 'der Chat-Bot')}</b> schreibt das Ergebnis in den Chat` : '. Damit das Ergebnis auch im Chat steht, fehlt noch der Chat-Bot (unter „Twitch“ verbinden)'}.</span>`;
+    info.innerHTML = `<span class="ri-icon">✦</span><span>Zuschauer können die Kanalpunkte-Belohnung <b>„${escapeHtml(twitch.reward_title ?? 'Glücksrad')}“</b> für <b>${Number(twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte</b> einlösen. Das Rad dreht dann eine zufällige Variante${twitch.bot_connected ? `, und <b>${escapeHtml(twitch.bot_name ?? twitch.bot_login ?? 'der Chat-Bot')}</b> schreibt das Ergebnis in den Chat` : '. Damit das Ergebnis auch im Chat steht, fehlt noch der Chat-Bot (wird im Admin-Bereich verbunden)'}.</span>`;
   } else if (state.api.demo) {
     info.innerHTML = '<span class="ri-icon">✦</span><span>Demo: Mit dem Button unten kannst du testen, wie eine Kanalpunkte-Einlösung aus dem Twitch-Chat aussieht.</span>';
   } else {
@@ -1068,20 +1063,6 @@ function openTwitchDialog() {
   $('#twitch-dialog').showModal();
 }
 
-// Chat-Nachrichten schreibt ein eigener Bot-Account, nicht Dave.
-const BOT_BOX = `
-  <div class="bot-box">
-    <span class="bot-icon" aria-hidden="true">🤖</span>
-    <div class="bot-text">
-      <strong>Chat-Bot</strong>
-      <small data-fill="bot-status"></small>
-    </div>
-    <div class="bot-actions">
-      <button class="btn btn--ghost btn--sm" type="button" data-action="bot-disconnect" hidden>Bot trennen</button>
-      <button class="btn btn--twitch btn--sm" type="button" data-action="bot-connect"></button>
-    </div>
-  </div>`;
-
 function renderTwitchDialog() {
   const { twitch, profile } = state;
   const admin = !!profile?.is_admin;
@@ -1089,7 +1070,7 @@ function renderTwitchDialog() {
   if (twitch.connected) {
     body.innerHTML = `
       <p>Verbunden mit <b data-fill="channel"></b>. Die Kanalpunkte-Belohnung ist ${twitch.subscription_active ? 'aktiv' : '<b>nicht aktiv</b> (bitte neu verbinden)'}.</p>
-      ${admin ? BOT_BOX : ''}
+      ${admin ? '<p class="bot-note" data-fill="bot"></p>' : ''}
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
         ${admin ? '<button class="btn btn--ghost" type="button" data-action="reconnect">Neu verbinden</button><button class="btn btn--ghost" type="button" data-action="disconnect">Kanal trennen</button>' : ''}
@@ -1104,7 +1085,6 @@ function renderTwitchDialog() {
         <li><span>Kanalpunkte-Einlösungen lesen<small>Damit das Rad sich dreht, auch wenn diese Seite geschlossen ist.</small></span></li>
         <li><span>Chat-Bot zulassen<small>Der Stellwerk-Bot darf das Ergebnis jeder Drehung in den Chat schreiben. In Daves Namen schreibt die Seite nie.</small></span></li>
       </ul>
-      ${admin ? BOT_BOX : ''}
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
         <button class="btn btn--ghost" type="button" data-close>Abbrechen</button>
@@ -1113,20 +1093,12 @@ function renderTwitchDialog() {
     body.querySelector('[data-fill="channel"]').textContent = CONFIG.CHANNEL;
   }
 
-  if (admin) {
-    const status = body.querySelector('[data-fill="bot-status"]');
-    const connect = body.querySelector('[data-action="bot-connect"]');
-    if (twitch.bot_connected) {
-      status.textContent = `Schreibt als ${twitch.bot_name ?? twitch.bot_login} in den Chat.`;
-      if (twitch.connected && !twitch.bot_scope) {
-        status.textContent += ' Dave muss einmal neu verbinden, damit der Bot in seinem Chat schreiben darf.';
-      }
-      connect.textContent = 'Anderen Bot';
-      body.querySelector('[data-action="bot-disconnect"]').hidden = false;
-    } else {
-      status.textContent = 'Noch nicht verbunden – ohne Bot bleibt der Chat still. Vorher auf twitch.tv mit dem Bot-Account anmelden, nicht mit Daves.';
-      connect.textContent = 'Bot verbinden';
-    }
+  // Den Chat-Bot verbindet nur der Admin-Bereich (admin.html) – hier nur der Stand.
+  const botNote = body.querySelector('[data-fill="bot"]');
+  if (botNote) {
+    botNote.textContent = twitch.bot_connected
+      ? `🤖 Chat-Bot ${twitch.bot_name ?? twitch.bot_login} schreibt die Ergebnisse in den Chat.${twitch.bot_scope ? '' : ' Damit er in Daves Chat schreiben darf, einmal „Neu verbinden“.'}`
+      : '🤖 Noch kein Chat-Bot verbunden – ohne ihn bleibt der Chat still. Verbunden wird er im Admin-Bereich.';
   }
   body.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => twitchAction(b)));
 }
@@ -1150,13 +1122,6 @@ async function twitchAction(btn) {
       await refreshTwitch();
       closeDialog($('#twitch-dialog'));
       toast('Twitch wurde getrennt. Die Belohnung ist deaktiviert.', 'ok');
-    } else if (action === 'bot-disconnect') {
-      await state.api.twitchDisconnectBot();
-      await refreshTwitch();
-      renderTwitchDialog();
-      toast('Chat-Bot getrennt. Ergebnisse erscheinen nicht mehr im Chat.', 'ok');
-    } else if (action === 'bot-connect') {
-      await state.api.twitchConnectBot(); // leitet zu Twitch weiter
     } else {
       await state.api.twitchConnect(); // leitet zu Twitch weiter
     }

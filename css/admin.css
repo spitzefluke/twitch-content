@@ -127,6 +127,16 @@
 .chip--warn { background: rgba(255, 184, 28, .12); color: #ffd98a; }
 .check-result { margin-top: 12px; font-size: 14px; color: var(--muted); }
 .check-result:empty { display: none; }
+.bot-panel {
+  display: grid; gap: 10px; margin-top: 14px; padding: 14px 16px; border-radius: 14px;
+  background: var(--bg-2); border: 1px solid var(--line);
+}
+.bot-panel-text { margin: 0; font-size: 14px; color: #c4cad6; }
+.bot-panel-text b { color: var(--text); }
+.bot-panel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.bot-panel .check-result { margin-top: 0; }
+.bot-panel .check-result.is-error { color: #ff9d95; }
+.bot-panel .check-result.is-ok { color: #9ff0c3; }
 
 /* ---------- Live-Feed ---------- */
 .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 480px; overflow: auto; }

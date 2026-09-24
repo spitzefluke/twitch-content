@@ -82,6 +82,16 @@
           </div>
           <dl id="twitch-panel" class="status-list"></dl>
           <p id="twitch-check-result" class="check-result" role="status"></p>
+
+          <!-- Chat-Bot: nur hier verbindbar, nicht auf der Webseite -->
+          <div class="bot-panel" id="bot-panel">
+            <p class="bot-panel-text" id="bot-text">Chat-Bot wird geladen …</p>
+            <div class="bot-panel-actions">
+              <button id="bot-disconnect" class="btn btn--ghost btn--sm" type="button" hidden>Bot trennen</button>
+              <button id="bot-connect" class="btn btn--twitch btn--sm" type="button">Bot verbinden</button>
+            </div>
+            <p id="bot-msg" class="check-result" role="status"></p>
+          </div>
         </section>
 
         <section class="panel panel--feed" aria-labelledby="feed-title">

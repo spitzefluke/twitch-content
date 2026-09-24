@@ -67,6 +67,8 @@ function demoCall(action, extra) {
     return { ok: true };
   }
   if (action === 'twitch_check') return { found: false, status: 'im Demo-Modus nicht verfügbar' };
+  if (action === 'bot_start') throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
+  if (action === 'bot_disconnect') return { ok: true };
   if (action === 'site_session') {
     const users = read('users', {});
     users['stellwerk-admin@example.com'] = { username: 'Stellwerk-Admin', pass: null, is_admin: true };
@@ -101,6 +103,9 @@ function init() {
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
   $('#site-btn').addEventListener('click', openSiteAsAdmin);
+  $('#bot-connect').addEventListener('click', connectBot);
+  $('#bot-disconnect').addEventListener('click', disconnectBot);
+  showBotReturn();
   $('#users-search').addEventListener('input', (e) => { state.search = e.target.value.trim().toLowerCase(); state.usersSig = ''; renderUsers(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.token) refresh();
@@ -409,19 +414,103 @@ function renderTwitch(t, data = {}) {
       : `${chip('warn', 'Abgelaufen')} wird beim nächsten Einsatz erneuert`]);
     rows.push(['Rechte', (t.scopes ?? []).map((s) => `<code>${escapeHtml(s)}</code>`).join(' ') || '–']);
   }
-  // Chat-Nachrichten schreibt ein eigener Bot-Account, nicht Dave.
-  const bot = data.twitch_bot;
-  if (data.twitch_bot_ready === false) {
-    rows.push(['Chat-Bot', `${chip('warn', 'Migration fehlt')} <small class="muted">supabase/migrations/…_chat_bot.sql ausführen</small>`]);
-  } else if (!bot) {
-    rows.push(['Chat-Bot', `${chip('bad', 'Nicht verbunden')}<br><small class="muted">Auf der Webseite unter „Twitch“ den Bot-Account verbinden. Ohne Bot bleibt der Chat still.</small>`]);
-  } else {
-    const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
-    rows.push(['Chat-Bot', `${chip('ok', 'Verbunden')} ${escapeHtml(bot.display_name ?? bot.login)}` +
-      (scopeOk ? '' : `<br><small class="muted">Dave muss einmal neu verbinden, damit der Bot in seinem Chat schreiben darf.</small>`)]);
-  }
   $('#twitch-panel').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   $('#twitch-check').disabled = !t;
+  renderBot(t, data);
+}
+
+// ---------- Chat-Bot ----------
+// Chat-Nachrichten schreibt ein eigener Twitch-Account, nie Dave selbst.
+// Verbunden wird er nur hier im Admin-Bereich.
+function renderBot(t, data) {
+  const text = $('#bot-text');
+  const connect = $('#bot-connect');
+  const disconnect = $('#bot-disconnect');
+  const bot = data.twitch_bot;
+  if (data.twitch_bot_ready === false) {
+    text.innerHTML = '<b>Chat-Bot:</b> In der Datenbank fehlt noch die Erweiterung. Im SQL Editor <code>supabase/migrations/20260923120000_chat_bot.sql</code> ausführen.';
+    connect.hidden = true;
+    disconnect.hidden = true;
+    return;
+  }
+  connect.hidden = false;
+  if (bot) {
+    const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
+    text.innerHTML = `<b>Chat-Bot:</b> ${escapeHtml(bot.display_name ?? bot.login)} schreibt die Ergebnisse in den Chat.` +
+      (scopeOk ? '' : ' <br>Damit er in Daves Chat schreiben darf, muss Dave Twitch auf der Webseite einmal neu verbinden.');
+    connect.textContent = 'Anderen Bot verbinden';
+    disconnect.hidden = false;
+  } else {
+    text.innerHTML = '<b>Chat-Bot:</b> nicht verbunden – ohne ihn bleibt der Chat still. ' +
+      'Vorher auf twitch.tv mit dem <b>Bot-Account</b> anmelden (nicht mit Daves), dann hier verbinden.';
+    connect.textContent = 'Bot verbinden';
+    disconnect.hidden = true;
+  }
+}
+
+function botMsg(textValue, kind = '') {
+  const el = $('#bot-msg');
+  el.textContent = textValue;
+  el.classList.toggle('is-error', kind === 'error');
+  el.classList.toggle('is-ok', kind === 'ok');
+}
+
+async function connectBot() {
+  const btn = $('#bot-connect');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  botMsg('');
+  try {
+    const { url } = await call('bot_start');
+    location.href = url; // weiter zu Twitch, zurück kommt es auf admin.html
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    botMsg(`Verbinden fehlgeschlagen: ${botError(err)}`, 'error');
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+  }
+}
+
+async function disconnectBot() {
+  if (!confirm('Chat-Bot wirklich trennen? Danach erscheinen keine Ergebnisse mehr im Chat.')) return;
+  const btn = $('#bot-disconnect');
+  btn.disabled = true;
+  try {
+    await call('bot_disconnect');
+    botMsg('Chat-Bot getrennt.', 'ok');
+    await refresh();
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    botMsg(`Trennen fehlgeschlagen: ${botError(err)}`, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function botError(err) {
+  if (err.status === 404) return 'Die Edge Function „admin“ ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen?';
+  if (/unbekannte aktion/i.test(err.message)) return 'Die Edge Function „admin“ ist veraltet. Bitte die Edge Functions neu deployen (README, Schritt 4).';
+  if (/column .*kind|oauth_states/i.test(err.message)) return 'In der Datenbank fehlt die Erweiterung: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.';
+  return err.message;
+}
+
+// Twitch leitet nach der Freigabe hierher zurück (?twitch=bot_connected bzw. ?twitch=error).
+function showBotReturn() {
+  const params = new URLSearchParams(location.search);
+  const status = params.get('twitch');
+  if (!status) return;
+  history.replaceState(null, '', location.pathname);
+  if (status === 'bot_connected') {
+    botMsg(`✓ Chat-Bot ${params.get('bot') ?? ''} ist verbunden. Ab jetzt schreibt er die Ergebnisse in den Chat.`, 'ok');
+    return;
+  }
+  const reasons = {
+    bot_is_broadcaster: 'Das war Daves Account. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
+    access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
+    state: 'Die Anfrage ist abgelaufen. Bitte noch einmal verbinden.',
+  };
+  const reason = params.get('reason');
+  botMsg(`Verbinden fehlgeschlagen: ${reasons[reason] ?? params.get('detail') ?? reason ?? 'unbekannter Fehler'}`, 'error');
 }
 
 async function checkTwitch() {

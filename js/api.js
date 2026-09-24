@@ -153,14 +153,6 @@ async function createSupabaseApi() {
     async twitchDisconnect() {
       await invoke('twitch-oauth', { action: 'disconnect' });
     },
-    // Chat-Bot: eigener Twitch-Account, der die Ergebnisse in den Chat schreibt
-    async twitchConnectBot() {
-      const { url } = await invoke('twitch-oauth', { action: 'start_bot' });
-      location.href = url;
-    },
-    async twitchDisconnectBot() {
-      await invoke('twitch-oauth', { action: 'disconnect_bot' });
-    },
   };
 }
 
@@ -303,9 +295,5 @@ function createLocalApi() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },
     async twitchDisconnect() {},
-    async twitchConnectBot() {
-      throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
-    },
-    async twitchDisconnectBot() {},
   };
 }
