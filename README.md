@@ -10,6 +10,7 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **Ärgere den Dave**: Zuschauer werfen Bananen, Tomaten, Torten & Co. auf Daves Kamera oder spielen Sounds in den Stream – eingebaute (Zugpfeife, Tröte, Ba-dum-tss …) oder selbst hochgeladene. Zu sehen und zu hören im OBS-Overlay; Admins schalten es aus oder stellen die Pause zwischen zwei Aktionen ein.
+- **Fortnite-Bingo**: Admins laden Bilder von Fortnite-Items hoch, daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). Gefundene Items werden abgehakt, eine volle Reihe gibt „Bingo!“ – live im OBS-Overlay.
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown. Den Link gibt's im Dashboard unter **OBS**.
 - **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
@@ -72,7 +73,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -220,6 +221,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `bg=50` | Deckkraft des Kartenhintergrunds in Prozent (0 = nur Schrift) |
 | `accent=3ddc84` | Akzentfarbe (Hex ohne `#`) |
 | `vol=40` | Lautstärke in Prozent, `0` = ohne Ton |
+| `bingo=tl` / … / `0` | Position der Bingo-Karte (Standard oben rechts) |
+| `bsize=80` | Größe der Bingo-Karte in Prozent |
 | `prank=0` | „Ärgere den Dave“ ausblenden (keine Würfe, keine Sounds) |
 | `cam=73,72,25,25` | Daves Kamera im Bild: links, oben, Breite, Höhe in Prozent – dort landen die Würfe |
 | `psize=150` | Größe der Wurfgeschosse in Prozent |
@@ -238,6 +241,17 @@ Kachel im Fahrplan, jederzeit verfügbar. Einmal nötig: `supabase/migrations/20
 - **Für Admins** im Dialog: Ärgern für Zuschauer an/aus, eigene Sounds erlauben, Pause zwischen zwei Aktionen pro Person (Standard 20 Sekunden). Admins selbst haben keine Pause.
 
 Die Datenbank prüft Pause und Freigabe selbst (`send_prank`), am Browser vorbei geht nichts. Der Feed `pranks` enthält nur Anzeigename, Gegenstand und Sound – keine Nutzer-IDs –, damit OBS ihn ohne Anmeldung lesen kann.
+
+## Fortnite-Bingo
+
+Kachel im Fahrplan. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `bingo`.
+
+1. Auf der Webseite als Admin die Kachel **Fortnite-Bingo** öffnen.
+2. Rechts unter **Bilder** Bilder der Items wählen – mehrere auf einmal gehen. Der Name kommt aus dem Dateinamen (`chug-jug.png` → „Chug Jug“) und lässt sich danach ändern. Die Bilder werden vor dem Hochladen verkleinert.
+3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 Bilder, für 4×4 16, für 3×3 8.
+4. Im Stream die gefundenen Items auf der Karte anklicken. Eine volle Reihe, Spalte oder Diagonale zeigt „Bingo!“ – auf der Seite und im Overlay, mit Applaus.
+
+Zuschauer sehen die Karte nur an. **Im Stream zeigen** blendet sie im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 ## Admin-Bereich
 

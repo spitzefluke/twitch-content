@@ -20,6 +20,7 @@ const ERRORS = [
   [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
+  [/relation "public\.bingo_(items|card)"|could not find the (table|function) '?public\.bingo_/i, 'In der Datenbank fehlt das Fortnite-Bingo: supabase/migrations/20260924120000_bingo.sql im SQL Editor ausführen.'],
   [/exceeded the maximum allowed size|payload too large|entity too large/i, 'Die Datei ist zu groß (höchstens 1 MB).'],
   [/mime type|invalid.*content.?type/i, 'Dieses Dateiformat geht nicht. Bitte MP3, OGG, WAV oder M4A nehmen.'],
   [/row-level security/i, 'Das ist gerade nicht erlaubt.'],
@@ -214,6 +215,51 @@ async function createSupabaseApi() {
       const { error } = await sb.storage.from('sounds').remove([sound.path]);
       if (error) console.warn('Sound-Datei nicht gelöscht:', error);
     },
+
+    // ---------- Fortnite-Bingo ----------
+    bingoUrl(path) {
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`;
+    },
+    async getBingo() {
+      const [items, card] = await Promise.all([
+        sb.from('bingo_items').select('id, name, path, created_at').order('created_at'),
+        sb.from('bingo_card').select('*').eq('id', 1).maybeSingle(),
+      ]);
+      return { items: unwrap(items).map((i) => ({ ...i, url: this.bingoUrl(i.path) })), card: unwrap(card) };
+    },
+    async addBingoItem(blob, name) {
+      const ext = blob.type === 'image/webp' ? 'webp' : 'png';
+      const path = `${crypto.randomUUID()}.${ext}`;
+      unwrap(await sb.storage.from('bingo').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
+      const { data, error } = await sb.from('bingo_items').insert({ name, path }).select('id, name, path, created_at').single();
+      if (error) {
+        await sb.storage.from('bingo').remove([path]).catch(() => {});
+        throw error;
+      }
+      return { ...data, url: this.bingoUrl(path) };
+    },
+    async renameBingoItem(id, name) {
+      unwrap(await sb.from('bingo_items').update({ name }).eq('id', id));
+    },
+    async deleteBingoItem(item) {
+      unwrap(await sb.from('bingo_items').delete().eq('id', item.id));
+      const { error } = await sb.storage.from('bingo').remove([item.path]);
+      if (error) console.warn('Bingo-Bild nicht gelöscht:', error);
+    },
+    async newBingoCard(size, free) {
+      return unwrap(await sb.rpc('bingo_new_card', { p_size: size, p_free: free }));
+    },
+    async toggleBingo(index) {
+      return unwrap(await sb.rpc('bingo_toggle', { p_index: index }));
+    },
+    async updateBingoCard(patch) {
+      return unwrap(await sb.from('bingo_card').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', 1).select().single());
+    },
+    onBingo(cb) {
+      sb.channel('bingo-feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
+        .subscribe();
+    },
     onSpin(cb) {
       sb.channel('spins-feed')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, (p) => cb(p.new))
@@ -247,6 +293,7 @@ function createLocalApi() {
   let listeners = [];
   let spinListeners = [];
   const prankListeners = [];
+  const bingoListeners = [];
   let current = null;
   let nextId = Date.now();
 
@@ -274,6 +321,17 @@ function createLocalApi() {
     };
     store.set('spins', [spin, ...store.get('spins', [])].slice(0, 30));
     return spin;
+  }
+
+  async function requireAdmin() {
+    const u = store.get('users', {})[current?.email];
+    if (!u?.is_admin) throw new Error('Nur Admins dürfen das.');
+  }
+  function saveCard(card) {
+    const next = { ...card, updated_at: new Date().toISOString() };
+    store.set('bingo_card', next);
+    setTimeout(() => bingoListeners.forEach((cb) => cb(next)), 30);
+    return next;
   }
 
   const sessionEmail = store.get('session', null);
@@ -423,6 +481,60 @@ function createLocalApi() {
     async deleteSound(sound) {
       store.set('sounds', store.get('sounds', []).filter((x) => x.id !== sound.id));
     },
+
+    // ---------- Fortnite-Bingo (Demo) ----------
+    // Bilder liegen als data:-URL in zd_bingo_items, die Karte in zd_bingo_card.
+    bingoUrl(path) { return store.get('bingo_items', []).find((i) => i.path === path)?.url ?? ''; },
+    async getBingo() { return { items: store.get('bingo_items', []), card: store.get('bingo_card', null) }; },
+    async addBingoItem(blob, name) {
+      await requireAdmin();
+      const url = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Bild konnte nicht gelesen werden.'));
+        reader.readAsDataURL(blob);
+      });
+      const id = `demo-${nextId++}`;
+      const item = { id, name, path: `demo/${id}`, url, created_at: new Date().toISOString() };
+      try {
+        localStorage.setItem('zd_bingo_items', JSON.stringify([...store.get('bingo_items', []), item]));
+      } catch {
+        throw new Error('Der Speicher im Browser ist voll – im Demo-Modus passen nicht so viele Bilder hinein.');
+      }
+      return item;
+    },
+    async renameBingoItem(id, name) {
+      await requireAdmin();
+      store.set('bingo_items', store.get('bingo_items', []).map((i) => (i.id === id ? { ...i, name } : i)));
+    },
+    async deleteBingoItem(item) {
+      await requireAdmin();
+      store.set('bingo_items', store.get('bingo_items', []).filter((i) => i.id !== item.id));
+    },
+    async newBingoCard(size, free) {
+      await requireAdmin();
+      const items = store.get('bingo_items', []);
+      const withFree = free && size % 2 === 1;
+      const need = size * size - (withFree ? 1 : 0);
+      if (items.length < need) throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – hochgeladen sind erst ${items.length}.`);
+      const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, need).map(({ id, name, path }) => ({ id, name, path }));
+      const center = Math.floor((size * size) / 2);
+      if (withFree) shuffled.splice(center, 0, { free: true });
+      return saveCard({ id: 1, size, cells: shuffled, marked: withFree ? [center] : [], visible: true, created_at: new Date().toISOString() });
+    },
+    async toggleBingo(index) {
+      await requireAdmin();
+      const card = store.get('bingo_card', null);
+      if (!card) throw new Error('Es gibt noch keine Bingo-Karte.');
+      if (card.cells[index]?.free) return card;
+      const marked = card.marked.includes(index) ? card.marked.filter((i) => i !== index) : [...card.marked, index];
+      return saveCard({ ...card, marked });
+    },
+    async updateBingoCard(patch) {
+      await requireAdmin();
+      return saveCard({ ...store.get('bingo_card', null), ...patch });
+    },
+    onBingo(cb) { bingoListeners.push(cb); },
     async spin(variantId) {
       const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
       const profile = await this.getProfile(current);

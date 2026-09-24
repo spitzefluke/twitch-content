@@ -12,7 +12,7 @@
 
 -- ---------- Kachel ----------
 alter table public.tiles drop constraint if exists tiles_kind_check;
-alter table public.tiles add constraint tiles_kind_check check (kind in ('wheel', 'countdown', 'prank'));
+alter table public.tiles add constraint tiles_kind_check check (kind in ('wheel', 'countdown', 'prank', 'bingo'));
 
 do $$
 begin

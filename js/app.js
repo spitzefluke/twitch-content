@@ -3,6 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
+import { bingoState, nameFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -37,6 +38,14 @@ const state = {
     timer: 0,
     subscribed: false,
     sfx: null,
+  },
+  // Fortnite-Bingo
+  bingo: {
+    on: false,          // Migration …_bingo.sql eingespielt?
+    items: [],
+    card: null,
+    lines: 0,           // volle Linien – steigt die Zahl, gibt es "Bingo!"
+    subscribed: false,
   },
 };
 
@@ -249,7 +258,7 @@ async function enterApp(user) {
   $('#app').hidden = false;
 
   const api = state.api;
-  const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog] = await Promise.all([
+  const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog, bingo] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
@@ -261,6 +270,7 @@ async function enterApp(user) {
     // Genauso „Ärgere den Dave“ (Migration …_pranks.sql)
     api.getPrankSettings().catch((err) => { console.warn('Ärgere den Dave nicht verfügbar:', err); return null; }),
     api.getPranks().catch(() => []),
+    api.getBingo().catch((err) => { console.warn('Bingo nicht verfügbar:', err); return null; }),
   ]);
   if (!state.user) return; // zwischenzeitlich abgemeldet
   Object.assign(state, { profile, tiles, variants, twitch, spins });
@@ -270,6 +280,8 @@ async function enterApp(user) {
   state.prank.on = prankSettings !== null;
   if (prankSettings) state.prank.settings = prankSettings;
   state.prank.log = prankLog;
+  state.bingo.on = bingo !== null;
+  if (bingo) Object.assign(state.bingo, bingo, { lines: bingoState(bingo.card).count });
 
   renderHeader();
   renderHero();
@@ -285,6 +297,10 @@ async function enterApp(user) {
   if (state.prank.on && !state.prank.subscribed) {
     state.prank.subscribed = true;
     api.onPrank(handleIncomingPrank);
+  }
+  if (state.bingo.on && !state.bingo.subscribed) {
+    state.bingo.subscribed = true;
+    api.onBingo((card) => applyBingoCard(card));
   }
 }
 
@@ -505,8 +521,10 @@ async function submitIdea(e) {
 // ---------- Kacheln ----------
 function renderGrid() {
   const grid = $('#grid');
-  const shown = state.tiles.filter((t) => isPlanned(t) || t.kind === 'prank');
-  grid.replaceChildren(...shown.map((tile, i) => (tile.kind === 'prank' ? buildPrankTile(tile, i) : buildTile(tile, i))));
+  // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
+  const build = { prank: buildPrankTile, bingo: buildBingoTile };
+  const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
+  grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] ?? buildTile)(tile, i)));
   updateCountdowns();
 }
 
@@ -548,6 +566,55 @@ function buildPrankTile(tile, i) {
   el.addEventListener('click', openPrank);
   if (finePointer && !reducedMotion) addTilt(el);
   return el;
+}
+
+function buildBingoTile(tile, i) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'tile tile--bingo theme-bingo';
+  el.style.setProperty('--i', i);
+  el.dataset.id = tile.id;
+
+  const bg = document.createElement('div');
+  bg.className = 'tile-bg';
+  const img = safeUrl(tile.background);
+  if (img) bg.style.backgroundImage = `url(${JSON.stringify(img)})`;
+  el.append(bg, div('tile-shade'), div('tile-shine'));
+
+  const body = div('tile-body');
+  const tag = document.createElement('span');
+  tag.className = 'tile-tag';
+  tag.textContent = 'Jederzeit · live';
+  const title = document.createElement('h3');
+  title.className = 'tile-title';
+  title.textContent = tile.title;
+  const desc = document.createElement('p');
+  desc.className = 'tile-desc';
+  desc.textContent = tile.description;
+  const row = div('prank-tile-row');
+  const progress = document.createElement('span');
+  progress.className = 'bingo-tile-progress';
+  const cta = document.createElement('span');
+  cta.className = 'prank-cta bingo-cta';
+  cta.textContent = 'Karte ansehen →';
+  row.append(progress, cta);
+  body.append(tag, title, desc, row);
+  el.append(body);
+  el.addEventListener('click', openBingo);
+  if (finePointer && !reducedMotion) addTilt(el);
+  paintBingoTile(el);
+  return el;
+}
+
+// Fortschritt auf der Kachel, ohne das ganze Raster neu zu bauen
+function paintBingoTile(el = $('.tile--bingo')) {
+  const label = el?.querySelector('.bingo-tile-progress');
+  if (!label) return;
+  const { card } = state.bingo;
+  const st = bingoState(card);
+  label.textContent = !card
+    ? 'Noch keine Karte'
+    : `${st.done}/${st.total} gefunden${st.count ? ` · ${st.count}× Bingo` : ''}`;
 }
 
 function buildTile(tile, i) {
@@ -711,6 +778,7 @@ function setupDialogs() {
   $('#tile-cancel-btn').addEventListener('click', () => showTileForm(false));
   $('#tile-form').addEventListener('submit', saveTile);
   setupPrank();
+  setupBingo();
 }
 
 function closeDialog(dlg) {
@@ -1307,6 +1375,230 @@ async function savePrankSettings() {
 }
 
 // ============================================================
+// Fortnite-Bingo
+// ============================================================
+function setupBingo() {
+  $('#bingo-new-btn').addEventListener('click', newBingoCard);
+  $('#bingo-clear-btn').addEventListener('click', clearBingo);
+  $('#bingo-visible').addEventListener('change', (e) => updateBingoCard({ visible: e.target.checked }));
+  $('#bingo-size').addEventListener('change', () => renderBingoDialog());
+  $('#bingo-free').addEventListener('change', () => renderBingoDialog());
+  const form = $('#bingo-upload');
+  form.addEventListener('submit', uploadBingoImages);
+  form.files.addEventListener('change', () => {
+    const n = form.files.files.length;
+    $('.sound-file-text', form).textContent = n ? `🖼️ ${n === 1 ? form.files.files[0].name : `${n} Bilder gewählt`}` : '🖼️ Bilder wählen … (mehrere gehen)';
+  });
+}
+
+async function openBingo() {
+  renderBingoDialog();
+  $('#bingo-dialog').showModal();
+  if (!state.bingo.on) return;
+  // Frisch laden: Bilder und Haken können sich geändert haben.
+  try {
+    const { items, card } = await state.api.getBingo();
+    state.bingo.items = items;
+    state.bingo.card = card;
+    state.bingo.lines = bingoState(card).count;
+    renderBingoDialog();
+  } catch (err) {
+    console.warn(err);
+  }
+}
+
+function renderBingoDialog({ stamped = null } = {}) {
+  const { on, card, items } = state.bingo;
+  const admin = !!state.profile?.is_admin;
+  const dlg = $('#bingo-dialog');
+  dlg.classList.toggle('is-admin', admin && on);
+
+  const note = $('#bingo-note');
+  note.textContent = on ? '' : admin
+    ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260924120000_bingo.sql ausführen.'
+    : 'Das Bingo ist noch nicht eingerichtet. Schau später noch mal vorbei.';
+  note.hidden = on;
+
+  const grid = $('#bingo-grid');
+  const st = bingoState(card);
+  $('#bingo-empty').hidden = !!card || !on;
+  $('#bingo-empty').textContent = admin
+    ? 'Noch keine Karte. Rechts Bilder hochladen und „Neue Karte ziehen“.'
+    : 'Noch keine Karte gezogen – gleich geht’s los.';
+  grid.hidden = !card;
+  if (card) {
+    renderBingoGrid(grid, card, {
+      urlFor: (path) => state.api.bingoUrl(path),
+      onCell: admin ? toggleBingoCell : null,
+      stamped,
+    });
+  }
+  $('#bingo-status').textContent = card
+    ? `${st.done} von ${st.total} gefunden${st.count ? ` · ${st.count}× Bingo!` : ''}${card.visible ? '' : ' · im Stream ausgeblendet'}`
+    : '';
+  $('#bingo-help').hidden = !card;
+
+  $('#bingo-admin').hidden = !(admin && on);
+  if (admin && on) {
+    $('#bingo-visible').checked = card?.visible ?? true;
+    $('#bingo-visible').disabled = !card;
+    $('#bingo-clear-btn').disabled = !card || !st.done;
+    const size = Number($('#bingo-size').value);
+    const need = size * size - ($('#bingo-free').checked && size % 2 ? 1 : 0);
+    $('#bingo-count').textContent = `· ${items.length} hochgeladen${items.length < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
+    renderBingoItems();
+  }
+  paintBingoTile();
+}
+
+function renderBingoItems() {
+  const list = $('#bingo-items');
+  const { items } = state.bingo;
+  if (!items.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'Noch keine Bilder.';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...items.map((item) => {
+    const li = document.createElement('li');
+    const img = document.createElement('img');
+    img.src = item.url;
+    img.alt = '';
+    img.loading = 'lazy';
+    const name = document.createElement('input');
+    name.value = item.name;
+    name.maxLength = 40;
+    name.setAttribute('aria-label', 'Name des Items');
+    name.addEventListener('change', async () => {
+      const value = name.value.trim();
+      if (!value) { name.value = item.name; return; }
+      try {
+        await state.api.renameBingoItem(item.id, value);
+        item.name = value;
+      } catch (err) {
+        name.value = item.name;
+        toast(`Umbenennen fehlgeschlagen: ${germanError(err)}`, 'error');
+      }
+    });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'prank-try prank-del';
+    del.textContent = '🗑';
+    del.setAttribute('aria-label', `„${item.name}“ löschen`);
+    del.addEventListener('click', async () => {
+      if (!confirm(`„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`)) return;
+      del.disabled = true;
+      try {
+        await state.api.deleteBingoItem(item);
+        state.bingo.items = state.bingo.items.filter((x) => x.id !== item.id);
+        renderBingoDialog();
+      } catch (err) {
+        del.disabled = false;
+        toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
+      }
+    });
+    li.append(img, name, del);
+    return li;
+  }));
+}
+
+// Neue Karte vom Server (live per Realtime) oder aus der eigenen Aktion
+function applyBingoCard(card, stamped = null) {
+  const before = state.bingo.lines;
+  state.bingo.card = card;
+  state.bingo.lines = bingoState(card).count;
+  paintBingoTile();
+  if ($('#bingo-dialog').open) renderBingoDialog({ stamped });
+  if (state.bingo.lines > before && card?.marked?.length) celebrateBingo();
+}
+
+function celebrateBingo() {
+  const win = $('#bingo-win');
+  win.classList.remove('is-on');
+  void win.offsetWidth;
+  win.classList.add('is-on');
+  if (!$('#bingo-dialog').open) toast('BINGO! Eine Reihe ist voll.', 'ok', 5000);
+}
+
+async function toggleBingoCell(index, node) {
+  node.disabled = true;
+  try {
+    const card = await state.api.toggleBingo(index);
+    applyBingoCard(card, card.marked.includes(index) ? index : null);
+  } catch (err) {
+    node.disabled = false;
+    toast(germanError(err), 'error');
+  }
+}
+
+async function newBingoCard() {
+  const { card } = state.bingo;
+  if (card && bingoState(card).done && !confirm('Neue Karte ziehen? Die Haken der aktuellen Karte gehen verloren.')) return;
+  const btn = $('#bingo-new-btn');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  try {
+    const next = await state.api.newBingoCard(Number($('#bingo-size').value), $('#bingo-free').checked);
+    state.bingo.lines = 0;
+    applyBingoCard(next);
+    toast('Neue Karte gezogen – sie ist jetzt auch im Stream zu sehen.', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error', 7000);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
+  }
+}
+
+async function clearBingo() {
+  const { card } = state.bingo;
+  if (!card || !confirm('Alle Haken entfernen?')) return;
+  const free = card.cells.flatMap((c, i) => (c.free ? [i] : []));
+  await updateBingoCard({ marked: free });
+}
+
+async function updateBingoCard(patch) {
+  try {
+    const card = await state.api.updateBingoCard(patch);
+    state.bingo.lines = bingoState(card).count;
+    applyBingoCard(card);
+  } catch (err) {
+    toast(`Speichern fehlgeschlagen: ${germanError(err)}`, 'error');
+    renderBingoDialog();
+  }
+}
+
+async function uploadBingoImages(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const files = [...form.files.files];
+  if (!files.length) return formMsg(form, 'Bitte zuerst Bilder wählen.');
+  await withLoading(form, async () => {
+    let done = 0;
+    const failed = [];
+    for (const file of files) {
+      formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
+      try {
+        const blob = await shrinkImage(file);
+        const item = await state.api.addBingoItem(blob, nameFromFile(file.name));
+        state.bingo.items = [...state.bingo.items, item];
+        done++;
+      } catch (err) {
+        console.error(err);
+        failed.push(`${file.name}: ${germanError(err)}`);
+      }
+    }
+    form.reset();
+    $('.sound-file-text', form).textContent = '🖼️ Bilder wählen … (mehrere gehen)';
+    renderBingoDialog();
+    if (failed.length) throw new Error(`${done} hochgeladen, ${failed.length} nicht: ${failed.join(' · ')}`);
+    formMsg(form, `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen.`, true);
+  });
+}
+
+// ============================================================
 // Countdown-Kachel: Details & Bearbeiten
 // ============================================================
 const THEME_BG = { tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg' };
@@ -1389,7 +1681,7 @@ function toLocalInput(d) {
 // Die Standards stehen als value/checked/selected im Formular (index.html)
 // und in js/overlay.js – beide gleich halten.
 const OBS_KEY = 'obs_options';
-const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%', psize: '%' };
+const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%', psize: '%', bsize: '%' };
 
 function obsFields() {
   return [...$('#obs-options').elements].filter((el) => el.name && !el.name.endsWith('-out'));

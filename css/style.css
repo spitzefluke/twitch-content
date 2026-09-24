@@ -773,6 +773,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .theme-city   { --tile-glow: rgba(255, 120, 80, .4); }
 .theme-prank .tile-bg { background-image: url("../assets/bg-prank.svg"); }
 .theme-prank  { --tile-glow: rgba(255, 70, 70, .45); }
+.theme-bingo .tile-bg { background-image: url("../assets/bg-bingo.svg"); }
+.theme-bingo  { --tile-glow: rgba(79, 195, 255, .45); }
 
 .tile-tag {
   align-self: flex-start;
@@ -1847,4 +1849,58 @@ code { font-family: var(--font-mono); font-size: .9em; }
 }
 @media (max-width: 420px) {
   .prank-items, .prank-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ==========================================================
+   Fortnite-Bingo
+   ========================================================== */
+.tile--bingo .tile-tag::before { background: #4fc3ff; box-shadow: 0 0 8px #4fc3ff; }
+.bingo-tile-progress { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: #cfe6ff; }
+.bingo-cta { background: #4fc3ff; color: #04121f; }
+
+.dialog--bingo { width: min(96vw, 1080px); }
+.bingo-layout { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: clamp(18px, 3vw, 32px); padding: 18px 24px 26px; }
+.dialog--bingo.is-admin .bingo-layout { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); justify-items: stretch; align-items: start; }
+.bingo-main { display: grid; gap: 12px; width: 100%; max-width: 620px; }
+.bingo-status { font-family: var(--font-mono); font-size: 13px; letter-spacing: .06em; color: var(--amber-2); min-height: 1.2em; }
+.bingo-card-wrap { position: relative; }
+.bingo-main .bingo-grid {
+  font-size: clamp(11px, 1.6vw, 17px);
+  padding: .6em; border-radius: 18px; background: linear-gradient(180deg, #0f1d4d, #0a1233); border: 1px solid #22356e;
+}
+.bingo-empty { padding: 40px 20px; border-radius: 18px; border: 1px dashed var(--line-2); text-align: center; color: var(--muted); }
+.bingo-help { font-size: 14px; color: var(--muted); }
+.bingo-win {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0;
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(56px, 10vw, 120px); text-transform: uppercase;
+  color: #ffd36b; text-shadow: 0 6px 0 #c26410, 0 12px 30px rgba(0, 0, 0, .7);
+}
+.bingo-win.is-on { animation: bingo-win 2.4s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes bingo-win {
+  0% { opacity: 0; transform: scale(.4) rotate(-12deg); }
+  20% { opacity: 1; transform: scale(1.08) rotate(-6deg); }
+  30%, 80% { opacity: 1; transform: scale(1) rotate(-6deg); }
+  100% { opacity: 0; transform: scale(1.1) rotate(-6deg); }
+}
+
+.bingo-side { display: grid; gap: 14px; }
+.bingo-side[hidden] { display: none; }
+.bingo-box { display: grid; gap: 10px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-2); }
+.bingo-box .prank-h3 { margin: 0; }
+.bingo-box .prank-h3 small { font-family: var(--font-body); font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.bingo-new { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.bingo-new .toggle { min-height: 46px; }
+.bingo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.bingo-box .sound-form { padding: 12px; }
+.bingo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
+.bingo-items li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.bingo-items li.empty { display: block; color: var(--dim); font-size: 14px; }
+.bingo-items img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: linear-gradient(180deg, #2a5bd7, #13307a); }
+.bingo-items input {
+  min-width: 0; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg);
+}
+.bingo-items input:focus { outline: none; border-color: var(--amber); }
+@media (max-width: 860px) {
+  .dialog--bingo.is-admin .bingo-layout { grid-template-columns: minmax(0, 1fr); }
+  .bingo-layout { padding-left: 16px; padding-right: 16px; }
 }
