@@ -13,14 +13,15 @@
   <script type="module" src="js/overlay.js"></script>
 </head>
 <!-- Als Browserquelle in OBS einbinden (1920 × 1080). Der Hintergrund ist
-     durchsichtig, sichtbar sind nur die beiden Karten. Optionen stehen in js/overlay.js. -->
+     durchsichtig, sichtbar sind nur die beiden Karten. Optionen stehen in js/overlay.js,
+     die Adresse baut der OBS-Dialog im Dashboard. -->
 <body>
 
   <!-- Glücksrad: erscheint nur, wenn gedreht wird -->
   <section class="ov-card ov-spin" id="ov-spin" aria-live="polite">
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
-      <span>Glücksrad</span>
+      <span id="ov-wlabel">Glücksrad</span>
       <span class="ov-sep" aria-hidden="true">·</span>
       <span class="ov-who" id="ov-who"></span>
     </header>
@@ -43,7 +44,7 @@
   <section class="ov-card ov-next" id="ov-next" hidden>
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
-      <span>Nächste Abfahrt</span>
+      <span id="ov-nlabel">Nächste Abfahrt</span>
       <span class="ov-sep" aria-hidden="true">·</span>
       <span id="ov-next-date"></span>
     </header>

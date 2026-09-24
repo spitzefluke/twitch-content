@@ -1,40 +1,74 @@
 // OBS-Overlay: als Browserquelle in OBS einbinden (Breite 1920, Höhe 1080).
 // Wird das Glücksrad gedreht – per Kanalpunkte oder auf der Webseite –,
-// erscheint es klein in einer Ecke, dreht sich und zeigt das Ergebnis.
+// erscheint es klein im Bild, dreht sich und zeigt das Ergebnis.
 // Daneben läuft "Nächste Abfahrt" mit den kommenden Content-Ideen.
 //
-// Optionen in der Adresse, z. B. overlay.html?wheel=br&next=bl&scale=1.2
-//   wheel=br|bl|tr|tl|0   Ecke fürs Glücksrad (Standard br = unten rechts), 0 = aus
-//   next=bl|br|tl|tr|0    Ecke für "Nächste Abfahrt" (Standard bl), 0 = aus
-//   scale=1               Größe der Karten (0.5 – 2)
-//   sound=0               ohne Ton
-//   test=1                alle 20 Sekunden eine Probe-Drehung, zum Einrichten in OBS
+// Die Adresse baut der OBS-Dialog im Dashboard. Optionen, z. B. overlay.html?wheel=br&wsize=120
+//   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus
+//   next=…|0                   Position "Nächste Abfahrt" (Standard bl)
+//   wsize=100 / nsize=100      Größe der Karten in Prozent (50 – 200); scale=1.2 gilt für beide
+//   hold=9                     Sekunden, die das Ergebnis stehen bleibt (3 – 60)
+//   from=all|twitch|web        welche Drehungen: alle, nur Kanalpunkte, nur Webseite
+//   always=1                   Glücksrad dauerhaft zeigen, nicht nur beim Drehen
+//   vcolor=0                   Glücksrad-Karte in der Akzentfarbe statt in der Farbe der Variante
+//   wlabel=… / nlabel=…        Überschriften der Karten
+//   rotate=12                  Sekunden bis zur nächsten Content-Idee (5 – 120)
+//   margin=40                  Abstand zum Bildrand in Pixeln (0 – 300)
+//   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
+//   accent=ffb81c              Akzentfarbe (Hex)
+//   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
+//   test=1                     alle 20 Sekunden eine Probe-Drehung, zum Einrichten in OBS
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
 
-const CORNERS = ['br', 'bl', 'tr', 'tl'];
-const HOLD_MS = 9000;          // so lange bleibt das Ergebnis stehen
+const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
-const NEXT_ROTATE_MS = 12000;
 const TILES_REFRESH_MS = 60000;
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
 const params = new URLSearchParams(location.search);
-const corner = (value, fallback) => (value === '0' || value === 'off' ? null : CORNERS.includes(value) ? value : fallback);
+const position = (value, fallback) => (value === '0' || value === 'off' ? null : POSITIONS.includes(value) ? value : fallback);
+const flag = (name, fallback) => (params.has(name) ? !['0', 'false', 'off'].includes(params.get(name)) : fallback);
+const number = (name, fallback, min, max) => {
+  const raw = params.get(name);
+  const n = raw === null || raw === '' ? NaN : Number(raw);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+const text = (name, fallback) => (params.get(name) ?? '').trim().slice(0, 40) || fallback;
+const legacyScale = number('scale', 1, 0.5, 2) * 100;
+const accent = (params.get('accent') ?? '').replace(/^#/, '');
 const opt = {
-  wheel: corner(params.get('wheel'), 'br'),
-  next: corner(params.get('next'), 'bl'),
-  scale: Math.min(2, Math.max(0.5, Number(params.get('scale')) || 1)),
-  sound: params.get('sound') !== '0',
-  test: params.has('test') && params.get('test') !== '0',
+  wheel: position(params.get('wheel'), 'br'),
+  next: position(params.get('next'), 'bl'),
+  wsize: number('wsize', legacyScale, 50, 200) / 100,
+  nsize: number('nsize', legacyScale, 50, 200) / 100,
+  holdMs: number('hold', 9, 3, 60) * 1000,
+  from: ['twitch', 'web'].includes(params.get('from')) ? params.get('from') : 'all',
+  always: flag('always', false),
+  variantColor: flag('vcolor', true),
+  wlabel: text('wlabel', 'Glücksrad'),
+  nlabel: text('nlabel', 'Nächste Abfahrt'),
+  rotateMs: number('rotate', 12, 5, 120) * 1000,
+  margin: number('margin', 40, 0, 300),
+  bg: number('bg', 94, 0, 100) / 100,
+  accent: /^[0-9a-f]{6}$/i.test(accent) ? `#${accent}` : null,
+  volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
+  test: flag('test', false),
 };
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const pad = (n) => String(n).padStart(2, '0');
 
-document.documentElement.style.setProperty('--s', opt.scale);
+const root = document.documentElement.style;
+root.setProperty('--ws', opt.wsize);
+root.setProperty('--ns', opt.nsize);
+root.setProperty('--m', `${opt.margin}px`);
+root.setProperty('--bga', opt.bg);
+if (opt.accent) root.setProperty('--accent', opt.accent);
+$('ov-wlabel').textContent = opt.wlabel;
+$('ov-nlabel').textContent = opt.nlabel;
 if (opt.wheel) $('ov-spin').classList.add(`pos-${opt.wheel}`);
 else $('ov-spin').remove();
 if (opt.next) $('ov-next').classList.add(`pos-${opt.next}`);
@@ -123,9 +157,25 @@ function setupSpins(source) {
   let playing = false;
 
   const enqueue = (spin) => {
+    if (opt.from !== 'all' && spin.source !== opt.from) return;
     queue.push(spin);
     if (!playing) play();
   };
+
+  // Dauerhaft sichtbar: zwischen den Drehungen wartet das Rad mit einem Hinweis.
+  function idle() {
+    $('ov-who').textContent = opt.from === 'web' ? 'wartet auf die nächste Drehung' : 'Kanalpunkte einlösen zum Drehen';
+    $('ov-status').textContent = 'Bereit';
+    card.classList.remove('is-done');
+    card.classList.add('is-idle');
+  }
+  if (opt.always) {
+    const first = variants[0];
+    card.style.setProperty('--c', opt.variantColor ? first.color : 'var(--accent)');
+    $('ov-variant').textContent = first.name;
+    idle();
+    card.classList.add('is-in');
+  }
 
   async function play() {
     playing = true;
@@ -141,19 +191,21 @@ function setupSpins(source) {
     const variant = variants.find((v) => v.id === spin.variant_id) ?? variants[0];
     const index = Math.min(Math.max(0, spin.segment_index | 0), variant.segments.length - 1);
 
-    card.style.setProperty('--c', variant.color);
+    card.style.setProperty('--c', opt.variantColor ? variant.color : 'var(--accent)');
     $('ov-who').textContent = spin.source === 'twitch'
       ? `@${spin.requested_by} löst Kanalpunkte ein`
       : `${spin.requested_by} dreht`;
     $('ov-variant').textContent = variant.name;
+    $('ov-status').textContent = 'Das Rad dreht sich …';
     $('ov-result').textContent = spin.result;
     $('ov-detail').textContent = spin.detail;
-    card.classList.remove('is-done');
+    card.classList.remove('is-done', 'is-idle');
     wheel.setVariant(variant);
 
+    const entering = !card.classList.contains('is-in');
     card.classList.add('is-in');
     sound.whoosh();
-    await wait(600);
+    if (entering) await wait(600);
     wheel.resize();
     wheel.start();
     await wait(900);
@@ -161,7 +213,8 @@ function setupSpins(source) {
 
     card.classList.add('is-done');
     sound.ding();
-    await wait(HOLD_MS);
+    await wait(opt.holdMs);
+    if (opt.always) { idle(); return; }
     card.classList.remove('is-in');
     await wait(700);
   }
@@ -175,7 +228,7 @@ function setupSpins(source) {
       const i = Math.floor(Math.random() * v.segments.length);
       const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
       enqueue({
-        id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: 'twitch',
+        id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
         variant_id: v.id, variant_name: v.name, segment_index: i,
         result: v.segments[i].label, detail: v.segments[i].detail,
         requested_by: names[Math.floor(Math.random() * names.length)],
@@ -230,7 +283,7 @@ function setupNext(source) {
 
   pick();
   setInterval(tick, 1000);
-  setInterval(rotate, NEXT_ROTATE_MS);
+  setInterval(rotate, opt.rotateMs);
   setInterval(async () => {
     tiles = await source.tiles().catch(() => tiles);
     pick();
@@ -245,7 +298,7 @@ function setupNext(source) {
 const sound = {
   ctx: null,
   get() {
-    if (!opt.sound) return null;
+    if (!opt.volume) return null;
     try {
       this.ctx ??= new (window.AudioContext ?? window.webkitAudioContext)();
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
@@ -261,7 +314,7 @@ const sound = {
     osc.type = type;
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * opt.volume), t0 + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t0);
