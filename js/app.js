@@ -60,10 +60,30 @@ async function boot() {
   // Rückweg vom Chat-Bot-Verbinden: Das Ergebnis gehört in den Admin-Bereich,
   // auch wenn die Weiterleitung hier auf der Startseite gelandet ist.
   let botFlow = false;
-  try { botFlow = sessionStorage.getItem('zd_bot_flow') === '1'; sessionStorage.removeItem('zd_bot_flow'); } catch { /* ignorieren */ }
-  if (params.has('twitch') && (botFlow || params.get('twitch') === 'bot_connected' || params.get('reason') === 'bot_is_broadcaster')) {
+  let twitchFlow = false;
+  try {
+    botFlow = sessionStorage.getItem('zd_bot_flow') === '1';
+    twitchFlow = sessionStorage.getItem('zd_twitch_flow') === '1';
+    sessionStorage.removeItem('zd_bot_flow');
+    sessionStorage.removeItem('zd_twitch_flow');
+  } catch { /* ignorieren */ }
+  // Schickt Twitch nach der Freigabe zur Supabase-Anmeldung statt zur
+  // Stellwerk-Funktion, meldet Supabase "OAuth state parameter is invalid".
+  // Ursache: In der Twitch-App fehlt die Redirect-URL der Funktion.
+  const oauthError = params.get('error_description') ?? new URLSearchParams(location.hash.slice(1)).get('error_description') ?? '';
+  const wrongRedirect = (botFlow || twitchFlow) && /state parameter is invalid/i.test(oauthError);
+  if (botFlow && (wrongRedirect || params.has('twitch'))) {
+    location.replace(wrongRedirect ? 'admin.html?twitch=error&reason=redirect_uri' : `admin.html${location.search}`);
+    return;
+  }
+  if (!botFlow && (params.get('twitch') === 'bot_connected' || params.get('reason') === 'bot_is_broadcaster')) {
     location.replace(`admin.html${location.search}`);
     return;
+  }
+  if (wrongRedirect) {
+    history.replaceState(null, '', location.pathname);
+    params.set('twitch', 'error');
+    params.set('reason', 'redirect_uri');
   }
   const apiPromise = Promise.resolve(createApi());
 
@@ -123,6 +143,7 @@ function showTwitchReturn(status, reason, detail) {
   }
   const reasons = {
     wrong_account: `Nur der Kanal ${CONFIG.CHANNEL} kann verbunden werden.`,
+    redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → Verwalten) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen, speichern und noch einmal verbinden.`,
     not_affiliate: 'Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.',
     reward_exists: 'Es gibt schon eine manuell erstellte Belohnung „Glücksrad“. Bitte im Twitch-Dashboard löschen und erneut verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
@@ -2073,6 +2094,9 @@ async function twitchAction(btn) {
       closeDialog($('#twitch-dialog'));
       toast('Twitch wurde getrennt. Die Belohnung ist deaktiviert.', 'ok');
     } else {
+      // Merken, dass Dave gerade verbindet – für eine verständliche Meldung,
+      // falls Twitch falsch zurückleitet (siehe boot).
+      try { sessionStorage.setItem('zd_twitch_flow', '1'); } catch { /* egal */ }
       await state.api.twitchConnect(); // leitet zu Twitch weiter
     }
   } catch (err) {

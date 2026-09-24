@@ -512,6 +512,7 @@ function showBotReturn() {
     bot_is_broadcaster: 'Das war Daves Account. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal verbinden.',
+    redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet, sondern zur Supabase-Anmeldung. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → „Verwalten“) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen (genau so, ohne / am Ende), speichern, ein paar Minuten warten und noch einmal verbinden.`,
   };
   const reason = params.get('reason');
   botMsg(`Verbinden fehlgeschlagen: ${reasons[reason] ?? params.get('detail') ?? reason ?? 'unbekannter Fehler'}`, 'error');
