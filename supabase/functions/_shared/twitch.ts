@@ -39,9 +39,11 @@ export async function getUserFromRequest(req: Request) {
 }
 
 // ---------- Twitch API ----------
-// Dave: Kanalpunkte verwalten und dem Bot erlauben, in seinem Chat zu schreiben.
-// Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
-export const BROADCASTER_SCOPES = ["channel:read:redemptions", "channel:manage:redemptions", "channel:bot"];
+// Dave: Kanalpunkte verwalten, Vorhersagen fürs Bingo starten und dem Bot erlauben,
+// in seinem Chat zu schreiben. Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
+export const BROADCASTER_SCOPES = [
+  "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
+];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 export const BOT_SCOPES = ["user:write:chat", "user:bot"];
 export const oauthRedirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitch-oauth`;

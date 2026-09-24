@@ -1919,6 +1919,16 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-new .toggle { min-height: 46px; }
 .bingo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .bingo-box .sound-form { padding: 12px; }
+/* Tipprunde */
+.bingo-bet-note {
+  margin: 12px 0 0; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid rgba(255, 184, 28, .45); background: rgba(255, 184, 28, .1);
+  font-size: 14px; line-height: 1.45;
+}
+.bingo-bet-note.is-won { border-color: rgba(123, 208, 47, .55); background: rgba(123, 208, 47, .12); }
+.bingo-bet-start { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.bingo-bet-start[hidden] { display: none; }
+.bingo-bet-state { margin: 0; font-size: 14px; color: var(--amber); }
 .bingo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
 /* Pro Bild: oben Name, Kopieren, Löschen – darunter Seltenheit und Zahl im Icon */
 .bingo-items li {

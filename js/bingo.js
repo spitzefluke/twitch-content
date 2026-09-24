@@ -57,6 +57,26 @@ function lines(size) {
   return all;
 }
 
+// Tipprunde: Welche Linien kann man tippen? Steht genauso in
+// supabase/functions/_shared/bingo.ts – beide gleich halten. Twitch erlaubt
+// höchstens 10 Antworten: Reihen und Spalten immer, Diagonalen nur, wenn Platz ist.
+export const columnLetters = (size) => (size === 5 ? 'BINGO' : 'ABCDE'.slice(0, size));
+export function betLines(size) {
+  const letters = columnLetters(size);
+  const out = [];
+  for (let r = 0; r < size; r++) out.push({ key: `r${r + 1}`, title: `Reihe ${r + 1}`, cells: Array.from({ length: size }, (_, c) => r * size + c) });
+  for (let c = 0; c < size; c++) out.push({ key: `c${c + 1}`, title: `Spalte ${letters[c]}`, cells: Array.from({ length: size }, (_, r) => r * size + c) });
+  if (out.length + 2 <= 10) {
+    out.push({ key: 'd1', title: 'Diagonale ↘', cells: Array.from({ length: size }, (_, i) => i * size + i) });
+    out.push({ key: 'd2', title: 'Diagonale ↙', cells: Array.from({ length: size }, (_, i) => i * size + (size - 1 - i)) });
+  }
+  return out;
+}
+export function fullBetLines(card) {
+  const marked = new Set(card?.marked ?? []);
+  return card ? betLines(card.size).filter((l) => l.cells.every((i) => marked.has(i))) : [];
+}
+
 // Welche Linien sind voll? → Anzahl und die Felder darin
 export function bingoState(card) {
   if (!card) return { count: 0, cells: new Set(), done: 0, total: 0 };
@@ -83,21 +103,26 @@ function funColor(id = '') {
 // Zeichnet die Karte in `el`. Mit onCell werden die Felder zu Knöpfen.
 // itemOf(cell) liefert das Bild aus der aktuellen Liste (falls ein Admin Seltenheit
 // oder Zahl nachträglich geändert hat); sonst gilt, was beim Ziehen in der Karte steht.
-export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = null, itemOf = null } = {}) {
+// labels: Reihen-Nummern und Spalten-Buchstaben dazu (während einer Tipprunde),
+// damit man sieht, was „Reihe 2“ oder „Spalte G“ ist.
+export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = null, itemOf = null, labels = false } = {}) {
   const { cells: winning } = bingoState(card);
   const marked = new Set(card.marked ?? []);
   el.style.setProperty('--n', card.size);
-  // Bei 5 × 5 steht B-I-N-G-O über den Spalten
-  const letters = card.size === 5
-    ? [...'BINGO'].map((ch, i) => {
-      const l = document.createElement('span');
-      l.className = `bingo-letter bingo-letter--${i}`;
-      l.textContent = ch;
-      l.setAttribute('aria-hidden', 'true');
-      return l;
-    })
+  el.classList.toggle('has-labels', labels);
+  const span = (cls, text) => {
+    const l = document.createElement('span');
+    l.className = cls;
+    l.textContent = text;
+    l.setAttribute('aria-hidden', 'true');
+    return l;
+  };
+  // Bei 5 × 5 steht B-I-N-G-O über den Spalten, mit Beschriftung auch A-B-C … bei kleineren Karten
+  const head = card.size === 5 || labels
+    ? [...(labels ? [span('bingo-corner', '')] : []),
+      ...[...columnLetters(card.size)].map((ch, i) => span(`bingo-letter bingo-letter--${i}`, ch))]
     : [];
-  el.replaceChildren(...letters, ...card.cells.map((cell, i) => {
+  const nodes = card.cells.map((cell, i) => {
     const node = document.createElement(onCell && !cell.free ? 'button' : 'div');
     node.className = 'bingo-cell';
     const live = cell.free ? null : itemOf?.(cell) ?? cell;
@@ -147,7 +172,11 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
     if (winning.has(i)) node.classList.add('is-line');
     if (i === stamped) node.classList.add('is-stamped');
     return node;
-  }));
+  });
+  const rows = labels
+    ? nodes.flatMap((node, i) => (i % card.size === 0 ? [span('bingo-rownum', String(i / card.size + 1)), node] : [node]))
+    : nodes;
+  el.replaceChildren(...head, ...rows);
 }
 
 // Zufällige Karte aus den hochgeladenen Bildern (für die eigene Karte).

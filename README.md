@@ -24,6 +24,7 @@ supabase/functions/
   twitch-oauth/                  → Twitch-Login für Dave, legt Belohnung + EventSub-Webhook an
   twitch-eventsub/               → empfängt Kanalpunkte-Einlösungen von Twitch, dreht, postet im Chat
   spin/                          → Drehung von der Webseite aus
+  bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
 ```
 
 GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne geöffnete Seite funktionieren, braucht Twitch einen Server, den es anrufen kann. Diese Rolle übernehmen die **Supabase Edge Functions** (der kostenlose Tarif reicht). Supabase kümmert sich außerdem um Accounts und die Datenbank.
@@ -73,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -259,6 +260,17 @@ Kachel im Fahrplan. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql
 Zuschauer sehen Daves Karte nur an. Unter **Meine Karte** zieht sich jeder seine eigene Karte aus denselben Bildern und kreuzt selbst ab (gespeichert in `bingo_player_cards`, nur für einen selbst sichtbar). **Im Stream zeigen** blendet Daves Karte im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im Overlay: **Klassisch**, **Neon** und **Papier**.
+
+### Tipprunde mit Kanalpunkten
+
+Die Zuschauer tippen, welche Reihe auf Daves Karte zuerst voll wird – wer richtig liegt, bekommt Kanalpunkte. Das läuft über eine **Twitch-Vorhersage** (Prediction): Die Zuschauer setzen ihre Punkte im Chat, die Gewinner teilen sich die Punkte der anderen. Einen festen Bonus aus dem Nichts kann eine App auf Twitch nicht vergeben.
+
+1. Karte ziehen, im Bingo-Dialog unter **🎯 Tipprunde** die Zeit zum Tippen wählen und **Tipprunde starten**. Die Vorhersage erscheint oben in Daves Chat, der Chat-Bot kündigt sie an.
+2. Auf der Karte stehen jetzt Nummern (Reihe 1–5) und Buchstaben (Spalte B-I-N-G-O bzw. A, B, C …) – im Overlay mit Countdown. Bei 3×3 und 4×4 kann man auch auf die Diagonalen tippen; bei 5×5 nicht, weil Twitch höchstens 10 Antworten erlaubt.
+3. Erst nach Ablauf der Tippzeit Items abhaken. Wird eine getippte Reihe voll, löst die Seite die Vorhersage von selbst auf und die Punkte werden verteilt.
+4. **Abbrechen** oder eine neue Karte ziehen gibt allen ihre Punkte zurück.
+
+Einmal nötig: Migration `20260926120000_bingo_bet.sql` ausführen, die Edge Function `bingo-bet` deployen (geht automatisch beim Merge) und **Dave muss Twitch einmal neu verbinden** – für Vorhersagen braucht die Seite die neue Berechtigung `channel:manage:predictions`. Vorhersagen gibt es nur für Affiliates und Partner.
 
 ## Startdatum für Zuschauer
 

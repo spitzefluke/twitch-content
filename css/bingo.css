@@ -97,6 +97,13 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
 .bingo-letter--2 { background: linear-gradient(180deg, #7bd02f, #26751a); }
 .bingo-letter--3 { background: linear-gradient(180deg, #ffa24c, #b0460f); }
 .bingo-letter--4 { background: linear-gradient(180deg, #c46cff, #5d1fa6); }
+/* Tipprunde: Reihen-Nummern links, Spalten-Buchstaben oben */
+.bingo-grid.has-labels { grid-template-columns: 1.15em repeat(var(--n, 5), minmax(0, 1fr)); }
+.bingo-rownum {
+  display: grid; place-items: center;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 1.1em; font-weight: 800; line-height: 1;
+  color: #ffd36b; text-shadow: 0 .06em 0 rgba(0, 0, 0, .5);
+}
 .bingo-free { display: grid; place-items: center; font-size: 1.9em; line-height: 1; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
 .bingo-free b { font-size: .34em; text-transform: uppercase; letter-spacing: .08em; }
 /* Stempel wie mit einem Bingo-Marker */

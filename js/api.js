@@ -2,7 +2,7 @@
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
-import { cardCell } from './bingo.js';
+import { betLines, cardCell, fullBetLines } from './bingo.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -22,6 +22,7 @@ const ERRORS = [
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
+  [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
   [/column .*rarity|'rarity' column/i, 'In der Datenbank fehlt die Seltenheit fürs Bingo: supabase/migrations/20260925120000_bingo_rarity.sql im SQL Editor ausführen.'],
   [/relation "public\.bingo_(items|card)"|could not find the (table|function) '?public\.bingo_/i, 'In der Datenbank fehlt das Fortnite-Bingo: supabase/migrations/20260924120000_bingo.sql im SQL Editor ausführen.'],
@@ -272,6 +273,10 @@ async function createSupabaseApi() {
     },
     async newBingoCard(size, free) {
       return unwrap(await sb.rpc('bingo_new_card', { p_size: size, p_free: free }));
+    },
+    // Tipprunde über eine Twitch-Vorhersage: action = start | check | cancel
+    async bingoBet(action, seconds) {
+      return invoke('bingo-bet', { action, seconds });
     },
     async toggleBingo(index) {
       return unwrap(await sb.rpc('bingo_toggle', { p_index: index }));
@@ -552,8 +557,28 @@ function createLocalApi() {
       await requireAdmin();
       store.set('bingo_items', store.get('bingo_items', []).filter((i) => i.id !== item.id));
     },
+    async bingoBet(action, seconds = 120) {
+      await requireAdmin();
+      const card = store.get('bingo_card', null);
+      if (!card) throw new Error('Es gibt noch keine Bingo-Karte.');
+      const bet = card.bet;
+      if (action === 'start') {
+        if (bet?.status === 'active') throw new Error('Es läuft schon eine Tipprunde.');
+        if (fullBetLines(card).length) throw new Error('Auf der Karte ist schon eine Reihe voll. Erst „Haken entfernen“ oder eine neue Karte ziehen.');
+        const now = Date.now();
+        const outcomes = betLines(card.size).map(({ key, title }) => ({ id: `demo-${key}`, key, title }));
+        return { bet: saveCard({ ...card, bet: { id: 'demo', status: 'active', outcomes, started_at: new Date(now).toISOString(), lock_at: new Date(now + seconds * 1000).toISOString() } }).bet };
+      }
+      if (bet?.status !== 'active') return { bet };
+      if (action === 'cancel') return { bet: saveCard({ ...card, bet: { ...bet, status: 'canceled' } }).bet };
+      const done = new Set(fullBetLines(card).map((l) => l.key));
+      const winner = bet.outcomes.find((o) => done.has(o.key));
+      if (!winner) return { bet };
+      return { bet: saveCard({ ...card, bet: { ...bet, status: 'resolved', winner: winner.key, winner_title: winner.title } }).bet };
+    },
     async newBingoCard(size, free) {
       await requireAdmin();
+      if (store.get('bingo_card', null)?.bet?.status === 'active') throw new Error('Es läuft noch eine Tipprunde. Erst beenden oder abbrechen, dann eine neue Karte ziehen.');
       const items = store.get('bingo_items', []);
       const withFree = free && size % 2 === 1;
       const need = size * size - (withFree ? 1 : 0);

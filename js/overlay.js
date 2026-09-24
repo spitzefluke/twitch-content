@@ -521,9 +521,38 @@ async function setupBingo(source) {
     card$.hidden = !visible;
     if (!visible) return;
     card$.style.setProperty('--n', card.size);
-    renderBingoGrid(grid, card, { urlFor, stamped, itemOf });
+    const bet = card.bet;
+    const labels = bet?.status === 'active' || bet?.status === 'resolved';
+    card$.classList.toggle('has-bet', labels);
+    renderBingoGrid(grid, card, { urlFor, stamped, itemOf, labels });
+    paintBet(bet);
     const st = bingoState(card);
     $('ov-bingo-progress').textContent = `${st.done}/${st.total}${st.count ? ` · ${st.count}× Bingo` : ''}`;
+  }
+
+  // Tipprunde: Aufruf mit Countdown, danach wer gewonnen hat
+  const betEl = $('ov-bingo-bet');
+  let betTimer = null;
+  function paintBet(bet) {
+    clearInterval(betTimer);
+    const tick = () => {
+      const left = bet?.status === 'active' ? Date.parse(bet.lock_at) - Date.now() : 0;
+      if (bet?.status === 'active' && left > 0) {
+        const s = Math.ceil(left / 1000);
+        betEl.innerHTML = `🎯 Tippt mit Kanalpunkten: Welche Reihe wird zuerst voll? <b>${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</b>`;
+      } else if (bet?.status === 'active') {
+        betEl.textContent = '🎯 Tipps sind zu – welche Reihe wird zuerst voll?';
+        clearInterval(betTimer);
+      } else if (bet?.status === 'resolved') {
+        betEl.textContent = `🎯 ${bet.winner_title ?? 'Eine Reihe'} gewinnt – Kanalpunkte verteilt!`;
+      }
+    };
+    const shown = bet?.status === 'active' || bet?.status === 'resolved';
+    betEl.hidden = !shown;
+    betEl.classList.toggle('is-won', bet?.status === 'resolved');
+    if (!shown) return;
+    tick();
+    if (bet.status === 'active') betTimer = setInterval(tick, 1000);
   }
 
   async function update(next) {

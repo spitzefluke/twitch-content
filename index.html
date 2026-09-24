@@ -592,6 +592,7 @@
             <div class="bingo-win" id="bingo-win" aria-hidden="true">Bingo!</div>
           </div>
           <p class="bingo-empty" id="bingo-empty" hidden>Noch keine Karte gezogen.</p>
+          <div class="bingo-bet-note" id="bingo-bet-note" role="status" hidden></div>
           <p class="bingo-help" id="bingo-help">Die Karte aus Daves Stream. Findet Dave ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
         </div>
 
@@ -655,6 +656,24 @@
             </label>
             <p class="form-hint">Bis dahin sehen Zuschauer auf der Kachel einen Countdown. Leer lassen = sofort für alle.</p>
           </div>
+        </section>
+
+        <section class="bingo-box" id="bingo-bet-box">
+          <h3 class="prank-h3">🎯 Tipprunde <small>Kanalpunkte</small></h3>
+          <p class="form-hint">Die Zuschauer tippen über eine Twitch-Vorhersage, welche Reihe zuerst voll wird. Wer richtig liegt, bekommt Kanalpunkte dazu. Ist eine getippte Reihe voll, löst die Seite die Vorhersage von selbst auf.</p>
+          <div class="bingo-bet-start" id="bingo-bet-start">
+            <label class="field"><span>Zeit zum Tippen</span>
+              <select id="bingo-bet-seconds">
+                <option value="60">1 Minute</option>
+                <option value="120" selected>2 Minuten</option>
+                <option value="300">5 Minuten</option>
+                <option value="600">10 Minuten</option>
+              </select>
+            </label>
+            <button class="btn btn--primary" type="button" id="bingo-bet-btn">Tipprunde starten</button>
+          </div>
+          <p class="bingo-bet-state" id="bingo-bet-state" aria-live="polite" hidden></p>
+          <button class="btn btn--ghost btn--sm" type="button" id="bingo-bet-cancel" hidden>Abbrechen – alle bekommen ihre Punkte zurück</button>
         </section>
 
         <section class="bingo-box">
