@@ -31,7 +31,7 @@
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
-import { Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
+import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
@@ -434,7 +434,7 @@ function setupPranks(source) {
     const el = document.createElement('p');
     el.className = 'ov-prank-msg';
     el.innerHTML = '<span aria-hidden="true"></span><b></b>';
-    el.firstChild.textContent = prankEmoji(p);
+    setPrankIcon(el.firstChild, p);
     el.lastChild.textContent = prankText(p);
     feed.append(el);
     while (feed.children.length > 4) feed.firstChild.remove();
@@ -478,7 +478,7 @@ function setupPranks(source) {
   source.onPrank(handle);
 
   if (opt.test) {
-    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish'];
+    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke'];
     const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
     let n = 0;
     const fake = () => {

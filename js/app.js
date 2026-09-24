@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
-import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
+import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -1061,7 +1061,7 @@ function setupPrank() {
     b.className = `prank-item${it.nice ? ' is-nice' : ''}`;
     b.dataset.prankAction = '';
     b.innerHTML = '<span class="prank-item-emoji" aria-hidden="true"></span><span class="prank-item-name"></span>';
-    b.querySelector('.prank-item-emoji').textContent = it.emoji;
+    setItemIcon(b.querySelector('.prank-item-emoji'), it);
     b.querySelector('.prank-item-name').textContent = it.name;
     b.setAttribute('aria-label', `${it.name} werfen`);
     b.addEventListener('click', () => prankClick('throw', it));
@@ -1371,7 +1371,7 @@ function renderPrankLog(newId = null) {
     if (p.id === newId) li.className = 'is-new';
     const icon = document.createElement('span');
     icon.className = 'prank-log-icon';
-    icon.textContent = prankEmoji(p);
+    setPrankIcon(icon, p);
     const main = document.createElement('span');
     main.className = 'h-main';
     main.textContent = prankText(p);

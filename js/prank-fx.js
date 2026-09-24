@@ -11,8 +11,47 @@ export const ITEMS = [
   { id: 'duck', name: 'Quietscheente', acc: 'eine Quietscheente', emoji: '🦆', hit: 'squeak' },
   { id: 'sock', name: 'Stinkesocke', acc: 'eine Stinkesocke', emoji: '🧦', hit: 'thud', splat: '#86c83f', cloud: true },
   { id: 'snowball', name: 'Schneeball', acc: 'einen Schneeball', emoji: '❄️', hit: 'poof', splat: '#eef7ff' },
+  { id: 'undies', name: 'Rote Unterhose', acc: 'eine rote Unterhose', emoji: '🩲', hit: 'slap', stick: true, svg: 'undies' },
+  { id: 'nuke', name: 'Nuke', acc: 'eine Nuke', emoji: '☢️', hit: 'boom', boom: true, svg: 'nuke' },
   { id: 'flowers', name: 'Blumen', acc: 'Blumen', emoji: '💐', hit: 'bling', nice: true },
 ];
+
+// Eigene Zeichnungen, wo es kein passendes Emoji gibt (🩲 ist meist blau)
+const ICONS = {
+  undies: `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M9 31h82l-4 22c-13 3-21 12-24 29H37c-3-17-11-26-24-29z" fill="#e3202b" stroke="#7d0c12" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M37 82c1-10 5-17 13-17s12 7 13 17" fill="#b5121c"/>
+    <path d="M20 38c10 1 18 5 22 12" stroke="#ff7b82" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>
+    <rect x="8" y="18" width="84" height="14" rx="4" fill="#fff" stroke="#7d0c12" stroke-width="3"/>
+    <path d="M18 25h64" stroke="#e3202b" stroke-width="2" stroke-dasharray="4 4"/>
+  </svg>`,
+  nuke: `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 50) rotate(-35) scale(.95) translate(-50 -50)">
+    <path d="M22 50 6 36v28z" fill="#3f4a36" stroke="#1d2419" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M26 50 12 22h14l12 18zM26 50 12 78h14l12-18z" fill="#56644a" stroke="#1d2419" stroke-width="3" stroke-linejoin="round"/>
+    <ellipse cx="58" cy="50" rx="36" ry="23" fill="#5d6d4f" stroke="#1d2419" stroke-width="3"/>
+    <ellipse cx="66" cy="42" rx="18" ry="6" fill="#8fa27c" opacity=".7"/>
+    <circle cx="60" cy="52" r="14" fill="#ffd21f" stroke="#1d2419" stroke-width="2.5"/>
+    <g fill="#1d2419"><circle cx="60" cy="52" r="2.6"/>
+      <path d="M60 52 53 40a14 14 0 0 1 14 0z"/><path d="M60 52l14 0a14 14 0 0 1-7 12z"/><path d="M60 52l-7 12a14 14 0 0 1-7-12z"/></g>
+  </g></svg>`,
+};
+
+// Symbol eines Gegenstands in `el`: Zeichnung oder Emoji
+export function setItemIcon(el, it) {
+  if (it?.svg) {
+    el.innerHTML = ICONS[it.svg].replace(/>\s+</g, '><');
+    el.classList.add('pf-icon');
+  } else {
+    el.textContent = it?.emoji ?? '🍌';
+    el.classList.remove('pf-icon');
+  }
+}
+
+// Symbol einer Aktion (Wurf oder Sound) in `el`
+export function setPrankIcon(el, p) {
+  if (p.kind === 'throw') setItemIcon(el, itemById(p.item) ?? ITEMS[0]);
+  else el.textContent = prankEmoji(p);
+}
 
 export const BOARD = [
   { id: 'whistle', name: 'Zugpfeife', emoji: '🚂' },
@@ -171,6 +210,13 @@ export class Sfx {
         s.tone(1300, { at: 0.2, to: 900, attack: 0.01, hold: 0.05, release: 0.1, peak: 0.22 });
       },
       poof() { s.noise({ freq: 2500, to: 600, attack: 0.02, release: 0.35, peak: 0.35 }); },
+      // Nuke: Knall, dann tiefes Grollen
+      boom() {
+        s.noise({ type: 'highpass', freq: 1800, release: 0.12, peak: 0.5 });
+        s.tone(95, { to: 26, attack: 0.01, release: 1.6, peak: 0.9 });
+        s.noise({ freq: 1100, to: 70, attack: 0.01, hold: 0.2, release: 2.4, peak: 0.75 });
+        s.noise({ at: 0.35, freq: 300, to: 60, attack: 0.3, release: 1.8, peak: 0.35 });
+      },
       bling() {
         s.tone(1318.5, { release: 0.8, peak: 0.2 });
         s.tone(1975.5, { at: 0.08, release: 1, peak: 0.15 });
@@ -286,7 +332,7 @@ export function throwItem(layer, { item, x, y, size = 110, sfx = null, onHit = n
 
   const el = document.createElement('span');
   el.className = 'pf-item';
-  el.textContent = it.emoji;
+  setItemIcon(el, it);
   el.style.fontSize = `${size}px`;
   layer.append(el);
 
@@ -308,8 +354,13 @@ export function throwItem(layer, { item, x, y, size = 110, sfx = null, onHit = n
     if (it.splat) splat(layer, tx, ty, size * (it.cloud ? 2 : 1.6), it);
     if (it.nice) sparkles(layer, tx, ty, size);
     const end = at(1);
+    if (it.boom) {
+      el.remove();
+      await explode(layer, tx, ty, size, reducedMotion);
+      return;
+    }
     if (it.stick) {
-      // Die Banane bleibt kurz kleben und rutscht dann ab.
+      // Banane und Unterhose bleiben kurz kleben und rutschen dann ab.
       await el.animate([
         { transform: `${end} scale(1.25, 0.8)` },
         { transform: end, offset: 0.1 },
@@ -414,3 +465,45 @@ function sparkles(layer, x, y, size) {
   }
 }
 
+
+// Nuke: Blitz, Feuerball, Druckwelle und ein Rauchpilz, der aufsteigt.
+function explode(layer, x, y, size, reducedMotion = false) {
+  const made = [];
+  const add = (cls, css = {}) => {
+    const el = document.createElement('span');
+    el.className = cls;
+    Object.assign(el.style, css);
+    layer.append(el);
+    made.push(el);
+    return el;
+  };
+  const px = (v) => `${v}px`;
+  const flash = add('pf-flash', { background: `radial-gradient(circle at ${px(x)} ${px(y)}, rgba(255, 255, 235, .95), rgba(255, 196, 80, .55) ${px(size * 1.4)}, rgba(255, 120, 30, 0) ${px(size * 4)})` });
+  const runs = [flash.animate([{ opacity: 0 }, { opacity: 1, offset: 0.08 }, { opacity: 0 }], { duration: reducedMotion ? 500 : 900, easing: 'ease-out', fill: 'forwards' })];
+  if (!reducedMotion) {
+    const fire = add('pf-fireball', { left: px(x - size * 1.2), top: px(y - size * 1.2), width: px(size * 2.4), height: px(size * 2.4) });
+    runs.push(fire.animate([
+      { transform: 'scale(.15)', opacity: 1 },
+      { transform: 'scale(1.1)', opacity: 1, offset: 0.3 },
+      { transform: 'scale(1.35)', opacity: 0 },
+    ], { duration: 1300, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'forwards' }));
+    const ring = add('pf-shock', { left: px(x - size), top: px(y - size), width: px(size * 2), height: px(size * 2), borderWidth: px(size * 0.1) });
+    runs.push(ring.animate([{ transform: 'scale(.2)', opacity: 1 }, { transform: 'scale(3.2)', opacity: 0 }], { duration: 950, easing: 'ease-out', fill: 'forwards' }));
+    // Rauchpilz: Stiel-Wolken steigen, oben breitet sich der Hut aus
+    const puffs = [
+      ...Array.from({ length: 5 }, (_, i) => ({ dx: rand(-0.15, 0.15), dy: -0.4 - i * 0.35, r: 0.45 + i * 0.04 })),
+      ...Array.from({ length: 7 }, (_, i) => ({ dx: (i - 3) * 0.32, dy: -2.1 + Math.abs(i - 3) * 0.14, r: 0.7 - Math.abs(i - 3) * 0.06 })),
+    ];
+    puffs.forEach((p, i) => {
+      const r = size * p.r;
+      const puff = add('pf-puff', { left: px(x - r), top: px(y - r), width: px(r * 2), height: px(r * 2) });
+      runs.push(puff.animate([
+        { transform: 'translate(0, 0) scale(.2)', opacity: 0 },
+        { transform: `translate(${p.dx * size * 0.5}px, ${p.dy * size * 0.4}px) scale(.8)`, opacity: 0.95, offset: 0.2 },
+        { transform: `translate(${p.dx * size}px, ${p.dy * size}px) scale(1.1)`, opacity: 0.9, offset: 0.65 },
+        { transform: `translate(${p.dx * size * 1.2}px, ${(p.dy - 0.3) * size}px) scale(1.35)`, opacity: 0 },
+      ], { duration: rand(2600, 3200), delay: 120 + i * 35, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'both' }));
+    });
+  }
+  return Promise.all(runs.map((a) => a.finished)).then(() => made.forEach((el) => el.remove()));
+}
