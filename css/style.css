@@ -1919,8 +1919,30 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-new .toggle { min-height: 46px; }
 .bingo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .bingo-box .sound-form { padding: 12px; }
+/* Tipprunde */
+.bingo-bet-note {
+  margin: 12px 0 0; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid rgba(255, 184, 28, .45); background: rgba(255, 184, 28, .1);
+  font-size: 14px; line-height: 1.45;
+}
+.bingo-bet-note.is-won { border-color: rgba(123, 208, 47, .55); background: rgba(123, 208, 47, .12); }
+.bingo-bet-start { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.bingo-bet-start[hidden] { display: none; }
+.bingo-bet-state { margin: 0; font-size: 14px; color: var(--amber); }
 .bingo-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
-.bingo-items li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+/* Pro Bild: oben Name, Kopieren, Löschen – darunter Seltenheit und Zahl im Icon */
+.bingo-items li {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) 78px auto auto; gap: 6px 8px; align-items: center;
+  grid-template-areas: "img name name copy del" "img rarity amount amount amount";
+  padding-bottom: 6px; border-bottom: 1px solid var(--line);
+}
+.bingo-items li:last-child { border-bottom: 0; }
+.bingo-items li > img { grid-area: img; }
+.bingo-items li > input:not(.bingo-amount-pick) { grid-area: name; }
+.bingo-items li > .bingo-rarity-pick { grid-area: rarity; max-width: none; }
+.bingo-items li > .bingo-amount-pick { grid-area: amount; width: 78px; }
+.bingo-items li > button:not(.prank-del) { grid-area: copy; }
+.bingo-items li > .prank-del { grid-area: del; }
 .bingo-rarity-pick {
   min-height: 36px; max-width: 128px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2);
   border-left: 6px solid var(--line-2); background: var(--bg); font-size: 13px;

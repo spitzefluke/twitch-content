@@ -134,6 +134,16 @@ p { margin: 0; }
   animation: ov-in .6s var(--ease-out) both;
 }
 .ov-bingo-body { position: relative; padding: .75em; }
+/* Tipprunde: Zeile über der Karte, Reihen-Nummern links (breitere Karte) */
+.ov-bingo.has-bet { width: calc(var(--n, 5) * 4.4em + 2.7em); }
+.ov-bingo-bet {
+  margin: 0 0 .6em; padding: .45em .7em; border-radius: .6em;
+  background: rgba(255, 184, 28, .16); border: 1px solid rgba(255, 184, 28, .55);
+  color: #ffe2a0; font-size: .82em; font-weight: 700; line-height: 1.3;
+}
+.ov-bingo-bet b { color: #fff; font-variant-numeric: tabular-nums; }
+.ov-bingo-bet.is-won { background: rgba(123, 208, 47, .2); border-color: rgba(123, 208, 47, .7); color: #d9ffb8; animation: ov-bet-pop .6s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes ov-bet-pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
 .ov-bingo .bingo-grid { font-size: .95em; }
 .ov-bingo-win {
   position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0;
@@ -167,6 +177,7 @@ p { margin: 0; }
 .ov-bingo.bingo-style-neon .bingo-rarity { background: transparent; color: var(--rc); border: 1px solid var(--rc); text-shadow: 0 0 .4em var(--rc); }
 .ov-bingo.bingo-style-neon .bingo-cell.r-mythic { box-shadow: 0 0 1.1em rgba(255, 216, 74, .9), inset 0 0 1em rgba(255, 216, 74, .35); }
 .ov-bingo.bingo-style-neon .bingo-cell.r-mythic .bingo-rarity { background: transparent; color: #ffe27a; }
+.ov-bingo.bingo-style-neon .bingo-amount { color: #fff; -webkit-text-stroke: 0; text-shadow: 0 0 .15em var(--rc), 0 0 .45em var(--rc), 0 0 .8em var(--rc); }
 .ov-bingo.bingo-style-neon .bingo-stamp {
   background: transparent; border: .22em solid #ff3d8b;
   box-shadow: 0 0 .7em #ff3d8b, inset 0 0 .6em rgba(255, 61, 139, .6);
@@ -177,6 +188,9 @@ p { margin: 0; }
   background: transparent; border-color: #fff; box-shadow: 0 0 .8em #ff3d8b, 0 0 .3em #fff, inset 0 0 .6em rgba(255, 61, 139, .7);
 }
 .ov-bingo.bingo-style-neon .bingo-letter { background: none; color: var(--lc); text-shadow: 0 0 .3em var(--lc), 0 0 .8em var(--lc); }
+.ov-bingo.bingo-style-neon .bingo-rownum { color: #ffd84a; text-shadow: 0 0 .3em #ffb03c, 0 0 .7em #ffb03c; }
+.ov-bingo.bingo-style-neon .ov-bingo-bet { background: transparent; border-color: #ffd84a; color: #ffe27a; box-shadow: 0 0 .5em rgba(255, 216, 74, .5), inset 0 0 .5em rgba(255, 216, 74, .25); }
+.ov-bingo.bingo-style-neon .ov-bingo-bet.is-won { border-color: #7bff4f; color: #c8ffb0; box-shadow: 0 0 .5em rgba(123, 255, 79, .55); }
 .ov-bingo.bingo-style-neon .bingo-letter--0 { --lc: #4fb6ff; }
 .ov-bingo.bingo-style-neon .bingo-letter--1 { --lc: #ff5fa8; }
 .ov-bingo.bingo-style-neon .bingo-letter--2 { --lc: #7bff4f; }
@@ -211,6 +225,7 @@ p { margin: 0; }
 .ov-bingo.bingo-style-paper .bingo-rarity { top: .45em; background: var(--rc); color: #1e1a10; }
 .ov-bingo.bingo-style-paper .bingo-cell.r-mythic { box-shadow: inset 0 .38em 0 #f2b92b, 0 0 .7em rgba(242, 185, 43, .7); border-color: #f2c14e; }
 .ov-bingo.bingo-style-paper .bingo-cell.r-mythic .bingo-rarity { background: linear-gradient(90deg, #fff09a, #f2b92b); color: #3b2400; }
+.ov-bingo.bingo-style-paper .bingo-amount { color: #2a2418; -webkit-text-stroke: .09em #fffdf5; text-shadow: none; }
 /* Stempel wie mit dem Bingo-Marker: rot, etwas unregelmäßig */
 .ov-bingo.bingo-style-paper .bingo-stamp {
   inset: 10%; border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
@@ -224,6 +239,10 @@ p { margin: 0; }
 }
 .ov-bingo.bingo-style-paper .bingo-letter { background: #d8322a; color: #fff6e0; text-shadow: none; }
 .ov-bingo.bingo-style-paper .bingo-letter--1, .ov-bingo.bingo-style-paper .bingo-letter--3 { background: #1f4fa3; }
+.ov-bingo.bingo-style-paper .bingo-rownum { color: #d8322a; text-shadow: none; }
+.ov-bingo.bingo-style-paper .ov-bingo-bet { background: #fff3c4; border-color: #e0b84a; color: #5a3d00; }
+.ov-bingo.bingo-style-paper .ov-bingo-bet b { color: #2a1c00; }
+.ov-bingo.bingo-style-paper .ov-bingo-bet.is-won { background: #e3f6cf; border-color: #6aa33a; color: #24480c; }
 .ov-bingo.bingo-style-paper .ov-bingo-win { color: #d8322a; text-shadow: 0 .06em 0 #fff6e0, 0 .12em .3em rgba(0, 0, 0, .35); }
 
 /* ---------- Ärgere den Dave ---------- */

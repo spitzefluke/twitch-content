@@ -2,8 +2,8 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
-import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
-import { RARITIES, bingoState, drawCard, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
+import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1061,7 +1061,7 @@ function setupPrank() {
     b.className = `prank-item${it.nice ? ' is-nice' : ''}`;
     b.dataset.prankAction = '';
     b.innerHTML = '<span class="prank-item-emoji" aria-hidden="true"></span><span class="prank-item-name"></span>';
-    b.querySelector('.prank-item-emoji').textContent = it.emoji;
+    setItemIcon(b.querySelector('.prank-item-emoji'), it);
     b.querySelector('.prank-item-name').textContent = it.name;
     b.setAttribute('aria-label', `${it.name} werfen`);
     b.addEventListener('click', () => prankClick('throw', it));
@@ -1371,7 +1371,7 @@ function renderPrankLog(newId = null) {
     if (p.id === newId) li.className = 'is-new';
     const icon = document.createElement('span');
     icon.className = 'prank-log-icon';
-    icon.textContent = prankEmoji(p);
+    setPrankIcon(icon, p);
     const main = document.createElement('span');
     main.className = 'h-main';
     main.textContent = prankText(p);
@@ -1519,6 +1519,8 @@ function setupBingo() {
     renderBingoDialog();
   }));
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
+  $('#bingo-bet-btn').addEventListener('click', startBingoBet);
+  $('#bingo-bet-cancel').addEventListener('click', () => cancelBingoBet());
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
   form.files.addEventListener('change', () => {
@@ -1580,14 +1582,17 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
     ? 'Noch keine Karte. Rechts Bilder hochladen und „Neue Karte ziehen“.'
     : 'Noch keine Karte gezogen – gleich geht’s los.';
   grid.hidden = !card;
+  const bet = card?.bet ?? null;
   if (card) {
     renderBingoGrid(grid, card, {
       urlFor: (path) => state.api.bingoUrl(path),
       onCell: admin ? toggleBingoCell : null,
       stamped,
-      rarityOf: bingoRarityOf,
+      itemOf: bingoItemOf,
+      labels: bet?.status === 'active' || bet?.status === 'resolved',
     });
   }
+  paintBingoBet(bet, admin && on);
   $('#bingo-status').textContent = card
     ? `${st.done} von ${st.total} gefunden${st.count ? ` · ${st.count}× Bingo!` : ''}${card.visible ? '' : ' · im Stream ausgeblendet'}`
     : '';
@@ -1654,6 +1659,60 @@ function renderBingoItems() {
         toast(`Seltenheit nicht gespeichert: ${germanError(err)}`, 'error');
       }
     });
+    // Zahl im Icon, z. B. 5 auf dem Kill-Symbol = 5 Kills
+    const amount = document.createElement('input');
+    amount.type = 'number';
+    amount.className = 'bingo-amount-pick';
+    amount.min = '1';
+    amount.max = String(MAX_AMOUNT);
+    amount.step = '1';
+    amount.inputMode = 'numeric';
+    amount.placeholder = 'Zahl';
+    amount.value = item.amount ?? '';
+    amount.title = 'Zahl im Icon, z. B. 5 für 5 Kills – leer lassen für keine';
+    amount.setAttribute('aria-label', `Zahl im Icon von „${item.name}“`);
+    amount.addEventListener('change', async () => {
+      const raw = amount.value.trim();
+      const value = raw === '' ? null : Math.round(Number(raw));
+      if (value !== null && !(value >= 1 && value <= MAX_AMOUNT)) {
+        amount.value = item.amount ?? '';
+        toast(`Die Zahl muss zwischen 1 und ${MAX_AMOUNT} liegen.`, 'error');
+        return;
+      }
+      try {
+        await state.api.updateBingoItem(item.id, { amount: value });
+        item.amount = value;
+        renderBingoDialog();
+      } catch (err) {
+        amount.value = item.amount ?? '';
+        toast(`Zahl nicht gespeichert: ${germanError(err)}`, 'error');
+      }
+    });
+    // Kopie mit anderer Zahl: ein Kill-Symbol für 3, 5 und 10 Kills
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'prank-try';
+    copy.textContent = '⧉';
+    copy.title = 'Kopie mit anderer Zahl';
+    copy.setAttribute('aria-label', `„${item.name}“ mit anderer Zahl kopieren`);
+    copy.addEventListener('click', async () => {
+      const answer = prompt(`Kopie von „${item.name}“ – welche Zahl soll im Icon stehen?`, String(Math.min(MAX_AMOUNT, (item.amount ?? 0) + 1)));
+      if (answer === null) return;
+      const value = answer.trim() === '' ? null : Math.round(Number(answer));
+      if (value !== null && !(value >= 1 && value <= MAX_AMOUNT)) {
+        toast(`Die Zahl muss zwischen 1 und ${MAX_AMOUNT} liegen.`, 'error');
+        return;
+      }
+      copy.disabled = true;
+      try {
+        const created = await state.api.copyBingoItem(item, { amount: value });
+        state.bingo.items = [...state.bingo.items, created];
+        renderBingoDialog();
+      } catch (err) {
+        copy.disabled = false;
+        toast(`Kopieren fehlgeschlagen: ${germanError(err)}`, 'error');
+      }
+    });
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
@@ -1671,9 +1730,95 @@ function renderBingoItems() {
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    li.append(img, name, rarity, del);
+    li.append(img, name, copy, del, rarity, amount);
     return li;
   }));
+}
+
+// ---------- Tipprunde: Zuschauer tippen mit Kanalpunkten, welche Reihe zuerst voll wird ----------
+const clock = (iso) => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+function paintBingoBet(bet, admin) {
+  const open = bet?.status === 'active' && Date.parse(bet.lock_at) > Date.now();
+  // Ende der Tippzeit: einmal neu zeichnen, damit der Text wechselt
+  clearTimeout(state.bingo.betTimer);
+  if (open) state.bingo.betTimer = setTimeout(() => $('#bingo-dialog').open && renderBingoDialog(), Date.parse(bet.lock_at) - Date.now() + 500);
+
+  const note = $('#bingo-bet-note');
+  let text = '';
+  if (bet?.status === 'active') {
+    text = open
+      ? `🎯 Tipprunde läuft! Tippe bis ${clock(bet.lock_at)} Uhr in Daves Twitch-Chat mit deinen Kanalpunkten, welche Reihe zuerst voll wird – die Vorhersage steht oben im Chat. Wer richtig liegt, bekommt Punkte dazu.`
+      : '🎯 Die Tipps sind abgegeben. Jetzt zählt, welche Reihe zuerst voll wird!';
+  } else if (bet?.status === 'resolved') {
+    text = `🎯 ${bet.winner_title ?? 'Eine Reihe'} war zuerst voll – wer darauf getippt hat, hat Kanalpunkte gewonnen.`;
+  }
+  note.textContent = text;
+  note.hidden = !text;
+  note.classList.toggle('is-won', bet?.status === 'resolved');
+
+  if (!admin) return;
+  const twitch = state.twitch ?? {};
+  const running = bet?.status === 'active';
+  let hint = '';
+  if (!state.api.demo && !twitch.connected) hint = 'Dave muss zuerst Twitch verbinden (Twitch-Knopf oben).';
+  else if (!state.api.demo && twitch.predictions_scope === false) hint = 'Für Tipprunden braucht die Seite eine neue Twitch-Berechtigung: Twitch-Knopf oben → „Neu verbinden“.';
+  else if (!state.bingo.card) hint = 'Erst eine Karte ziehen.';
+  $('#bingo-bet-start').hidden = running;
+  $('#bingo-bet-btn').disabled = !!hint;
+  $('#bingo-bet-cancel').hidden = !running;
+  const stateEl = $('#bingo-bet-state');
+  stateEl.textContent = running
+    ? open
+      ? `Läuft – getippt wird bis ${clock(bet.lock_at)} Uhr. Erst danach Items abhaken.`
+      : 'Tipps sind zu. Die erste volle Reihe gewinnt – beim Abhaken wird automatisch aufgelöst.'
+    : hint || (bet?.status === 'resolved' ? `Letzte Runde: ${bet.winner_title} hat gewonnen.` : bet?.status === 'canceled' ? 'Letzte Runde wurde abgebrochen.' : '');
+  stateEl.hidden = !stateEl.textContent;
+}
+
+async function startBingoBet() {
+  const btn = $('#bingo-bet-btn');
+  btn.disabled = true;
+  btn.classList.add('is-loading');
+  try {
+    const { bet } = await state.api.bingoBet('start', Number($('#bingo-bet-seconds').value));
+    if (state.bingo.card) state.bingo.card = { ...state.bingo.card, bet };
+    toast('Tipprunde gestartet – die Vorhersage steht jetzt in Daves Twitch-Chat.', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error', 8000);
+  } finally {
+    btn.classList.remove('is-loading');
+    renderBingoDialog();
+  }
+}
+
+async function cancelBingoBet({ ask = true } = {}) {
+  if (ask && !confirm('Tipprunde abbrechen? Alle bekommen ihre Kanalpunkte zurück.')) return false;
+  try {
+    const { bet } = await state.api.bingoBet('cancel');
+    if (state.bingo.card) state.bingo.card = { ...state.bingo.card, bet };
+    renderBingoDialog();
+    return true;
+  } catch (err) {
+    toast(germanError(err), 'error', 8000);
+    return false;
+  }
+}
+
+// Nach dem Abhaken: Ist eine getippte Reihe voll, löst der Server die Vorhersage auf.
+async function checkBingoBet(card) {
+  const bet = card?.bet;
+  if (bet?.status !== 'active') return;
+  const keys = new Set(bet.outcomes.map((o) => o.key));
+  if (!fullBetLines(card).some((l) => keys.has(l.key))) return;
+  try {
+    const { bet: next } = await state.api.bingoBet('check');
+    if (state.bingo.card) state.bingo.card = { ...state.bingo.card, bet: next };
+    if (next?.status === 'resolved') toast(`🎯 ${next.winner_title} gewinnt – die Kanalpunkte sind verteilt.`, 'ok', 6000);
+    renderBingoDialog();
+  } catch (err) {
+    toast(`Tipprunde nicht aufgelöst: ${germanError(err)}`, 'error', 8000);
+  }
 }
 
 // Neue Karte vom Server (live per Realtime) oder aus der eigenen Aktion
@@ -1694,10 +1839,9 @@ function celebrateBingo() {
   if (!$('#bingo-dialog').open) toast('BINGO! Eine Reihe ist voll.', 'ok', 5000);
 }
 
-// Aktuelle Seltenheit aus der Bilderliste (ein Admin kann sie nachträglich ändern)
-function bingoRarityOf(cell) {
-  const item = state.bingo.items.find((i) => i.id === cell.id);
-  return item ? item.rarity ?? null : undefined;
+// Das Bild aus der aktuellen Liste – ein Admin kann Seltenheit und Zahl nachträglich ändern
+function bingoItemOf(cell) {
+  return state.bingo.items.find((i) => i.id === cell.id);
 }
 
 // ---------- Eigene Karte: selbst ziehen, selbst abkreuzen ----------
@@ -1719,7 +1863,7 @@ function renderMyBingo(stamped = null) {
   empty.hidden = !text;
   $('#my-bingo-new').disabled = !on || state.bingo.mineOn === false || !items.length;
   if (mine) {
-    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped, rarityOf: bingoRarityOf });
+    renderBingoGrid(grid, mine, { urlFor: (path) => state.api.bingoUrl(path), onCell: toggleMyBingo, stamped, itemOf: bingoItemOf });
   }
 }
 
@@ -1764,6 +1908,7 @@ async function toggleBingoCell(index, node) {
   try {
     const card = await state.api.toggleBingo(index);
     applyBingoCard(card, card.marked.includes(index) ? index : null);
+    checkBingoBet(card);
   } catch (err) {
     node.disabled = false;
     toast(germanError(err), 'error');
@@ -1772,7 +1917,10 @@ async function toggleBingoCell(index, node) {
 
 async function newBingoCard() {
   const { card } = state.bingo;
-  if (card && bingoState(card).done && !confirm('Neue Karte ziehen? Die Haken der aktuellen Karte gehen verloren.')) return;
+  if (card?.bet?.status === 'active') {
+    if (!confirm('Es läuft eine Tipprunde. Abbrechen (alle bekommen ihre Kanalpunkte zurück) und neue Karte ziehen?')) return;
+    if (!(await cancelBingoBet({ ask: false }))) return;
+  } else if (card && bingoState(card).done && !confirm('Neue Karte ziehen? Die Haken der aktuellen Karte gehen verloren.')) return;
   const btn = $('#bingo-new-btn');
   btn.disabled = true;
   btn.classList.add('is-loading');
@@ -1819,7 +1967,7 @@ async function uploadBingoImages(e) {
       formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
       try {
         const blob = await shrinkImage(file);
-        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), rarityFromFile(file.name));
+        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), { rarity: rarityFromFile(file.name), amount: amountFromFile(file.name) });
         state.bingo.items = [...state.bingo.items, item];
         done++;
       } catch (err) {

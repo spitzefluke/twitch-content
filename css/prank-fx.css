@@ -7,6 +7,14 @@
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 .pf-spark { z-index: 4; filter: none; }
+.pf-icon { display: inline-grid; }
+.pf-icon svg { display: block; width: 1em; height: 1em; }
+/* Nuke */
+.pf-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; mix-blend-mode: screen; }
+.pf-fireball, .pf-shock, .pf-puff { position: absolute; z-index: 4; border-radius: 50%; pointer-events: none; will-change: transform, opacity; }
+.pf-fireball { background: radial-gradient(circle, #fffbe0 0 12%, #ffd23a 30%, #ff7a12 52%, rgba(190, 40, 0, .75) 64%, rgba(120, 20, 0, 0) 72%); }
+.pf-shock { box-sizing: border-box; border: solid rgba(255, 236, 180, .85); box-shadow: 0 0 .6em rgba(255, 200, 90, .8); }
+.pf-puff { background: radial-gradient(circle at 40% 35%, #d9cfc4, #8c7f74 55%, #5a4f47 75%, rgba(60, 50, 45, 0) 76%); filter: drop-shadow(0 0 6px rgba(255, 140, 40, .35)); }
 .pf-splat { position: absolute; z-index: 2; overflow: visible; pointer-events: none; transform-origin: 50% 50%; }
 .pf-splat path, .pf-splat circle { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
 .pf-splat--cloud { filter: blur(6px); opacity: .85; }

@@ -31,7 +31,7 @@
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
 import { Wheel } from './wheel.js';
-import { Sfx, prankEmoji, prankText, throwItem } from './prank-fx.js';
+import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
@@ -434,7 +434,7 @@ function setupPranks(source) {
     const el = document.createElement('p');
     el.className = 'ov-prank-msg';
     el.innerHTML = '<span aria-hidden="true"></span><b></b>';
-    el.firstChild.textContent = prankEmoji(p);
+    setPrankIcon(el.firstChild, p);
     el.lastChild.textContent = prankText(p);
     feed.append(el);
     while (feed.children.length > 4) feed.firstChild.remove();
@@ -478,7 +478,7 @@ function setupPranks(source) {
   source.onPrank(handle);
 
   if (opt.test) {
-    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish'];
+    const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke'];
     const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
     let n = 0;
     const fake = () => {
@@ -506,14 +506,14 @@ async function setupBingo(source) {
   const urlFor = (path) => (path.startsWith('data:') ? path : source.bingoUrl(path));
   let card = await source.bingoCard().catch((err) => { console.warn('Overlay: Bingo nicht verfügbar', err); return null; });
   if (!card && opt.test) card = testCard();
-  // Aktuelle Seltenheit der Bilder – ein Admin kann sie nachträglich ändern
+  // Aktuelle Bilder – ein Admin kann Seltenheit und Zahl nachträglich ändern
   let items = new Map();
   const loadItems = async () => {
     const list = await source.bingoItems().catch(() => []);
-    items = new Map(list.map((i) => [i.id, i.rarity ?? null]));
+    items = new Map(list.map((i) => [i.id, i]));
   };
   await loadItems();
-  const rarityOf = (cell) => (items.has(cell.id) ? items.get(cell.id) : undefined);
+  const itemOf = (cell) => items.get(cell.id);
 
   function show(next, stamped = null) {
     card = next;
@@ -521,9 +521,38 @@ async function setupBingo(source) {
     card$.hidden = !visible;
     if (!visible) return;
     card$.style.setProperty('--n', card.size);
-    renderBingoGrid(grid, card, { urlFor, stamped, rarityOf });
+    const bet = card.bet;
+    const labels = bet?.status === 'active' || bet?.status === 'resolved';
+    card$.classList.toggle('has-bet', labels);
+    renderBingoGrid(grid, card, { urlFor, stamped, itemOf, labels });
+    paintBet(bet);
     const st = bingoState(card);
     $('ov-bingo-progress').textContent = `${st.done}/${st.total}${st.count ? ` · ${st.count}× Bingo` : ''}`;
+  }
+
+  // Tipprunde: Aufruf mit Countdown, danach wer gewonnen hat
+  const betEl = $('ov-bingo-bet');
+  let betTimer = null;
+  function paintBet(bet) {
+    clearInterval(betTimer);
+    const tick = () => {
+      const left = bet?.status === 'active' ? Date.parse(bet.lock_at) - Date.now() : 0;
+      if (bet?.status === 'active' && left > 0) {
+        const s = Math.ceil(left / 1000);
+        betEl.innerHTML = `🎯 Tippt mit Kanalpunkten: Welche Reihe wird zuerst voll? <b>${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</b>`;
+      } else if (bet?.status === 'active') {
+        betEl.textContent = '🎯 Tipps sind zu – welche Reihe wird zuerst voll?';
+        clearInterval(betTimer);
+      } else if (bet?.status === 'resolved') {
+        betEl.textContent = `🎯 ${bet.winner_title ?? 'Eine Reihe'} gewinnt – Kanalpunkte verteilt!`;
+      }
+    };
+    const shown = bet?.status === 'active' || bet?.status === 'resolved';
+    betEl.hidden = !shown;
+    betEl.classList.toggle('is-won', bet?.status === 'resolved');
+    if (!shown) return;
+    tick();
+    if (bet.status === 'active') betTimer = setInterval(tick, 1000);
   }
 
   async function update(next) {
@@ -563,8 +592,8 @@ function testCard() {
     ['💣', 'Granate'], ['🍌', 'Banane'], ['🛡️', 'Schild'], ['🚗', 'Auto'], ['🔑', 'Tresorschlüssel'], ['🍄', 'Pilz'], ['📦', 'Truhe']];
   const svg = (emoji) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="72" font-size="70" text-anchor="middle">${emoji}</text></svg>`)}`;
   const rarities = ['mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common', 'exotic', null];
-  const cells = items.sort(() => Math.random() - 0.5).slice(0, 8)
-    .map(([e, name], i) => ({ id: `t${i}`, name, path: svg(e), ...(rarities[i] ? { rarity: rarities[i] } : {}) }));
+  const cells = [['💀', 'Kill', 5], ...items.sort(() => Math.random() - 0.5).slice(0, 7)].sort(() => Math.random() - 0.5)
+    .map(([e, name, amount], i) => ({ id: `t${i}`, name, path: svg(e), ...(rarities[i] ? { rarity: rarities[i] } : {}), ...(amount ? { amount } : {}) }));
   cells.splice(4, 0, { free: true });
   return { size: 3, cells, marked: [4], visible: true, created_at: 'test' };
 }

@@ -1,14 +1,13 @@
 -- ============================================================
 -- Zugfahrer_DaveTV · Content-Stellwerk
--- Fortnite-Bingo: Seltenheit der Items (Gewöhnlich bis Mythisch/Exotisch).
--- Die Karte zeigt jedes Feld in der Farbe seiner Seltenheit.
+-- Fortnite-Bingo: Zahl im Icon, z. B. 5 auf dem Kill-Symbol = 5 Kills.
 -- Mehrfach ausführbar (steht genauso in …_bingo.sql).
 -- ============================================================
 
-alter table public.bingo_items add column if not exists rarity text
-  check (rarity is null or rarity in ('common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic'));
+alter table public.bingo_items add column if not exists amount int
+  check (amount is null or amount between 1 and 999);
 
--- Neue Karten nehmen die Seltenheit mit auf
+-- Neue Karten nehmen alles vom Bild mit (auch Seltenheit und Zahl)
 create or replace function public.bingo_new_card(p_size int, p_free boolean default true)
 returns public.bingo_card language plpgsql security definer set search_path = '' as $$
 declare
