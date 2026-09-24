@@ -291,7 +291,6 @@ function renderHeader() {
   $('#user-avatar').textContent = profile.username.slice(0, 1).toUpperCase();
   $('#user-role').hidden = !profile.is_admin;
   $('#admin-btn').hidden = !profile.is_admin;
-  $('#obs-btn').hidden = !profile.is_admin;
 
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
@@ -636,10 +635,15 @@ function setupDialogs() {
   $('#idea-form').addEventListener('submit', submitIdea);
   $('#twitch-btn').addEventListener('click', openTwitchDialog);
   $('#obs-btn').addEventListener('click', openObsDialog);
-  $('#obs-options').addEventListener('change', updateObs);
+  $('#obs-options').addEventListener('input', () => updateObs());
+  $('#obs-options').addEventListener('change', () => updateObs());
+  $('#obs-options').addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
   // Vorschau beim Schließen entfernen: Sie dreht sonst im Hintergrund weiter.
-  $('#obs-dialog').addEventListener('close', () => $('#obs-preview iframe')?.remove());
+  $('#obs-dialog').addEventListener('close', () => {
+    clearTimeout(obsPreviewTimer);
+    $('#obs-preview iframe')?.remove();
+  });
   new ResizeObserver(fitObsPreview).observe($('#obs-preview'));
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
@@ -941,40 +945,100 @@ function toLocalInput(d) {
 // ============================================================
 // OBS-Overlay
 // ============================================================
+// Jede Einstellung landet nur in der Adresse, wenn sie vom Standard abweicht.
+// Die Standards stehen als value/checked/selected im Formular (index.html)
+// und in js/overlay.js – beide gleich halten.
+const OBS_KEY = 'obs_options';
+const OBS_UNITS = { wsize: '%', nsize: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%', vol: '%' };
+
+function obsFields() {
+  return [...$('#obs-options').elements].filter((el) => el.name && !el.name.endsWith('-out'));
+}
+
+function obsDefault(el) {
+  if (el.type === 'checkbox') return el.defaultChecked;
+  if (el.tagName === 'SELECT') return [...el.options].find((o) => o.defaultSelected)?.value ?? el.options[0].value;
+  return el.defaultValue;
+}
+
 function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
   p.set('wheel', f.wheel.value);
   p.set('next', f.next.value);
-  if (f.scale.value !== '1') p.set('scale', f.scale.value);
-  if (preview || !f.sound.checked) p.set('sound', '0');
-  if (preview) p.set('test', '1');
+  for (const el of obsFields()) {
+    if (el.name === 'wheel' || el.name === 'next') continue;
+    const value = el.type === 'checkbox' ? el.checked : el.value.trim();
+    if (value === obsDefault(el) || value === '') continue;
+    if (el.type === 'checkbox') p.set(el.name, value ? '1' : '0');
+    else if (el.type === 'color') p.set(el.name, value.slice(1));
+    else p.set(el.name, value);
+  }
+  if (preview) { p.set('vol', '0'); p.set('test', '1'); }
   return url.href;
 }
 
+function loadObs() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(OBS_KEY)); } catch { /* ohne Speicher: Standards */ }
+  if (!saved || typeof saved !== 'object') return;
+  for (const el of obsFields()) {
+    if (!(el.name in saved)) continue;
+    if (el.type === 'checkbox') el.checked = Boolean(saved[el.name]);
+    else el.value = String(saved[el.name]);
+  }
+}
+
+function saveObs(values) {
+  try {
+    if (values) localStorage.setItem(OBS_KEY, JSON.stringify(values));
+    else localStorage.removeItem(OBS_KEY);
+  } catch { /* nur Komfort */ }
+}
+
 async function openObsDialog() {
+  loadObs();
   $('#obs-dialog').showModal();
-  updateObs();
+  updateObs({ now: true });
   const note = $('#obs-note');
   if (state.api.demo) {
     note.textContent = 'Demo-Modus: OBS läuft in einem eigenen Browser und bekommt die Drehungen von dieser Seite nicht mit. Die Vorschau hier funktioniert, weil sie im selben Browser läuft.';
     note.hidden = false;
   } else {
     const ready = await state.api.overlayReady().catch(() => false);
-    note.textContent = 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260923000000_overlay.sql ausführen. Vorher bleibt das Overlay in OBS leer.';
+    note.textContent = state.profile.is_admin
+      ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260923000000_overlay.sql ausführen. Vorher bleibt das Overlay in OBS leer.'
+      : 'Das Overlay ist noch nicht freigeschaltet und bleibt in OBS vorerst leer. Ein Admin muss dafür einmal die Datenbank einrichten – sag Dave Bescheid.';
     note.hidden = ready;
   }
 }
 
-function updateObs() {
+let obsPreviewTimer = 0;
+
+function updateObs({ now = false } = {}) {
+  const f = $('#obs-options');
+  const values = {};
+  for (const el of obsFields()) values[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+  for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
+  saveObs(values);
   $('#obs-url').value = obsUrl();
+
+  // Die Vorschau lädt neu – beim Ziehen eines Reglers erst, wenn er kurz ruht.
+  clearTimeout(obsPreviewTimer);
+  obsPreviewTimer = setTimeout(renderObsPreview, now ? 0 : 350);
+}
+
+function renderObsPreview() {
   const box = $('#obs-preview');
-  box.querySelector('iframe')?.remove();
+  const src = obsUrl({ preview: true });
+  const old = box.querySelector('iframe');
+  if (old?.dataset.src === src) return;
+  old?.remove();
   const frame = document.createElement('iframe');
   frame.title = 'Vorschau des OBS-Overlays';
   frame.tabIndex = -1;
-  frame.src = obsUrl({ preview: true });
+  frame.src = frame.dataset.src = src;
   box.append(frame);
   fitObsPreview();
 }

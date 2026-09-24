@@ -92,7 +92,15 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 
 ### 4. Edge Functions deployen
 
-Mit der [Supabase CLI](https://supabase.com/docs/guides/cli):
+**Ohne eigene Installation – über GitHub (empfohlen):** Die Action `.github/workflows/deploy-functions.yml` lädt die Functions hoch, sobald sich auf `main` etwas unter `supabase/functions` ändert.
+
+1. In Supabase oben rechts auf das Profilbild → **Account preferences** → **Access Tokens** (direkt: supabase.com/dashboard/account/tokens) → **Generate new token**, Namen z. B. `github`, Token kopieren.
+2. In GitHub im Repository **Settings → Secrets and variables → Actions → New repository secret**: Name `SUPABASE_ACCESS_TOKEN`, Wert = der Token.
+3. Zum sofortigen Deployen: **Actions → Edge Functions deployen → Run workflow**. Nach gut einer Minute steht dort ein grüner Haken.
+
+Die Secrets der Functions (`TWITCH_CLIENT_ID` usw., Tabelle unten) trägst du weiterhin in Supabase unter **Edge Functions → Secrets** ein.
+
+**Alternativ vom eigenen Rechner** mit der [Supabase CLI](https://supabase.com/docs/guides/cli):
 
 ```bash
 supabase login
@@ -186,7 +194,7 @@ Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mi
 
 ## OBS-Overlay
 
-Im Dashboard oben auf **OBS** klicken (nur für Admins sichtbar). Dort stellst du ein, in welcher Ecke das Glücksrad und die nächste Abfahrt erscheinen, siehst eine Vorschau und kopierst die fertige Adresse.
+Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Dort stellst du Position, Größe, Überschriften, Farben, Hintergrund, Anzeigedauer und Lautstärke ein, siehst alles sofort in der Vorschau und kopierst die fertige Adresse. Die Einstellungen merkt sich der Browser.
 
 In OBS:
 
@@ -194,14 +202,23 @@ In OBS:
 2. Die kopierte Adresse einfügen, **Breite 1920**, **Höhe 1080**.
 3. Optional **„Audio über OBS steuern“** anhaken, dann erscheinen Tick und Gong im Audio-Mixer.
 
-Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad taucht nur auf, wenn jemand dreht – per Kanalpunkte oder auf der Webseite –, und verschwindet nach dem Ergebnis wieder.
+Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad taucht nur auf, wenn jemand dreht – per Kanalpunkte oder auf der Webseite –, und verschwindet nach dem Ergebnis wieder (außer mit `always=1`). Für verschiedene Szenen kannst du mehrere Browserquellen mit unterschiedlichen Adressen anlegen.
 
 | Option in der Adresse | Wirkung |
 |---|---|
-| `wheel=br` / `bl` / `tr` / `tl` / `0` | Ecke fürs Glücksrad (unten rechts, unten links, oben rechts, oben links, aus) |
-| `next=bl` / … / `0` | Ecke für „Nächste Abfahrt“ |
-| `scale=1.25` | Größe (0.5 bis 2) |
-| `sound=0` | ohne Ton |
+| `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` / `0` | Position Glücksrad (unten rechts, unten Mitte, unten links, oben …, aus) |
+| `next=bl` / … / `0` | Position „Nächste Abfahrt“ |
+| `wsize=120`, `nsize=80` | Größe der Karten in Prozent (50 bis 200); `scale=1.2` gilt für beide |
+| `from=twitch` / `web` | nur Kanalpunkte-Drehungen bzw. nur Drehungen auf der Seite zeigen |
+| `hold=15` | Sekunden, die das Ergebnis stehen bleibt (3 bis 60) |
+| `always=1` | Glücksrad dauerhaft zeigen, zwischen den Drehungen mit „Kanalpunkte einlösen zum Drehen“ |
+| `vcolor=0` | Glücksrad in der Akzentfarbe statt in der Farbe der Variante |
+| `wlabel=…`, `nlabel=…` | eigene Überschriften der Karten |
+| `rotate=20` | Sekunden bis zur nächsten Content-Idee (5 bis 120) |
+| `margin=80` | Abstand zum Bildrand in Pixeln |
+| `bg=50` | Deckkraft des Kartenhintergrunds in Prozent (0 = nur Schrift) |
+| `accent=3ddc84` | Akzentfarbe (Hex ohne `#`) |
+| `vol=40` | Lautstärke in Prozent, `0` = ohne Ton |
 | `test=1` | alle 20 Sekunden eine Probe-Drehung – nur zum Ausrichten, danach wieder entfernen |
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.

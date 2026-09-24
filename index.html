@@ -317,7 +317,7 @@
           <span id="user-name"></span>
           <span id="user-role" class="role-badge" hidden>Admin</span>
         </div>
-        <button id="obs-btn" class="btn btn--ghost btn--sm" type="button" hidden>OBS</button>
+        <button id="obs-btn" class="btn btn--ghost btn--sm" type="button">OBS</button>
         <a id="admin-btn" class="btn btn--ghost btn--sm" href="admin.html" hidden>Admin</a>
         <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
       </div>
@@ -480,56 +480,112 @@
     </div>
     <div class="obs-body">
       <p class="obs-lead">Als Browserquelle in OBS einbinden. Sobald jemand das Glücksrad dreht – per Kanalpunkte oder hier auf der Seite –, erscheint es klein im Bild, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown.</p>
+      <p class="obs-note" id="obs-note" hidden></p>
 
+      <div class="obs-layout">
       <form class="obs-options" id="obs-options">
-        <label class="field"><span>Glücksrad</span>
-          <select name="wheel">
+        <fieldset class="obs-group">
+          <legend>Glücksrad</legend>
+          <label class="field"><span>Position</span>
+            <select name="wheel">
             <option value="br">unten rechts</option>
+            <option value="bc">unten Mitte</option>
             <option value="bl">unten links</option>
             <option value="tr">oben rechts</option>
+            <option value="tc">oben Mitte</option>
             <option value="tl">oben links</option>
             <option value="0">nicht zeigen</option>
-          </select>
-        </label>
-        <label class="field"><span>Nächste Abfahrt</span>
-          <select name="next">
-            <option value="bl">unten links</option>
+            </select>
+          </label>
+          <label class="field obs-range"><span>Größe <output name="wsize-out"></output></span>
+            <input type="range" name="wsize" min="50" max="200" step="5" value="100">
+          </label>
+          <label class="field"><span>Zeigen bei</span>
+            <select name="from">
+              <option value="all">allen Drehungen</option>
+              <option value="twitch">nur Kanalpunkten</option>
+              <option value="web">nur Drehungen auf der Seite</option>
+            </select>
+          </label>
+          <label class="field obs-range"><span>Ergebnis stehen lassen <output name="hold-out"></output></span>
+            <input type="range" name="hold" min="3" max="30" step="1" value="9">
+          </label>
+          <label class="field obs-wide"><span>Überschrift</span>
+            <input type="text" name="wlabel" maxlength="40" placeholder="Glücksrad">
+          </label>
+          <label class="toggle obs-wide">
+            <input type="checkbox" name="always">
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Immer sichtbar, nicht nur beim Drehen
+          </label>
+          <label class="toggle obs-wide">
+            <input type="checkbox" name="vcolor" checked>
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Rahmen in der Farbe der Glücksrad-Variante
+          </label>
+        </fieldset>
+
+        <fieldset class="obs-group">
+          <legend>Nächste Abfahrt</legend>
+          <label class="field"><span>Position</span>
+            <select name="next">
             <option value="br">unten rechts</option>
-            <option value="tl">oben links</option>
+            <option value="bc">unten Mitte</option>
+            <option value="bl" selected>unten links</option>
             <option value="tr">oben rechts</option>
+            <option value="tc">oben Mitte</option>
+            <option value="tl">oben links</option>
             <option value="0">nicht zeigen</option>
-          </select>
-        </label>
-        <label class="field"><span>Größe</span>
-          <select name="scale">
-            <option value="0.8">klein</option>
-            <option value="1" selected>normal</option>
-            <option value="1.25">groß</option>
-          </select>
-        </label>
-        <label class="toggle obs-sound">
-          <input type="checkbox" name="sound" checked>
-          <span class="toggle-ui" aria-hidden="true"></span>
-          Ton beim Drehen
-        </label>
+            </select>
+          </label>
+          <label class="field obs-range"><span>Größe <output name="nsize-out"></output></span>
+            <input type="range" name="nsize" min="50" max="200" step="5" value="100">
+          </label>
+          <label class="field"><span>Überschrift</span>
+            <input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt">
+          </label>
+          <label class="field obs-range"><span>Nächste Idee nach <output name="rotate-out"></output></span>
+            <input type="range" name="rotate" min="5" max="60" step="1" value="12">
+          </label>
+        </fieldset>
+
+        <fieldset class="obs-group">
+          <legend>Aussehen &amp; Ton</legend>
+          <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
+            <input type="range" name="margin" min="0" max="200" step="4" value="40">
+          </label>
+          <label class="field obs-range"><span>Hintergrund <output name="bg-out"></output></span>
+            <input type="range" name="bg" min="0" max="100" step="2" value="94">
+          </label>
+          <label class="field obs-range"><span>Lautstärke <output name="vol-out"></output></span>
+            <input type="range" name="vol" min="0" max="100" step="5" value="100">
+          </label>
+          <label class="field obs-color"><span>Akzentfarbe</span>
+            <input type="color" name="accent" value="#ffb81c">
+          </label>
+        </fieldset>
+
+        <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
       </form>
 
-      <div class="obs-url">
-        <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
-        <button id="obs-copy" class="btn btn--primary" type="button">Kopieren</button>
+      <div class="obs-side">
+        <div class="obs-preview" id="obs-preview" aria-label="Vorschau mit Probe-Drehung">
+          <span class="obs-preview-label">Vorschau · Probe-Drehung alle 20 Sekunden</span>
+        </div>
+        <div class="obs-url">
+          <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
+          <button id="obs-copy" class="btn btn--primary" type="button">Kopieren</button>
+        </div>
+        <p class="obs-hint">Nach jeder Änderung die Adresse neu kopieren und in OBS in der Browserquelle ersetzen. Mehrere Quellen gehen auch – z. B. eine nur mit dem Glücksrad für eine andere Szene.</p>
       </div>
-
-      <div class="obs-preview" id="obs-preview" aria-label="Vorschau mit Probe-Drehung">
-        <span class="obs-preview-label">Vorschau · Probe-Drehung alle 20 Sekunden</span>
       </div>
 
       <ol class="obs-steps">
         <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken und <b>Browser</b> wählen.</li>
         <li>Adresse oben einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b> eintragen.</li>
         <li>Für den Ton <b>„Audio über OBS steuern“</b> anhaken – dann taucht er im Audio-Mixer auf.</li>
-        <li>Zum Ausrichten hängst du <code>&amp;test=1</code> an die Adresse: Dann dreht sich alle 20 Sekunden ein Probe-Rad.</li>
+        <li>Zum Ausrichten hängst du <code>&amp;test=1</code> an die Adresse: Dann dreht sich alle 20 Sekunden ein Probe-Rad. Danach wieder entfernen.</li>
       </ol>
-      <p class="obs-note" id="obs-note" hidden></p>
     </div>
   </dialog>
 
