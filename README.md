@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -202,7 +202,9 @@ Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Am
 1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
 2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt Daves Kamera in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
 3. **Karten verschieben:** Glücksrad, nächste Abfahrt und Bingo in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Darunter: was zu sehen ist, Größen, Lautstärke – der Rest unter „Mehr Einstellungen“.
-4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„Stellwerk-Overlay“** an (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera. Nach Änderungen einfach noch einmal klicken – dann wird nur die Adresse aktualisiert.
+4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„Stellwerk-Overlay“** an (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
+
+**Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **Dave** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann Dave mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
 
 Das Passwort bleibt nur in diesem Browser; die Verbindung geht direkt an OBS auf `127.0.0.1:4455`, nicht ins Internet. Ohne Verbindung geht es auch: „OBS-Fenster teilen“ zeigt ein geteiltes Fenster (z. B. einen Fenster-Projektor) als Hintergrund der Vorschau, und die Adresse lässt sich kopieren und von Hand als Browserquelle (Breite 1920, Höhe 1080) einfügen.
 
@@ -231,13 +233,22 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `psize=150` | Größe der Wurfgeschosse in Prozent |
 | `quest=tc` / … / `0` | Position der Karte „Unangenehme Frage“ (Standard oben Mitte), `0` = aus |
 | `qsize=120` | Größe der Fragen-Karte in Prozent |
+| `shop=tl` / … / `0` | Position der Kisten-Shop-Karte (Standard oben links), `0` = aus |
+| `ssize=120` | Größe der Kisten-Shop-Karte in Prozent |
 | `pet=0` | Daves Dino ausblenden |
 | `dsize=130` | Größe des Dinos in Prozent |
+| `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
+| `tstyle=bar` / `neon` / `board` | Design des Laufbands: Laufband, Neon oder Bahnhofs-Anzeige (gelbe LED-Schrift) |
+| `tsize=120` / `tspeed=70` | Größe in Prozent / Tempo in Pixeln pro Sekunde |
 | `test=1` | alle 20 Sekunden eine Probe-Drehung – nur zum Ausrichten, danach wieder entfernen |
 
 **Daves Kamera:** Im OBS-Dialog unter „Ärgere den Dave“ eine Vorlage wählen oder in der Vorschau einen Rahmen um die Stelle ziehen, an der die Kamera im Stream sitzt. In OBS die Browserquelle **über** die Kamera-Quelle schieben, sonst fliegt alles hinter Dave vorbei. Läuft das Overlay in mehreren Browserquellen, bei allen außer einer `prank=0` setzen – sonst kommt jeder Sound doppelt.
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
+
+### Laufband
+
+Unten im Overlay laufen langsam von rechts nach links weitere Seiten und Socials durch (z. B. Twitch, YouTube, TikTok, die Stellwerk-Seite). Das Laufband ist immer da und lässt sich nicht ausschalten, aber in der Vorschau des OBS-Dialogs verschieben; Design (Laufband, Neon, Bahnhofs-Anzeige), Größe und Tempo stehen im Dialog. Die Texte pflegen Admins im OBS-Dialog unter **📢 Laufband-Texte bearbeiten** (eine Zeile pro Eintrag, `{seite}` = Adresse dieser Webseite, Symbole für bekannte Seiten kommen von selbst). Änderungen laufen sofort in allen OBS-Quellen. Einmal nötig: Migration `20260929000000_ticker.sql` – ohne sie läuft das Band mit Twitch und der Stellwerk-Seite.
 
 ## Ärgere den Dave
 
@@ -289,7 +300,11 @@ Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer 
 
 ## Daves Dino
 
-Ein kleiner Dino (Standardname „Rexi“) läuft im OBS-Overlay unten durchs Bild und sagt ab und zu einen Spruch („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zuschauer **füttern** (alle 10 Minuten) und **streicheln** (jede Minute) ihn auf der Webseite – im Stream fällt dann Futter vom Himmel bzw. steigen Herzchen auf, und der Dino bedankt sich mit Namen.
+Ein kleiner Dino (Standardname „Rexi“) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
+
+**Füttern im Stream:** Zuschauer schreiben den Chat-Befehl (Standard **`!füttern`**, im Dialog änderbar) in Daves Twitch-Chat – höchstens alle 10 Minuten pro Person. Dann fällt Futter vom Himmel und der Dino bedankt sich mit Namen. Dafür liest der Chat-Bot Daves Chat mit (Berechtigung `user:read:chat`): **Den Chat-Bot im Admin-Bereich einmal neu verbinden**, danach richtet die Seite das Chat-Abo selbst ein (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog).
+
+**Auf der Webseite** füttern und streicheln Zuschauer den Dino nur für sich – im Stream passiert dabei nichts. Admins können beides: mit **„Auch im Stream“** (Standard an) erscheint es in OBS, ohne nur auf der Seite.
 
 Wird er eine Weile nicht gefüttert (Standard 45 Minuten), bekommt er **Hunger**: Er meckert und **knabbert an den Zuschauern** – ein Namensschild von jemandem, der zuletzt gefüttert, geworfen oder gedreht hat, fällt ins Bild, der Dino läuft hin und beißt hinein.
 
@@ -297,9 +312,23 @@ Admins stellen im Dialog Name, Hunger-Zeit und die Sprüche ein und können den 
 
 Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
 
+## Kisten-Shop
+
+**Wähle eine Kiste, kauf dir Items und finde sie im Spiel – für jedes gefundene Item gibt es einen Punkt, für das volle Set nochmal 10 oben drauf.**
+
+1. **Kiste wählen:** Vier Truhen, in jeder liegt eine andere Menge Goldbarren (ungefähr 45–65, 90–120, 140–170, 200–240, jedes Mal neu gemischt). Die Werte würfelt die Datenbank, die Seite erfährt sie erst beim Öffnen – schummeln geht nicht.
+2. **Einkaufen:** Kurz Zeit (Standard 90 Sekunden) im Shop mit Fortnite-Items wie Pump, SCAR, Gold-SCAR, Mythisches Item … Je seltener, desto teurer (Standardpreise: Gewöhnlich 10, Ungewöhnlich 20, Selten 35, Episch 55, Legendär 85, Mythisch 130, Exotisch 110). Jedes Item nur einmal. Läuft die Zeit ab, geht es mit dem Gekauften weiter.
+3. **Im Spiel finden:** Gefundene Items abhaken. Punkte = gefundene Items, alle gefunden = +10.
+
+**Koop:** Jemand erstellt eine Koop-Runde und teilt den 5-stelligen Code, die anderen treten mit dem Code bei. Alle wählen aus denselben vier Kisten, die Rangliste zeigt live, wer vorne liegt. Wer die Runde erstellt hat (oder ein Admin), kann sie schließen – dann kann niemand mehr beitreten.
+
+**Im Stream:** Admins haken beim Öffnen der Kiste **„Meine Runde im Stream zeigen“** an. Dann zeigt das OBS-Overlay oben links eine Karte mit Timer, Guthaben, gekauften Items (mit den Bingo-Bildern, wenn es welche gibt), Punkten und im Koop der Top 5. Nach dem Ende bleibt sie noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und in der Vorschau verschieben.
+
+Admins stellen im Dialog Shop-Zeit, Preise pro Seltenheit und die Items ein (eine Zeile „Name | Seltenheit“). Freigeschaltet für Zuschauer ab **05.10.2026** (im Dialog änderbar). Einmal nötig: Migration `supabase/migrations/20261001000000_loot_shop.sql`.
+
 ## Startdatum für Zuschauer
 
-„Ärgere den Dave“, das Fortnite-Bingo, die Unangenehmen Fragen und Daves Dino können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
+„Ärgere den Dave“, das Fortnite-Bingo, die Unangenehmen Fragen, Daves Dino und der Kisten-Shop können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
 
 ## Admin-Bereich
 

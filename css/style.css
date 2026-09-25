@@ -571,7 +571,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
 }
 .segmented[data-active="register"] .segmented-thumb,
 .segmented[data-active="sound"] .segmented-thumb,
-.segmented[data-active="mine"] .segmented-thumb { transform: translateX(100%); }
+.segmented[data-active="mine"] .segmented-thumb,
+.segmented[data-active="koop"] .segmented-thumb { transform: translateX(100%); }
 
 .auth-form { display: grid; gap: 15px; animation: view-in .35s var(--ease-out); }
 .field { display: grid; gap: 6px; }
@@ -779,6 +780,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .theme-questions .tile-bg { background-image: url("../assets/bg-questions.svg"); }
 .theme-questions { --tile-glow: rgba(255, 95, 168, .45); }
 .theme-pet .tile-bg { background-image: url("../assets/bg-pet.svg"); }
+.theme-shop .tile-bg { background-image: url("../assets/bg-shop.svg"); }
+.theme-shop { --tile-glow: rgba(255, 201, 51, .45); }
 .theme-pet { --tile-glow: rgba(92, 195, 107, .45); }
 
 .tile-tag {
@@ -2084,4 +2087,59 @@ code { font-family: var(--font-mono); font-size: .9em; }
 @media (max-width: 860px) {
   .dialog--questions.is-admin .q-layout, .dialog--pet.is-admin .pet-layout { grid-template-columns: minmax(0, 1fr); }
   .pet-stage { height: 200px; }
+}
+
+/* OBS-Dialog: Laufband */
+.obs-part-label small { font-weight: 500; color: var(--dim); text-transform: none; letter-spacing: 0; }
+.obs-ticker-edit details { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); }
+.obs-ticker-edit summary { cursor: pointer; font-weight: 700; }
+.obs-ticker-edit[open] summary, .obs-ticker-edit details[open] summary { margin-bottom: 10px; }
+.obs-ticker-edit details > * + * { margin-top: 8px; }
+
+/* OBS-Dialog: Live-Status */
+.obs-live { display: grid; gap: 8px; }
+.obs-live-status { margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 14px; background: rgba(92, 195, 107, .1); border: 1px solid rgba(92, 195, 107, .35); color: #c9f5cf; }
+.obs-live-status.is-locked { background: rgba(255, 184, 28, .08); border-color: rgba(255, 184, 28, .3); color: #ffe2a3; }
+.obs-live-status:empty { display: none; }
+
+.pet-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.pet-actions .toggle { margin-left: auto; }
+
+/* ==========================================================
+   Kisten-Shop
+   ========================================================== */
+.tile--shop .tile-tag::before { background: #ffc933; box-shadow: 0 0 8px #ffc933; }
+.tile--shop .prank-cta { background: #ffc933; color: #2a1a00; }
+.tile--shop:hover .prank-cta { transform: translateX(3px); }
+.dialog--shop { width: min(96vw, 1120px); }
+.shop-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(18px, 3vw, 32px); padding: 18px 24px 26px; align-items: start; }
+.dialog--shop.has-side .shop-layout { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.shop-main { display: grid; gap: 14px; align-content: start; }
+.shop-main .segmented { margin-bottom: 0; }
+.shop-side:empty { display: none; }
+.shop-rules { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(255, 201, 51, .08); border: 1px solid rgba(255, 201, 51, .3); font-size: 14px; }
+.shop-step { display: grid; gap: 12px; }
+.shop-step[hidden] { display: none; }
+.shop-koop { display: grid; gap: 10px; }
+.shop-koop[hidden], .shop-koop-start[hidden], .shop-koop-info[hidden] { display: none; }
+.shop-koop-start { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.shop-join { display: flex; flex-wrap: wrap; gap: 8px; }
+.shop-join .form-msg { flex-basis: 100%; margin: 0; }
+.shop-join .form-msg:empty { display: none; }
+.shop-join input {
+  width: 8em; min-height: 42px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg);
+  font-family: var(--font-mono); font-size: 18px; letter-spacing: .2em; text-transform: uppercase; color: var(--text);
+}
+.shop-koop-info { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); }
+.shop-koop-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.shop-code { font-family: var(--font-mono); font-size: 22px; letter-spacing: .18em; color: #ffd36b; }
+.shop-settings { display: grid; gap: 10px; }
+.shop-prices { margin: 0; padding: 0; border: 0; display: grid; gap: 6px; }
+.shop-prices legend { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.shop-price-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 6px; }
+.shop-price { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 6px; align-items: center; padding: 4px 6px 4px 10px; border-radius: 8px; background: var(--bg); border-left: 4px solid var(--rc); font-size: 13px; }
+.shop-price input { min-height: 32px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); }
+.shop-settings textarea { width: 100%; resize: vertical; min-height: 120px; font-family: var(--font-mono); font-size: 13px; }
+@media (max-width: 860px) {
+  .dialog--shop.has-side .shop-layout { grid-template-columns: minmax(0, 1fr); }
 }

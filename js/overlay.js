@@ -3,7 +3,9 @@
 // erscheint es klein im Bild, dreht sich und zeigt das Ergebnis.
 // Daneben läuft "Nächste Abfahrt" mit den kommenden Content-Ideen.
 //
-// Die Adresse baut der OBS-Dialog im Dashboard. Optionen, z. B. overlay.html?wheel=br&wsize=120
+// Die Adresse baut der OBS-Dialog im Dashboard. Empfohlen: overlay.html?live=1 – dann kommen alle
+// Einstellungen aus der Datenbank (OBS-Dialog), und jede Änderung erscheint sofort in OBS.
+// Ohne live=1 gelten die Optionen in der Adresse, z. B. overlay.html?wheel=br&wsize=120
 //   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus;
 //                              oder frei: wheel=62.5,70 (linke obere Ecke in Prozent des Bildes) –
 //                              so speichert es der OBS-Dialog, wenn man die Karte in der Vorschau verschiebt
@@ -29,6 +31,12 @@
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
 //   pet=0                      Daves Dino aus (läuft sonst unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
+//   shop=tl|…|0                Position der Kisten-Shop-Karte (Standard tl = oben links), 0 = aus
+//   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
+//   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
+//   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
+//   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
+//   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -39,13 +47,34 @@ import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
+import { TICKER_STYLES, fillTicker } from './ticker.js';
+import { GOLD, renderLoadout, scoreOf } from './shop.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
 const TILES_REFRESH_MS = 60000;
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
-const params = new URLSearchParams(location.search);
+// live=1: Einstellungen aus der Datenbank (overlay_config). test/edit aus der Adresse gelten weiter.
+const urlParams = new URLSearchParams(location.search);
+const LIVE = urlParams.get('live') === '1';
+let liveConfig = '';
+if (LIVE) liveConfig = await readOverlayConfig().catch((err) => { console.warn('Overlay: Live-Einstellungen nicht lesbar', err); return ''; });
+const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
+if (LIVE) for (const key of ['test', 'edit']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
+
+async function readOverlayConfig() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
+    try { return JSON.parse(localStorage.getItem('zd_overlay_config'))?.params ?? ''; } catch { return ''; }
+  }
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/overlay_config?id=eq.1&select=params`, {
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`overlay_config: ${res.status}`);
+  const [row] = await res.json();
+  return row?.params ?? '';
+}
 const FREE = /^\d{1,3}(\.\d+)?,\d{1,3}(\.\d+)?$/;
 const position = (value, fallback) => (value === '0' || value === 'off' ? null
   : POSITIONS.includes(value) || FREE.test(value ?? '') ? value : fallback);
@@ -84,6 +113,13 @@ const opt = {
   qsize: number('qsize', 100, 50, 200) / 100,
   pet: flag('pet', true),
   dsize: number('dsize', 100, 50, 200) / 100,
+  shop: position(params.get('shop'), 'tl'),
+  ssize: number('ssize', 100, 50, 200) / 100,
+  // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
+  ticker: position(params.get('ticker'), 'bc') ?? 'bc',
+  tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
+  tsize: number('tsize', 100, 50, 200) / 100,
+  tspeed: number('tspeed', 70, 20, 300),
   test: flag('test', false),
   edit: flag('edit', false),
 };
@@ -108,6 +144,8 @@ root.setProperty('--bga', opt.bg);
 root.setProperty('--ps', opt.psize);
 root.setProperty('--bs', opt.bsize);
 root.setProperty('--qs', opt.qsize);
+root.setProperty('--ts', opt.tsize);
+root.setProperty('--ss', opt.ssize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -124,6 +162,10 @@ else $('ov-bingo').remove();
 if (opt.quest) place($('ov-quest'), opt.quest);
 else $('ov-quest').remove();
 if (!opt.pet) $('ov-pet').remove();
+if (opt.shop) place($('ov-shop'), opt.shop);
+else $('ov-shop').remove();
+place($('ov-ticker'), opt.ticker);
+$('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
 
 // Ecke (br, tl, …) per CSS-Klasse, freie Position als linke obere Ecke in Prozent.
@@ -170,6 +212,19 @@ async function start() {
   if (opt.bingo) setupBingo(source);
   if (opt.quest) setupQuestions(source);
   if (opt.pet) setupPet(source);
+  if (opt.shop) setupShop(source);
+  setupTicker(source);
+  if (LIVE) watchOverlayConfig(source);
+}
+
+// Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
+// Realtime meldet es direkt; zur Sicherheit wird zusätzlich alle 30 Sekunden nachgesehen.
+function watchOverlayConfig(source) {
+  const changed = (next) => {
+    if (typeof next === 'string' && next !== liveConfig) location.reload();
+  };
+  source.onOverlayConfig?.(changed);
+  setInterval(() => readOverlayConfig().then(changed).catch(() => {}), 30000);
 }
 
 // ============================================================
@@ -222,6 +277,27 @@ async function connect() {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
+    },
+    shopStreamRun: async () => (await rows(sb.from('shop_runs').select('*').eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
+    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select('*').eq('lobby_id', lobbyId)),
+    onShopRuns(cb) {
+      sb.channel('overlay-shop')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Kisten-Shop fehlgeschlagen'); });
+    },
+    shopImages: async () => rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({
+      name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
+    }))),
+    onOverlayConfig(cb) {
+      sb.channel('overlay-config')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'overlay_config' }, (p) => cb(p.new.params))
+        .subscribe();
+    },
+    ticker: async () => (await rows(sb.from('ticker').select('items').eq('id', 1).maybeSingle()))?.items ?? null,
+    onTicker(cb) {
+      sb.channel('overlay-ticker')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ticker' }, (p) => cb(p.new.items))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Laufband fehlgeschlagen'); });
     },
     // An wem darf der Dino knabbern? Wer zuletzt gefüttert, geworfen oder gedreht hat.
     async recentNames() {
@@ -278,6 +354,19 @@ function demoSource() {
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
+    },
+    shopStreamRun: async () => read('shop_runs', []).find((r) => r.stream) ?? null,
+    shopLobbyRuns: async (lobbyId) => read('shop_runs', []).filter((r) => r.lobby_id === lobbyId),
+    onShopRuns(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_shop_runs') cb(null); });
+    },
+    shopImages: async () => read('bingo_items', []).map((i) => ({ name: i.name, url: i.url })),
+    onOverlayConfig(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_overlay_config') cb(read('overlay_config', null)?.params ?? ''); });
+    },
+    ticker: async () => read('ticker', null)?.items ?? null,
+    onTicker(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_ticker') cb(read('ticker', null)?.items ?? null); });
     },
     pet: async () => ({ ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...read('pet', {}) }),
     onPet(cb) {
@@ -719,6 +808,15 @@ async function setupPet(source) {
     return;
   }
   const sfx = new Sfx({ volume: opt.volume * 0.8 });
+  // Steht das Laufband unten, läuft der Dino oben darauf statt davor
+  const ground = () => {
+    const band = $('ov-ticker')?.getBoundingClientRect();
+    const onBottom = band && band.top > innerHeight * 0.6;
+    layer.style.bottom = onBottom ? `${Math.round(innerHeight - band.top + 4)}px` : '';
+  };
+  ground();
+  addEventListener('resize', ground);
+  new ResizeObserver(ground).observe($('ov-ticker'));
   const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name });
   if (opt.test) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
@@ -732,6 +830,7 @@ async function setupPet(source) {
     },
     idleEvery: opt.test ? [8, 14] : [45, 90],
     nibbleEvery: opt.test ? [16, 24] : [40, 75],
+    trickEvery: opt.test ? [5, 9] : [18, 40],
   });
   source.onPet((row, ev) => {
     if (row) {
@@ -748,6 +847,129 @@ async function setupPet(source) {
       dino.say(ev.text, 5500);
     }
   });
+}
+
+// ============================================================
+// Kisten-Shop: Daves Runde im Stream
+// ============================================================
+// Zu sehen, solange Dave mit „Im Stream zeigen“ spielt; nach dem Ende noch 10 Minuten.
+const SHOP_SHOW_AFTER_MS = 10 * 60 * 1000;
+
+async function setupShop(source) {
+  const card = $('ov-shop');
+  const sfx = new Sfx({ volume: opt.volume });
+  const images = new Map((await source.shopImages?.().catch(() => []) ?? []).map((i) => [i.name.toLowerCase(), i.url]));
+  let run = null;
+  let board = [];
+  let timer = 0;
+
+  const show = (next, { sound = true } = {}) => {
+    const prev = run;
+    run = next;
+    const visible = !!run && (run.status !== 'done' || Date.now() - Date.parse(run.updated_at ?? run.created_at) < SHOP_SHOW_AFTER_MS || opt.edit);
+    card.hidden = !visible;
+    clearInterval(timer);
+    if (!visible) return;
+    const found = run.items.filter((i) => i.found).length;
+    const all = run.items.length > 0 && found === run.items.length;
+    card.classList.toggle('is-allfound', all);
+    $('ov-shop-coins').innerHTML = run.status === 'shopping'
+      ? `${run.coins - run.spent} ${GOLD}`
+      : `${run.items.length} Item${run.items.length === 1 ? '' : 's'}`;
+    $('ov-shop-score').textContent = run.status === 'shopping' ? '' : `${scoreOf(run.items)} Punkte`;
+    const status = $('ov-shop-status');
+    const paintStatus = () => {
+      if (run.status === 'shopping') {
+        const s = Math.max(0, Math.ceil((Date.parse(run.shop_until) - Date.now()) / 1000));
+        status.textContent = `${run.player} kauft ein · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      } else {
+        status.textContent = run.status === 'done' ? `${run.player} · Runde vorbei` : `${run.player} · ${found}/${run.items.length} gefunden`;
+      }
+    };
+    paintStatus();
+    if (run.status === 'shopping') timer = setInterval(paintStatus, 500);
+    const list = $('ov-shop-list');
+    renderLoadout(list, run, { imageFor: (name) => images.get(name.toLowerCase()) ?? null });
+    // Neu gekaufte Items springen hinein
+    const before = prev?.id === run.id ? prev.items.length : 0;
+    [...list.children].forEach((li, i) => { if (i >= before && prev?.id === run.id) li.classList.add('is-new'); });
+    if (!sound || !prev) return;
+    if (prev.id !== run.id) sfx.hit('bling');
+    else if (run.items.length > prev.items.length) sfx.hit('bling');
+    else if (found > prev.items.filter((i) => i.found).length) {
+      if (all) { sfx.play('applause'); sfx.play('gong'); } else sfx.hit('bling');
+    }
+  };
+
+  const paintBoard = () => {
+    const el = $('ov-shop-board');
+    el.hidden = !run?.lobby_id || board.length < 2;
+    if (el.hidden) return;
+    const sorted = [...board].sort((a, b) => b.score - a.score).slice(0, 5);
+    el.replaceChildren(...sorted.map((r) => {
+      const li = document.createElement('li');
+      if (r.id === run.id) li.className = 'is-me';
+      const who = document.createElement('span');
+      who.textContent = r.player;
+      const pts = document.createElement('b');
+      pts.textContent = r.score;
+      li.append(who, pts);
+      return li;
+    }));
+  };
+
+  const refresh = async (sound = true) => {
+    const next = await source.shopStreamRun().catch(() => null);
+    if (next?.lobby_id) board = await source.shopLobbyRuns(next.lobby_id).catch(() => []);
+    else board = [];
+    show(next, { sound });
+    paintBoard();
+  };
+
+  if (opt.test || opt.edit) {
+    // Probe zum Einrichten
+    const demo = {
+      id: 'test', player: 'Dave', status: 'playing', coins: 165, spent: 110, lobby_id: null, updated_at: new Date().toISOString(),
+      shop_until: new Date().toISOString(),
+      items: [
+        { name: 'SCAR', rarity: 'epic', price: 55, found: true },
+        { name: 'Pump', rarity: 'uncommon', price: 20, found: false },
+        { name: 'Schildtrank', rarity: 'rare', price: 35, found: true },
+      ],
+    };
+    show(demo, { sound: false });
+    if (opt.test) {
+      let n = 0;
+      setInterval(() => {
+        const items = demo.items.map((it, i) => ({ ...it, found: i <= n % 3 }));
+        show({ ...demo, items, updated_at: new Date().toISOString() });
+        n++;
+      }, 7000);
+    }
+    return;
+  }
+  await refresh(false);
+  source.onShopRuns((row) => {
+    if (row && !row.stream && row.id !== run?.id && row.lobby_id !== run?.lobby_id) return;
+    refresh();
+  });
+}
+
+// ============================================================
+// Laufband: andere Seiten und Socials, immer an
+// ============================================================
+async function setupTicker(source) {
+  const track = $('ov-ticker-track');
+  // Fehlt die Tabelle noch, läuft das Band mit den Standardtexten
+  let items = await source.ticker().catch((err) => { console.warn('Overlay: Laufband-Texte nicht verfügbar', err); return null; });
+  let timer = 0;
+  const draw = () => fillTicker(track, items, { speed: opt.tspeed * opt.tsize });
+  draw();
+  document.fonts?.ready.then(draw);
+  addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(draw, 200); });
+  // Wird es in der Vorschau breiter/schmaler geschoben, neu messen
+  new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(draw, 200); }).observe($('ov-ticker'));
+  source.onTicker((next) => { items = next; draw(); });
 }
 
 // Probekarte für die Vorschau, solange noch keine echte gezogen ist
@@ -778,7 +1000,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);

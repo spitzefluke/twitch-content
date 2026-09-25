@@ -108,8 +108,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'shop',
     position: 6,
+    kind: 'shop',
+    title: 'Kisten-Shop',
+    description: 'Wähl eine Kiste, kauf dir mit den Goldbarren Items und finde sie im Spiel. Allein oder im Koop gegen andere.',
+    theme: 'shop',
+    target_at: '2026-10-05T00:00:00+02:00',
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 7,
     kind: 'countdown',
     title: 'Nachtschicht Güterzug',
     description: 'Train Sim World: Langstrecke durch die Nacht – ohne Pause bis zum Zielbahnhof.',
@@ -119,7 +129,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 7,
+    position: 8,
     kind: 'countdown',
     title: 'Subathon: Endstation?',
     description: 'Jeder Sub verlängert die Fahrt. Wo liegt die Endstation?',

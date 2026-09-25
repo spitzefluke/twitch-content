@@ -320,3 +320,75 @@ p { margin: 0; }
   position: fixed; left: var(--m); right: var(--m); bottom: calc(var(--m) * .5); z-index: 4;
   height: calc(var(--dsz) * 2.2); pointer-events: none;
 }
+
+/* ---------- Laufband (immer an) ---------- */
+.ov-ticker {
+  font-size: calc(18px * var(--ts, 1));
+  width: 56em; max-width: calc(100vw - 2 * var(--m));
+  display: flex; align-items: stretch; border-radius: .9em;
+}
+.ticker-label {
+  flex: none; display: flex; align-items: center; padding: .5em .9em;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.05em; letter-spacing: .05em; text-transform: uppercase;
+  background: var(--accent); color: #1a1204; white-space: nowrap;
+}
+.ticker-view {
+  position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.ticker-track { display: flex; width: max-content; white-space: nowrap; animation: ov-ticker 30s linear infinite; will-change: transform; }
+@keyframes ov-ticker { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tdist, 0px))); } }
+.ticker-group { display: flex; align-items: center; flex: none; }
+.ticker-item { padding: .55em 0 .55em 1.1em; font-weight: 700; font-size: 1.05em; color: #fff; }
+.ticker-sep { padding-left: 1.1em; font-size: .6em; color: var(--accent); }
+
+/* Neon */
+.ov-ticker.ticker-style-neon {
+  background: rgba(12, 6, 24, calc(.7 * var(--bga))); border: 2px solid #ff5fa8;
+  box-shadow: 0 0 .7em #ff5fa8, inset 0 0 .8em rgba(255, 95, 168, .35);
+}
+.ov-ticker.ticker-style-neon .ticker-label {
+  background: transparent; color: #7ff6ff; border-right: 2px solid #ff5fa8;
+  text-shadow: 0 0 .3em #7ff6ff, 0 0 .9em #36d9ff;
+}
+.ov-ticker.ticker-style-neon .ticker-item { color: #fff; text-shadow: 0 0 .25em #ff5fa8, 0 0 .8em #ff5fa8; }
+.ov-ticker.ticker-style-neon .ticker-sep { color: #7ff6ff; text-shadow: 0 0 .4em #7ff6ff; }
+
+/* Bahnhofs-Anzeige: gelbe LED-Schrift auf schwarzer Tafel */
+.ov-ticker.ticker-style-board {
+  border-radius: .35em; background: #0b0c0e; border: .22em solid #2b2f36;
+  box-shadow: 0 .6em 1.6em rgba(0, 0, 0, .6), inset 0 0 0 .08em #000;
+}
+.ov-ticker.ticker-style-board .ticker-label { background: #0a4fa3; color: #fff; font-family: "Barlow", system-ui, sans-serif; font-size: .95em; letter-spacing: .02em; text-transform: none; }
+.ov-ticker.ticker-style-board .ticker-view {
+  background: radial-gradient(circle, rgba(255, 255, 255, .06) .06em, transparent .09em) 0 0 / .28em .28em;
+}
+.ov-ticker.ticker-style-board .ticker-item {
+  font-family: var(--font-mono); font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: #ffb300; text-shadow: 0 0 .25em rgba(255, 179, 0, .85), 0 0 .7em rgba(255, 140, 0, .45);
+}
+.ov-ticker.ticker-style-board .ticker-sep { color: #ffb300; opacity: .7; }
+
+/* ---------- Kisten-Shop ---------- */
+.ov-shop {
+  --c: #ffc933;
+  font-size: calc(16px * var(--ss, 1));
+  width: 22em; animation: ov-in .6s var(--ease-out) both;
+}
+.ov-shop-body { padding: .8em 1em 1em; display: grid; gap: .6em; }
+.ov-shop-top { display: flex; align-items: baseline; justify-content: space-between; gap: .6em; }
+.ov-shop-coins { font-family: var(--font-display); font-weight: 800; font-size: 1.6em; color: #ffd36b; }
+.ov-shop-score { font-family: var(--font-display); font-weight: 800; font-size: 1.3em; color: #fff; }
+.ov-shop .loadout { gap: .35em; }
+.ov-shop .loadout-item { padding: .35em .55em; font-size: .95em; background: rgba(255, 255, 255, .06); }
+.ov-shop .loadout-item.is-new { animation: ov-shop-pop .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+.ov-shop .loadout-item.is-found .loadout-name { color: #c9f5cf; }
+.ov-shop .loadout-icon { width: 1.6em; height: 1.6em; font-size: 1.2em; }
+.ov-shop .loadout-icon img { width: 1.6em; height: 1.6em; }
+.ov-shop span.loadout-mark { font-size: 1.3em; }
+.ov-shop .loadout li.empty { color: #8f99ae; }
+.ov-shop-board { font-size: .9em; }
+.ov-shop-board li { padding: .3em .5em; }
+.ov-shop.is-allfound { box-shadow: 0 0 0 .15em #5cc36b, 0 0 2em rgba(92, 195, 107, .5); }
+@keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }

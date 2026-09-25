@@ -337,34 +337,23 @@ create table if not exists public.pet_cooldowns (
 );
 alter table public.pet_cooldowns enable row level security;
 
--- Füttern (alle 10 Minuten pro Person) oder Streicheln (jede Minute)
+-- Füttern/Streicheln im Stream von der Webseite aus: nur Admins (gleiche Fassung
+-- wie in …_live_overlay.sql). Von der Webseite aus wirkt es im Stream nur für Admins.
+-- Zuschauer füttern im Stream über den Chat-Befehl, auf der Seite nur für sich.
 create or replace function public.pet_action(p_kind text)
 returns public.pet_events language plpgsql security definer set search_path = '' as $$
 declare
-  uid uuid := auth.uid();
-  wait interval := case p_kind when 'feed' then interval '10 minutes' when 'pet' then interval '1 minute' end;
-  last timestamptz;
   result public.pet_events;
 begin
-  if uid is null then
+  if auth.uid() is null then
     raise exception 'Bitte zuerst anmelden.';
   end if;
-  if wait is null then
+  if p_kind not in ('feed', 'pet') then
     raise exception 'Unbekannte Aktion.';
   end if;
-  if not public.feature_open('pet') then
-    raise exception 'Daves Dino ist noch nicht freigeschaltet.';
-  end if;
   if not public.is_admin() then
-    select last_at into last from public.pet_cooldowns where user_id = uid and kind = p_kind;
-    if last is not null and last > now() - wait then
-      raise exception 'Kurz warten – noch % Sekunden.', ceil(extract(epoch from (last + wait - now())))::int
-        using hint = 'cooldown';
-    end if;
+    raise exception 'Im Stream füttern Zuschauer den Dino über den Twitch-Chat.' using hint = 'chat';
   end if;
-  insert into public.pet_cooldowns (user_id, kind, last_at) values (uid, p_kind, now())
-    on conflict (user_id, kind) do update set last_at = excluded.last_at;
-
   if p_kind = 'feed' then
     update public.pet set last_fed_at = now(), last_fed_by = public.my_name(), fed_count = fed_count + 1 where id = 1;
   end if;
@@ -373,7 +362,6 @@ begin
   return result;
 end;
 $$;
-
 -- Admins lassen den Dino im Stream etwas sagen
 create or replace function public.pet_say(p_text text)
 returns public.pet_events language plpgsql security definer set search_path = '' as $$

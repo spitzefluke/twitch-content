@@ -1,0 +1,94 @@
+/* Kisten-Shop (js/shop.js) – Webseite und OBS-Overlay */
+.rar-common { --rc: #9aa0ab; --rc2: #4b515d; }
+.rar-uncommon { --rc: #7bd02f; --rc2: #26751a; }
+.rar-rare { --rc: #4fb6ff; --rc2: #1a57b4; }
+.rar-epic { --rc: #c46cff; --rc2: #5d1fa6; }
+.rar-legendary { --rc: #ffa24c; --rc2: #b0460f; }
+.rar-mythic { --rc: #ffd84a; --rc2: #b27208; }
+.rar-exotic { --rc: #7fe8f5; --rc2: #1b8ea3; }
+
+.gold-bar { display: inline-block; width: 1.15em; height: .8em; vertical-align: -.05em; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .4)); }
+
+/* ---------- Truhen ---------- */
+.chests { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.chest {
+  position: relative; display: grid; justify-items: center; gap: 6px; padding: 14px 8px 12px;
+  border-radius: 16px; border: 1px solid var(--line, rgba(255, 255, 255, .12));
+  background: radial-gradient(circle at 50% 35%, rgba(255, 211, 107, .18), transparent 65%), var(--bg-2, #151a26);
+  color: inherit; font: inherit; cursor: pointer; transition: transform .2s, box-shadow .2s;
+}
+.chest:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(255, 190, 60, .25); }
+.chest:disabled { cursor: default; }
+.chest-svg { width: 100%; max-width: 130px; height: auto; overflow: visible; }
+.chest-lid { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .5s cubic-bezier(.34, 1.56, .64, 1); }
+.chest-glow { opacity: 0; transition: opacity .4s .15s; }
+.chest:not(:disabled):hover .chest-lid { transform: translateY(-2px) rotate(-3deg); }
+.chest.is-open .chest-lid { transform: translate(-6%, -34%) rotate(-24deg); }
+.chest.is-open .chest-glow { opacity: 1; }
+.chest-label { font-weight: 700; font-size: 14px; color: var(--muted, #aab); }
+.chest-value { min-height: 1.3em; font-family: var(--font-display, sans-serif); font-weight: 800; font-size: 22px; color: #ffd36b; }
+.chest.is-picked { border-color: #ffd36b; box-shadow: 0 0 0 2px rgba(255, 211, 107, .5), 0 0 30px rgba(255, 190, 60, .35); }
+.chest.is-other { opacity: .55; }
+.chest.is-other .chest-value { color: var(--muted, #aab); font-size: 18px; }
+.chest.is-shaking .chest-svg { animation: chest-shake .5s ease-in-out; }
+@keyframes chest-shake { 20%, 60% { transform: rotate(-6deg); } 40%, 80% { transform: rotate(6deg); } }
+
+/* ---------- Shop ---------- */
+.shop-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.shop-coins { font-family: var(--font-display, sans-serif); font-weight: 800; font-size: 26px; color: #ffd36b; }
+.shop-timer { font-family: var(--font-mono, monospace); font-size: 18px; font-weight: 700; padding: 4px 10px; border-radius: 10px; background: rgba(255, 255, 255, .06); }
+.shop-timer.is-low { color: #ff8a80; animation: shop-pulse .8s ease-in-out infinite; }
+@keyframes shop-pulse { 50% { opacity: .5; } }
+.shop-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.shop-item {
+  position: relative; width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 2px 10px; align-items: center;
+  padding: 10px 12px; border-radius: 12px; text-align: left; font: inherit; color: #fff; cursor: pointer;
+  background: linear-gradient(160deg, var(--rc), var(--rc2)); border: 1px solid rgba(255, 255, 255, .2);
+  box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .25); transition: transform .15s, filter .15s;
+}
+.shop-item:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+.shop-item:disabled { cursor: default; filter: grayscale(.8) brightness(.55); }
+.shop-item.is-bought { filter: none; opacity: .75; }
+.shop-item.is-bought::after { content: "✓"; position: absolute; top: 6px; right: 8px; font-weight: 800; }
+.shop-item.rar-mythic { color: #3b2400; box-shadow: inset 0 -.2em 0 rgba(120, 70, 0, .35), 0 0 12px rgba(255, 214, 90, .6); }
+.shop-item-icon { grid-row: span 2; font-size: 26px; line-height: 1; width: 36px; height: 36px; display: grid; place-items: center; }
+.shop-item-icon img { width: 36px; height: 36px; object-fit: contain; }
+.shop-item-name { min-width: 0; font-weight: 800; font-size: 14px; line-height: 1.15; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); overflow-wrap: anywhere; hyphens: auto; }
+.shop-item.rar-mythic .shop-item-name { text-shadow: none; }
+.shop-item-price { font-size: 13px; font-weight: 700; opacity: .95; }
+
+/* ---------- Gekaufte Items ---------- */
+.loadout { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.loadout li.empty { color: var(--dim, #889); font-size: 14px; }
+.loadout-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .04);
+  border-left: 5px solid var(--rc);
+}
+.loadout-item.is-found { background: rgba(92, 195, 107, .12); }
+.loadout-icon { font-size: 22px; width: 30px; height: 30px; display: grid; place-items: center; }
+.loadout-icon img { width: 30px; height: 30px; object-fit: contain; }
+.loadout-name { display: grid; font-weight: 700; }
+.loadout-name small { font-weight: 500; font-size: 12px; color: var(--rc); }
+.loadout-mark {
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-2, rgba(255, 255, 255, .2));
+  background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+button.loadout-mark[aria-pressed="true"] { background: #5cc36b; border-color: #5cc36b; color: #06210c; }
+span.loadout-mark { color: #5cc36b; font-size: 18px; border: 0; padding: 0; }
+.shop-score { font-family: var(--font-display, sans-serif); font-weight: 800; font-size: 20px; }
+
+/* ---------- Rangliste ---------- */
+.shop-board { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; counter-reset: rank; }
+.shop-board li {
+  counter-increment: rank; display: grid; grid-template-columns: 2em 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05);
+}
+.shop-board li::before { content: counter(rank) "."; font-weight: 800; color: #ffd36b; }
+.shop-board li.is-me { outline: 1px solid #ffd36b; }
+.shop-board small { color: var(--muted, #aab); }
+.shop-board b { font-family: var(--font-display, sans-serif); font-size: 18px; }
+
+@media (max-width: 560px) {
+  .chests { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -45,7 +45,8 @@ export const BROADCASTER_SCOPES = [
   "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
-export const BOT_SCOPES = ["user:write:chat", "user:bot"];
+// und Daves Chat lesen – für Befehle wie !füttern.
+export const BOT_SCOPES = ["user:write:chat", "user:bot", "user:read:chat"];
 export const oauthRedirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitch-oauth`;
 
 // Twitch-Login starten. Den Rückweg (twitch-oauth, GET) findet der state:

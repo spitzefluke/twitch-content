@@ -5,6 +5,8 @@ import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, cardCell, fullBetLines } from './bingo.js';
 import { DEFAULT_PET } from './pet.js';
 import { DEFAULT_STAGE } from './questions.js';
+import { DEFAULT_TICKER } from './ticker.js';
+import { DEFAULT_SHOP } from './shop.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -25,6 +27,10 @@ const ERRORS = [
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
   [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
+  [/feed_command|pet_feed_command/i, 'In der Datenbank fehlt der Chat-Befehl für den Dino: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
+  [/relation "public\.overlay_config"|could not find the (table|function) '?public\.(overlay_config|overlay_access|overlay_save|overlay_allow_admins)/i, 'In der Datenbank fehlt das Live-Overlay: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
+  [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
+  [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
@@ -149,6 +155,13 @@ async function createSupabaseApi() {
       const { error } = await sb.from('overlay_spins').select('id', { head: true }).limit(1);
       return !error;
     },
+    // ---------- OBS-Overlay live (overlay_config) ----------
+    async getOverlayConfig() {
+      return unwrap(await sb.from('overlay_config').select('params, admins_can_edit, updated_by, updated_at').eq('id', 1).maybeSingle());
+    },
+    async overlayAccess() { return unwrap(await sb.rpc('overlay_access')); },
+    async saveOverlayConfig(params) { return unwrap(await sb.rpc('overlay_save', { p_params: params })); },
+    async allowAdminsOverlay(on) { return unwrap(await sb.rpc('overlay_allow_admins', { p_on: on })); },
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
     },
@@ -342,6 +355,50 @@ async function createSupabaseApi() {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
         .subscribe();
     },
+    // ---------- Kisten-Shop ----------
+    async getShopSettings() {
+      return unwrap(await sb.from('shop_settings').select('items, prices, shop_seconds').eq('id', 1).maybeSingle());
+    },
+    async saveShopSettings(patch) {
+      return unwrap(await sb.from('shop_settings').update(patch).eq('id', 1).select('items, prices, shop_seconds').single());
+    },
+    // Liefert { run, chests } – alle vier Kisten zum Aufdecken
+    async openChest(chest, code = null, stream = false) {
+      return unwrap(await sb.rpc('shop_open_chest', { p_chest: chest, p_code: code, p_stream: stream }));
+    },
+    async shopBuy(runId, name) { return unwrap(await sb.rpc('shop_buy', { p_run: runId, p_name: name })); },
+    async shopDoneShopping(runId) { return unwrap(await sb.rpc('shop_done_shopping', { p_run: runId })); },
+    async shopMark(runId, index, found) { return unwrap(await sb.rpc('shop_mark', { p_run: runId, p_index: index, p_found: found })); },
+    async shopFinish(runId) { return unwrap(await sb.rpc('shop_finish', { p_run: runId })); },
+    async getMyShopRun() {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) return null;
+      return unwrap(await sb.from('shop_runs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle());
+    },
+    async createShopLobby() { return unwrap(await sb.rpc('shop_create_lobby')); },
+    async closeShopLobby(code) { return unwrap(await sb.rpc('shop_close_lobby', { p_code: code })); },
+    async getShopLobby(code) {
+      return unwrap(await sb.from('shop_lobbies_public').select('*').eq('code', code.trim().toUpperCase()).maybeSingle());
+    },
+    async getShopLobbyById(id) {
+      return unwrap(await sb.from('shop_lobbies_public').select('*').eq('id', id).maybeSingle());
+    },
+    async getLobbyRuns(lobbyId) {
+      return unwrap(await sb.from('shop_runs').select('*').eq('lobby_id', lobbyId).order('score', { ascending: false }));
+    },
+    onShopRuns(cb) {
+      sb.channel('shop-runs')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
+        .subscribe();
+    },
+    // ---------- Laufband im Overlay ----------
+    async getTicker() {
+      return unwrap(await sb.from('ticker').select('items').eq('id', 1).maybeSingle())?.items ?? null;
+    },
+    async saveTicker(items) {
+      return unwrap(await sb.from('ticker').update({ items }).eq('id', 1).select('items').single()).items;
+    },
     // ---------- Daves Dino ----------
     async getPet() {
       return unwrap(await sb.from('pet').select('*').eq('id', 1).maybeSingle());
@@ -455,6 +512,21 @@ function createLocalApi() {
     emitDemo('pet', next);
     return next;
   }
+  // Kisten-Shop im Demo-Modus
+  const demoChests = () => [45 + randomInt(21), 90 + randomInt(31), 140 + randomInt(31), 200 + randomInt(41)].sort(() => Math.random() - 0.5);
+  const shopScore = (items) => { const f = items.filter((i) => i.found).length; return f + (items.length && f === items.length ? 10 : 0); };
+  function saveRuns(runs) {
+    store.set('shop_runs', runs.slice(0, 200));
+  }
+  function updateRun(id, fn) {
+    const runs = store.get('shop_runs', []);
+    const run = runs.find((r) => r.id === id && r.user_id === current?.email);
+    if (!run) throw new Error('Diese Runde gibt es nicht.');
+    const next = { ...fn(run), updated_at: new Date().toISOString() };
+    saveRuns(runs.map((r) => (r.id === id ? next : r)));
+    emitDemo('shop_runs', next);
+    return next;
+  }
   function addPetEvent(ev) {
     const row = { id: nextId++, created_at: new Date().toISOString(), ...ev };
     store.set('pet_events', [row, ...store.get('pet_events', [])].slice(0, 40));
@@ -540,6 +612,26 @@ function createLocalApi() {
     },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
     async overlayReady() { return true; },
+    // Demo: Admins gelten als Dave
+    async getOverlayConfig() { return { params: '', admins_can_edit: false, updated_by: '', ...store.get('overlay_config', {}) }; },
+    async overlayAccess() {
+      const admin = isAdminNow();
+      const cfg = store.get('overlay_config', {});
+      return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit };
+    },
+    async saveOverlayConfig(params) {
+      await requireAdmin();
+      if (!/^[A-Za-z0-9_=&.,%+-]*$/.test(params) || params.length > 2000) throw new Error('Ungültige Einstellungen.');
+      const next = { ...store.get('overlay_config', {}), params, updated_by: store.get('users', {})[current.email]?.username ?? '', updated_at: new Date().toISOString() };
+      store.set('overlay_config', next);
+      return next;
+    },
+    async allowAdminsOverlay(on) {
+      await requireAdmin();
+      const next = { ...store.get('overlay_config', {}), admins_can_edit: !!on };
+      store.set('overlay_config', next);
+      return next;
+    },
 
     // ---------- Ärgere den Dave (Demo) ----------
     // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
@@ -742,12 +834,115 @@ function createLocalApi() {
     },
     onQuestions(cb) { (demoListeners.questions ??= []).push(cb); },
     onQuestionStage(cb) { (demoListeners.question_stage ??= []).push(cb); },
+    // ---------- Kisten-Shop (Demo) ----------
+    async getShopSettings() { return { ...DEFAULT_SHOP, ...store.get('shop_settings', {}) }; },
+    async saveShopSettings(patch) {
+      await requireAdmin();
+      const next = { ...(await this.getShopSettings()), ...patch };
+      if (!next.items?.length) throw new Error('Der Shop braucht mindestens ein Item.');
+      store.set('shop_settings', next);
+      return next;
+    },
+    async openChest(chest, code = null, stream = false) {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const profile = store.get('users', {})[current.email];
+      const settings = await this.getShopSettings();
+      let lobby = null;
+      let chests;
+      if (code) {
+        lobby = store.get('shop_lobbies', []).find((l) => l.code === code.trim().toUpperCase());
+        if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+        if (!lobby.open) throw new Error('Diese Koop-Runde ist schon beendet.');
+        if (store.get('shop_runs', []).some((r) => r.lobby_id === lobby.id && r.user_id === current.email)) throw new Error('Du spielst in dieser Koop-Runde schon mit.');
+        chests = lobby.chests;
+      } else {
+        chests = demoChests();
+        store.set('shop_runs', store.get('shop_runs', []).map((r) => (r.user_id === current.email && !r.lobby_id ? { ...r, status: 'done' } : r)));
+      }
+      const streamed = !!stream && !!profile?.is_admin;
+      const run = {
+        id: `run-${nextId++}`, user_id: current.email, player: profile?.username ?? 'Zuschauer', lobby_id: lobby?.id ?? null,
+        stream: streamed, chest, coins: chests[chest], spent: 0, items: [], status: 'shopping',
+        shop_until: new Date(Date.now() + settings.shop_seconds * 1000).toISOString(), score: 0,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      const runs = store.get('shop_runs', []).map((r) => (streamed ? { ...r, stream: false } : r));
+      saveRuns([run, ...runs]);
+      return { run, chests };
+    },
+    async shopBuy(runId, name) {
+      const settings = await this.getShopSettings();
+      return updateRun(runId, (r) => {
+        if (r.status !== 'shopping') throw new Error('Der Einkauf ist schon vorbei.');
+        if (Date.now() > Date.parse(r.shop_until) + 3000) throw new Error('Die Zeit im Shop ist abgelaufen.');
+        const item = settings.items.find((i) => i.name.toLowerCase() === name.trim().toLowerCase());
+        if (!item) throw new Error('Dieses Item gibt es im Shop nicht.');
+        if (r.items.some((i) => i.name.toLowerCase() === item.name.toLowerCase())) throw new Error('Das hast du schon gekauft.');
+        const price = Number(settings.prices[item.rarity] ?? 10);
+        if (r.spent + price > r.coins) throw new Error('Dafür reichen deine Goldbarren nicht.');
+        return { ...r, items: [...r.items, { name: item.name, rarity: item.rarity, price, found: false }], spent: r.spent + price };
+      });
+    },
+    async shopDoneShopping(runId) { return updateRun(runId, (r) => (r.status === 'shopping' ? { ...r, status: 'playing' } : r)); },
+    async shopMark(runId, index, found) {
+      return updateRun(runId, (r) => {
+        if (r.status !== 'playing') throw new Error('Abhaken geht, sobald der Einkauf vorbei ist und bis die Runde endet.');
+        const items = r.items.map((it, i) => (i === index ? { ...it, found: !!found } : it));
+        return { ...r, items, score: shopScore(items) };
+      });
+    },
+    async shopFinish(runId) { return updateRun(runId, (r) => ({ ...r, status: 'done', score: shopScore(r.items) })); },
+    async getMyShopRun() { return store.get('shop_runs', []).find((r) => r.user_id === current?.email) ?? null; },
+    async createShopLobby() {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const code = Array.from({ length: 5 }, () => letters[randomInt(letters.length)]).join('');
+      const lobby = { id: `lobby-${nextId++}`, code, host_id: current.email, host_name: store.get('users', {})[current.email]?.username ?? '', chests: demoChests(), open: true, created_at: new Date().toISOString() };
+      store.set('shop_lobbies', [lobby, ...store.get('shop_lobbies', [])]);
+      const { chests, host_id, ...pub } = lobby;
+      return pub;
+    },
+    async closeShopLobby(code) {
+      let pub = null;
+      store.set('shop_lobbies', store.get('shop_lobbies', []).map((l) => {
+        if (l.code !== code) return l;
+        if (l.host_id !== current?.email && !isAdminNow()) throw new Error('Beenden darf nur, wer die Runde eröffnet hat.');
+        const { chests, host_id, ...rest } = { ...l, open: false };
+        pub = rest;
+        return { ...l, open: false };
+      }));
+      return pub;
+    },
+    async getShopLobby(code) {
+      const l = store.get('shop_lobbies', []).find((x) => x.code === code.trim().toUpperCase());
+      if (!l) return null;
+      const { chests, host_id, ...pub } = l;
+      return pub;
+    },
+    async getShopLobbyById(id) {
+      const l = store.get('shop_lobbies', []).find((x) => x.id === id);
+      if (!l) return null;
+      const { chests, host_id, ...pub } = l;
+      return pub;
+    },
+    async getLobbyRuns(lobbyId) { return store.get('shop_runs', []).filter((r) => r.lobby_id === lobbyId).sort((a, b) => b.score - a.score); },
+    onShopRuns(cb) { (demoListeners.shop_runs ??= []).push(cb); },
+    // ---------- Laufband (Demo) ----------
+    async getTicker() { return store.get('ticker', null)?.items ?? DEFAULT_TICKER; },
+    async saveTicker(items) {
+      await requireAdmin();
+      const list = items.map((t) => t.trim().slice(0, 120)).filter(Boolean).slice(0, 30);
+      if (!list.length) throw new Error('Das Laufband braucht mindestens einen Text.');
+      store.set('ticker', { items: list, updated_at: new Date().toISOString() });
+      return list;
+    },
     // ---------- Daves Dino (Demo) ----------
     async getPet() { return { ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...store.get('pet', {}) }; },
     async getPetEvents(limit = 20) { return store.get('pet_events', []).slice(0, limit); },
     async petAction(kind) {
       if (!current) throw new Error('Bitte zuerst anmelden.');
       const profile = store.get('users', {})[current.email];
+      if (!profile?.is_admin) throw new Error('Im Stream füttern Zuschauer den Dino über den Twitch-Chat.');
       const key = `pet_cd_${current.email}_${kind}`;
       const wait = kind === 'feed' ? 600000 : 60000;
       const last = store.get(key, 0);
@@ -772,6 +967,7 @@ function createLocalApi() {
       const next = { ...(await this.getPet()), ...patch };
       if (patch.phrases) next.phrases = patch.phrases.map((p) => p.trim().slice(0, 80)).filter(Boolean).slice(0, 50);
       if (patch.name !== undefined) next.name = String(patch.name).trim().slice(0, 20) || 'Rexi';
+      if (patch.feed_command !== undefined && !/^![^\s!]{1,29}$/.test(patch.feed_command)) throw new Error('Der Chat-Befehl beginnt mit ! und hat keine Leerzeichen.');
       return savePet(next);
     },
     onPet(cb) { (demoListeners.pet ??= []).push(cb); },
