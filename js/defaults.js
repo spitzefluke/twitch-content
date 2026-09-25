@@ -118,8 +118,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'challenge',
     position: 7,
+    kind: 'challenge',
+    title: 'Win-Challenge',
+    description: 'Games, Runden und Fights gegen die Mods – schafft Dave alle Stufen, bevor ihm die Leben ausgehen?',
+    theme: 'challenge',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 8,
     kind: 'countdown',
     title: 'Nachtschicht Güterzug',
     description: 'Train Sim World: Langstrecke durch die Nacht – ohne Pause bis zum Zielbahnhof.',
@@ -129,7 +139,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 8,
+    position: 9,
     kind: 'countdown',
     title: 'Subathon: Endstation?',
     description: 'Jeder Sub verlängert die Fahrt. Wo liegt die Endstation?',

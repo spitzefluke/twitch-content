@@ -782,6 +782,8 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .theme-pet .tile-bg { background-image: url("../assets/bg-pet.svg"); }
 .theme-shop .tile-bg { background-image: url("../assets/bg-shop.svg"); }
 .theme-shop { --tile-glow: rgba(255, 201, 51, .45); }
+.theme-challenge .tile-bg { background-image: url("../assets/bg-challenge.svg"); }
+.theme-challenge { --tile-glow: rgba(255, 92, 92, .45); }
 .theme-pet { --tile-glow: rgba(92, 195, 107, .45); }
 
 .tile-tag {
