@@ -31,6 +31,8 @@
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
 //   pet=0                      Daves Dino aus (läuft sonst unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
+//   shop=tl|…|0                Position der Kisten-Shop-Karte (Standard tl = oben links), 0 = aus
+//   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -46,6 +48,7 @@ import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
+import { GOLD, renderLoadout, scoreOf } from './shop.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -110,6 +113,8 @@ const opt = {
   qsize: number('qsize', 100, 50, 200) / 100,
   pet: flag('pet', true),
   dsize: number('dsize', 100, 50, 200) / 100,
+  shop: position(params.get('shop'), 'tl'),
+  ssize: number('ssize', 100, 50, 200) / 100,
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -140,6 +145,7 @@ root.setProperty('--ps', opt.psize);
 root.setProperty('--bs', opt.bsize);
 root.setProperty('--qs', opt.qsize);
 root.setProperty('--ts', opt.tsize);
+root.setProperty('--ss', opt.ssize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -156,6 +162,8 @@ else $('ov-bingo').remove();
 if (opt.quest) place($('ov-quest'), opt.quest);
 else $('ov-quest').remove();
 if (!opt.pet) $('ov-pet').remove();
+if (opt.shop) place($('ov-shop'), opt.shop);
+else $('ov-shop').remove();
 place($('ov-ticker'), opt.ticker);
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
@@ -204,6 +212,7 @@ async function start() {
   if (opt.bingo) setupBingo(source);
   if (opt.quest) setupQuestions(source);
   if (opt.pet) setupPet(source);
+  if (opt.shop) setupShop(source);
   setupTicker(source);
   if (LIVE) watchOverlayConfig(source);
 }
@@ -269,6 +278,16 @@ async function connect() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
     },
+    shopStreamRun: async () => (await rows(sb.from('shop_runs').select('*').eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
+    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select('*').eq('lobby_id', lobbyId)),
+    onShopRuns(cb) {
+      sb.channel('overlay-shop')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Kisten-Shop fehlgeschlagen'); });
+    },
+    shopImages: async () => rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({
+      name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
+    }))),
     onOverlayConfig(cb) {
       sb.channel('overlay-config')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'overlay_config' }, (p) => cb(p.new.params))
@@ -336,6 +355,12 @@ function demoSource() {
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
     },
+    shopStreamRun: async () => read('shop_runs', []).find((r) => r.stream) ?? null,
+    shopLobbyRuns: async (lobbyId) => read('shop_runs', []).filter((r) => r.lobby_id === lobbyId),
+    onShopRuns(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_shop_runs') cb(null); });
+    },
+    shopImages: async () => read('bingo_items', []).map((i) => ({ name: i.name, url: i.url })),
     onOverlayConfig(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_overlay_config') cb(read('overlay_config', null)?.params ?? ''); });
     },
@@ -825,6 +850,112 @@ async function setupPet(source) {
 }
 
 // ============================================================
+// Kisten-Shop: Daves Runde im Stream
+// ============================================================
+// Zu sehen, solange Dave mit „Im Stream zeigen“ spielt; nach dem Ende noch 10 Minuten.
+const SHOP_SHOW_AFTER_MS = 10 * 60 * 1000;
+
+async function setupShop(source) {
+  const card = $('ov-shop');
+  const sfx = new Sfx({ volume: opt.volume });
+  const images = new Map((await source.shopImages?.().catch(() => []) ?? []).map((i) => [i.name.toLowerCase(), i.url]));
+  let run = null;
+  let board = [];
+  let timer = 0;
+
+  const show = (next, { sound = true } = {}) => {
+    const prev = run;
+    run = next;
+    const visible = !!run && (run.status !== 'done' || Date.now() - Date.parse(run.updated_at ?? run.created_at) < SHOP_SHOW_AFTER_MS || opt.edit);
+    card.hidden = !visible;
+    clearInterval(timer);
+    if (!visible) return;
+    const found = run.items.filter((i) => i.found).length;
+    const all = run.items.length > 0 && found === run.items.length;
+    card.classList.toggle('is-allfound', all);
+    $('ov-shop-coins').innerHTML = run.status === 'shopping'
+      ? `${run.coins - run.spent} ${GOLD}`
+      : `${run.items.length} Item${run.items.length === 1 ? '' : 's'}`;
+    $('ov-shop-score').textContent = run.status === 'shopping' ? '' : `${scoreOf(run.items)} Punkte`;
+    const status = $('ov-shop-status');
+    const paintStatus = () => {
+      if (run.status === 'shopping') {
+        const s = Math.max(0, Math.ceil((Date.parse(run.shop_until) - Date.now()) / 1000));
+        status.textContent = `${run.player} kauft ein · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      } else {
+        status.textContent = run.status === 'done' ? `${run.player} · Runde vorbei` : `${run.player} · ${found}/${run.items.length} gefunden`;
+      }
+    };
+    paintStatus();
+    if (run.status === 'shopping') timer = setInterval(paintStatus, 500);
+    const list = $('ov-shop-list');
+    renderLoadout(list, run, { imageFor: (name) => images.get(name.toLowerCase()) ?? null });
+    // Neu gekaufte Items springen hinein
+    const before = prev?.id === run.id ? prev.items.length : 0;
+    [...list.children].forEach((li, i) => { if (i >= before && prev?.id === run.id) li.classList.add('is-new'); });
+    if (!sound || !prev) return;
+    if (prev.id !== run.id) sfx.hit('bling');
+    else if (run.items.length > prev.items.length) sfx.hit('bling');
+    else if (found > prev.items.filter((i) => i.found).length) {
+      if (all) { sfx.play('applause'); sfx.play('gong'); } else sfx.hit('bling');
+    }
+  };
+
+  const paintBoard = () => {
+    const el = $('ov-shop-board');
+    el.hidden = !run?.lobby_id || board.length < 2;
+    if (el.hidden) return;
+    const sorted = [...board].sort((a, b) => b.score - a.score).slice(0, 5);
+    el.replaceChildren(...sorted.map((r) => {
+      const li = document.createElement('li');
+      if (r.id === run.id) li.className = 'is-me';
+      const who = document.createElement('span');
+      who.textContent = r.player;
+      const pts = document.createElement('b');
+      pts.textContent = r.score;
+      li.append(who, pts);
+      return li;
+    }));
+  };
+
+  const refresh = async (sound = true) => {
+    const next = await source.shopStreamRun().catch(() => null);
+    if (next?.lobby_id) board = await source.shopLobbyRuns(next.lobby_id).catch(() => []);
+    else board = [];
+    show(next, { sound });
+    paintBoard();
+  };
+
+  if (opt.test || opt.edit) {
+    // Probe zum Einrichten
+    const demo = {
+      id: 'test', player: 'Dave', status: 'playing', coins: 165, spent: 110, lobby_id: null, updated_at: new Date().toISOString(),
+      shop_until: new Date().toISOString(),
+      items: [
+        { name: 'SCAR', rarity: 'epic', price: 55, found: true },
+        { name: 'Pump', rarity: 'uncommon', price: 20, found: false },
+        { name: 'Schildtrank', rarity: 'rare', price: 35, found: true },
+      ],
+    };
+    show(demo, { sound: false });
+    if (opt.test) {
+      let n = 0;
+      setInterval(() => {
+        const items = demo.items.map((it, i) => ({ ...it, found: i <= n % 3 }));
+        show({ ...demo, items, updated_at: new Date().toISOString() });
+        n++;
+      }, 7000);
+    }
+    return;
+  }
+  await refresh(false);
+  source.onShopRuns((row) => {
+    if (row && !row.stream && row.id !== run?.id && row.lobby_id !== run?.lobby_id) return;
+    refresh();
+  });
+}
+
+// ============================================================
 // Laufband: andere Seiten und Socials, immer an
 // ============================================================
 async function setupTicker(source) {
@@ -869,7 +1000,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-ticker', 'ticker']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);

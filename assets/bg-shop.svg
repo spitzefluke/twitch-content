@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a0c"/><stop offset=".6" stop-color="#1e1406"/><stop offset="1" stop-color="#0d0903"/></linearGradient>
+<radialGradient id="glow" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#ffd36b" stop-opacity=".7"/><stop offset="1" stop-color="#ffd36b" stop-opacity="0"/></radialGradient>
+<filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000" flood-opacity=".6"/></filter>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g stroke="#ffd36b" stroke-width="3" opacity=".45" stroke-linecap="round">
+<path d="M400 250 L400 120 M400 250 L520 140 M400 250 L280 140 M400 250 L600 220 M400 250 L200 220"/>
+</g>
+<g filter="url(#shadow)" transform="translate(290 200) scale(1.8)">
+<rect x="14" y="44" width="92" height="46" rx="6" fill="#8a4b1f" stroke="#3a1d08" stroke-width="3"/>
+<rect x="22" y="44" width="10" height="46" fill="#f2b92b" stroke="#7a4a00" stroke-width="2"/>
+<rect x="88" y="44" width="10" height="46" fill="#f2b92b" stroke="#7a4a00" stroke-width="2"/>
+<rect x="50" y="52" width="20" height="18" rx="3" fill="#ffd84a" stroke="#7a4a00" stroke-width="2"/>
+<ellipse cx="60" cy="44" rx="40" ry="10" fill="#fff3b0"/>
+<g transform="translate(-8 -30) rotate(-22 60 46)"><path d="M14 46 C14 22 106 22 106 46 Z" fill="#a0582a" stroke="#3a1d08" stroke-width="3"/></g>
+</g>
+<g fill="#ffc933" stroke="#8a5a00" stroke-width="2" opacity=".9">
+<path d="M120 380 h40 l12 24 h-64z"/><path d="M640 360 h40 l12 24 h-64z"/><path d="M600 410 h40 l12 24 h-64z"/><path d="M160 420 h40 l12 24 h-64z"/>
+</g>
+</svg>

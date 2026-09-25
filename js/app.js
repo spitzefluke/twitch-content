@@ -7,6 +7,7 @@ import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLine
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, dinoSvg, hungerOf, isHungry, runDino } from './pet.js';
 import { DEFAULT_TICKER } from './ticker.js';
+import { DEFAULT_SHOP, GOLD, catalogFromText, catalogToText, chestSvg, coinsLeft, itemIcon, priceOf, renderLoadout, scoreOf, sortByRarity } from './shop.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -59,6 +60,20 @@ const state = {
     error: '',
     list: [],           // eigene Fragen, für Admins alle
     stage: null,        // was gerade im Stream steht
+    subscribed: false,
+  },
+  // Kisten-Shop
+  shop: {
+    on: false,
+    error: '',
+    settings: null,
+    mode: 'solo',       // 'solo' oder 'koop'
+    run: null,          // aktuelle eigene Runde
+    chests: null,       // aufgedeckte Kisten (nur direkt nach dem Öffnen)
+    chestsFor: null,
+    lobby: null,        // Koop-Runde (ohne Kisten-Werte)
+    lobbyRuns: [],
+    timer: 0,
     subscribed: false,
   },
   // Daves Dino
@@ -360,6 +375,7 @@ async function enterApp(user) {
   // Fragen und Dino laden im Hintergrund – fehlen sie noch, bleiben die Kacheln einfach ruhig.
   loadQuestions();
   loadPet();
+  loadShop();
 }
 
 function leaveApp() {
@@ -410,7 +426,7 @@ const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - 
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
 // "Ärgere den Dave", Bingo, Fragen und Dino haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
-const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet'].includes(t.kind)
+const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop'].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
 
@@ -602,7 +618,7 @@ function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
-  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile };
+  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -856,6 +872,7 @@ function setupDialogs() {
   setupBingo();
   setupQuestions();
   setupPet();
+  setupShop();
   document.querySelectorAll('[data-tile-start]').forEach((input) => {
     input.addEventListener('change', (e) => { e.stopPropagation(); saveTileStart(input); });
   });
@@ -2085,6 +2102,439 @@ function paintPetTile(el = $('.tile--pet')) {
 }
 
 // ============================================================
+// Kisten-Shop
+// ============================================================
+function buildShopTile(tile, i) {
+  const el = buildActionTile(tile, i, { cls: 'tile--loot', cta: 'Kiste wählen →', onClick: openShop });
+  paintShopTile(el);
+  return el;
+}
+
+function paintShopTile(el = $('.tile--shop')) {
+  const label = el?.querySelector('.tile-live-status');
+  if (!label) return;
+  const run = state.shop.run;
+  label.textContent = !run || run.status === 'done'
+    ? '🧰 4 Kisten warten'
+    : run.status === 'shopping' ? '🛒 Einkauf läuft'
+      : `🎯 ${run.items.filter((x) => x.found).length} von ${run.items.length} gefunden`;
+}
+
+function setupShop() {
+  document.querySelectorAll('[data-shop-mode]').forEach((b) => b.addEventListener('click', () => {
+    state.shop.mode = b.dataset.shopMode;
+    loadShopRun().then(renderShop);
+  }));
+  $('#shop-lobby-create').addEventListener('click', createShopLobby);
+  $('#shop-join-form').addEventListener('submit', joinShopLobby);
+  $('#shop-lobby-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(state.shop.lobby.code); toast('Code kopiert – schick ihn deinen Mitspielern.', 'ok'); } catch { /* egal */ }
+  });
+  $('#shop-lobby-close').addEventListener('click', closeShopLobby);
+  $('#shop-lobby-leave').addEventListener('click', () => {
+    Object.assign(state.shop, { lobby: null, run: null, chests: null, lobbyRuns: [] });
+    try { localStorage.removeItem('zd_shop_lobby'); } catch { /* egal */ }
+    renderShop();
+  });
+  $('#shop-done').addEventListener('click', () => shopDoneShopping());
+  $('#shop-finish').addEventListener('click', shopFinish);
+  $('#shop-new').addEventListener('click', () => {
+    Object.assign(state.shop, { run: null, chests: null });
+    renderShop();
+  });
+  $('#shop-settings').addEventListener('submit', saveShopSettings);
+  $('#shop-dialog').addEventListener('close', () => clearInterval(state.shop.timer));
+}
+
+async function loadShop() {
+  try {
+    state.shop.settings = (await state.api.getShopSettings()) ?? DEFAULT_SHOP;
+    state.shop.on = true;
+    await loadShopRun();
+  } catch (err) {
+    console.warn('Kisten-Shop nicht verfügbar:', err);
+    Object.assign(state.shop, { on: false, error: germanError(err) });
+  }
+  if (state.shop.on && !state.shop.subscribed) {
+    state.shop.subscribed = true;
+    state.api.onShopRuns((row) => {
+      if (!row) return;
+      if (row.user_id === state.user?.id && row.id === state.shop.run?.id) state.shop.run = row;
+      if (state.shop.lobby && row.lobby_id === state.shop.lobby.id) {
+        const list = state.shop.lobbyRuns.filter((r) => r.id !== row.id);
+        state.shop.lobbyRuns = [...list, row];
+      }
+      paintShopTile();
+      if ($('#shop-dialog').open) renderShop({ keepItems: true });
+    });
+  }
+  paintShopTile();
+}
+
+// Die passende Runde: allein die letzte eigene, im Koop die in dieser Runde
+async function loadShopRun() {
+  const { mode } = state.shop;
+  if (mode === 'koop') {
+    if (!state.shop.lobby) {
+      let saved = null;
+      try { saved = localStorage.getItem('zd_shop_lobby'); } catch { /* egal */ }
+      if (saved) state.shop.lobby = await state.api.getShopLobbyById(saved).catch(() => null);
+    }
+    if (!state.shop.lobby) { state.shop.run = null; return; }
+    state.shop.lobbyRuns = await state.api.getLobbyRuns(state.shop.lobby.id);
+    state.shop.run = state.shop.lobbyRuns.find((r) => r.user_id === state.user?.id) ?? null;
+  } else {
+    const run = await state.api.getMyShopRun();
+    state.shop.run = run && !run.lobby_id ? run : null;
+    state.shop.lobbyRuns = [];
+  }
+  if (state.shop.run?.id !== state.shop.chestsFor) state.shop.chests = null;
+}
+
+async function openShop() {
+  const tile = tileByKind('shop');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
+  renderShop();
+  $('#shop-dialog').showModal();
+  await loadShop();
+  renderShop();
+}
+
+function shopImage(name) {
+  const hit = state.bingo.items.find((i) => i.name.toLowerCase() === name.toLowerCase());
+  return hit ? state.api.bingoUrl(hit.path) : null;
+}
+
+function renderShop({ keepItems = false } = {}) {
+  const { on, run, mode, lobby, settings } = state.shop;
+  const admin = !!state.profile?.is_admin;
+  const note = $('#shop-note');
+  note.textContent = on ? '' : admin
+    ? (state.shop.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20261001000000_loot_shop.sql ausführen.')
+    : 'Der Kisten-Shop ist noch nicht eingerichtet. Schau später noch mal vorbei.';
+  note.hidden = on;
+  const tabs = $('.shop-tabs');
+  tabs.dataset.active = mode;
+  tabs.querySelectorAll('[data-shop-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.shopMode === mode)));
+
+  // Koop-Bereich
+  const koop = mode === 'koop';
+  $('#shop-koop').hidden = !koop;
+  $('#shop-koop-start').hidden = !!lobby;
+  $('#shop-koop-info').hidden = !lobby;
+  if (lobby) {
+    $('#shop-lobby-code').textContent = lobby.code;
+    $('#shop-lobby-host').textContent = `· eröffnet von ${lobby.host_name || 'jemandem'}${lobby.open ? '' : ' · beendet'}`;
+    $('#shop-lobby-close').hidden = !lobby.open || !(admin || lobby.host_name === state.profile?.username);
+  }
+  const needsLobby = koop && !lobby;
+  const step = needsLobby || !on ? null : !run ? 'chests' : run.status === 'shopping' ? 'shop' : 'play';
+  $('#shop-step-chests').hidden = step !== 'chests';
+  $('#shop-step-shop').hidden = step !== 'shop';
+  $('#shop-step-play').hidden = step !== 'play';
+  $('#shop-stream-wrap').hidden = !admin;
+
+  if (step === 'chests') renderChests();
+  if (step === 'shop') {
+    if (!keepItems || !$('#shop-items').children.length) renderShopItems();
+    else paintShopItems();
+    startShopTimer();
+  } else {
+    clearInterval(state.shop.timer);
+  }
+  if (step === 'play') {
+    renderLoadout($('#shop-loadout'), run, {
+      onMark: run.status === 'playing' ? shopMark : null,
+      imageFor: shopImage,
+    });
+    const found = run.items.filter((x) => x.found).length;
+    $('#shop-score').textContent = `${scoreOf(run.items)} Punkte`;
+    $('#shop-play-title').textContent = run.status === 'done'
+      ? `Runde vorbei: ${found} von ${run.items.length} gefunden${run.items.length && found === run.items.length ? ' – alle! +10' : ''}`
+      : '3. Finde sie im Spiel';
+    $('#shop-finish').hidden = run.status === 'done';
+    $('#shop-new').hidden = run.status !== 'done' || koop;
+  }
+
+  // Rangliste im Koop
+  $('#shop-board-box').hidden = !lobby || !koop;
+  if (lobby && koop) {
+    const runs = [...state.shop.lobbyRuns].sort((a, b) => b.score - a.score || a.created_at.localeCompare(b.created_at));
+    const board = $('#shop-board');
+    if (!runs.length) {
+      const li = document.createElement('li');
+      li.textContent = 'Noch niemand hat eine Kiste gewählt.';
+      board.replaceChildren(li);
+    } else {
+      board.replaceChildren(...runs.map((r) => {
+        const li = document.createElement('li');
+        if (r.user_id === state.user?.id) li.className = 'is-me';
+        const who = document.createElement('span');
+        who.textContent = r.player;
+        const small = document.createElement('small');
+        small.textContent = ` · ${r.status === 'shopping' ? 'kauft ein' : `${r.items.filter((x) => x.found).length}/${r.items.length} gefunden`}${r.status === 'done' ? ' · fertig' : ''}`;
+        who.append(small);
+        const pts = document.createElement('b');
+        pts.textContent = r.score;
+        li.append(who, pts);
+        return li;
+      }));
+    }
+  }
+
+  // Admin-Einstellungen
+  $('#shop-admin').hidden = !(admin && on);
+  $('#shop-dialog').classList.toggle('has-side', (admin && on) || (koop && !!lobby));
+  paintTileStart('shop');
+  if (admin && on) fillShopSettings(settings ?? DEFAULT_SHOP);
+  paintShopTile();
+}
+
+function renderChests() {
+  const wrap = $('#shop-chests');
+  const { chests, run } = state.shop;
+  wrap.replaceChildren(...[0, 1, 2, 3].map((i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chest';
+    b.innerHTML = `${chestSvg()}<span class="chest-label">Kiste ${i + 1}</span><span class="chest-value"></span>`;
+    if (chests) {
+      b.disabled = true;
+      b.classList.add('is-open', i === run?.chest ? 'is-picked' : 'is-other');
+      b.querySelector('.chest-value').innerHTML = `${chests[i]} ${GOLD}`;
+    } else {
+      b.addEventListener('click', () => openChest(i, b));
+    }
+    return b;
+  }));
+}
+
+async function openChest(i, btn) {
+  const buttons = [...$('#shop-chests').children];
+  buttons.forEach((b) => { b.disabled = true; });
+  btn.classList.add('is-shaking');
+  try {
+    const stream = !!state.profile?.is_admin && $('#shop-stream').checked;
+    const code = state.shop.mode === 'koop' ? state.shop.lobby?.code : null;
+    const [res] = await Promise.all([state.api.openChest(i, code, stream), new Promise((r) => setTimeout(r, 500))]);
+    Object.assign(state.shop, { run: res.run, chests: res.chests, chestsFor: res.run.id });
+    if (code) state.shop.lobbyRuns = [...state.shop.lobbyRuns.filter((r) => r.id !== res.run.id), res.run];
+    // Aufdecken: gewählte Kiste zuerst, dann die anderen
+    buttons.forEach((b, n) => {
+      b.classList.remove('is-shaking');
+      setTimeout(() => {
+        b.classList.add('is-open', n === i ? 'is-picked' : 'is-other');
+        b.querySelector('.chest-value').innerHTML = `${res.chests[n]} ${GOLD}`;
+      }, n === i ? 0 : 500 + n * 120);
+    });
+    prankSfx(true)?.hit('bling');
+    toast(`${res.run.coins} Goldbarren! Ab in den Shop – die Zeit läuft.`, 'ok');
+    setTimeout(() => { if ($('#shop-dialog').open) renderShop(); }, 1900);
+    paintShopTile();
+  } catch (err) {
+    btn.classList.remove('is-shaking');
+    buttons.forEach((b) => { b.disabled = false; });
+    toast(germanError(err), 'error', 6000);
+  }
+}
+
+function renderShopItems() {
+  const list = $('#shop-items');
+  const settings = state.shop.settings ?? DEFAULT_SHOP;
+  list.replaceChildren(...sortByRarity(settings.items).map((item) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `shop-item rar-${item.rarity}`;
+    b.dataset.name = item.name;
+    b.dataset.price = priceOf(item, settings.prices);
+    const icon = document.createElement('span');
+    icon.className = 'shop-item-icon';
+    const img = shopImage(item.name);
+    if (img) {
+      const pic = document.createElement('img');
+      pic.src = img;
+      pic.alt = '';
+      icon.append(pic);
+    } else {
+      icon.textContent = itemIcon(item.name);
+    }
+    const name = document.createElement('span');
+    name.className = 'shop-item-name';
+    name.textContent = item.name;
+    const price = document.createElement('span');
+    price.className = 'shop-item-price';
+    price.innerHTML = `${b.dataset.price} ${GOLD}`;
+    b.append(icon, name, price);
+    b.addEventListener('click', () => shopBuy(item.name, b));
+    li.append(b);
+    return li;
+  }));
+  paintShopItems();
+}
+
+function paintShopItems() {
+  const { run } = state.shop;
+  if (!run) return;
+  const left = coinsLeft(run);
+  $('#shop-coins').innerHTML = `${left} ${GOLD} <small>von ${run.coins}</small>`;
+  const bought = new Set(run.items.map((i) => i.name.toLowerCase()));
+  $('#shop-items').querySelectorAll('.shop-item').forEach((b) => {
+    const has = bought.has(b.dataset.name.toLowerCase());
+    b.classList.toggle('is-bought', has);
+    b.disabled = has || Number(b.dataset.price) > left;
+  });
+}
+
+function startShopTimer() {
+  clearInterval(state.shop.timer);
+  const tick = () => {
+    const run = state.shop.run;
+    if (!run || run.status !== 'shopping') { clearInterval(state.shop.timer); return; }
+    const ms = Date.parse(run.shop_until) - Date.now();
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const el = $('#shop-timer');
+    el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    el.classList.toggle('is-low', s <= 10);
+    if (ms <= 0) {
+      clearInterval(state.shop.timer);
+      shopDoneShopping(true);
+    }
+  };
+  tick();
+  state.shop.timer = setInterval(tick, 250);
+}
+
+async function shopBuy(name, btn) {
+  btn.disabled = true;
+  try {
+    state.shop.run = await state.api.shopBuy(state.shop.run.id, name);
+    prankSfx(true)?.hit('bling');
+    paintShopItems();
+  } catch (err) {
+    toast(germanError(err), 'error');
+    paintShopItems();
+  }
+}
+
+async function shopDoneShopping(timeUp = false) {
+  if (!state.shop.run || state.shop.run.status !== 'shopping') return;
+  try {
+    state.shop.run = await state.api.shopDoneShopping(state.shop.run.id);
+    if (timeUp) toast('Die Zeit im Shop ist um! Jetzt die Items im Spiel finden.', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  renderShop();
+}
+
+async function shopMark(index, found, btn) {
+  btn.disabled = true;
+  try {
+    state.shop.run = await state.api.shopMark(state.shop.run.id, index, found);
+    const r = state.shop.run;
+    if (r.items.length && r.items.every((x) => x.found)) toast('Alle Items gefunden – 10 Punkte extra!', 'ok', 6000);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  renderShop();
+}
+
+async function shopFinish() {
+  if (!confirm('Runde beenden? Danach lässt sich nichts mehr abhaken.')) return;
+  try {
+    state.shop.run = await state.api.shopFinish(state.shop.run.id);
+    toast(`Runde vorbei: ${state.shop.run.score} Punkte.`, 'ok', 6000);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  renderShop();
+}
+
+async function createShopLobby() {
+  const btn = $('#shop-lobby-create');
+  btn.disabled = true;
+  try {
+    const lobby = await state.api.createShopLobby();
+    Object.assign(state.shop, { lobby, run: null, chests: null, lobbyRuns: [] });
+    try { localStorage.setItem('zd_shop_lobby', lobby.id); } catch { /* egal */ }
+    toast(`Koop-Runde ${lobby.code} eröffnet – gib den Code deinen Mitspielern.`, 'ok', 6000);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  } finally {
+    btn.disabled = false;
+  }
+  renderShop();
+}
+
+async function joinShopLobby(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const code = form.code.value.trim().toUpperCase();
+  if (!/^[A-Z2-9]{5}$/.test(code)) return formMsg(form, 'Der Code hat 5 Zeichen.');
+  await withLoading(form, async () => {
+    const lobby = await state.api.getShopLobby(code);
+    if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+    Object.assign(state.shop, { lobby, run: null, chests: null });
+    try { localStorage.setItem('zd_shop_lobby', lobby.id); } catch { /* egal */ }
+    form.reset();
+    await loadShopRun();
+    renderShop();
+  });
+}
+
+async function closeShopLobby() {
+  if (!confirm('Koop-Runde beenden? Danach kann niemand mehr beitreten.')) return;
+  try {
+    state.shop.lobby = await state.api.closeShopLobby(state.shop.lobby.code);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  renderShop();
+}
+
+const SHOP_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic'];
+
+function fillShopSettings(settings) {
+  const f = $('#shop-settings');
+  if (f.contains(document.activeElement)) return;
+  f.shop_seconds.value = settings.shop_seconds;
+  f.items.value = catalogToText(settings.items);
+  const grid = $('#shop-price-grid');
+  if (!grid.children.length) {
+    grid.replaceChildren(...SHOP_RARITIES.map((r) => {
+      const label = document.createElement('label');
+      label.className = `shop-price rar-${r}`;
+      label.innerHTML = '<span></span><input type="number" min="1" max="999" step="1" required>';
+      label.firstChild.textContent = RARITIES.find((x) => x.id === r)?.name ?? r;
+      label.lastChild.name = `price_${r}`;
+      return label;
+    }));
+  }
+  for (const r of SHOP_RARITIES) f.elements[`price_${r}`].value = settings.prices?.[r] ?? DEFAULT_SHOP.prices[r];
+}
+
+async function saveShopSettings(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const items = catalogFromText(form.items.value);
+  const secs = Math.round(Number(form.shop_seconds.value));
+  if (!items.length) return formMsg(form, 'Der Shop braucht mindestens ein Item.');
+  if (!(secs >= 20 && secs <= 600)) return formMsg(form, 'Zeit im Shop: 20 bis 600 Sekunden.');
+  const prices = {};
+  for (const r of SHOP_RARITIES) {
+    const v = Math.round(Number(form.elements[`price_${r}`].value));
+    if (!(v >= 1 && v <= 999)) return formMsg(form, 'Preise zwischen 1 und 999 Goldbarren.');
+    prices[r] = v;
+  }
+  await withLoading(form, async () => {
+    state.shop.settings = await state.api.saveShopSettings({ items, prices, shop_seconds: secs });
+    formMsg(form, 'Gespeichert.', true);
+    form.items.value = catalogToText(state.shop.settings.items);
+  });
+}
+
+// ============================================================
 // Unangenehme Fragen
 // ============================================================
 function setupQuestions() {
@@ -2574,7 +3024,7 @@ async function saveTileStart(input) {
 // ============================================================
 const THEME_BG = {
   tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
-  prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg',
+  prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg', shop: 'assets/bg-shop.svg',
 };
 
 function openTile(id) {
@@ -2657,9 +3107,9 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop'];
+const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -2715,10 +3165,10 @@ function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
-  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo und Fragen nur wenn geändert.
+  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo, Fragen und Shop nur wenn geändert.
   for (const key of OBS_PARTS) {
     const value = f.elements[`${key}_on`].checked ? f.elements[key].value : '0';
-    if (!['bingo', 'quest'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
+    if (!['bingo', 'quest', 'shop'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
   }
   for (const el of obsFields()) {
     if (OBS_PARTS.includes(el.name) || el.name.endsWith('_on')) continue;

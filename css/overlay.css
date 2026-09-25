@@ -369,3 +369,26 @@ p { margin: 0; }
   color: #ffb300; text-shadow: 0 0 .25em rgba(255, 179, 0, .85), 0 0 .7em rgba(255, 140, 0, .45);
 }
 .ov-ticker.ticker-style-board .ticker-sep { color: #ffb300; opacity: .7; }
+
+/* ---------- Kisten-Shop ---------- */
+.ov-shop {
+  --c: #ffc933;
+  font-size: calc(16px * var(--ss, 1));
+  width: 22em; animation: ov-in .6s var(--ease-out) both;
+}
+.ov-shop-body { padding: .8em 1em 1em; display: grid; gap: .6em; }
+.ov-shop-top { display: flex; align-items: baseline; justify-content: space-between; gap: .6em; }
+.ov-shop-coins { font-family: var(--font-display); font-weight: 800; font-size: 1.6em; color: #ffd36b; }
+.ov-shop-score { font-family: var(--font-display); font-weight: 800; font-size: 1.3em; color: #fff; }
+.ov-shop .loadout { gap: .35em; }
+.ov-shop .loadout-item { padding: .35em .55em; font-size: .95em; background: rgba(255, 255, 255, .06); }
+.ov-shop .loadout-item.is-new { animation: ov-shop-pop .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+.ov-shop .loadout-item.is-found .loadout-name { color: #c9f5cf; }
+.ov-shop .loadout-icon { width: 1.6em; height: 1.6em; font-size: 1.2em; }
+.ov-shop .loadout-icon img { width: 1.6em; height: 1.6em; }
+.ov-shop span.loadout-mark { font-size: 1.3em; }
+.ov-shop .loadout li.empty { color: #8f99ae; }
+.ov-shop-board { font-size: .9em; }
+.ov-shop-board li { padding: .3em .5em; }
+.ov-shop.is-allfound { box-shadow: 0 0 0 .15em #5cc36b, 0 0 2em rgba(92, 195, 107, .5); }
+@keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }

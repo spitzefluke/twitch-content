@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/prank-fx.css">
   <link rel="stylesheet" href="css/bingo.css">
   <link rel="stylesheet" href="css/pet.css">
+  <link rel="stylesheet" href="css/shop.css">
   <script type="module" src="js/overlay.js"></script>
 </head>
 <!-- Als Browserquelle in OBS einbinden (1920 × 1080). Der Hintergrund ist
@@ -93,6 +94,24 @@
     <div class="ov-quest-body">
       <p class="qcard-text"></p>
       <p class="qcard-result" hidden></p>
+    </div>
+  </section>
+
+  <!-- Kisten-Shop: Daves Runde (Goldbarren, gekaufte Items, gefunden) und im Koop die Rangliste -->
+  <section class="ov-card ov-shop" id="ov-shop" hidden aria-live="polite">
+    <header class="ov-head">
+      <span class="ov-dot" aria-hidden="true"></span>
+      <span>Kisten-Shop</span>
+      <span class="ov-sep" aria-hidden="true">·</span>
+      <span class="ov-who" id="ov-shop-status"></span>
+    </header>
+    <div class="ov-shop-body">
+      <div class="ov-shop-top">
+        <span class="ov-shop-coins" id="ov-shop-coins"></span>
+        <span class="ov-shop-score" id="ov-shop-score"></span>
+      </div>
+      <ul class="loadout ov-shop-list" id="ov-shop-list"></ul>
+      <ol class="shop-board ov-shop-board" id="ov-shop-board" hidden></ol>
     </div>
   </section>
 
