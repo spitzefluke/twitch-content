@@ -26,6 +26,8 @@ const ERRORS = [
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
   [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
+  [/feed_command|pet_feed_command/i, 'In der Datenbank fehlt der Chat-Befehl für den Dino: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
+  [/relation "public\.overlay_config"|could not find the (table|function) '?public\.(overlay_config|overlay_access|overlay_save|overlay_allow_admins)/i, 'In der Datenbank fehlt das Live-Overlay: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
@@ -151,6 +153,13 @@ async function createSupabaseApi() {
       const { error } = await sb.from('overlay_spins').select('id', { head: true }).limit(1);
       return !error;
     },
+    // ---------- OBS-Overlay live (overlay_config) ----------
+    async getOverlayConfig() {
+      return unwrap(await sb.from('overlay_config').select('params, admins_can_edit, updated_by, updated_at').eq('id', 1).maybeSingle());
+    },
+    async overlayAccess() { return unwrap(await sb.rpc('overlay_access')); },
+    async saveOverlayConfig(params) { return unwrap(await sb.rpc('overlay_save', { p_params: params })); },
+    async allowAdminsOverlay(on) { return unwrap(await sb.rpc('overlay_allow_admins', { p_on: on })); },
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
     },
@@ -549,6 +558,26 @@ function createLocalApi() {
     },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
     async overlayReady() { return true; },
+    // Demo: Admins gelten als Dave
+    async getOverlayConfig() { return { params: '', admins_can_edit: false, updated_by: '', ...store.get('overlay_config', {}) }; },
+    async overlayAccess() {
+      const admin = isAdminNow();
+      const cfg = store.get('overlay_config', {});
+      return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit };
+    },
+    async saveOverlayConfig(params) {
+      await requireAdmin();
+      if (!/^[A-Za-z0-9_=&.,%+-]*$/.test(params) || params.length > 2000) throw new Error('Ungültige Einstellungen.');
+      const next = { ...store.get('overlay_config', {}), params, updated_by: store.get('users', {})[current.email]?.username ?? '', updated_at: new Date().toISOString() };
+      store.set('overlay_config', next);
+      return next;
+    },
+    async allowAdminsOverlay(on) {
+      await requireAdmin();
+      const next = { ...store.get('overlay_config', {}), admins_can_edit: !!on };
+      store.set('overlay_config', next);
+      return next;
+    },
 
     // ---------- Ärgere den Dave (Demo) ----------
     // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
@@ -766,6 +795,7 @@ function createLocalApi() {
     async petAction(kind) {
       if (!current) throw new Error('Bitte zuerst anmelden.');
       const profile = store.get('users', {})[current.email];
+      if (!profile?.is_admin) throw new Error('Im Stream füttern Zuschauer den Dino über den Twitch-Chat.');
       const key = `pet_cd_${current.email}_${kind}`;
       const wait = kind === 'feed' ? 600000 : 60000;
       const last = store.get(key, 0);
@@ -790,6 +820,7 @@ function createLocalApi() {
       const next = { ...(await this.getPet()), ...patch };
       if (patch.phrases) next.phrases = patch.phrases.map((p) => p.trim().slice(0, 80)).filter(Boolean).slice(0, 50);
       if (patch.name !== undefined) next.name = String(patch.name).trim().slice(0, 20) || 'Rexi';
+      if (patch.feed_command !== undefined && !/^![^\s!]{1,29}$/.test(patch.feed_command)) throw new Error('Der Chat-Befehl beginnt mit ! und hat keine Leerzeichen.');
       return savePet(next);
     },
     onPet(cb) { (demoListeners.pet ??= []).push(cb); },

@@ -2382,6 +2382,7 @@ function startPetStage() {
     names: () => [...new Set(state.pet.events.map((e) => e.who).filter(Boolean))],
     idleEvery: [14, 28],
     nibbleEvery: [18, 30],
+    trickEvery: [8, 16],
   });
 }
 
@@ -2404,6 +2405,14 @@ function renderPetDialog() {
   $('#pet-title').textContent = on ? `Daves Dino: ${data.name}` : 'Daves Dino';
   $('#pet-feed').disabled = !on;
   $('#pet-pet').disabled = !on;
+  // Zuschauer füttern hier nur für sich – im Stream über den Twitch-Chat. Admins können beides.
+  $('#pet-live-wrap').hidden = !(admin && on);
+  const command = data?.feed_command || DEFAULT_PET.feed_command;
+  const twitch = state.twitch ?? {};
+  $('#pet-hint').textContent = !on ? ''
+    : admin
+      ? `„Auch im Stream“ an: Füttern und Streicheln sieht man in OBS. Zuschauer füttern im Stream mit ${command} im Twitch-Chat (alle 10 Minuten pro Person).${twitch.connected && twitch.bot_connected && twitch.bot_chat === false ? ' Dafür den Chat-Bot im Admin-Bereich einmal neu verbinden (Chat lesen).' : ''}${twitch.connected && !twitch.bot_connected ? ' Dafür braucht es den Chat-Bot (Admin-Bereich).' : ''}`
+      : `Hier fütterst und streichelst du ${data.name} nur auf der Seite. Im Stream fütterst du ${data.name} mit ${command} in Daves Twitch-Chat – alle 10 Minuten.`;
   if (on) {
     startPetStage();
     state.pet.dino?.setName(data.name);
@@ -2418,6 +2427,7 @@ function renderPetDialog() {
   if (!f.contains(document.activeElement)) {
     f.name.value = data.name;
     f.hungry_after.value = data.hungry_after;
+    f.feed_command.value = data.feed_command || DEFAULT_PET.feed_command;
     f.phrases.value = (data.phrases ?? []).join('\n');
   }
 }
@@ -2453,9 +2463,9 @@ function renderPetLog() {
     icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : '💬';
     const main = document.createElement('span');
     main.className = 'h-main';
-    main.textContent = ev.kind === 'feed' ? `${ev.who} hat gefüttert`
+    main.textContent = (ev.kind === 'feed' ? `${ev.who} hat gefüttert`
       : ev.kind === 'pet' ? `${ev.who} hat gestreichelt`
-        : `„${ev.text}“`;
+        : `„${ev.text}“`) + (ev.local ? ' (nur hier)' : '');
     const time = document.createElement('time');
     time.dateTime = ev.created_at;
     time.textContent = new Date(ev.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
@@ -2466,6 +2476,17 @@ function renderPetLog() {
 
 async function petAction(kind, btn) {
   btn.disabled = true;
+  // Zuschauer (und Admins ohne „Auch im Stream“): nur hier auf der Seite
+  if (!state.profile?.is_admin || !$('#pet-live').checked) {
+    const who = state.profile?.username ?? 'Du';
+    const ev = { id: `local-${Date.now()}`, kind, who, text: '', created_at: new Date().toISOString(), local: true };
+    state.pet.events = [ev, ...state.pet.events].slice(0, 20);
+    if (kind === 'feed') state.pet.data = { ...state.pet.data, last_fed_at: ev.created_at, last_fed_by: who };
+    petReact(ev);
+    renderPetDialog();
+    setTimeout(() => { btn.disabled = false; }, 2500);
+    return;
+  }
   try {
     const ev = await state.api.petAction(kind);
     if (!state.pet.events.some((x) => x.id === ev.id)) {
@@ -2506,11 +2527,13 @@ async function savePetSettings(e) {
   const form = e.currentTarget;
   const name = form.name.value.trim();
   const hungry = Math.round(Number(form.hungry_after.value));
+  const command = form.feed_command.value.trim();
   if (!name) return formMsg(form, 'Bitte einen Namen eingeben.');
+  if (!/^![^\s!]{1,29}$/.test(command)) return formMsg(form, 'Der Chat-Befehl beginnt mit ! und hat keine Leerzeichen, z. B. !füttern.');
   if (!(hungry >= 5 && hungry <= 720)) return formMsg(form, 'Hunger nach 5 bis 720 Minuten.');
   await withLoading(form, async () => {
     const phrases = form.phrases.value.split('\n').map((l) => l.trim()).filter(Boolean);
-    state.pet.data = await state.api.updatePet({ name, hungry_after: hungry, phrases });
+    state.pet.data = await state.api.updatePet({ name, hungry_after: hungry, phrases, feed_command: command });
     formMsg(form, 'Gespeichert.', true);
     renderPetDialog();
     paintPetTile();
@@ -2638,6 +2661,10 @@ const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', 
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest'];
 const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
+// Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
+const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
+const obsLiveUrl = () => new URL('overlay.html?live=1', location.href).href;
+const obsLocked = () => obsLive.ready && !obsLive.access.can_edit;
 
 function setupObs() {
   const form = $('#obs-options');
@@ -2647,6 +2674,7 @@ function setupObs() {
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
+  $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
   $('#obs-apply').addEventListener('click', applyObs);
@@ -2664,6 +2692,7 @@ function setupObs() {
   // Verschieben in der Vorschau meldet das Overlay per postMessage.
   addEventListener('message', (e) => {
     if (e.origin !== location.origin || e.data?.type !== 'stellwerk-obs') return;
+    if (obsLocked()) { renderObsPreview(); return; } // nicht erlaubt: zurück auf den gespeicherten Stand
     const field = form.elements[e.data.key];
     if (!field || typeof e.data.value !== 'string') return;
     field.value = e.data.value;
@@ -2726,10 +2755,12 @@ function saveObs(values) {
 }
 
 async function openObsDialog() {
+  obsLive.ready = false; // erst frisch laden, sonst würde der alte Stand gespeichert
   loadObs();
   $('#obs-dialog').showModal();
   updateObs({ now: true });
   loadTickerTexts();
+  loadObsLive();
   paintObsConnection();
   // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
   const saved = readObsLogin();
@@ -2751,6 +2782,89 @@ async function openObsDialog() {
       : 'Das Overlay ist noch nicht freigeschaltet und bleibt in OBS vorerst leer. Ein Admin muss dafür einmal die Datenbank einrichten – sag Dave Bescheid.';
     note.hidden = ready;
   }
+}
+
+// ---------- Live: zentrale Einstellungen ----------
+async function loadObsLive() {
+  try {
+    const [config, access] = await Promise.all([state.api.getOverlayConfig(), state.api.overlayAccess()]);
+    Object.assign(obsLive, { ready: true, params: config?.params ?? '', access, error: '' });
+    // Gibt es schon gespeicherte Einstellungen, zeigt der Dialog genau die
+    if (obsLive.params) applyObsParams(obsLive.params);
+  } catch (err) {
+    console.warn('Live-Overlay nicht verfügbar:', err);
+    obsLive.ready = false;
+    obsLive.error = germanError(err);
+  }
+  paintObsLive();
+  updateObs({ now: true });
+}
+
+// Umkehrung von obsUrl(): Parameter → Formular
+function applyObsParams(query) {
+  const f = $('#obs-options');
+  const p = new URLSearchParams(query);
+  obsLive.filling = true;
+  for (const el of obsFields()) {
+    if (el.name.endsWith('_on')) continue;
+    const def = obsDefault(el);
+    const v = p.get(el.name);
+    if (el.type === 'checkbox') el.checked = v === null ? def : v !== '0';
+    else if (el.type === 'color') el.value = v === null ? def : `#${v}`;
+    else if (OBS_PARTS.includes(el.name)) el.value = v === null || v === '0' ? def : v;
+    else el.value = v === null ? def : v;
+  }
+  for (const key of OBS_PARTS) f.elements[`${key}_on`].checked = p.get(key) !== '0';
+  obsLive.filling = false;
+}
+
+function paintObsLive() {
+  const status = $('#obs-live-status');
+  const { ready, access } = obsLive;
+  $('#obs-allow-wrap').hidden = !(ready && access.is_owner);
+  $('#obs-allow-admins').checked = !!access.admins_can_edit;
+  status.classList.toggle('is-locked', obsLocked());
+  status.textContent = !ready
+    ? (state.profile?.is_admin && obsLive.error ? `Live-Modus fehlt: ${obsLive.error}` : 'Diese Adresse enthält die Einstellungen – nach Änderungen in OBS neu einfügen.')
+    : access.can_edit
+      ? `✓ Live: Jede Änderung hier erscheint sofort in OBS.${obsLive.savedAt ? ` Zuletzt gespeichert um ${obsLive.savedAt} Uhr.` : ''}`
+      : access.admins_can_edit || !state.profile?.is_admin
+        ? '🔒 Das Overlay passen Dave und von ihm freigeschaltete Admins an. Du siehst hier die aktuellen Einstellungen.'
+        : '🔒 Dave hat Admins das Anpassen noch nicht erlaubt. Du siehst hier die aktuellen Einstellungen.';
+}
+
+function scheduleObsSave() {
+  if (!obsLive.ready || !obsLive.access.can_edit || obsLive.filling) return;
+  clearTimeout(obsLive.timer);
+  obsLive.timer = setTimeout(saveObsLive, 700);
+}
+
+async function saveObsLive() {
+  clearTimeout(obsLive.timer);
+  const query = new URL(obsUrl()).search.slice(1);
+  if (query === obsLive.params) return;
+  try {
+    await state.api.saveOverlayConfig(query);
+    obsLive.params = query;
+    obsLive.savedAt = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (err) {
+    toast(`Nicht gespeichert: ${germanError(err)}`, 'error');
+  }
+  paintObsLive();
+}
+
+async function allowAdminsObs(e) {
+  const box = e.currentTarget;
+  const on = box.checked;
+  try {
+    await state.api.allowAdminsOverlay(on);
+    obsLive.access.admins_can_edit = on;
+    toast(on ? 'Admins dürfen das OBS-Overlay jetzt anpassen.' : 'Nur noch du passt das OBS-Overlay an.', 'ok');
+  } catch (err) {
+    box.checked = !on;
+    toast(germanError(err), 'error');
+  }
+  paintObsLive();
 }
 
 // Laufband-Texte: nur Admins sehen und ändern sie hier
@@ -2788,12 +2902,17 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   const values = {};
   for (const el of obsFields()) values[el.name] = el.type === 'checkbox' ? el.checked : el.value;
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
+  obsFields().forEach((el) => { el.disabled = false; });
   for (const key of OBS_PARTS) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
   f.psize.disabled = !f.prank.checked;
   f.dsize.disabled = !f.pet.checked;
   f.bstyle.disabled = !f.bingo_on.checked;
+  // Ohne Recht zum Ändern: alles nur ansehen
+  if (obsLocked()) obsFields().forEach((el) => { el.disabled = true; });
   saveObs(values);
-  $('#obs-url').value = obsUrl();
+  // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
+  $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();
+  scheduleObsSave();
 
   // Hat die Vorschau selbst die Änderung gemeldet (verschoben), zeigt sie sie
   // schon – nicht neu laden, sonst springt alles zurück.
@@ -2954,7 +3073,8 @@ async function applyObs() {
   btn.disabled = true;
   btn.classList.add('is-loading');
   try {
-    const { scene, created } = await obs.ws.applyOverlay(obsUrl());
+    if (obsLive.ready && obsLive.access.can_edit) await saveObsLive();
+    const { scene, created } = await obs.ws.applyOverlay(obsLive.ready ? obsLiveUrl() : obsUrl());
     toast(created
       ? `Fertig: „Stellwerk-Overlay“ liegt jetzt in der Szene „${scene}“ ganz oben.`
       : `Fertig: „Stellwerk-Overlay“ ist aktualisiert und liegt in „${scene}“ ganz oben.`, 'ok', 6000);

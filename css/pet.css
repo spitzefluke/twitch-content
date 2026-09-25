@@ -91,6 +91,61 @@
 .dino-heart { bottom: calc(var(--ds) * .7); font-size: calc(var(--ds) * .18); animation: dino-heart 2s ease-out both; }
 @keyframes dino-heart { from { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(calc(var(--ds) * -.9)) scale(1.1); } }
 
+/* Schatten unter den Füßen */
+.dino::before {
+  content: ""; position: absolute; left: 22%; right: 18%; bottom: -1%; height: 7%; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, .45), transparent 70%); z-index: -1;
+  transition: transform .2s, opacity .2s;
+}
+.dino.is-hop::before { animation: dino-shadow .52s ease-in-out; }
+@keyframes dino-shadow { 45% { transform: scale(.6); opacity: .5; } }
+
+/* Einlagen */
+.dino.is-hop .dino-svg { animation: dino-jump .52s cubic-bezier(.3, .7, .4, 1); }
+@keyframes dino-jump {
+  0% { transform: translateY(0) scale(1.08, .9); }
+  35% { transform: translateY(-38%) scale(.95, 1.06); }
+  70% { transform: translateY(0) scale(1.1, .88); }
+  100% { transform: none; }
+}
+.dino.is-roar .dino-jaw { transform: rotate(32deg); transition-duration: .08s; }
+.dino.is-roar .dino-head { transform: rotate(-12deg); transition: transform .15s; }
+.dino.is-roar .dino-svg { animation: dino-shake .12s linear infinite; }
+@keyframes dino-shake { 25% { transform: translateX(-1.5%); } 75% { transform: translateX(1.5%); } }
+.dino.is-look .dino-head { animation: dino-look 1.8s ease-in-out; }
+@keyframes dino-look { 20%, 40% { transform: rotate(-10deg); } 60%, 80% { transform: rotate(8deg) translateY(2px); } }
+.dino.is-look .dino-pupil { animation: dino-pupil 1.8s ease-in-out; }
+@keyframes dino-pupil { 20%, 40% { transform: translate(2px, -1px); } 60%, 80% { transform: translate(-2px, 1px); } }
+.dino.is-dance .dino-svg { animation: dino-dance .4s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes dino-dance { 0%, 100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(7deg) translateY(-6%); } }
+.dino.is-dance .dino-arm { animation: dino-wave .4s ease-in-out infinite; transform-box: fill-box; transform-origin: 0 0; }
+@keyframes dino-wave { 50% { transform: rotate(-35deg); } }
+
+/* Nickerchen */
+.dino.is-sleep .dino-eye { transform: scaleY(.1); }
+.dino.is-sleep .dino-svg { animation: dino-breathe 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+.dino.is-sleep .dino-tail { animation-duration: 4s; }
+@keyframes dino-breathe { 50% { transform: scale(1.03, .97); } }
+.dino-zzz {
+  --ds: 150px;
+  position: absolute; bottom: calc(var(--ds) * .75); z-index: 3; pointer-events: none;
+  font: 800 calc(var(--ds) * .16) / 1 "Barlow Condensed", "Arial Narrow", sans-serif; color: #dff6ff;
+  text-shadow: 0 0 .2em rgba(0, 0, 0, .6);
+  animation: dino-zzz 2.2s ease-out forwards;
+}
+@keyframes dino-zzz { from { opacity: 0; transform: translate(0, 0) scale(.6); } 20% { opacity: 1; } to { opacity: 0; transform: translate(calc(var(--ds) * .25), calc(var(--ds) * -.6)) scale(1.3); } }
+
+/* Staub beim Laufen */
+.dino-dust {
+  --ds: 150px;
+  position: absolute; bottom: 0; z-index: 1; pointer-events: none;
+  width: calc(var(--ds) * .09); height: calc(var(--ds) * .09); border-radius: 50%;
+  background: rgba(220, 210, 190, .55);
+  animation: dino-dust .7s ease-out forwards;
+}
+@keyframes dino-dust { from { transform: scale(.4); opacity: .8; } to { transform: translate(calc(var(--ds) * -.08), calc(var(--ds) * -.08)) scale(1.8); opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .dino.is-walking .dino-leg-a, .dino.is-walking .dino-leg-b, .dino.is-walking .dino-svg, .dino-tail { animation: none; }
+  .dino.is-walking .dino-leg-a, .dino.is-walking .dino-leg-b, .dino.is-walking .dino-svg, .dino-tail,
+  .dino.is-hop .dino-svg, .dino.is-roar .dino-svg, .dino.is-dance .dino-svg, .dino.is-sleep .dino-svg { animation: none; }
 }

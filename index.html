@@ -799,8 +799,9 @@
         <div class="pet-actions">
           <button class="btn btn--primary" type="button" id="pet-feed">🍖 Füttern</button>
           <button class="btn btn--ghost" type="button" id="pet-pet">🤚 Streicheln</button>
+          <label class="toggle" id="pet-live-wrap" hidden><input type="checkbox" id="pet-live" checked><span class="toggle-ui" aria-hidden="true"></span>Auch im Stream</label>
         </div>
-        <p class="form-hint">Füttern geht alle 10 Minuten, Streicheln jede Minute. Hat der Dino Hunger, knabbert er im Stream an den Zuschauern.</p>
+        <p class="pet-hint" id="pet-hint"></p>
         <div class="history prank-log">
           <h3>Zuletzt</h3>
           <ol id="pet-log"></ol>
@@ -820,6 +821,7 @@
           <form id="pet-settings" class="pet-settings" novalidate>
             <label class="field"><span>Name</span><input type="text" name="name" maxlength="20" required></label>
             <label class="field"><span>Hunger nach (Minuten ohne Futter)</span><input type="number" name="hungry_after" min="5" max="720" step="5" required></label>
+            <label class="field"><span>Chat-Befehl zum Füttern</span><input type="text" name="feed_command" maxlength="30" pattern="![^\s!]{1,29}" placeholder="!füttern" required></label>
             <label class="field"><span>Sprüche – einer pro Zeile</span><textarea name="phrases" rows="9"></textarea></label>
             <p class="form-msg" role="alert"></p>
             <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
@@ -1050,6 +1052,16 @@
         </details>
       </form>
 
+      <!-- Live: Einstellungen gelten sofort in OBS -->
+      <div class="obs-live" id="obs-live">
+        <p class="obs-live-status" id="obs-live-status" aria-live="polite"></p>
+        <label class="toggle" id="obs-allow-wrap" hidden>
+          <input type="checkbox" id="obs-allow-admins">
+          <span class="toggle-ui" aria-hidden="true"></span>
+          Admins (Mods) dürfen das Overlay anpassen
+        </label>
+      </div>
+
       <!-- 4. Ergebnis -->
       <div class="obs-url">
         <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
@@ -1062,7 +1074,7 @@
           <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken, <b>Browser</b> wählen, Adresse einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b>.</li>
           <li><b>„Audio über OBS steuern“</b> anhaken – dann ist der Ton im Audio-Mixer regelbar.</li>
           <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über Daves Kamera.</li>
-          <li>Nach Änderungen hier die Adresse neu kopieren und in der Browserquelle ersetzen.</li>
+          <li>Das war’s: Änderungen hier erscheinen sofort in OBS – die Adresse bleibt immer gleich.</li>
         </ol>
       </details>
     </div>

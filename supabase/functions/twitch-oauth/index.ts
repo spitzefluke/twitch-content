@@ -10,6 +10,7 @@ import {
   helix, HelixError, json, oauthRedirectUri, startTwitchLogin, twitchToken,
 } from "../_shared/twitch.ts";
 import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
+import { ensureChatSubscription } from "../_shared/chat.ts";
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
@@ -77,7 +78,7 @@ async function handleCallback(url: URL) {
   try {
     const tok = await twitchToken({ grant_type: "authorization_code", code, redirect_uri: oauthRedirectUri() });
     const me = (await helix("users", tok.access_token)).data[0];
-    if (st.kind === "bot") return await saveBot(me, st.user_id);
+    if (st.kind === "bot") return await saveBot(me, st.user_id, tok.scope ?? []);
 
     // Wer Daves Kanal verbindet, wird Admin – also streng prüfen, wer das darf:
     //   · Mit BROADCASTER_LOGIN nur genau dieser Twitch-Kanal.
@@ -132,6 +133,7 @@ async function handleCallback(url: URL) {
     // Ein Abo für alle Einlösungen – Glücksrad und Ärgern
     const subscriptionId = await ensureRedemptionSubscription(me.id, eventsubCallback(), env("EVENTSUB_SECRET"));
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+    await chatSubscription(me.id);
 
     return backToSite({ twitch: "connected" });
   } catch (e) {
@@ -147,19 +149,34 @@ async function handleCallback(url: URL) {
 
 // Der Bot braucht keine eigenen Tokens: Twitch merkt sich die Freigabe
 // (user:bot), gesendet wird später mit dem App-Token und seiner User-ID.
-async function saveBot(me: { id: string; login: string; display_name: string }, userId: string) {
+async function saveBot(me: { id: string; login: string; display_name: string }, userId: string, scopes: string[]) {
   const broadcaster = Deno.env.get("BROADCASTER_LOGIN")?.toLowerCase();
   if (broadcaster && me.login.toLowerCase() === broadcaster) throw new CodedError("bot_is_broadcaster");
-  const { error } = await db.from("twitch_bot").upsert({
+  const row = {
     id: 1,
     user_id: me.id,
     login: me.login,
     display_name: me.display_name,
     connected_by: userId,
     updated_at: new Date().toISOString(),
-  });
+  };
+  let { error } = await db.from("twitch_bot").upsert({ ...row, scopes });
+  // Spalte scopes fehlt noch (Migration …_live_overlay.sql)? Dann ohne.
+  if (error && /scopes/i.test(error.message)) ({ error } = await db.from("twitch_bot").upsert(row));
   if (error) throw error;
+  const conn = await getConnection().catch(() => null);
+  if (conn) await chatSubscription(conn.broadcaster_id);
   return backToSite({ twitch: "bot_connected", bot: me.display_name }, "admin.html");
+}
+
+// Chat lesen (für !füttern): klappt nur mit Bot, der user:read:chat freigegeben hat.
+// Scheitert es, laufen Glücksrad und Kanalpunkte trotzdem.
+async function chatSubscription(broadcasterId: string) {
+  try {
+    await ensureChatSubscription(broadcasterId, eventsubCallback(), env("EVENTSUB_SECRET"));
+  } catch (e) {
+    console.warn("Chat-Abo nicht angelegt (Bot neu verbinden?):", e);
+  }
 }
 
 async function ensureReward(broadcasterId: string, token: string, knownId?: string | null) {
@@ -216,6 +233,7 @@ async function syncPranks(userId: string) {
     const result = await syncPrankRewards(conn);
     const subscriptionId = await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"));
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+    await chatSubscription(conn.broadcaster_id);
     return json(result);
   } catch (e) {
     console.error(e);

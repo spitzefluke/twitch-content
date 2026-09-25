@@ -3,7 +3,9 @@
 // erscheint es klein im Bild, dreht sich und zeigt das Ergebnis.
 // Daneben läuft "Nächste Abfahrt" mit den kommenden Content-Ideen.
 //
-// Die Adresse baut der OBS-Dialog im Dashboard. Optionen, z. B. overlay.html?wheel=br&wsize=120
+// Die Adresse baut der OBS-Dialog im Dashboard. Empfohlen: overlay.html?live=1 – dann kommen alle
+// Einstellungen aus der Datenbank (OBS-Dialog), und jede Änderung erscheint sofort in OBS.
+// Ohne live=1 gelten die Optionen in der Adresse, z. B. overlay.html?wheel=br&wsize=120
 //   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus;
 //                              oder frei: wheel=62.5,70 (linke obere Ecke in Prozent des Bildes) –
 //                              so speichert es der OBS-Dialog, wenn man die Karte in der Vorschau verschiebt
@@ -50,7 +52,26 @@ const TEST_EVERY_MS = 20000;
 const TILES_REFRESH_MS = 60000;
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
-const params = new URLSearchParams(location.search);
+// live=1: Einstellungen aus der Datenbank (overlay_config). test/edit aus der Adresse gelten weiter.
+const urlParams = new URLSearchParams(location.search);
+const LIVE = urlParams.get('live') === '1';
+let liveConfig = '';
+if (LIVE) liveConfig = await readOverlayConfig().catch((err) => { console.warn('Overlay: Live-Einstellungen nicht lesbar', err); return ''; });
+const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
+if (LIVE) for (const key of ['test', 'edit']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
+
+async function readOverlayConfig() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
+    try { return JSON.parse(localStorage.getItem('zd_overlay_config'))?.params ?? ''; } catch { return ''; }
+  }
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/overlay_config?id=eq.1&select=params`, {
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`overlay_config: ${res.status}`);
+  const [row] = await res.json();
+  return row?.params ?? '';
+}
 const FREE = /^\d{1,3}(\.\d+)?,\d{1,3}(\.\d+)?$/;
 const position = (value, fallback) => (value === '0' || value === 'off' ? null
   : POSITIONS.includes(value) || FREE.test(value ?? '') ? value : fallback);
@@ -184,6 +205,17 @@ async function start() {
   if (opt.quest) setupQuestions(source);
   if (opt.pet) setupPet(source);
   setupTicker(source);
+  if (LIVE) watchOverlayConfig(source);
+}
+
+// Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
+// Realtime meldet es direkt; zur Sicherheit wird zusätzlich alle 30 Sekunden nachgesehen.
+function watchOverlayConfig(source) {
+  const changed = (next) => {
+    if (typeof next === 'string' && next !== liveConfig) location.reload();
+  };
+  source.onOverlayConfig?.(changed);
+  setInterval(() => readOverlayConfig().then(changed).catch(() => {}), 30000);
 }
 
 // ============================================================
@@ -236,6 +268,11 @@ async function connect() {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
+    },
+    onOverlayConfig(cb) {
+      sb.channel('overlay-config')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'overlay_config' }, (p) => cb(p.new.params))
+        .subscribe();
     },
     ticker: async () => (await rows(sb.from('ticker').select('items').eq('id', 1).maybeSingle()))?.items ?? null,
     onTicker(cb) {
@@ -298,6 +335,9 @@ function demoSource() {
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
+    },
+    onOverlayConfig(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_overlay_config') cb(read('overlay_config', null)?.params ?? ''); });
     },
     ticker: async () => read('ticker', null)?.items ?? null,
     onTicker(cb) {
@@ -743,6 +783,15 @@ async function setupPet(source) {
     return;
   }
   const sfx = new Sfx({ volume: opt.volume * 0.8 });
+  // Steht das Laufband unten, läuft der Dino oben darauf statt davor
+  const ground = () => {
+    const band = $('ov-ticker')?.getBoundingClientRect();
+    const onBottom = band && band.top > innerHeight * 0.6;
+    layer.style.bottom = onBottom ? `${Math.round(innerHeight - band.top + 4)}px` : '';
+  };
+  ground();
+  addEventListener('resize', ground);
+  new ResizeObserver(ground).observe($('ov-ticker'));
   const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name });
   if (opt.test) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
@@ -756,6 +805,7 @@ async function setupPet(source) {
     },
     idleEvery: opt.test ? [8, 14] : [45, 90],
     nibbleEvery: opt.test ? [16, 24] : [40, 75],
+    trickEvery: opt.test ? [5, 9] : [18, 40],
   });
   source.onPet((row, ev) => {
     if (row) {

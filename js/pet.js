@@ -8,6 +8,7 @@ export const DEFAULT_PET = {
   last_fed_at: null,
   last_fed_by: '',
   fed_count: 0,
+  feed_command: '!füttern',
   phrases: [
     'Du Flitzpiepe!',
     'Der Rentner ist älter als mein Dino!',
@@ -21,6 +22,38 @@ export const DEFAULT_PET = {
     'Dave, du alte Pflaume!',
     'Zug hat Verspätung. Wie immer.',
     'Kurze Arme, große Klappe.',
+    'Ich hab mehr Zähne als Dave Kills.',
+    'Mein Opa war ein T-Rex. Und deiner?',
+    'Ich bin kein Dino, ich bin ein Lebensgefühl.',
+    'Dave, das war ein Kunstschuss. Also Kunst. Kein Schuss.',
+    'Pssst … ich glaube, Dave hat Lag im Kopf.',
+    'Einmal Victory Royale zum Mitnehmen, bitte.',
+    'Meine Lieblingswaffe? Meine Zähne.',
+    'Achtung an Gleis 3: Der Dino-Express fährt ein!',
+    'Ich esse keine Zuschauer. Nur ein bisschen.',
+    'Da war ein Busch. Der Busch war Dave.',
+    'Ich hab Angst vor Meteoriten. Frag nicht, warum.',
+    'Emote-Spam macht auch nicht satt.',
+    'Der Zug ist abgefahren. Ich sitz drin.',
+    'Ich wurde ausgebrütet, um zu nerven.',
+    'Wort des Tages: Flitzpiepe.',
+    'Wenn Dave gewinnt, ess ich einen Busch.',
+    'Ich brauch keinen Baumodus, ich bin schon gebaut.',
+    'Nächster Halt: Snackautomat.',
+    'Pausenbrot? Wo? WO?!',
+    'Ich hab Dave ins Knie gebissen. Aus Liebe.',
+    'Rawr heißt übersetzt: Gib Snacks.',
+    'Ich war Mitarbeiter des Monats. Im Jura.',
+    'Wer hat mein Ei geklaut?!',
+    'Ich bin nicht faul, ich spare Energie für die Evolution.',
+    'Heute schon gestretcht? Ich komm nicht an meine Zehen.',
+    'Dave spielt wie ein Fahrplan: niemand versteht ihn.',
+    'Klatscht mal alle! … Ich kann nicht, kurze Arme.',
+    'Ich hätte gern einen Fensterplatz im Battle Bus.',
+    'Ist das hier der Ruhewagen? Nein? Gut. RAWR!',
+    'Mein Horoskop sagt: Heute gibt es Snacks.',
+    'Kennt ihr den? Kommt ein Dino in den Stream …',
+    'Ich zähl bis drei, dann hab ich Hunger. Eins …',
   ],
 };
 
@@ -35,11 +68,16 @@ export function hungerOf(pet, now = Date.now()) {
 }
 export const isHungry = (pet, now) => hungerOf(pet, now) >= 1;
 
+// {befehl} wird zum Chat-Befehl fürs Füttern (Standard !füttern)
 export const HUNGRY_LINES = [
-  'HUNGER! Füttert mich auf der Webseite!',
+  'HUNGER! Schreibt {befehl} in den Chat!',
   'Mein Magen knurrt lauter als ein Güterzug.',
   'Wenn mich keiner füttert, knabber ich euch an!',
   'Ich rieche Zuschauer … lecker.',
+  '{befehl} – so schwer ist das doch nicht, Chat!',
+  'Ich könnte einen ganzen Battle Bus verdrücken.',
+  'Hallo? Snacks? Irgendwer? {befehl}!',
+  'Mir ist schon ganz schwindelig vor Hunger …',
 ];
 const NIBBLE_LINES = [
   'Hmm, schmeckt nach Flitzpiepe.',
@@ -47,9 +85,19 @@ const NIBBLE_LINES = [
   'Knusper, knusper!',
   'Wer nicht füttert, wird gefüttert.',
   'Mampf! Nächster bitte.',
+  'Schmeckt wie Montagmorgen.',
+  'Zu viel Emote-Spam, schmeckt man sofort.',
+  'Nicht schlecht. Ein Hauch von Lag.',
 ];
-export const feedLine = (who) => pick([`Danke, ${who}! Mampf!`, `${who}, du bist der Beste! *schmatz*`, `Lecker! ${who} darf bleiben.`, `Endlich! Danke, ${who}!`]);
-export const petLine = (who) => pick([`Hihi, das kitzelt, ${who}!`, `Rrrr … weiter so, ${who}.`, `${who} darf mich streicheln. Nur ${who}.`, `Schnurr … äh, ich meine RAWR!`]);
+export const feedLine = (who) => pick([
+  `Danke, ${who}! Mampf!`, `${who}, du bist der Beste! *schmatz*`, `Lecker! ${who} darf bleiben.`, `Endlich! Danke, ${who}!`,
+  `${who} hat mich gerettet! *rülps*`, `Mmmh, ${who}, noch einen!`, `Ich verzeih euch alles. Außer ${who}. Nein, auch ${who}.`,
+  `Satt und glücklich – danke, ${who}!`,
+]);
+export const petLine = (who) => pick([
+  `Hihi, das kitzelt, ${who}!`, `Rrrr … weiter so, ${who}.`, `${who} darf mich streicheln. Nur ${who}.`, 'Schnurr … äh, ich meine RAWR!',
+  `Hinterm Ohr, ${who}! Ach, ich hab keine Ohren.`, `${who}, du hast warme Hände.`,
+]);
 export const nibbleLine = () => pick(NIBBLE_LINES);
 
 // Die Zeichnung, seitlich, schaut nach rechts. Teile mit Klassen bewegen sich per CSS.
@@ -83,6 +131,11 @@ function chompSound(sfx) {
 function growlSound(sfx) {
   sfx?.tone(90, { type: 'sawtooth', attack: 0.08, hold: 0.5, release: 0.3, peak: 0.08, vibrato: { rate: 18, depth: 12 }, filter: { type: 'lowpass', freq: 500 } });
 }
+function roarSound(sfx) {
+  sfx?.tone(120, { type: 'sawtooth', to: 70, attack: 0.05, hold: 0.35, release: 0.5, peak: 0.12, vibrato: { rate: 24, depth: 18 }, filter: { type: 'lowpass', freq: 900 } });
+  sfx?.noise({ freq: 700, to: 250, attack: 0.05, hold: 0.3, release: 0.4, peak: 0.12 });
+}
+function hopSound(sfx) { sfx?.tone(420, { to: 760, release: 0.12, peak: 0.08 }); }
 function happySound(sfx) {
   sfx?.tone(660, { to: 990, release: 0.18, peak: 0.12 });
   sfx?.tone(990, { at: 0.12, to: 1320, release: 0.22, peak: 0.1 });
@@ -123,6 +176,7 @@ export class Dino {
   setHungry(on) { this.el.classList.toggle('is-hungry', on); }
 
   destroy() {
+    this.wake();
     cancelAnimationFrame(this.raf);
     clearInterval(this.blinkTimer);
     this.el.remove();
@@ -143,7 +197,7 @@ export class Dino {
     this.last = t;
     const max = Math.max(0, this.width() - this.size);
     let walking = false;
-    if (this.goal || (!this.busy && t > this.pauseUntil)) {
+    if (this.goal || (!this.busy && !this.sleeping && t > this.pauseUntil)) {
       if (this.goal) this.target = Math.min(max, Math.max(0, this.goal.x));
       else if (this.target === null) this.target = rand(0, max);
       const dx = this.target - this.x;
@@ -161,6 +215,11 @@ export class Dino {
     }
     this.x = Math.min(max, Math.max(0, this.x));
     this.el.classList.toggle('is-walking', walking);
+    // Kleine Staubwölkchen an den Füßen
+    if (walking && !this.reducedMotion && t - (this.dustAt ?? 0) > 380) {
+      this.dustAt = t;
+      this.dust();
+    }
     this.el.style.transform = `translateX(${this.x}px)`;
     // Sprechblase bleibt im Bild, auch wenn der Dino am Rand steht
     if (this.speaking) {
@@ -175,6 +234,81 @@ export class Dino {
     this.raf = requestAnimationFrame(this.frame);
   }
 
+  dust() {
+    const d = document.createElement('span');
+    d.className = 'dino-dust';
+    d.style.setProperty('--ds', `${this.size}px`);
+    d.style.left = `${this.x + this.size * (this.dir > 0 ? 0.3 : 0.7)}px`;
+    this.container.append(d);
+    setTimeout(() => d.remove(), 700);
+  }
+
+  // Kurze Einlage zwischendurch: hüpfen, brüllen, umschauen, tanzen, umdrehen
+  async trick(kind = pick(['hop', 'roar', 'look', 'dance', 'turn'])) {
+    if (this.busy || this.sleeping) return;
+    this.busy = true;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    try {
+      if (kind === 'hop') {
+        for (let i = 0; i < 2; i++) {
+          hopSound(this.sfx);
+          this.el.classList.add('is-hop');
+          await wait(520);
+          this.el.classList.remove('is-hop');
+          await wait(80);
+        }
+      } else if (kind === 'roar') {
+        roarSound(this.sfx);
+        this.el.classList.add('is-roar');
+        this.say(pick(['RAWR!', 'RAAAWR!!', 'ROOOAAR!']), 1800);
+        await wait(1300);
+        this.el.classList.remove('is-roar');
+      } else if (kind === 'look') {
+        this.el.classList.add('is-look');
+        await wait(1800);
+        this.el.classList.remove('is-look');
+      } else if (kind === 'dance') {
+        this.el.classList.add('is-dance');
+        await wait(2400);
+        this.el.classList.remove('is-dance');
+      } else {
+        this.face(-this.dir);
+        await wait(500);
+        this.face(-this.dir);
+        await wait(300);
+      }
+    } finally {
+      this.busy = false;
+      this.pauseUntil = performance.now() + 1200;
+    }
+  }
+
+  // Nickerchen: Augen zu, Zzz steigen auf. wake() oder jede Aktion weckt ihn.
+  sleep(ms = 12000) {
+    if (this.busy || this.sleeping) return;
+    this.sleeping = true;
+    this.el.classList.add('is-sleep');
+    this.zzz = setInterval(() => {
+      const z = document.createElement('span');
+      z.className = 'dino-zzz';
+      z.textContent = 'z';
+      z.style.setProperty('--ds', `${this.size}px`);
+      z.style.left = `${this.x + this.size * (this.dir > 0 ? 0.8 : 0.2)}px`;
+      this.container.append(z);
+      setTimeout(() => z.remove(), 2200);
+    }, 700);
+    this.sleepTimer = setTimeout(() => this.wake(), ms);
+  }
+
+  wake() {
+    if (!this.sleeping) return;
+    this.sleeping = false;
+    clearInterval(this.zzz);
+    clearTimeout(this.sleepTimer);
+    this.el.classList.remove('is-sleep');
+    this.pauseUntil = performance.now() + 600;
+  }
+
   walkTo(x) {
     return new Promise((resolve) => {
       this.goal?.resolve();
@@ -185,6 +319,7 @@ export class Dino {
   // Sprechblase; mehrere Sätze kommen nacheinander
   say(text, ms = 4200) {
     if (!text) return;
+    this.wake();
     if (this.queue.length >= 4) this.queue.shift();
     this.queue.push({ text, ms });
     if (!this.speaking) this.nextLine();
@@ -216,6 +351,7 @@ export class Dino {
 
   // Läuft zu einem Namensschild, beißt hinein – das Schild fällt runter
   async nibble(name) {
+    this.wake();
     if (this.busy) return;
     this.busy = true;
     try {
@@ -247,6 +383,7 @@ export class Dino {
 
   // Futter fällt vom Himmel, der Dino schnappt es
   async eat(who) {
+    this.wake();
     this.busy = true;
     try {
       const food = document.createElement('span');
@@ -261,6 +398,10 @@ export class Dino {
       await this.chomp(2);
       happySound(this.sfx);
       this.say(feedLine(who), 4200);
+      // Freudentanz
+      this.el.classList.add('is-dance');
+      await new Promise((r) => setTimeout(r, 1600));
+      this.el.classList.remove('is-dance');
     } finally {
       this.busy = false;
       this.pauseUntil = performance.now() + 2000;
@@ -269,6 +410,7 @@ export class Dino {
 
   // Streicheln: Herzchen steigen auf
   cuddle(who) {
+    this.wake();
     happySound(this.sfx);
     for (let i = 0; i < 5; i++) {
       const h = document.createElement('span');
@@ -286,12 +428,14 @@ export class Dino {
   }
 }
 
-// Der Kopf der Sache: plant Sprüche, Hunger und Knabbern.
+// Der Kopf der Sache: plant Sprüche, Einlagen, Nickerchen, Hunger und Knabbern.
 // getPet() liefert jeweils den aktuellen Stand, names() mögliche Opfer.
-export function runDino(dino, { getPet, names, idleEvery = [45, 90], nibbleEvery = [40, 75] }) {
+export function runDino(dino, { getPet, names, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40] }) {
   let idleAt = Date.now() + rand(8, 20) * 1000;
   let nibbleAt = Date.now() + rand(10, 25) * 1000;
+  let trickAt = Date.now() + rand(...trickEvery) * 1000;
   let hungryLineAt = 0;
+  const fill = (text, pet) => text.replaceAll('{befehl}', pet?.feed_command || DEFAULT_PET.feed_command);
   const timer = setInterval(async () => {
     const pet = getPet();
     const hungry = isHungry(pet);
@@ -306,14 +450,21 @@ export function runDino(dino, { getPet, names, idleEvery = [45, 90], nibbleEvery
     }
     if (hungry && now > hungryLineAt) {
       hungryLineAt = now + rand(25, 45) * 1000;
-      dino.say(pick(HUNGRY_LINES));
+      dino.say(fill(pick(HUNGRY_LINES), pet));
       return;
     }
     if (now > idleAt) {
       idleAt = now + rand(...idleEvery) * 1000;
       const lines = pet?.phrases?.length ? pet.phrases : DEFAULT_PET.phrases;
-      dino.say(pick(lines));
+      dino.say(fill(pick(lines), pet));
+      return;
+    }
+    if (now > trickAt && !dino.sleeping) {
+      trickAt = now + rand(...trickEvery) * 1000;
+      // Satt und nichts los: ab und zu ein Nickerchen, sonst eine Einlage
+      if (!hungry && Math.random() < 0.2) dino.sleep(rand(8, 16) * 1000);
+      else dino.trick(hungry ? pick(['roar', 'look', 'turn']) : undefined);
     }
   }, 1000);
-  return () => clearInterval(timer);
+  return () => { clearInterval(timer); dino.wake(); };
 }
