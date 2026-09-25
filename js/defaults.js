@@ -124,7 +124,7 @@ export const DEFAULT_TILES = [
     title: 'Win-Challenge',
     description: 'Games, Runden und Fights gegen die Mods – schafft Dave alle Stufen, bevor ihm die Leben ausgehen?',
     theme: 'challenge',
-    target_at: null,
+    target_at: '2026-10-10T00:00:00+02:00',
     background: null,
   },
   {

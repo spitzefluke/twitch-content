@@ -16,6 +16,8 @@ import {
 } from './challenge.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
+// index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
+const OBS_PAGE = new URLSearchParams(location.search).has('obs');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -148,7 +150,7 @@ async function boot() {
 
   let seen = false;
   try { seen = sessionStorage.getItem('zd_intro') === '1'; sessionStorage.setItem('zd_intro', '1'); } catch { /* ignorieren */ }
-  if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash)) {
+  if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash && !OBS_PAGE)) {
     await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 20) * 1000 });
   } else {
     $('#intro').remove();
@@ -393,6 +395,7 @@ async function enterApp(user) {
   loadPet();
   loadShop();
   loadChallenge();
+  if (OBS_PAGE) startObsPage();
 }
 
 function leaveApp() {
@@ -442,9 +445,9 @@ function renderHeader() {
 const LIVE_WINDOW = 6 * 60 * 60 * 1000;
 const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
-// "Ärgere den Dave", Bingo, Fragen und Dino haben ein Startdatum für Zuschauer (target_at).
+// "Ärgere den Dave", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
-const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop'].includes(t.kind)
+const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
 
@@ -871,7 +874,8 @@ setInterval(() => {
 function setupDialogs() {
   document.querySelectorAll('dialog').forEach((dlg) => {
     dlg.addEventListener('click', (e) => {
-      if (e.target === dlg || e.target.closest('[data-close]')) closeDialog(dlg);
+      // Klick daneben schließt nur Pop-ups – das OBS-Fenster ist eine eigene Seite
+      if (e.target.closest('[data-close]') || (e.target === dlg && dlg.matches(':modal'))) closeDialog(dlg);
     });
     dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeDialog(dlg); });
   });
@@ -899,6 +903,7 @@ function setupDialogs() {
 
 function closeDialog(dlg) {
   if (!dlg.open || dlg.classList.contains('is-closing')) return;
+  if (dlg.id === 'obs-dialog' && OBS_PAGE) { leaveObsPage(); return; }
   if (reducedMotion) { dlg.close(); return; }
   dlg.classList.add('is-closing');
   setTimeout(() => { dlg.classList.remove('is-closing'); dlg.close(); }, 200);
@@ -2205,6 +2210,8 @@ function applyChallenge(next) {
 }
 
 async function openChallenge() {
+  const tile = tileByKind('challenge');
+  if (tile && isLocked(tile)) { openTile(tile.id); return; }
   state.challenge.editing = false;
   renderChallenge();
   $('#ch-dialog').showModal();
@@ -2307,6 +2314,8 @@ function renderChallenge({ changed = null } = {}) {
     }
     $('#ch-mods').replaceChildren(...c.mods.map((name) => Object.assign(document.createElement('option'), { value: name })));
     $('#ch-allow-wrap').hidden = !c.access.is_owner;
+    if (state.profile?.is_admin) paintTileStart('challenge');
+    $('#ch-start').hidden = !state.profile?.is_admin;
     $('#ch-allow').checked = !!ch.admins_can_edit;
   }
 }
@@ -3719,7 +3728,7 @@ const obsLocked = () => obsLive.ready && !obsLive.access.can_edit;
 
 function setupObs() {
   const form = $('#obs-options');
-  $('#obs-btn').addEventListener('click', openObsDialog);
+  $('#obs-btn').addEventListener('click', openObsWindow);
   form.addEventListener('input', () => updateObs());
   form.addEventListener('change', () => updateObs());
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
@@ -3766,10 +3775,9 @@ function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
-  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, die anderen Karten nur wenn geändert.
+  // Alles ist erst einmal aus: in der Adresse steht nur, was eingeschaltet ist (mit Position).
   for (const key of OBS_PARTS) {
-    const value = f.elements[`${key}_on`].checked ? f.elements[key].value : '0';
-    if (!['bingo', 'quest', 'shop', 'challenge'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
+    if (f.elements[`${key}_on`].checked) p.set(key, f.elements[key].value);
   }
   for (const el of obsFields()) {
     if (OBS_PARTS.includes(el.name) || el.name.endsWith('_on')) continue;
@@ -3805,10 +3813,34 @@ function saveObs(values) {
   } catch { /* nur Komfort */ }
 }
 
-async function openObsDialog() {
+// Die OBS-Einstellungen laufen in einem eigenen Fenster (index.html?obs), nicht als Pop-up
+function openObsWindow() {
+  const url = new URL(location.pathname, location.href);
+  url.searchParams.set('obs', '1');
+  const win = window.open(url.href, 'stellwerk-obs');
+  if (win) win.focus();
+  else location.href = url.href; // Fenster blockiert: dann eben hier
+}
+
+function startObsPage() {
+  document.body.classList.add('obs-page');
+  document.title = 'OBS-Overlay · Content-Stellwerk';
+  const back = $('#obs-dialog .dialog-head [data-close]');
+  back.textContent = '← Zur Webseite';
+  back.setAttribute('aria-label', 'Zur Webseite');
+  if (!$('#obs-dialog').open) openObsDialog({ page: true });
+}
+
+function leaveObsPage() {
+  if (window.opener && !window.opener.closed) { window.close(); return; }
+  location.href = location.pathname;
+}
+
+async function openObsDialog({ page = false } = {}) {
   obsLive.ready = false; // erst frisch laden, sonst würde der alte Stand gespeichert
   loadObs();
-  $('#obs-dialog').showModal();
+  if (page) $('#obs-dialog').show();
+  else $('#obs-dialog').showModal();
   updateObs({ now: true });
   loadTickerTexts();
   loadObsLive();
@@ -3865,7 +3897,7 @@ function applyObsParams(query) {
     else if (OBS_PARTS.includes(el.name)) el.value = v === null || v === '0' ? def : v;
     else el.value = v === null ? def : v;
   }
-  for (const key of OBS_PARTS) f.elements[`${key}_on`].checked = p.get(key) !== '0';
+  for (const key of OBS_PARTS) f.elements[`${key}_on`].checked = !!p.get(key) && p.get(key) !== '0';
   obsLive.filling = false;
 }
 

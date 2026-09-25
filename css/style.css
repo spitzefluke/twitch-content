@@ -2145,3 +2145,11 @@ code { font-family: var(--font-mono); font-size: .9em; }
 @media (max-width: 860px) {
   .dialog--shop.has-side .shop-layout { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- OBS-Einstellungen als eigenes Fenster (index.html?obs) ---------- */
+body.obs-page #app { display: none !important; }
+body.obs-page .dialog--obs {
+  position: static; inset: auto; margin: 24px auto; width: min(100% - 32px, 1200px); max-width: none; max-height: none; overflow: visible;
+  animation: none;
+}
+body.obs-page .dialog--obs .dialog-head .icon-btn { font-size: 16px; width: auto; padding: 0 14px; border-radius: 999px; }

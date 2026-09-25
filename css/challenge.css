@@ -94,6 +94,7 @@
 .ch-edit input[name="target"] { text-align: center; }
 .ch-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .ch-allow { margin-top: 12px; }
+.ch-start { margin-top: 14px; }
 
 /* ---------- Effekte ---------- */
 .ch-burst {
