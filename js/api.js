@@ -378,6 +378,11 @@ async function createSupabaseApi() {
     },
     async createShopLobby() { return unwrap(await sb.rpc('shop_create_lobby')); },
     async closeShopLobby(code) { return unwrap(await sb.rpc('shop_close_lobby', { p_code: code })); },
+    async joinShopLobby(code) { return unwrap(await sb.rpc('shop_join_lobby', { p_code: code })); },
+    async leaveShopLobby(code) { unwrap(await sb.rpc('shop_leave_lobby', { p_code: code })); },
+    async startShopLobby(code) { return unwrap(await sb.rpc('shop_start_lobby', { p_code: code })); },
+    // Läuft eine Zeit ab (Kisten, Shop), schiebt das die Runde in die nächste Phase
+    async tickShopLobby(code) { return unwrap(await sb.rpc('shop_lobby_tick', { p_code: code })); },
     async getShopLobby(code) {
       return unwrap(await sb.from('shop_lobbies_public').select('*').eq('code', code.trim().toUpperCase()).maybeSingle());
     },
@@ -389,7 +394,7 @@ async function createSupabaseApi() {
     },
     onShopRuns(cb) {
       sb.channel('shop-runs')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.eventType === 'DELETE' ? null : p.new))
         .subscribe();
     },
     // ---------- Laufband im Overlay ----------
@@ -527,6 +532,55 @@ function createLocalApi() {
     emitDemo('shop_runs', next);
     return next;
   }
+  // Koop-Runden im Demo-Modus: gleiche Phasen wie shop_lobby_advance in der Datenbank
+  const LOBBY_CHEST_MS = 45000;
+  const demoLobbies = () => store.get('shop_lobbies', []);
+  const findLobby = (code) => demoLobbies().find((l) => l.code === String(code ?? '').trim().toUpperCase());
+  const saveLobby = (lobby) => store.set('shop_lobbies', demoLobbies().map((l) => (l.id === lobby.id ? lobby : l)));
+  const pubLobby = (l) => (l ? { ...l, chests: l.shop_until ? l.chests : null } : null);
+  function saveLobbyRuns(runs) {
+    saveRuns(runs);
+    emitDemo('shop_runs', null);
+  }
+  function advanceLobby(id) {
+    const l = demoLobbies().find((x) => x.id === id);
+    if (!l?.started_at || l.ended_at) return;
+    let runs = store.get('shop_runs', []);
+    const inLobby = () => runs.filter((r) => r.lobby_id === id);
+    const now = Date.now();
+    const iso = new Date().toISOString();
+    if (!l.shop_until) {
+      if (inLobby().some((r) => r.status === 'choosing')) {
+        if (now < Date.parse(l.chests_until)) return;
+        for (const r of inLobby().filter((x) => x.status === 'choosing')) {
+          const taken = new Set(inLobby().map((x) => x.chest).filter((c) => c != null));
+          const free = [0, 1, 2, 3].filter((c) => !taken.has(c));
+          const pick = free[randomInt(free.length)];
+          runs = runs.map((x) => (x.id === r.id ? { ...x, chest: pick, coins: l.chests[pick], status: 'opened', updated_at: iso } : x));
+        }
+      }
+      const secs = ({ ...DEFAULT_SHOP, ...store.get('shop_settings', {}) }).shop_seconds;
+      l.shop_until = new Date(now + (secs + 3) * 1000).toISOString();
+      runs = runs.map((x) => (x.lobby_id === id && x.status === 'opened' ? { ...x, status: 'shopping', shop_until: l.shop_until, updated_at: iso } : x));
+    } else if (!l.vs_at) {
+      if (inLobby().some((r) => r.status === 'shopping') && now <= Date.parse(l.shop_until) + 3000) return;
+      l.vs_at = iso;
+      runs = runs.map((x) => (x.lobby_id === id && ['shopping', 'playing'].includes(x.status) ? { ...x, status: 'playing', updated_at: iso } : x));
+    } else if (inLobby().every((r) => r.status === 'done')) {
+      Object.assign(l, { ended_at: iso, open: false });
+    } else {
+      return;
+    }
+    saveLobby(l);
+    saveLobbyRuns(runs);
+  }
+  function lobbyOfRun(run) {
+    return run.lobby_id ? demoLobbies().find((l) => l.id === run.lobby_id) : null;
+  }
+  // Mitspieler in anderen Tabs
+  addEventListener('storage', (e) => {
+    if (e.key === 'zd_shop_runs') (demoListeners.shop_runs ?? []).forEach((cb) => cb(null));
+  });
   function addPetEvent(ev) {
     const row = { id: nextId++, created_at: new Date().toISOString(), ...ev };
     store.set('pet_events', [row, ...store.get('pet_events', [])].slice(0, 40));
@@ -847,26 +901,35 @@ function createLocalApi() {
       if (!current) throw new Error('Bitte zuerst anmelden.');
       const profile = store.get('users', {})[current.email];
       const settings = await this.getShopSettings();
-      let lobby = null;
-      let chests;
-      if (code) {
-        lobby = store.get('shop_lobbies', []).find((l) => l.code === code.trim().toUpperCase());
-        if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
-        if (!lobby.open) throw new Error('Diese Koop-Runde ist schon beendet.');
-        if (store.get('shop_runs', []).some((r) => r.lobby_id === lobby.id && r.user_id === current.email)) throw new Error('Du spielst in dieser Koop-Runde schon mit.');
-        chests = lobby.chests;
-      } else {
-        chests = demoChests();
-        store.set('shop_runs', store.get('shop_runs', []).map((r) => (r.user_id === current.email && !r.lobby_id ? { ...r, status: 'done' } : r)));
-      }
       const streamed = !!stream && !!profile?.is_admin;
+      let runs = store.get('shop_runs', []).map((r) => (streamed ? { ...r, stream: false } : r));
+      if (code) {
+        const lobby = findLobby(code);
+        if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+        if (!lobby.open || lobby.ended_at) throw new Error('Diese Koop-Runde ist schon beendet.');
+        if (!lobby.started_at) throw new Error(`Warte, bis ${lobby.host_name || 'der Ersteller'} die Runde startet.`);
+        const mine = runs.find((r) => r.lobby_id === lobby.id && r.user_id === current.email);
+        if (!mine) throw new Error('Du spielst in dieser Koop-Runde nicht mit.');
+        if (mine.status !== 'choosing') throw new Error('Du hast schon eine Kiste.');
+        const taker = runs.find((r) => r.lobby_id === lobby.id && r.chest === chest);
+        if (taker) throw new Error(`Die Kiste hat sich schon ${taker.player} geschnappt.`);
+        runs = runs.map((r) => (r.id === mine.id
+          ? { ...r, chest, coins: lobby.chests[chest], status: 'opened', stream: r.stream || streamed, updated_at: new Date().toISOString() } : r));
+        saveLobbyRuns(runs);
+        advanceLobby(lobby.id);
+        return {
+          run: store.get('shop_runs', []).find((r) => r.id === mine.id),
+          chests: pubLobby(demoLobbies().find((l) => l.id === lobby.id)).chests,
+        };
+      }
+      const chests = demoChests();
+      runs = runs.map((r) => (r.user_id === current.email && !r.lobby_id ? { ...r, status: 'done' } : r));
       const run = {
-        id: `run-${nextId++}`, user_id: current.email, player: profile?.username ?? 'Zuschauer', lobby_id: lobby?.id ?? null,
+        id: `run-${nextId++}`, user_id: current.email, player: profile?.username ?? 'Zuschauer', lobby_id: null,
         stream: streamed, chest, coins: chests[chest], spent: 0, items: [], status: 'shopping',
         shop_until: new Date(Date.now() + settings.shop_seconds * 1000).toISOString(), score: 0,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       };
-      const runs = store.get('shop_runs', []).map((r) => (streamed ? { ...r, stream: false } : r));
       saveRuns([run, ...runs]);
       return { run, chests };
     },
@@ -883,48 +946,110 @@ function createLocalApi() {
         return { ...r, items: [...r.items, { name: item.name, rarity: item.rarity, price, found: false }], spent: r.spent + price };
       });
     },
-    async shopDoneShopping(runId) { return updateRun(runId, (r) => (r.status === 'shopping' ? { ...r, status: 'playing' } : r)); },
+    async shopDoneShopping(runId) {
+      const run = updateRun(runId, (r) => (r.status === 'shopping' ? { ...r, status: 'playing' } : r));
+      if (!run.lobby_id) return run;
+      advanceLobby(run.lobby_id);
+      return store.get('shop_runs', []).find((r) => r.id === runId);
+    },
     async shopMark(runId, index, found) {
       return updateRun(runId, (r) => {
+        if (r.lobby_id && !lobbyOfRun(r)?.vs_at) throw new Error('Warte, bis alle eingekauft haben – dann geht das Duell los.');
         if (r.status !== 'playing') throw new Error('Abhaken geht, sobald der Einkauf vorbei ist und bis die Runde endet.');
         const items = r.items.map((it, i) => (i === index ? { ...it, found: !!found } : it));
         return { ...r, items, score: shopScore(items) };
       });
     },
-    async shopFinish(runId) { return updateRun(runId, (r) => ({ ...r, status: 'done', score: shopScore(r.items) })); },
+    async shopFinish(runId) {
+      const run = updateRun(runId, (r) => {
+        if (r.lobby_id && !lobbyOfRun(r)?.vs_at) throw new Error('Warte, bis alle eingekauft haben – dann geht das Duell los.');
+        return { ...r, status: 'done', score: shopScore(r.items) };
+      });
+      if (run.lobby_id) advanceLobby(run.lobby_id);
+      return run;
+    },
     async getMyShopRun() { return store.get('shop_runs', []).find((r) => r.user_id === current?.email) ?? null; },
     async createShopLobby() {
       if (!current) throw new Error('Bitte zuerst anmelden.');
       const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       const code = Array.from({ length: 5 }, () => letters[randomInt(letters.length)]).join('');
-      const lobby = { id: `lobby-${nextId++}`, code, host_id: current.email, host_name: store.get('users', {})[current.email]?.username ?? '', chests: demoChests(), open: true, created_at: new Date().toISOString() };
-      store.set('shop_lobbies', [lobby, ...store.get('shop_lobbies', [])]);
-      const { chests, host_id, ...pub } = lobby;
-      return pub;
+      const name = store.get('users', {})[current.email]?.username ?? '';
+      const now = new Date().toISOString();
+      const lobby = {
+        id: `lobby-${nextId++}`, code, host_id: current.email, host_name: name, chests: demoChests(), open: true, created_at: now,
+        started_at: null, chests_until: null, shop_until: null, vs_at: null, ended_at: null,
+      };
+      store.set('shop_lobbies', [lobby, ...demoLobbies()]);
+      const run = {
+        id: `run-${nextId++}`, user_id: current.email, player: name || 'Zuschauer', lobby_id: lobby.id, stream: false,
+        chest: null, coins: 0, spent: 0, items: [], status: 'waiting', shop_until: null, score: 0, created_at: now, updated_at: now,
+      };
+      saveLobbyRuns([run, ...store.get('shop_runs', [])]);
+      return pubLobby(lobby);
+    },
+    async joinShopLobby(code) {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const lobby = findLobby(code);
+      if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+      const runs = store.get('shop_runs', []);
+      const mine = runs.find((r) => r.lobby_id === lobby.id && r.user_id === current.email);
+      if (mine) return mine;
+      if (!lobby.open || lobby.ended_at) throw new Error('Diese Koop-Runde ist schon beendet.');
+      if (lobby.started_at) throw new Error('Diese Koop-Runde hat schon angefangen.');
+      if (runs.filter((r) => r.lobby_id === lobby.id).length >= 4) throw new Error('Die Koop-Runde ist voll – mehr als 4 geht nicht (4 Kisten).');
+      const now = new Date().toISOString();
+      const run = {
+        id: `run-${nextId++}`, user_id: current.email, player: store.get('users', {})[current.email]?.username ?? 'Zuschauer',
+        lobby_id: lobby.id, stream: false, chest: null, coins: 0, spent: 0, items: [], status: 'waiting', shop_until: null, score: 0,
+        created_at: now, updated_at: now,
+      };
+      saveLobbyRuns([...runs, run]);
+      return run;
+    },
+    async leaveShopLobby(code) {
+      const lobby = findLobby(code);
+      if (!lobby || lobby.started_at) return;
+      const runs = store.get('shop_runs', []);
+      if (lobby.host_id === current?.email) {
+        saveLobby({ ...lobby, open: false, ended_at: new Date().toISOString() });
+        saveLobbyRuns(runs.map((r) => (r.lobby_id === lobby.id ? { ...r, status: 'done' } : r)));
+      } else {
+        saveLobbyRuns(runs.filter((r) => !(r.lobby_id === lobby.id && r.user_id === current?.email)));
+      }
+    },
+    async startShopLobby(code) {
+      const lobby = findLobby(code);
+      if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+      if (lobby.host_id !== current?.email) throw new Error('Starten darf nur, wer die Runde eröffnet hat.');
+      if (!lobby.open || lobby.ended_at) throw new Error('Diese Koop-Runde ist schon beendet.');
+      if (!lobby.started_at) {
+        const runs = store.get('shop_runs', []);
+        if (runs.filter((r) => r.lobby_id === lobby.id).length < 2) throw new Error('Zum Starten braucht es mindestens 2 Spieler.');
+        const now = Date.now();
+        Object.assign(lobby, { started_at: new Date(now).toISOString(), chests_until: new Date(now + LOBBY_CHEST_MS).toISOString() });
+        saveLobby(lobby);
+        saveLobbyRuns(runs.map((r) => (r.lobby_id === lobby.id && r.status === 'waiting' ? { ...r, status: 'choosing', updated_at: lobby.started_at } : r)));
+      }
+      return pubLobby(lobby);
+    },
+    async tickShopLobby(code) {
+      const lobby = findLobby(code);
+      if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
+      advanceLobby(lobby.id);
+      return pubLobby(findLobby(code));
     },
     async closeShopLobby(code) {
-      let pub = null;
-      store.set('shop_lobbies', store.get('shop_lobbies', []).map((l) => {
-        if (l.code !== code) return l;
-        if (l.host_id !== current?.email && !isAdminNow()) throw new Error('Beenden darf nur, wer die Runde eröffnet hat.');
-        const { chests, host_id, ...rest } = { ...l, open: false };
-        pub = rest;
-        return { ...l, open: false };
-      }));
-      return pub;
+      const lobby = findLobby(code);
+      if (!lobby || (lobby.host_id !== current?.email && !isAdminNow())) throw new Error('Beenden darf nur, wer die Runde eröffnet hat.');
+      const now = new Date().toISOString();
+      Object.assign(lobby, { open: false, ended_at: lobby.ended_at ?? now, vs_at: lobby.started_at ? (lobby.vs_at ?? now) : null });
+      saveLobby(lobby);
+      saveLobbyRuns(store.get('shop_runs', []).map((r) => (r.lobby_id === lobby.id && r.status !== 'done'
+        ? { ...r, status: 'done', score: shopScore(r.items), updated_at: now } : r)));
+      return pubLobby(lobby);
     },
-    async getShopLobby(code) {
-      const l = store.get('shop_lobbies', []).find((x) => x.code === code.trim().toUpperCase());
-      if (!l) return null;
-      const { chests, host_id, ...pub } = l;
-      return pub;
-    },
-    async getShopLobbyById(id) {
-      const l = store.get('shop_lobbies', []).find((x) => x.id === id);
-      if (!l) return null;
-      const { chests, host_id, ...pub } = l;
-      return pub;
-    },
+    async getShopLobby(code) { return pubLobby(findLobby(code)); },
+    async getShopLobbyById(id) { return pubLobby(demoLobbies().find((x) => x.id === id)); },
     async getLobbyRuns(lobbyId) { return store.get('shop_runs', []).filter((r) => r.lobby_id === lobbyId).sort((a, b) => b.score - a.score); },
     onShopRuns(cb) { (demoListeners.shop_runs ??= []).push(cb); },
     // ---------- Laufband (Demo) ----------

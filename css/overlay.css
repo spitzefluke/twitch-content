@@ -391,4 +391,15 @@ p { margin: 0; }
 .ov-shop-board { font-size: .9em; }
 .ov-shop-board li { padding: .3em .5em; }
 .ov-shop.is-allfound { box-shadow: 0 0 0 .15em #5cc36b, 0 0 2em rgba(92, 195, 107, .5); }
+.ov-shop-tug .tug-bar { height: 3em; border-radius: .7em; }
+.ov-shop-tug .tug-seg { padding: 0 .6em; min-width: 5.5em; }
+.ov-shop-tug .tug-seg:first-child { border-radius: .7em 0 0 .7em; }
+.ov-shop-tug .tug-seg.is-last { border-radius: 0 .7em .7em 0; }
+.ov-shop-tug .tug-name { font-size: .95em; }
+.ov-shop-tug .tug-found { font-size: .7em; }
+.ov-shop-tug .tug-score { font-size: 1.5em; }
+.ov-shop-tug .tug-seg:not(.is-last)::after { right: -.55em; top: -.45em; bottom: -.45em; width: 1.1em; }
+.ov-shop.is-end .tug-seg.is-winner { animation: tug-win 1.6s ease-in-out infinite; z-index: 1; }
+.ov-shop.is-end .tug-seg:not(.is-winner) { filter: saturate(.35) brightness(.65); }
+.ov-shop.is-end { box-shadow: 0 0 0 .15em #ffd36b, 0 0 2em rgba(255, 211, 107, .5); }
 @keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }

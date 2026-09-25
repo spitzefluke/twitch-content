@@ -7,7 +7,10 @@ import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLine
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, dinoSvg, hungerOf, isHungry, runDino } from './pet.js';
 import { DEFAULT_TICKER } from './ticker.js';
-import { DEFAULT_SHOP, GOLD, catalogFromText, catalogToText, chestSvg, coinsLeft, itemIcon, priceOf, renderLoadout, scoreOf, sortByRarity } from './shop.js';
+import {
+  DEFAULT_SHOP, GOLD, PLAYER_COLORS, catalogFromText, pointsText, catalogToText, chestSvg, coinsLeft, colorOf, itemIcon, priceOf, renderLoadout, renderTug,
+  scoreOf, sortByRarity, versusIntro, versusOrder, versusWinner, winnersOf,
+} from './shop.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -381,6 +384,7 @@ async function enterApp(user) {
 function leaveApp() {
   state.user = null;
   state.profile = null;
+  Object.assign(state.shop, { run: null, chests: null, lobby: null, lobbyRuns: [], mode: 'solo' });
   document.querySelectorAll('dialog[open]').forEach((d) => d.close());
   showAuth();
 }
@@ -2116,8 +2120,12 @@ function paintShopTile(el = $('.tile--shop')) {
   const run = state.shop.run;
   label.textContent = !run || run.status === 'done'
     ? '🧰 4 Kisten warten'
-    : run.status === 'shopping' ? '🛒 Einkauf läuft'
-      : `🎯 ${run.items.filter((x) => x.found).length} von ${run.items.length} gefunden`;
+    : {
+      waiting: '👥 Im Koop-Warteraum',
+      choosing: '🧰 Koop: Kiste schnappen!',
+      opened: '🧰 Koop: Kisten werden verteilt',
+      shopping: '🛒 Einkauf läuft',
+    }[run.status] ?? `🎯 ${run.items.filter((x) => x.found).length} von ${run.items.length} gefunden`;
 }
 
 function setupShop() {
@@ -2131,11 +2139,8 @@ function setupShop() {
     try { await navigator.clipboard.writeText(state.shop.lobby.code); toast('Code kopiert – schick ihn deinen Mitspielern.', 'ok'); } catch { /* egal */ }
   });
   $('#shop-lobby-close').addEventListener('click', closeShopLobby);
-  $('#shop-lobby-leave').addEventListener('click', () => {
-    Object.assign(state.shop, { lobby: null, run: null, chests: null, lobbyRuns: [] });
-    try { localStorage.removeItem('zd_shop_lobby'); } catch { /* egal */ }
-    renderShop();
-  });
+  $('#shop-lobby-leave').addEventListener('click', leaveShopLobby);
+  $('#shop-lobby-start').addEventListener('click', startShopLobby);
   $('#shop-done').addEventListener('click', () => shopDoneShopping());
   $('#shop-finish').addEventListener('click', shopFinish);
   $('#shop-new').addEventListener('click', () => {
@@ -2143,7 +2148,11 @@ function setupShop() {
     renderShop();
   });
   $('#shop-settings').addEventListener('submit', saveShopSettings);
-  $('#shop-dialog').addEventListener('close', () => clearInterval(state.shop.timer));
+  $('#shop-dialog').addEventListener('close', () => {
+    clearInterval(state.shop.timer);
+    clearInterval(state.shop.poll);
+    $('#shop-fx').replaceChildren();
+  });
 }
 
 async function loadShop() {
@@ -2158,12 +2167,10 @@ async function loadShop() {
   if (state.shop.on && !state.shop.subscribed) {
     state.shop.subscribed = true;
     state.api.onShopRuns((row) => {
+      // Koop: Jede Änderung einer Runde kann die Phase wechseln – alles neu laden
+      if (state.shop.lobby && (!row || row.lobby_id === state.shop.lobby.id)) { refreshLobby(); return; }
       if (!row) return;
       if (row.user_id === state.user?.id && row.id === state.shop.run?.id) state.shop.run = row;
-      if (state.shop.lobby && row.lobby_id === state.shop.lobby.id) {
-        const list = state.shop.lobbyRuns.filter((r) => r.id !== row.id);
-        state.shop.lobbyRuns = [...list, row];
-      }
       paintShopTile();
       if ($('#shop-dialog').open) renderShop({ keepItems: true });
     });
@@ -2177,18 +2184,65 @@ async function loadShopRun() {
   if (mode === 'koop') {
     if (!state.shop.lobby) {
       let saved = null;
-      try { saved = localStorage.getItem('zd_shop_lobby'); } catch { /* egal */ }
+      try { saved = localStorage.getItem(lobbyKey()); } catch { /* egal */ }
       if (saved) state.shop.lobby = await state.api.getShopLobbyById(saved).catch(() => null);
     }
-    if (!state.shop.lobby) { state.shop.run = null; return; }
+    if (!state.shop.lobby) { state.shop.run = null; state.shop.lobbyRuns = []; return; }
     state.shop.lobbyRuns = await state.api.getLobbyRuns(state.shop.lobby.id);
     state.shop.run = state.shop.lobbyRuns.find((r) => r.user_id === state.user?.id) ?? null;
+    // Nicht (mehr) dabei, z. B. vor dem Start rausgegangen: wieder Code eingeben
+    if (!state.shop.run) rememberLobby(null);
   } else {
     const run = await state.api.getMyShopRun();
     state.shop.run = run && !run.lobby_id ? run : null;
     state.shop.lobbyRuns = [];
   }
   if (state.shop.run?.id !== state.shop.chestsFor) state.shop.chests = null;
+}
+
+// Koop: Runde und Mitspieler neu laden (Änderungen kommen oft kurz hintereinander)
+async function refreshLobby() {
+  const s = state.shop;
+  if (!s.lobby) return;
+  if (s.refreshing) { s.refreshAgain = true; return; }
+  s.refreshing = true;
+  try {
+    const id = s.lobby.id;
+    const [lobby, runs] = await Promise.all([state.api.getShopLobbyById(id), state.api.getLobbyRuns(id)]);
+    if (s.lobby?.id === id) {
+      s.lobby = lobby ?? s.lobby;
+      s.lobbyRuns = runs;
+      s.run = runs.find((r) => r.user_id === state.user?.id) ?? null;
+      paintShopTile();
+      if ($('#shop-dialog').open && s.mode === 'koop') renderShop({ keepItems: true });
+    }
+  } catch (err) {
+    console.warn('Koop-Runde nicht geladen:', err);
+  } finally {
+    s.refreshing = false;
+    if (s.refreshAgain) { s.refreshAgain = false; refreshLobby(); }
+  }
+}
+
+// Läuft im Koop eine Zeit ab, stößt jeder Mitspieler die nächste Phase an
+async function tickLobby() {
+  const s = state.shop;
+  if (!s.lobby || Date.now() - (s.lastTick ?? 0) < 2500) return;
+  s.lastTick = Date.now();
+  try {
+    s.lobby = await state.api.tickShopLobby(s.lobby.code);
+  } catch (err) {
+    console.warn('Koop-Runde: nächste Phase', err);
+  }
+  refreshLobby();
+}
+
+function koopPhase(lobby) {
+  if (!lobby) return null;
+  if (!lobby.started_at) return lobby.ended_at || !lobby.open ? 'cancelled' : 'lobby';
+  if (!lobby.shop_until) return 'chests';
+  if (!lobby.vs_at) return 'shop';
+  return lobby.ended_at ? 'end' : 'vs';
 }
 
 async function openShop() {
@@ -2205,12 +2259,25 @@ function shopImage(name) {
   return hit ? state.api.bingoUrl(hit.path) : null;
 }
 
+const secsLeft = (until) => Math.max(0, Math.ceil((Date.parse(until) - Date.now()) / 1000));
+const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const namesOf = (runs) => runs.map((r) => r.player).join(', ');
+const seenOnce = (key, id) => {
+  key = `${key}_${state.user?.id ?? ''}`;
+  try {
+    if (localStorage.getItem(key) === String(id)) return true;
+    localStorage.setItem(key, String(id));
+  } catch { /* ohne Speicher: jedes Mal */ }
+  return false;
+};
+
 function renderShop({ keepItems = false } = {}) {
-  const { on, run, mode, lobby, settings } = state.shop;
+  const s = state.shop;
+  const { on, run, mode, lobby, settings } = s;
   const admin = !!state.profile?.is_admin;
   const note = $('#shop-note');
   note.textContent = on ? '' : admin
-    ? (state.shop.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20261001000000_loot_shop.sql ausführen.')
+    ? (s.error || 'Einmal nötig: In Supabase im SQL Editor die Dateien supabase/migrations/20261001000000_loot_shop.sql und 20261002000000_shop_versus.sql ausführen.')
     : 'Der Kisten-Shop ist noch nicht eingerichtet. Schau später noch mal vorbei.';
   note.hidden = on;
   const tabs = $('.shop-tabs');
@@ -2219,68 +2286,74 @@ function renderShop({ keepItems = false } = {}) {
 
   // Koop-Bereich
   const koop = mode === 'koop';
+  const phase = koop ? koopPhase(lobby) : null;
+  const host = !!lobby && lobby.host_id === state.user?.id;
   $('#shop-koop').hidden = !koop;
+  $('#shop-koop-rules').hidden = !koop;
   $('#shop-koop-start').hidden = !!lobby;
   $('#shop-koop-info').hidden = !lobby;
   if (lobby) {
     $('#shop-lobby-code').textContent = lobby.code;
-    $('#shop-lobby-host').textContent = `· eröffnet von ${lobby.host_name || 'jemandem'}${lobby.open ? '' : ' · beendet'}`;
-    $('#shop-lobby-close').hidden = !lobby.open || !(admin || lobby.host_name === state.profile?.username);
+    $('#shop-lobby-host').textContent = `· eröffnet von ${lobby.host_name || 'jemandem'}${phase === 'cancelled' ? ' · abgebrochen' : phase === 'end' ? ' · vorbei' : ''}`;
+    const close = $('#shop-lobby-close');
+    close.hidden = !['lobby', 'chests', 'shop', 'vs'].includes(phase) || !(admin || host);
+    close.textContent = phase === 'lobby' ? 'Abbrechen' : 'Duell beenden';
+    $('#shop-lobby-leave').textContent = phase === 'lobby' && run ? 'Verlassen' : 'Andere Runde';
+    // Der Ersteller bricht im Warteraum ab – „Verlassen“ wäre dasselbe
+    $('#shop-lobby-leave').hidden = phase === 'lobby' && host;
+    $('#shop-lobby-copy').hidden = phase !== 'lobby';
   }
+
+  // Phasenwechsel im Koop: Kisten kurz aufgedeckt lassen, VS-Bildschirm, Sieger
+  if (koop && lobby) {
+    const before = s.koopPhase?.id === lobby.id ? s.koopPhase.phase : null;
+    if (before === 'chests' && phase !== 'chests') {
+      s.revealUntil = Date.now() + 2600;
+      setTimeout(() => { if ($('#shop-dialog').open) renderShop(); }, 2700);
+      prankSfx(true)?.hit('bling');
+    }
+    s.koopPhase = { id: lobby.id, phase };
+    const open = $('#shop-dialog').open;
+    if (open && run && phase === 'vs' && !seenOnce('zd_shop_vs_seen', lobby.id)) {
+      versusIntro($('#shop-fx'), s.lobbyRuns, { sfx: prankSfx(true) });
+    }
+    if (open && run && phase === 'end' && !seenOnce('zd_shop_win_seen', lobby.id)) {
+      $('#shop-fx').replaceChildren();
+      versusWinner($('#shop-fx'), s.lobbyRuns, { sfx: prankSfx(true), me: state.user?.id });
+    }
+  }
+
   const needsLobby = koop && !lobby;
-  const step = needsLobby || !on ? null : !run ? 'chests' : run.status === 'shopping' ? 'shop' : 'play';
+  let step = null;
+  if (on && !needsLobby) {
+    if (!koop) step = !run ? 'chests' : run.status === 'shopping' ? 'shop' : 'play';
+    else if (!run || phase === 'lobby' || phase === 'cancelled') step = 'lobby';
+    else if (phase === 'chests' || Date.now() < (s.revealUntil ?? 0)) step = 'chests';
+    else step = run.status === 'shopping' ? 'shop' : 'play';
+  }
+  $('#shop-step-lobby').hidden = step !== 'lobby';
   $('#shop-step-chests').hidden = step !== 'chests';
   $('#shop-step-shop').hidden = step !== 'shop';
   $('#shop-step-play').hidden = step !== 'play';
-  $('#shop-stream-wrap').hidden = !admin;
+  $('#shop-stream-wrap').hidden = !admin || (koop && run?.status !== 'choosing');
 
+  clearInterval(s.timer);
+  if (step === 'lobby') renderShopLobby(phase, host);
   if (step === 'chests') renderChests();
   if (step === 'shop') {
     if (!keepItems || !$('#shop-items').children.length) renderShopItems();
     else paintShopItems();
     startShopTimer();
-  } else {
-    clearInterval(state.shop.timer);
   }
-  if (step === 'play') {
-    renderLoadout($('#shop-loadout'), run, {
-      onMark: run.status === 'playing' ? shopMark : null,
-      imageFor: shopImage,
-    });
-    const found = run.items.filter((x) => x.found).length;
-    $('#shop-score').textContent = `${scoreOf(run.items)} Punkte`;
-    $('#shop-play-title').textContent = run.status === 'done'
-      ? `Runde vorbei: ${found} von ${run.items.length} gefunden${run.items.length && found === run.items.length ? ' – alle! +10' : ''}`
-      : '3. Finde sie im Spiel';
-    $('#shop-finish').hidden = run.status === 'done';
-    $('#shop-new').hidden = run.status !== 'done' || koop;
-  }
+  if (step === 'play') renderShopPlay(koop, phase);
 
-  // Rangliste im Koop
+  // Mitspieler im Koop
   $('#shop-board-box').hidden = !lobby || !koop;
-  if (lobby && koop) {
-    const runs = [...state.shop.lobbyRuns].sort((a, b) => b.score - a.score || a.created_at.localeCompare(b.created_at));
-    const board = $('#shop-board');
-    if (!runs.length) {
-      const li = document.createElement('li');
-      li.textContent = 'Noch niemand hat eine Kiste gewählt.';
-      board.replaceChildren(li);
-    } else {
-      board.replaceChildren(...runs.map((r) => {
-        const li = document.createElement('li');
-        if (r.user_id === state.user?.id) li.className = 'is-me';
-        const who = document.createElement('span');
-        who.textContent = r.player;
-        const small = document.createElement('small');
-        small.textContent = ` · ${r.status === 'shopping' ? 'kauft ein' : `${r.items.filter((x) => x.found).length}/${r.items.length} gefunden`}${r.status === 'done' ? ' · fertig' : ''}`;
-        who.append(small);
-        const pts = document.createElement('b');
-        pts.textContent = r.score;
-        li.append(who, pts);
-        return li;
-      }));
-    }
-  }
+  if (lobby && koop) renderShopBoard(phase);
+
+  // Sicherheitsnetz, falls Realtime mal hängt
+  clearInterval(s.poll);
+  if (koop && lobby && $('#shop-dialog').open && !['cancelled', 'end'].includes(phase)) s.poll = setInterval(refreshLobby, 5000);
 
   // Admin-Einstellungen
   $('#shop-admin').hidden = !(admin && on);
@@ -2290,51 +2363,230 @@ function renderShop({ keepItems = false } = {}) {
   paintShopTile();
 }
 
-function renderChests() {
-  const wrap = $('#shop-chests');
-  const { chests, run } = state.shop;
-  wrap.replaceChildren(...[0, 1, 2, 3].map((i) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'chest';
-    b.innerHTML = `${chestSvg()}<span class="chest-label">Kiste ${i + 1}</span><span class="chest-value"></span>`;
-    if (chests) {
-      b.disabled = true;
-      b.classList.add('is-open', i === run?.chest ? 'is-picked' : 'is-other');
-      b.querySelector('.chest-value').innerHTML = `${chests[i]} ${GOLD}`;
-    } else {
-      b.addEventListener('click', () => openChest(i, b));
-    }
-    return b;
+// Warteraum: Wer ist drin, der Ersteller startet
+function renderShopLobby(phase, host) {
+  const { lobby, lobbyRuns, run } = state.shop;
+  const list = versusOrder(lobbyRuns);
+  $('#shop-players').replaceChildren(...list.map((r, i) => {
+    const li = document.createElement('li');
+    li.style.setProperty('--pc', PLAYER_COLORS[i % PLAYER_COLORS.length]);
+    li.className = r.user_id === state.user?.id ? 'is-me' : '';
+    const name = document.createElement('span');
+    name.textContent = r.player;
+    const tag = document.createElement('small');
+    tag.textContent = [r.user_id === lobby.host_id ? '👑 eröffnet' : '', r.user_id === state.user?.id ? 'du' : ''].filter(Boolean).join(' · ');
+    li.append(name, tag);
+    return li;
+  }), ...Array.from({ length: Math.max(0, 4 - list.length) }, () => {
+    const li = document.createElement('li');
+    li.className = 'is-free';
+    li.textContent = phase === 'lobby' ? 'frei' : '–';
+    return li;
+  }));
+  const status = $('#shop-lobby-status');
+  const btn = $('#shop-lobby-start');
+  btn.hidden = !(host && phase === 'lobby');
+  btn.disabled = list.length < 2;
+  btn.textContent = list.length < 2 ? 'Runde starten (ab 2 Spielern)' : `Runde starten (${list.length} Spieler)`;
+  if (phase === 'cancelled') status.textContent = 'Diese Koop-Runde wurde abgebrochen.';
+  else if (!run) status.textContent = 'Die Runde läuft schon – du bist nicht dabei.';
+  else if (host) status.textContent = `${list.length} von 4 Spielern. Gib den Code weiter und starte, sobald alle da sind.`;
+  else status.textContent = `Du bist drin! Warte, bis ${lobby.host_name || 'der Ersteller'} die Runde startet …`;
+}
+
+function renderShopPlay(koop, phase) {
+  const { run, lobbyRuns, lobby } = state.shop;
+  const vs = koop && ['vs', 'end'].includes(phase);
+  const waiting = koop && phase === 'shop';
+  renderLoadout($('#shop-loadout'), run, {
+    onMark: run.status === 'playing' && (!koop || vs) ? shopMark : null,
+    imageFor: shopImage,
+  });
+  const found = run.items.filter((x) => x.found).length;
+  $('#shop-score').textContent = pointsText(scoreOf(run.items));
+  $('#shop-play-title').textContent = run.status === 'done' && !vs
+    ? `Runde vorbei: ${found} von ${run.items.length} gefunden${run.items.length && found === run.items.length ? ' – alle! +10' : ''}`
+    : vs ? '3. Duell: Finde deine Items' : waiting ? 'Eingekauft!' : '3. Finde sie im Spiel';
+  $('#shop-finish').hidden = run.status === 'done' || waiting;
+  $('#shop-finish').textContent = koop ? 'Ich bin fertig' : 'Runde beenden';
+  $('#shop-new').hidden = run.status !== 'done' || koop;
+
+  const wait = $('#shop-play-wait');
+  wait.hidden = !waiting;
+  if (waiting) {
+    const shopping = lobbyRuns.filter((r) => r.status === 'shopping');
+    const paint = () => {
+      const left = secsLeft(lobby.shop_until);
+      wait.textContent = `⏳ Warte auf ${namesOf(shopping) || 'die anderen'} – ${shopping.length === 1 ? 'kauft' : 'kaufen'} noch ein (${mmss(left)}). Dann geht das Duell los!`;
+      if (left <= 0) tickLobby();
+    };
+    paint();
+    state.shop.timer = setInterval(paint, 500);
+  }
+
+  const box = $('#shop-vs');
+  box.hidden = !vs;
+  if (vs) {
+    const winners = phase === 'end' ? winnersOf(lobbyRuns) : null;
+    renderTug($('#shop-tug'), lobbyRuns, { me: state.user?.id, winners });
+    const open = lobbyRuns.filter((r) => r.status !== 'done');
+    $('#shop-vs-status').textContent = phase === 'end'
+      ? (winners.length === 1 ? `🏆 ${winners[0].player} gewinnt!` : `🤝 Unentschieden: ${namesOf(winners)}`)
+      : run.status === 'done'
+        ? `Du bist fertig – warte auf ${namesOf(open)}.`
+        : 'Jedes gefundene Item schiebt deine Seite rüber. Alle gefunden = +10!';
+    box.classList.toggle('is-end', phase === 'end');
+  }
+}
+
+function koopStatus(r, phase) {
+  const found = `${r.items.filter((x) => x.found).length}/${r.items.length} gefunden`;
+  return {
+    waiting: 'wartet',
+    choosing: 'wählt eine Kiste …',
+    opened: `Kiste ${r.chest + 1}: ${r.coins} Barren`,
+    shopping: 'kauft ein …',
+    playing: phase === 'shop' ? 'fertig mit Einkaufen' : found,
+    done: `${found} · fertig`,
+  }[r.status] ?? '';
+}
+
+function renderShopBoard(phase) {
+  const { lobbyRuns } = state.shop;
+  const scored = ['vs', 'end'].includes(phase);
+  $('#shop-board-title').textContent = scored ? 'Rangliste' : 'Spieler';
+  const order = versusOrder(lobbyRuns);
+  const runs = scored ? [...order].sort((a, b) => scoreOf(b.items) - scoreOf(a.items)) : order;
+  const board = $('#shop-board');
+  board.classList.toggle('is-ranked', scored);
+  if (!runs.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Noch niemand dabei.';
+    board.replaceChildren(li);
+    return;
+  }
+  board.replaceChildren(...runs.map((r) => {
+    const li = document.createElement('li');
+    li.style.setProperty('--pc', colorOf(lobbyRuns, r));
+    if (r.user_id === state.user?.id) li.className = 'is-me';
+    const who = document.createElement('span');
+    who.textContent = r.player;
+    const small = document.createElement('small');
+    small.textContent = ` · ${koopStatus(r, phase)}`;
+    who.append(small);
+    const pts = document.createElement('b');
+    pts.textContent = scored ? scoreOf(r.items) : '';
+    li.append(who, pts);
+    return li;
   }));
 }
 
+function renderChests() {
+  const s = state.shop;
+  const koop = s.mode === 'koop';
+  const wrap = $('#shop-chests');
+  const key = koop ? `koop-${s.lobby?.id}` : `solo-${s.run?.id ?? 'neu'}-${s.chests ? 1 : 0}`;
+  if (wrap.dataset.key !== key || wrap.children.length !== 4) {
+    wrap.dataset.key = key;
+    wrap.replaceChildren(...[0, 1, 2, 3].map((i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chest';
+      b.innerHTML = `${chestSvg()}<span class="chest-label">Kiste ${i + 1}</span><span class="chest-value"></span>`;
+      b.addEventListener('click', () => openChest(i, b));
+      return b;
+    }));
+  }
+  const buttons = [...wrap.children];
+  const timer = $('#shop-chest-timer');
+  const status = $('#shop-chest-status');
+  if (!koop) {
+    timer.hidden = true;
+    status.hidden = true;
+    buttons.forEach((b, i) => {
+      b.disabled = !!s.chests;
+      if (s.chests) {
+        b.classList.add('is-open', i === s.run?.chest ? 'is-picked' : 'is-other');
+        b.querySelector('.chest-value').innerHTML = `${s.chests[i]} ${GOLD}`;
+      }
+    });
+    return;
+  }
+  // Koop: Jede Kiste gehört dem, der sie zuerst öffnet – alle sehen wer und wie viel
+  const { lobby, lobbyRuns, run } = s;
+  const mine = run?.chest != null;
+  buttons.forEach((b, i) => {
+    const owner = lobbyRuns.find((r) => r.chest === i);
+    const revealed = !owner && lobby.chests;
+    b.disabled = !!owner || mine || !!revealed || run?.status !== 'choosing';
+    b.classList.toggle('is-open', !!owner || !!revealed);
+    b.classList.toggle('is-picked', !!owner && owner.id === run?.id);
+    b.classList.toggle('is-taken', !!owner && owner.id !== run?.id);
+    b.classList.toggle('is-other', !!revealed);
+    b.style.setProperty('--pc', owner ? colorOf(lobbyRuns, owner) : '');
+    b.querySelector('.chest-label').textContent = owner ? `${owner.id === run?.id ? 'Deine' : owner.player}` : `Kiste ${i + 1}`;
+    const value = owner ? owner.coins : revealed ? lobby.chests[i] : null;
+    b.querySelector('.chest-value').innerHTML = value != null ? `${value} ${GOLD}` : '';
+    if (owner && b.dataset.owner !== String(owner.id)) {
+      b.dataset.owner = owner.id;
+      if (owner.id !== run?.id) prankSfx(true)?.hit('tink');
+    }
+  });
+  const choosing = lobbyRuns.filter((r) => r.status === 'choosing');
+  status.hidden = false;
+  status.textContent = lobby.chests
+    ? 'Alle haben ihre Kiste – ab in den Shop!'
+    : mine
+      ? `Du hast ${run.coins} Goldbarren! Warte auf ${namesOf(choosing) || 'die anderen'} …`
+      : 'Schnapp dir eine Kiste, bevor es ein anderer tut! Wer nicht wählt, bekommt am Ende eine übrige.';
+  timer.hidden = !!lobby.chests;
+  const paint = () => {
+    const left = secsLeft(lobby.chests_until);
+    timer.textContent = `⏱ ${mmss(left)}`;
+    timer.classList.toggle('is-low', left <= 10);
+    if (left <= 0 && !lobby.chests) tickLobby();
+  };
+  if (!lobby.chests) {
+    paint();
+    s.timer = setInterval(paint, 500);
+  }
+}
+
 async function openChest(i, btn) {
+  const koop = state.shop.mode === 'koop';
   const buttons = [...$('#shop-chests').children];
   buttons.forEach((b) => { b.disabled = true; });
   btn.classList.add('is-shaking');
   try {
     const stream = !!state.profile?.is_admin && $('#shop-stream').checked;
-    const code = state.shop.mode === 'koop' ? state.shop.lobby?.code : null;
+    const code = koop ? state.shop.lobby?.code : null;
     const [res] = await Promise.all([state.api.openChest(i, code, stream), new Promise((r) => setTimeout(r, 500))]);
+    btn.classList.remove('is-shaking');
+    prankSfx(true)?.hit('bling');
+    if (koop) {
+      state.shop.run = res.run;
+      state.shop.lobbyRuns = [...state.shop.lobbyRuns.filter((r) => r.id !== res.run.id), res.run];
+      toast(`${res.run.coins} Goldbarren gehören dir!`, 'ok');
+      renderShop();
+      refreshLobby();
+      return;
+    }
     Object.assign(state.shop, { run: res.run, chests: res.chests, chestsFor: res.run.id });
-    if (code) state.shop.lobbyRuns = [...state.shop.lobbyRuns.filter((r) => r.id !== res.run.id), res.run];
     // Aufdecken: gewählte Kiste zuerst, dann die anderen
     buttons.forEach((b, n) => {
-      b.classList.remove('is-shaking');
       setTimeout(() => {
         b.classList.add('is-open', n === i ? 'is-picked' : 'is-other');
         b.querySelector('.chest-value').innerHTML = `${res.chests[n]} ${GOLD}`;
       }, n === i ? 0 : 500 + n * 120);
     });
-    prankSfx(true)?.hit('bling');
     toast(`${res.run.coins} Goldbarren! Ab in den Shop – die Zeit läuft.`, 'ok');
     setTimeout(() => { if ($('#shop-dialog').open) renderShop(); }, 1900);
     paintShopTile();
   } catch (err) {
     btn.classList.remove('is-shaking');
-    buttons.forEach((b) => { b.disabled = false; });
     toast(germanError(err), 'error', 6000);
+    if (koop) refreshLobby();
+    else buttons.forEach((b) => { b.disabled = false; });
   }
 }
 
@@ -2399,6 +2651,7 @@ function startShopTimer() {
     if (ms <= 0) {
       clearInterval(state.shop.timer);
       shopDoneShopping(true);
+      if (state.shop.mode === 'koop') tickLobby();
     }
   };
   tick();
@@ -2419,13 +2672,22 @@ async function shopBuy(name, btn) {
 
 async function shopDoneShopping(timeUp = false) {
   if (!state.shop.run || state.shop.run.status !== 'shopping') return;
+  const koop = !!state.shop.run.lobby_id;
   try {
     state.shop.run = await state.api.shopDoneShopping(state.shop.run.id);
-    if (timeUp) toast('Die Zeit im Shop ist um! Jetzt die Items im Spiel finden.', 'ok');
+    if (timeUp) toast(koop ? 'Die Zeit im Shop ist um!' : 'Die Zeit im Shop ist um! Jetzt die Items im Spiel finden.', 'ok');
   } catch (err) {
     toast(germanError(err), 'error');
   }
+  if (koop) syncMyLobbyRun();
   renderShop();
+  if (koop) refreshLobby();
+}
+
+// Eigene Koop-Runde sofort in der Liste der Mitspieler aktualisieren (Tauziehen)
+function syncMyLobbyRun() {
+  const { run } = state.shop;
+  if (run?.lobby_id) state.shop.lobbyRuns = state.shop.lobbyRuns.map((r) => (r.id === run.id ? run : r));
 }
 
 async function shopMark(index, found, btn) {
@@ -2433,7 +2695,9 @@ async function shopMark(index, found, btn) {
   try {
     state.shop.run = await state.api.shopMark(state.shop.run.id, index, found);
     const r = state.shop.run;
-    if (r.items.length && r.items.every((x) => x.found)) toast('Alle Items gefunden – 10 Punkte extra!', 'ok', 6000);
+    if (found && r.items.length && r.items.every((x) => x.found)) toast('Alle Items gefunden – 10 Punkte extra!', 'ok', 6000);
+    if (found && r.lobby_id) prankSfx(true)?.hit('slap');
+    syncMyLobbyRun();
   } catch (err) {
     toast(germanError(err), 'error');
   }
@@ -2441,24 +2705,38 @@ async function shopMark(index, found, btn) {
 }
 
 async function shopFinish() {
-  if (!confirm('Runde beenden? Danach lässt sich nichts mehr abhaken.')) return;
+  const koop = !!state.shop.run.lobby_id;
+  if (!confirm(koop
+    ? 'Bist du fertig? Danach lässt sich nichts mehr abhaken. Sind alle fertig, steht der Sieger fest.'
+    : 'Runde beenden? Danach lässt sich nichts mehr abhaken.')) return;
   try {
     state.shop.run = await state.api.shopFinish(state.shop.run.id);
-    toast(`Runde vorbei: ${state.shop.run.score} Punkte.`, 'ok', 6000);
+    if (!koop) toast(`Runde vorbei: ${pointsText(state.shop.run.score)}.`, 'ok', 6000);
   } catch (err) {
     toast(germanError(err), 'error');
   }
+  syncMyLobbyRun();
   renderShop();
+  if (koop) refreshLobby();
+}
+
+// Die Koop-Runde merkt sich der Browser je Nutzer
+const lobbyKey = () => `zd_shop_lobby_${state.user?.id ?? ''}`;
+function rememberLobby(lobby) {
+  Object.assign(state.shop, { lobby, run: null, chests: null, lobbyRuns: [], revealUntil: 0 });
+  try {
+    if (lobby) localStorage.setItem(lobbyKey(), lobby.id);
+    else localStorage.removeItem(lobbyKey());
+  } catch { /* egal */ }
 }
 
 async function createShopLobby() {
   const btn = $('#shop-lobby-create');
   btn.disabled = true;
   try {
-    const lobby = await state.api.createShopLobby();
-    Object.assign(state.shop, { lobby, run: null, chests: null, lobbyRuns: [] });
-    try { localStorage.setItem('zd_shop_lobby', lobby.id); } catch { /* egal */ }
-    toast(`Koop-Runde ${lobby.code} eröffnet – gib den Code deinen Mitspielern.`, 'ok', 6000);
+    rememberLobby(await state.api.createShopLobby());
+    await loadShopRun();
+    toast(`Koop-Runde ${state.shop.lobby.code} eröffnet – gib den Code deinen Mitspielern.`, 'ok', 6000);
   } catch (err) {
     toast(germanError(err), 'error');
   } finally {
@@ -2473,23 +2751,58 @@ async function joinShopLobby(e) {
   const code = form.code.value.trim().toUpperCase();
   if (!/^[A-Z2-9]{5}$/.test(code)) return formMsg(form, 'Der Code hat 5 Zeichen.');
   await withLoading(form, async () => {
+    await state.api.joinShopLobby(code);
     const lobby = await state.api.getShopLobby(code);
     if (!lobby) throw new Error('Diese Koop-Runde gibt es nicht. Code prüfen.');
-    Object.assign(state.shop, { lobby, run: null, chests: null });
-    try { localStorage.setItem('zd_shop_lobby', lobby.id); } catch { /* egal */ }
+    rememberLobby(lobby);
     form.reset();
     await loadShopRun();
     renderShop();
   });
 }
 
+async function startShopLobby() {
+  const btn = $('#shop-lobby-start');
+  btn.disabled = true;
+  try {
+    state.shop.lobby = await state.api.startShopLobby(state.shop.lobby.code);
+    toast('Los geht’s – schnappt euch die Kisten!', 'ok');
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+  await refreshLobby();
+  renderShop();
+}
+
 async function closeShopLobby() {
-  if (!confirm('Koop-Runde beenden? Danach kann niemand mehr beitreten.')) return;
+  const phase = koopPhase(state.shop.lobby);
+  if (!confirm(phase === 'lobby'
+    ? 'Koop-Runde abbrechen? Alle im Warteraum fliegen raus.'
+    : 'Duell jetzt beenden? Dann zählt der aktuelle Stand und der Sieger steht fest.')) return;
   try {
     state.shop.lobby = await state.api.closeShopLobby(state.shop.lobby.code);
   } catch (err) {
     toast(germanError(err), 'error');
   }
+  await refreshLobby();
+  renderShop();
+}
+
+async function leaveShopLobby() {
+  const { lobby, run } = state.shop;
+  const phase = koopPhase(lobby);
+  if (phase === 'lobby' && run) {
+    const host = lobby.host_id === state.user?.id;
+    if (host && !confirm('Du hast die Runde eröffnet – gehst du, ist sie für alle vorbei. Trotzdem gehen?')) return;
+    try {
+      await state.api.leaveShopLobby(lobby.code);
+    } catch (err) {
+      toast(germanError(err), 'error');
+      return;
+    }
+  }
+  rememberLobby(null);
+  clearInterval(state.shop.poll);
   renderShop();
 }
 

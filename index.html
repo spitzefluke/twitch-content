@@ -797,6 +797,7 @@
           <span class="segmented-thumb" aria-hidden="true"></span>
         </div>
         <p class="shop-rules"><b>Regeln:</b> Wähle eine Kiste, kauf dir Items und finde sie im Spiel – für jedes gefundene Item gibt es <b>1 Punkt</b>, für alle zusammen <b>10 Punkte extra</b>.</p>
+        <p class="shop-rules" id="shop-koop-rules" hidden><b>Koop-Duell:</b> Bis zu 4 Spieler. Wer eröffnet, startet die Runde. Jede Kiste gibt es nur einmal – wer zuerst zugreift, bekommt sie. Haben alle eingekauft, kommt das Duell: Jedes gefundene Item schiebt deine Seite in die der anderen.</p>
 
         <!-- Koop: Runde eröffnen oder mit Code beitreten -->
         <div class="shop-koop" id="shop-koop" hidden>
@@ -818,8 +819,19 @@
           </div>
         </div>
 
+        <section class="shop-step" id="shop-step-lobby" hidden>
+          <h3 class="prank-h3">Warteraum</h3>
+          <p class="shop-wait" id="shop-lobby-status"></p>
+          <ul class="shop-players" id="shop-players"></ul>
+          <button class="btn btn--primary" type="button" id="shop-lobby-start" hidden>Runde starten</button>
+        </section>
+
         <section class="shop-step" id="shop-step-chests">
-          <h3 class="prank-h3">1. Wähle eine Kiste</h3>
+          <div class="shop-bar">
+            <h3 class="prank-h3">1. Wähle eine Kiste</h3>
+            <span class="shop-timer" id="shop-chest-timer" hidden></span>
+          </div>
+          <p class="shop-wait" id="shop-chest-status" hidden></p>
           <div class="chests" id="shop-chests"></div>
           <label class="toggle" id="shop-stream-wrap" hidden><input type="checkbox" id="shop-stream" checked><span class="toggle-ui" aria-hidden="true"></span>Meine Runde im Stream zeigen</label>
         </section>
@@ -841,6 +853,11 @@
             <h3 class="prank-h3" id="shop-play-title">3. Finde sie im Spiel</h3>
             <span class="shop-score" id="shop-score"></span>
           </div>
+          <p class="shop-wait" id="shop-play-wait" hidden></p>
+          <div class="shop-vs" id="shop-vs" hidden>
+            <div class="shop-vs-head"><b class="shop-vs-badge">VS</b><span id="shop-vs-status"></span></div>
+            <div class="tug" id="shop-tug"></div>
+          </div>
           <ul class="loadout" id="shop-loadout"></ul>
           <div class="shop-bar">
             <button class="btn btn--ghost btn--sm" type="button" id="shop-finish">Runde beenden</button>
@@ -851,7 +868,7 @@
 
       <div class="q-side shop-side">
         <section class="bingo-box" id="shop-board-box" hidden>
-          <h3 class="prank-h3">Rangliste</h3>
+          <h3 class="prank-h3" id="shop-board-title">Spieler</h3>
           <ol class="shop-board" id="shop-board"></ol>
         </section>
         <section class="bingo-box" id="shop-admin" hidden>
@@ -875,6 +892,8 @@
         </section>
       </div>
     </div>
+    <!-- VS-Bildschirm und Sieger-Feier -->
+    <div class="shop-fx" id="shop-fx"></div>
   </dialog>
 
   <!-- Daves Dino: füttern, streicheln – im Overlay läuft er durchs Bild -->

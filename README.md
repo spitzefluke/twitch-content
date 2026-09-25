@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -320,11 +320,17 @@ Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questio
 2. **Einkaufen:** Kurz Zeit (Standard 90 Sekunden) im Shop mit Fortnite-Items wie Pump, SCAR, Gold-SCAR, Mythisches Item … Je seltener, desto teurer (Standardpreise: Gewöhnlich 10, Ungewöhnlich 20, Selten 35, Episch 55, Legendär 85, Mythisch 130, Exotisch 110). Jedes Item nur einmal. Läuft die Zeit ab, geht es mit dem Gekauften weiter.
 3. **Im Spiel finden:** Gefundene Items abhaken. Punkte = gefundene Items, alle gefunden = +10.
 
-**Koop:** Jemand erstellt eine Koop-Runde und teilt den 5-stelligen Code, die anderen treten mit dem Code bei. Alle wählen aus denselben vier Kisten, die Rangliste zeigt live, wer vorne liegt. Wer die Runde erstellt hat (oder ein Admin), kann sie schließen – dann kann niemand mehr beitreten.
+**Koop-Duell (bis zu 4 Spieler):**
+1. **Warteraum:** Jemand eröffnet eine Koop-Runde und teilt den 5-stelligen Code, die anderen treten damit bei. Alle sehen, wer schon drin ist.
+2. **Start:** Nur wer eröffnet hat, startet die Runde (ab 2 Spielern). Vorher kann er sie auch abbrechen.
+3. **Kisten:** Jede der vier Kisten gibt es nur einmal. Wer eine öffnet, dem gehört sie: Alle anderen sehen sofort, wer sie hat und wie viele Goldbarren drin waren, und können sie nicht mehr nehmen. Wer nach 45 Sekunden noch keine hat, bekommt eine übrige per Zufall.
+4. **Shop:** Haben alle ihre Kiste, geht es für alle gleichzeitig in den Shop (die Kisten der anderen sind dann kurz aufgedeckt).
+5. **Duell:** Haben alle eingekauft (oder die Zeit ist um), kommt ein VS-Bildschirm: Die Namen fliegen von beiden Seiten rein, dazwischen knallt „VS“. Danach steht ein Tauziehen-Balken: Jedes abgehakte Item schiebt die eigene Seite in die der anderen, alle gefunden (+10) schiebt richtig.
+6. **Sieger:** Sind alle fertig (oder der Ersteller beendet das Duell), gewinnt, wer die meisten Punkte hat – mit Krone, Konfetti und Applaus.
 
-**Im Stream:** Admins haken beim Öffnen der Kiste **„Meine Runde im Stream zeigen“** an. Dann zeigt das OBS-Overlay oben links eine Karte mit Timer, Guthaben, gekauften Items (mit den Bingo-Bildern, wenn es welche gibt), Punkten und im Koop der Top 5. Nach dem Ende bleibt sie noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und in der Vorschau verschieben.
+**Im Stream:** Admins haken beim Öffnen der Kiste **„Meine Runde im Stream zeigen“** an. Dann zeigt das OBS-Overlay oben links eine Karte mit Timer, Guthaben, gekauften Items (mit den Bingo-Bildern, wenn es welche gibt) und Punkten, im Koop-Duell dazu das Tauziehen und am Ende den Sieger. Nach dem Ende bleibt sie noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und in der Vorschau verschieben.
 
-Admins stellen im Dialog Shop-Zeit, Preise pro Seltenheit und die Items ein (eine Zeile „Name | Seltenheit“). Freigeschaltet für Zuschauer ab **05.10.2026** (im Dialog änderbar). Einmal nötig: Migration `supabase/migrations/20261001000000_loot_shop.sql`.
+Admins stellen im Dialog Shop-Zeit, Preise pro Seltenheit und die Items ein (eine Zeile „Name | Seltenheit“). Freigeschaltet für Zuschauer ab **05.10.2026** (im Dialog änderbar). Einmal nötig: die Migrationen `supabase/migrations/20261001000000_loot_shop.sql` und `20261002000000_shop_versus.sql` (Koop-Duell) ausführen.
 
 ## Startdatum für Zuschauer
 

@@ -48,7 +48,7 @@ import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
-import { GOLD, renderLoadout, scoreOf } from './shop.js';
+import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -873,15 +873,26 @@ async function setupShop(source) {
     const found = run.items.filter((i) => i.found).length;
     const all = run.items.length > 0 && found === run.items.length;
     card.classList.toggle('is-allfound', all);
-    $('ov-shop-coins').innerHTML = run.status === 'shopping'
+    const buying = ['opened', 'shopping'].includes(run.status);
+    // Koop: Dave wartet, bis alle eingekauft haben – dann läuft das Duell
+    const duel = !!run.lobby_id && versusLive(board);
+    const waitDuel = !!run.lobby_id && run.status === 'playing' && !duel;
+    $('ov-shop-coins').innerHTML = buying
       ? `${run.coins - run.spent} ${GOLD}`
       : `${run.items.length} Item${run.items.length === 1 ? '' : 's'}`;
-    $('ov-shop-score').textContent = run.status === 'shopping' ? '' : `${scoreOf(run.items)} Punkte`;
+    $('ov-shop-score').textContent = buying || waitDuel ? '' : pointsText(scoreOf(run.items));
     const status = $('ov-shop-status');
     const paintStatus = () => {
       if (run.status === 'shopping') {
         const s = Math.max(0, Math.ceil((Date.parse(run.shop_until) - Date.now()) / 1000));
         status.textContent = `${run.player} kauft ein · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      } else if (run.status === 'opened') {
+        status.textContent = `${run.player} · Kiste offen, die anderen wählen noch`;
+      } else if (waitDuel) {
+        status.textContent = `${run.player} · wartet aufs Duell`;
+      } else if (duel && board.every((r) => r.status === 'done')) {
+        const wins = winnersOf(board);
+        status.textContent = wins.length === 1 ? `🏆 ${wins[0].player} gewinnt!` : `Unentschieden: ${wins.map((w) => w.player).join(' & ')}`;
       } else {
         status.textContent = run.status === 'done' ? `${run.player} · Runde vorbei` : `${run.player} · ${found}/${run.items.length} gefunden`;
       }
@@ -901,9 +912,18 @@ async function setupShop(source) {
     }
   };
 
-  const paintBoard = () => {
+  const paintBoard = (sound = true) => {
     const el = $('ov-shop-board');
-    el.hidden = !run?.lobby_id || board.length < 2;
+    const tug = $('ov-shop-tug');
+    const duel = !!run?.lobby_id && versusLive(board);
+    const over = duel && board.every((r) => r.status === 'done');
+    tug.hidden = !duel;
+    card.classList.toggle('is-end', over);
+    if (duel) {
+      renderTug(tug, board, { winners: over ? winnersOf(board) : null });
+      if (over && card.dataset.won !== String(run.lobby_id)) { card.dataset.won = run.lobby_id; if (sound) sfx.play('applause'); }
+    }
+    el.hidden = duel || !run?.lobby_id || board.length < 2;
     if (el.hidden) return;
     const sorted = [...board].sort((a, b) => b.score - a.score).slice(0, 5);
     el.replaceChildren(...sorted.map((r) => {
@@ -920,10 +940,12 @@ async function setupShop(source) {
 
   const refresh = async (sound = true) => {
     const next = await source.shopStreamRun().catch(() => null);
+    const wasDuel = !!run?.lobby_id && versusLive(board);
     if (next?.lobby_id) board = await source.shopLobbyRuns(next.lobby_id).catch(() => []);
     else board = [];
     show(next, { sound });
-    paintBoard();
+    paintBoard(sound);
+    if (sound && !wasDuel && next?.lobby_id && versusLive(board)) sfx.hit('boom');
   };
 
   if (opt.test || opt.edit) {
