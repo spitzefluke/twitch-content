@@ -9,7 +9,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/prank-fx.css">
   <link rel="stylesheet" href="css/bingo.css">
@@ -44,175 +44,16 @@
   </div>
 
   <!-- ============ INTRO ============================================
-       Eine durchgehende Kamerafahrt über eine 3000 × 1000 große Bühne:
-       Nachtbahnhof → Einfahrt → Abfahrtstafel → Bahnsteiguhr mit Gong →
-       Signal auf Grün → Türen öffnen → Überblendung in die Seite.
-       Die Bewegung steuert js/intro.js, hier steht nur das Bühnenbild.
+       Intro v2 aus Claude Design – eine durchgehende Reise durch die Nacht:
+       Berge → Tunnel → Frontal aus dem Tunnel → Einfahrt → Tafel blättert
+       ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen → Überblendung.
+       Das Bild (1920 × 1080) zeichnet js/intro.js in .intro-stage.
   ================================================================= -->
   <section id="intro" class="intro" aria-label="Intro">
-    <div class="intro-cinematic" aria-hidden="true">
-      <span class="intro-cinematic__grain"></span>
-      <span class="intro-cinematic__vignette"></span>
-      <span class="intro-cinematic__scanlines"></span>
-    </div>
-    <div class="intro-camera" id="intro-camera">
-      <div class="intro-stage">
-
-        <div class="sc-stars" aria-hidden="true"></div>
-        <div class="sc-moon" aria-hidden="true"></div>
-        <div class="sc-mountains" id="sc-mountains" aria-hidden="true"></div>
-        <div class="sc-tunnel" id="sc-tunnel" aria-hidden="true">
-          <span class="sc-tunnel__rim"></span>
-          <span class="sc-tunnel__mouth"></span>
-          <button class="sc-tunnel__light" id="tunnel-light-trigger" type="button" aria-label="Tunnellicht"></button>
-        </div>
-        <div class="sc-rain sc-rain--far" aria-hidden="true"></div>
-        <div class="sc-rain sc-rain--near" aria-hidden="true"></div>
-        <div class="sc-skyline" aria-hidden="true"></div>
-        <div class="sc-fence" aria-hidden="true"></div>
-        <div class="sc-haze" aria-hidden="true"></div>
-        <div class="sc-ground" aria-hidden="true"></div>
-        <div class="sc-puddles" aria-hidden="true"></div>
-        <div class="sc-rails" aria-hidden="true"></div>
-        <div class="sc-rail-glint" aria-hidden="true"></div>
-        <div class="sc-platform" aria-hidden="true"></div>
-        <div class="sc-platform-edge" aria-hidden="true"></div>
-        <div class="sc-wire" aria-hidden="true"></div>
-
-        <!-- Hallenstützen links und rechts -->
-        <div class="sc-hall sc-hall--left" aria-hidden="true"><span class="sc-hall-post"></span><span class="sc-hall-beam"></span></div>
-        <div class="sc-hall sc-hall--right" aria-hidden="true"><span class="sc-hall-post"></span><span class="sc-hall-beam"></span></div>
-
-        <!-- Bahnsteiglampen -->
-        <div class="sc-lamp sc-lamp--left" aria-hidden="true">
-          <span class="sc-lamp-pole"></span><span class="sc-lamp-head"></span>
-          <span class="sc-lamp-cone"></span><span class="sc-lamp-pool"></span>
-        </div>
-        <div class="sc-lamp sc-lamp--right" aria-hidden="true">
-          <span class="sc-lamp-pole"></span><span class="sc-lamp-head"></span>
-          <span class="sc-lamp-cone"></span><span class="sc-lamp-pool"></span>
-        </div>
-
-        <div class="sc-sign" aria-hidden="true">GLEIS 1</div>
-        <div class="sc-platform-note" aria-hidden="true"><b>DB</b><span>Nachtschicht</span></div>
-        <div class="sc-hut" aria-hidden="true"></div>
-        <div class="sc-signal-haze" aria-hidden="true"></div>
-
-        <!-- Bahnsteiguhr -->
-        <div class="sc-clock" aria-hidden="true">
-          <span class="sc-clock-pole"></span>
-          <div class="sc-clock-face">
-            <span class="sc-clock-ticks"></span>
-            <span class="sc-clock-ticks sc-clock-ticks--major"></span>
-            <span class="sc-clock-hand sc-clock-hand--hour" id="clock-hour"></span>
-            <span class="sc-clock-hand sc-clock-hand--min" id="clock-min"></span>
-            <span class="sc-clock-cap"></span>
-          </div>
-        </div>
-
-        <!-- Abfahrtstafel -->
-        <div class="sc-board-posts" aria-hidden="true"><span></span><span></span></div>
-        <div class="intro-board" id="intro-board">
-          <div class="board-meta">
-            <span>Gleis 1 · Abfahrt</span>
-            <span><b id="intro-clock">--:--</b></span>
-          </div>
-          <div class="flap-row" id="flap-title" aria-label="Zugfahrer_DaveTV"></div>
-          <div class="flap-sub" id="flap-sub"></div>
-          <div class="board-ticker" id="board-ticker"><span></span></div>
-        </div>
-
-        <!-- Ausfahrsignal -->
-        <div class="sc-signal" aria-hidden="true">
-          <div class="sc-signal-head">
-            <span class="sc-signal-lamp sc-signal-lamp--red" id="signal-red"></span>
-            <span class="sc-signal-lamp sc-signal-lamp--green" id="signal-green"></span>
-          </div>
-          <span class="sc-signal-pole"></span>
-        </div>
-        <div class="sc-signal-beam" id="signal-beam" aria-hidden="true"></div>
-
-        <!-- Zug: Lok + zwei Wagen -->
-        <div class="sc-train" id="intro-train" aria-hidden="true">
-          <span class="sc-headlight" id="train-headlight"></span>
-          <span class="sc-brake" id="train-brake"></span>
-
-          <div class="sc-loco">
-            <span class="sc-loco-body"></span>
-            <span class="sc-loco-stripe"></span>
-            <span class="sc-loco-accent"></span>
-            <span class="sc-loco-window"></span>
-            <span class="sc-loco-name">DAVE·TV</span>
-            <span class="sc-loco-roof"></span>
-            <span class="sc-loco-light"></span>
-            <span class="sc-bogie" style="--x: 30px"></span>
-            <span class="sc-bogie" style="--x: 260px"></span>
-            <span class="sc-wheel" style="--x: 62px"></span>
-            <span class="sc-wheel" style="--x: 124px"></span>
-            <span class="sc-wheel" style="--x: 284px"></span>
-            <span class="sc-wheel" style="--x: 346px"></span>
-          </div>
-
-          <span class="sc-coupler" style="--x: 430px"></span>
-
-          <!-- Erster Wagen: hier gehen am Ende die Türen auf -->
-          <div class="sc-coach" style="--x: 446px">
-            <span class="sc-coach-body"></span>
-            <span class="sc-coach-stripe"></span>
-            <span class="sc-coach-accent"></span>
-            <span class="sc-coach-roof"></span>
-            <span class="sc-coach-windows sc-coach-windows--short"><i></i><i></i><i></i></span>
-            <div class="sc-doorway">
-              <span class="sc-doorway-glow" id="door-interior"></span>
-              <span class="sc-doorway-seats"><i></i><i></i><i></i></span>
-              <span class="sc-passenger" id="sc-passenger" aria-hidden="true"></span>
-              <span class="sc-doorway-vignette"></span>
-              <span class="sc-door sc-door--left" id="door-left"></span>
-              <span class="sc-door sc-door--right" id="door-right"></span>
-            </div>
-            <span class="sc-bogie sc-bogie--coach" style="--x: 40px"></span>
-            <span class="sc-bogie sc-bogie--coach" style="--x: 380px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 74px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 136px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 404px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 466px"></span>
-          </div>
-
-          <!-- Zweiter Wagen -->
-          <div class="sc-coach" style="--x: 1020px">
-            <span class="sc-coach-body"></span>
-            <span class="sc-coach-stripe"></span>
-            <span class="sc-coach-accent"></span>
-            <span class="sc-coach-roof"></span>
-            <span class="sc-coach-windows"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            <span class="sc-bogie sc-bogie--coach" style="--x: 40px"></span>
-            <span class="sc-bogie sc-bogie--coach" style="--x: 380px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 74px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 136px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 404px"></span>
-            <span class="sc-wheel sc-wheel--coach" style="--x: 466px"></span>
-          </div>
-        </div>
-
-        <div class="sc-drift" aria-hidden="true"></div>
-      </div>
-    </div>
-
-    <div class="intro-fade" id="intro-fade" aria-hidden="true"></div>
-    <div class="intro-shots" aria-hidden="true">
-      <span data-shot-label="01 · BERGPASS">Bergpass</span>
-      <span data-shot-label="02 · TUNNEL">Tunnel</span>
-      <span data-shot-label="03 · TUNNELAUSFAHRT">Tunnelausfahrt</span>
-      <span data-shot-label="04 · ANKUNFT">Ankunft</span>
-      <span data-shot-label="05 · GLEIS 1">Gleis 1</span>
-      <span data-shot-label="06 · EINSTIEG">Einstieg</span>
-    </div>
-    <p class="intro-beat" aria-hidden="true"><b id="intro-beat-no">01</b> · <span id="intro-beat-label"></span></p>
-    <p class="intro-caption" id="intro-caption" aria-live="polite"></p>
-    <p class="intro-weather" id="intro-weather" aria-live="polite"><span class="intro-weather__icon" aria-hidden="true"></span><span>Wetter wird geladen · Deutschland</span></p>
-    <div class="intro-progress" aria-hidden="true"><span id="intro-progress-bar"></span></div>
-    <button id="intro-sound" class="intro-sound" type="button" data-state="blocked" aria-pressed="false">Ton einschalten</button>
+    <div class="intro-stage" aria-hidden="true"></div>
+    <p class="intro-weather" id="intro-weather" aria-live="polite"><span class="intro-weather__dot" aria-hidden="true"></span><span>Deutschland · Wetter wird geladen</span></p>
     <button class="intro-skip" type="button">Überspringen <kbd>Esc</kbd></button>
+    <div class="intro-progress" aria-hidden="true"><span id="intro-progress-bar"></span></div>
   </section>
 
   <div id="demo-banner" class="demo-banner" hidden>

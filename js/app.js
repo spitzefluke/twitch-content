@@ -151,7 +151,7 @@ async function boot() {
   let seen = false;
   try { seen = sessionStorage.getItem('zd_intro') === '1'; sessionStorage.setItem('zd_intro', '1'); } catch { /* ignorieren */ }
   if (params.has('intro') || (!seen && !params.has('twitch') && !adminHash && !OBS_PAGE)) {
-    await playIntro({ duration: (CONFIG.INTRO_SECONDS ?? 20) * 1000 });
+    await playIntro();
   } else {
     $('#intro').remove();
   }

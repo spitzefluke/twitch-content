@@ -46,8 +46,3 @@ export async function getGermanyConditions() {
     return fallback;
   }
 }
-
-export function weatherCaption(conditions) {
-  const temp = conditions.temperature == null ? '' : ` · ${conditions.temperature}°C`;
-  return `${conditions.label}${temp} · Deutschland`;
-}
