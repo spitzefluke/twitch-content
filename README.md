@@ -2,7 +2,7 @@
 
 Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_DaveTV**:
 
-- **Intro als filmische Deutschland-Fahrt** mit sechs klaren Shots: Bergpass mit Zuglicht aus der Ferne → Fahrt um den Berg → Tunnel-Einfahrt → Tunnelausfahrt → Bahnhofseinfahrt → Türenöffnung und Einstieg. Die Bühne ist 3D-ready mit Tiefenebenen, filmischen Shot-Markern und proportionaler 4K-Darstellung ohne Bitmap-Vergrößerung; dazu **Bahnhofs-Gong, Zugrattern, Wind, Tunnelhall und wetterabhängige Klangkulisse**, Wetteranzeige, Bergsilhouette, Tunnellicht, Regen, Schnee, Gewitterblitze, Lichtreflexe und Filmkörnung. Wer das Tunnellicht dreimal schnell anklickt oder dreimal `T` drückt, aktiviert die geheime Sonderfahrt.
+- **Intro v2 (aus Claude Design)** – eine durchgehende Reise durch die Nacht: Berglandschaft mit fahrendem Zug → Tunnel → der Zug rast frontal auf die Kamera zu → Einfahrt in den Bahnhof → die Abfahrtstafel blättert ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen, die Kamera fährt ins Licht. Himmel, Wolken, Regen, Schnee, Nebel und Gewitter richten sich nach Tageszeit und aktuellem Wetter in Deutschland. Überspringen mit Esc, Enter oder Leertaste.
 - **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
 - **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)
@@ -39,7 +39,7 @@ Lokal starten (ES-Module brauchen einen Webserver):
 npx http-server -p 5317
 ```
 
-Das Intro erzwingen: `http://localhost:5317/?intro=1` (Länge über `INTRO_SECONDS` in `js/config.js`)
+Das Intro erzwingen: `http://localhost:5317/?intro=1`. Das Intro (Intro v2 aus Claude Design, rund 28 Sekunden: Berge → Tunnel → Einfahrt → Tafel → Signal → Einstieg) steht in `js/intro-scene.jsx`; nach Änderungen daraus `js/intro-scene.js` erzeugen (Befehl steht oben in der Datei).
 
 ---
 

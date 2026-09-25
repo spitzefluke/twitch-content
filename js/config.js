@@ -14,7 +14,4 @@ export const CONFIG = {
 
   // Twitch-Kanal, der sich verbinden darf (muss zu BROADCASTER_LOGIN im Backend passen)
   CHANNEL: 'zugfahrer_davetv',
-
-  // Länge des Intros in Sekunden (der ganze Ablauf richtet sich danach)
-  INTRO_SECONDS: 42,
 };
