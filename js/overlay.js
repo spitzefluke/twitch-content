@@ -6,10 +6,11 @@
 // Die Adresse baut der OBS-Dialog im Dashboard. Empfohlen: overlay.html?live=1 – dann kommen alle
 // Einstellungen aus der Datenbank (OBS-Dialog), und jede Änderung erscheint sofort in OBS.
 // Ohne live=1 gelten die Optionen in der Adresse, z. B. overlay.html?wheel=br&wsize=120
-//   wheel=br|bl|bc|tr|tl|tc|0  Position Glücksrad (Standard br = unten rechts, bc/tc = Mitte), 0 = aus;
+// Alles ist erst einmal aus – nur was in der Adresse steht, ist zu sehen (das Laufband ist immer da).
+//   wheel=br|bl|bc|tr|tl|tc    Glücksrad an dieser Stelle (br = unten rechts, bc/tc = Mitte); fehlt es, ist es aus;
 //                              oder frei: wheel=62.5,70 (linke obere Ecke in Prozent des Bildes) –
 //                              so speichert es der OBS-Dialog, wenn man die Karte in der Vorschau verschiebt
-//   next=…|0                   Position "Nächste Abfahrt" (Standard bl)
+//   next=bl|…                  "Nächste Abfahrt" an dieser Stelle; fehlt es, ist es aus
 //   wsize=100 / nsize=100      Größe der Karten in Prozent (50 – 200); scale=1.2 gilt für beide
 //   hold=9                     Sekunden, die das Ergebnis stehen bleibt (3 – 60)
 //   from=all|twitch|web        welche Drehungen: alle, nur Kanalpunkte, nur Webseite
@@ -21,19 +22,19 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
-//   bingo=tr|…|0               Position der Bingo-Karte (Standard tr = oben rechts), 0 = aus
+//   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
 //   bstyle=classic|neon|paper  Design der Bingo-Karte: bunt (Standard), Neon oder Papier
-//   prank=0                    „Ärgere den Dave“ aus (Würfe und Sounds)
+//   prank=1                    „Ärgere den Dave“ an (Würfe und Sounds)
 //   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
-//   quest=tc|…|0               Position der Karte „Unangenehme Frage“ (Standard tc = oben Mitte), 0 = aus
+//   quest=tc|…                 Karte „Unangenehme Frage“ an dieser Stelle; fehlt es, ist sie aus
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
-//   pet=0                      Daves Dino aus (läuft sonst unten durchs Bild)
+//   pet=1                      Daves Dino an (läuft unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
-//   shop=tl|…|0                Position der Kisten-Shop-Karte (Standard tl = oben links), 0 = aus
+//   shop=tl|…                  Kisten-Shop-Karte an dieser Stelle; fehlt es, ist sie aus
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
-//   challenge=tl|…|0           Position der Win-Challenge-Karte (Standard tl = oben links), 0 = aus
+//   challenge=tl|…             Win-Challenge-Karte an dieser Stelle; fehlt es, ist sie aus
 //   csize=100                  Größe der Win-Challenge-Karte in Prozent (50 – 200)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
@@ -91,8 +92,8 @@ const text = (name, fallback) => (params.get(name) ?? '').trim().slice(0, 40) ||
 const legacyScale = number('scale', 1, 0.5, 2) * 100;
 const accent = (params.get('accent') ?? '').replace(/^#/, '');
 const opt = {
-  wheel: position(params.get('wheel'), 'br'),
-  next: position(params.get('next'), 'bl'),
+  wheel: position(params.get('wheel'), null),
+  next: position(params.get('next'), null),
   wsize: number('wsize', legacyScale, 50, 200) / 100,
   nsize: number('nsize', legacyScale, 50, 200) / 100,
   holdMs: number('hold', 9, 3, 60) * 1000,
@@ -106,19 +107,19 @@ const opt = {
   bg: number('bg', 94, 0, 100) / 100,
   accent: /^[0-9a-f]{6}$/i.test(accent) ? `#${accent}` : null,
   volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
-  bingo: position(params.get('bingo'), 'tr'),
+  bingo: position(params.get('bingo'), null),
   bsize: number('bsize', 100, 50, 200) / 100,
   bstyle: ['neon', 'paper'].includes(params.get('bstyle')) ? params.get('bstyle') : 'classic',
-  prank: flag('prank', true),
+  prank: flag('prank', false),
   cam: camera(params.get('cam')),
   psize: number('psize', 100, 50, 200) / 100,
-  quest: position(params.get('quest'), 'tc'),
+  quest: position(params.get('quest'), null),
   qsize: number('qsize', 100, 50, 200) / 100,
-  pet: flag('pet', true),
+  pet: flag('pet', false),
   dsize: number('dsize', 100, 50, 200) / 100,
-  shop: position(params.get('shop'), 'tl'),
+  shop: position(params.get('shop'), null),
   ssize: number('ssize', 100, 50, 200) / 100,
-  challenge: position(params.get('challenge'), 'tl'),
+  challenge: position(params.get('challenge'), null),
   csize: number('csize', 100, 50, 200) / 100,
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',

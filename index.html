@@ -957,6 +957,14 @@
             <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
           </form>
           <label class="toggle ch-allow" id="ch-allow-wrap" hidden><input type="checkbox" id="ch-allow"><span class="toggle-ui" aria-hidden="true"></span>Admins (Mods) dürfen Ergebnisse eintragen</label>
+          <div class="ch-start" id="ch-start" hidden>
+            <div class="tile-start">
+              <label class="field"><span>Für Zuschauer freigeschaltet ab</span>
+                <input type="datetime-local" data-tile-start="challenge">
+              </label>
+              <p class="form-hint">Bis dahin sehen Zuschauer auf der Kachel einen Countdown. Leer lassen = sofort für alle.</p>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -1069,7 +1077,7 @@
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
     <div class="obs-body">
-      <p class="obs-lead">Ein Link für OBS mit allem, was im Stream laufen soll: Glücksrad, nächste Abfahrt, Fortnite-Bingo und die Würfe der Zuschauer.</p>
+      <p class="obs-lead">Ein Link für OBS mit allem, was im Stream laufen soll. Am Anfang ist alles aus – schalte unten ein, was du im Stream zeigen willst.</p>
       <p class="obs-note" id="obs-note" hidden></p>
 
       <!-- 1. Verbindung zu OBS: echtes Bild in der Vorschau, Kamera erkennen, Quelle anlegen -->
@@ -1120,35 +1128,35 @@
       <form class="obs-options" id="obs-options">
         <div class="obs-parts">
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="wheel_on" checked><span class="toggle-ui" aria-hidden="true"></span>Glücksrad</label>
+            <label class="toggle"><input type="checkbox" name="wheel_on"><span class="toggle-ui" aria-hidden="true"></span>Glücksrad</label>
             <label class="obs-size"><span class="sr-only">Größe Glücksrad</span><input type="range" name="wsize" min="50" max="200" step="5" value="100"><output name="wsize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="next_on" checked><span class="toggle-ui" aria-hidden="true"></span>Nächste Abfahrt</label>
+            <label class="toggle"><input type="checkbox" name="next_on"><span class="toggle-ui" aria-hidden="true"></span>Nächste Abfahrt</label>
             <label class="obs-size"><span class="sr-only">Größe Nächste Abfahrt</span><input type="range" name="nsize" min="50" max="200" step="5" value="100"><output name="nsize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="bingo_on" checked><span class="toggle-ui" aria-hidden="true"></span>Fortnite-Bingo</label>
+            <label class="toggle"><input type="checkbox" name="bingo_on"><span class="toggle-ui" aria-hidden="true"></span>Fortnite-Bingo</label>
             <label class="obs-size"><span class="sr-only">Größe Bingo-Karte</span><input type="range" name="bsize" min="50" max="200" step="5" value="100"><output name="bsize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="prank" checked><span class="toggle-ui" aria-hidden="true"></span>Würfe &amp; Sounds</label>
+            <label class="toggle"><input type="checkbox" name="prank"><span class="toggle-ui" aria-hidden="true"></span>Würfe &amp; Sounds</label>
             <label class="obs-size"><span class="sr-only">Größe der Würfe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="quest_on" checked><span class="toggle-ui" aria-hidden="true"></span>Unangenehme Fragen</label>
+            <label class="toggle"><input type="checkbox" name="quest_on"><span class="toggle-ui" aria-hidden="true"></span>Unangenehme Fragen</label>
             <label class="obs-size"><span class="sr-only">Größe der Fragen-Karte</span><input type="range" name="qsize" min="50" max="200" step="5" value="100"><output name="qsize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="challenge_on" checked><span class="toggle-ui" aria-hidden="true"></span>Win-Challenge</label>
+            <label class="toggle"><input type="checkbox" name="challenge_on"><span class="toggle-ui" aria-hidden="true"></span>Win-Challenge</label>
             <label class="obs-size"><span class="sr-only">Größe der Win-Challenge-Karte</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="shop_on" checked><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
+            <label class="toggle"><input type="checkbox" name="shop_on"><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
             <label class="obs-size"><span class="sr-only">Größe der Kisten-Shop-Karte</span><input type="range" name="ssize" min="50" max="200" step="5" value="100"><output name="ssize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="pet" checked><span class="toggle-ui" aria-hidden="true"></span>Daves Dino</label>
+            <label class="toggle"><input type="checkbox" name="pet"><span class="toggle-ui" aria-hidden="true"></span>Daves Dino</label>
             <label class="obs-size"><span class="sr-only">Größe des Dinos</span><input type="range" name="dsize" min="50" max="200" step="5" value="100"><output name="dsize-out"></output></label>
           </div>
           <div class="obs-part">

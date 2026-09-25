@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -197,7 +197,7 @@ Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mi
 
 ## OBS-Overlay
 
-Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Am einfachsten auf dem PC, auf dem OBS läuft:
+Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Die OBS-Einstellungen öffnen sich in einem **eigenen Fenster** (`index.html?obs`), nicht als Pop-up; „← Zur Webseite“ schließt es wieder. **Am Anfang ist alles aus** – nur das Laufband läuft immer. Unten einschalten, was im Stream zu sehen sein soll. Am einfachsten auf dem PC, auf dem OBS läuft:
 
 1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
 2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt Daves Kamera in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
@@ -212,8 +212,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 | Option in der Adresse | Wirkung |
 |---|---|
-| `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` / `0` | Position Glücksrad (unten rechts, unten Mitte, unten links, oben …, aus) – oder frei wie `wheel=62.5,70` (linke obere Ecke in Prozent; so speichert es das Verschieben in der Vorschau) |
-| `next=bl` / … / `0` | Position „Nächste Abfahrt“ (auch frei wie beim Glücksrad) |
+| `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` | Glücksrad an (unten rechts, unten Mitte, unten links, oben …) – oder frei wie `wheel=62.5,70` (linke obere Ecke in Prozent; so speichert es das Verschieben in der Vorschau). Fehlt es, ist das Glücksrad aus – wie alle Karten |
+| `next=bl` / … | „Nächste Abfahrt“ an (auch frei wie beim Glücksrad) |
 | `wsize=120`, `nsize=80` | Größe der Karten in Prozent (50 bis 200); `scale=1.2` gilt für beide |
 | `from=twitch` / `web` | nur Kanalpunkte-Drehungen bzw. nur Drehungen auf der Seite zeigen (von der Seite kommen nur Drehungen von Admins ins Overlay) |
 | `hold=15` | Sekunden, die das Ergebnis stehen bleibt (3 bis 60) |
@@ -225,19 +225,19 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `bg=50` | Deckkraft des Kartenhintergrunds in Prozent (0 = nur Schrift) |
 | `accent=3ddc84` | Akzentfarbe (Hex ohne `#`) |
 | `vol=40` | Lautstärke in Prozent, `0` = ohne Ton |
-| `bingo=tl` / … / `0` | Position der Bingo-Karte (Standard oben rechts) |
+| `bingo=tr` / … | Bingo-Karte an |
 | `bsize=80` | Größe der Bingo-Karte in Prozent |
 | `bstyle=classic` / `neon` / `paper` | Design der Bingo-Karte: Klassisch (dunkel), Neon (leuchtende Rahmen) oder Papier (Bingo-Schein mit Stempel) |
-| `prank=0` | „Ärgere den Dave“ ausblenden (keine Würfe, keine Sounds) |
+| `prank=1` | „Ärgere den Dave“ an (Würfe und Sounds) |
 | `cam=73,72,25,25` | Daves Kamera im Bild: links, oben, Breite, Höhe in Prozent – dort landen die Würfe |
 | `psize=150` | Größe der Wurfgeschosse in Prozent |
-| `quest=tc` / … / `0` | Position der Karte „Unangenehme Frage“ (Standard oben Mitte), `0` = aus |
+| `quest=tc` / … | Karte „Unangenehme Frage“ an |
 | `qsize=120` | Größe der Fragen-Karte in Prozent |
-| `shop=tl` / … / `0` | Position der Kisten-Shop-Karte (Standard oben links), `0` = aus |
+| `shop=tl` / … | Kisten-Shop-Karte an |
 | `ssize=120` | Größe der Kisten-Shop-Karte in Prozent |
-| `challenge=tl` / … / `0` | Position der Win-Challenge-Karte (Standard oben links), `0` = aus |
+| `challenge=tl` / … | Win-Challenge-Karte an |
 | `csize=120` | Größe der Win-Challenge-Karte in Prozent |
-| `pet=0` | Daves Dino ausblenden |
+| `pet=1` | Daves Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
 | `tstyle=bar` / `neon` / `board` | Design des Laufbands: Laufband, Neon oder Bahnhofs-Anzeige (gelbe LED-Schrift) |
@@ -348,11 +348,11 @@ Jede Stufe hat ein Ziel (so viele Siege braucht sie). Optional hat die Challenge
 
 **Im Stream:** Sobald der erste Sieg eingetragen ist, zeigt das OBS-Overlay oben links eine Karte mit der aktuellen Stufe, den Siegen (●●○), den Leben (❤️) und einem Fortschrittsbalken. Ein Sieg lässt die Karte grün aufleuchten („SIEG!“), eine Niederlage rot wackeln und ein Herz zerbrechen. Eine geschaffte Stufe, die geschaffte Challenge (mit Konfetti) und das Scheitern kommen groß übers ganze Bild. Nach dem Ende bleibt die Karte noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und verschieben.
 
-Einmal nötig: Migration `supabase/migrations/20261003000000_win_challenge.sql` ausführen.
+**Für Zuschauer ab 10.10.2026** (vorher Countdown auf der Kachel; Dave und die Admins sehen sie schon vorher, der Termin steht im Challenge-Dialog). Einmal nötig: die Migrationen `supabase/migrations/20261003000000_win_challenge.sql` und `20261004000000_challenge_start.sql` ausführen.
 
 ## Startdatum für Zuschauer
 
-„Ärgere den Dave“, das Fortnite-Bingo, die Unangenehmen Fragen, Daves Dino und der Kisten-Shop können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
+„Ärgere den Dave“, das Fortnite-Bingo, die Unangenehmen Fragen, Daves Dino, der Kisten-Shop und die Win-Challenge können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
 
 ## Admin-Bereich
 
