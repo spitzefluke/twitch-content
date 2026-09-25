@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -235,6 +235,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `qsize=120` | Größe der Fragen-Karte in Prozent |
 | `shop=tl` / … / `0` | Position der Kisten-Shop-Karte (Standard oben links), `0` = aus |
 | `ssize=120` | Größe der Kisten-Shop-Karte in Prozent |
+| `challenge=tl` / … / `0` | Position der Win-Challenge-Karte (Standard oben links), `0` = aus |
+| `csize=120` | Größe der Win-Challenge-Karte in Prozent |
 | `pet=0` | Daves Dino ausblenden |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
@@ -331,6 +333,22 @@ Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questio
 **Im Stream:** Admins haken beim Öffnen der Kiste **„Meine Runde im Stream zeigen“** an. Dann zeigt das OBS-Overlay oben links eine Karte mit Timer, Guthaben, gekauften Items (mit den Bingo-Bildern, wenn es welche gibt) und Punkten, im Koop-Duell dazu das Tauziehen und am Ende den Sieger. Nach dem Ende bleibt sie noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und in der Vorschau verschieben.
 
 Admins stellen im Dialog Shop-Zeit, Preise pro Seltenheit und die Items ein (eine Zeile „Name | Seltenheit“). Freigeschaltet für Zuschauer ab **05.10.2026** (im Dialog änderbar). Einmal nötig: die Migrationen `supabase/migrations/20261001000000_loot_shop.sql` und `20261002000000_shop_versus.sql` (Koop-Duell) ausführen.
+
+## Win-Challenge (nur für Dave)
+
+Eine Leiter aus Stufen, die Dave der Reihe nach gewinnen muss:
+
+- **🎮 Game** – Games gewinnen, z. B. „Gewinne ein Solo-Game“.
+- **🔁 Runden** – mehrere Runden gewinnen, z. B. „Gewinne 3 Zone-Wars-Runden“.
+- **⚔️ Fight gegen Mod** – 1v1 gegen einen Mod, z. B. „Box-Fight vs ModMax, first to 2“. Die Namen der Admins der Seite stehen als Vorschlag bereit.
+
+Jede Stufe hat ein Ziel (so viele Siege braucht sie). Optional hat die Challenge **Leben** (Standard 3, 0 = ohne): Jede Niederlage kostet eins, sind alle weg, ist die Challenge gescheitert.
+
+**Eintragen darf nur Dave** – mit den großen Knöpfen **Sieg** und **Niederlage**, dazu **Rückgängig**, **Stufe überspringen**, **Neu starten** und ein Klick auf eine Stufe, um dorthin zu springen. Rechts richtet Dave die Challenge ein (Name, Leben, Stufen hinzufügen, verschieben, löschen); Siege bleiben beim Speichern erhalten. Mit **„Admins (Mods) dürfen Ergebnisse eintragen“** kann Dave seinen Mods das Eintragen erlauben. Zuschauer sehen den Stand nur an.
+
+**Im Stream:** Sobald der erste Sieg eingetragen ist, zeigt das OBS-Overlay oben links eine Karte mit der aktuellen Stufe, den Siegen (●●○), den Leben (❤️) und einem Fortschrittsbalken. Ein Sieg lässt die Karte grün aufleuchten („SIEG!“), eine Niederlage rot wackeln und ein Herz zerbrechen. Eine geschaffte Stufe, die geschaffte Challenge (mit Konfetti) und das Scheitern kommen groß übers ganze Bild. Nach dem Ende bleibt die Karte noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und verschieben.
+
+Einmal nötig: Migration `supabase/migrations/20261003000000_win_challenge.sql` ausführen.
 
 ## Startdatum für Zuschauer
 

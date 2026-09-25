@@ -7,6 +7,7 @@ import { DEFAULT_PET } from './pet.js';
 import { DEFAULT_STAGE } from './questions.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import { DEFAULT_SHOP } from './shop.js';
+import { DEFAULT_CHALLENGE, applyResult, gotoStage, resetChallenge, saveChallenge, undoChallenge } from './challenge.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -29,6 +30,8 @@ const ERRORS = [
   [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/feed_command|pet_feed_command/i, 'In der Datenbank fehlt der Chat-Befehl für den Dino: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
   [/relation "public\.overlay_config"|could not find the (table|function) '?public\.(overlay_config|overlay_access|overlay_save|overlay_allow_admins)/i, 'In der Datenbank fehlt das Live-Overlay: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
+  [/could not find the function '?public\.(shop_join_lobby|shop_leave_lobby|shop_start_lobby|shop_lobby_tick)|column .*(started_at|vs_at|chests_until)/i, 'In der Datenbank fehlt das Koop-Duell im Kisten-Shop: supabase/migrations/20261002000000_shop_versus.sql im SQL Editor ausführen.'],
+  [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
@@ -397,6 +400,26 @@ async function createSupabaseApi() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.eventType === 'DELETE' ? null : p.new))
         .subscribe();
     },
+    // ---------- Win-Challenge ----------
+    async getChallenge() { return unwrap(await sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()); },
+    async challengeAccess() { return unwrap(await sb.rpc('challenge_access')); },
+    async saveChallenge({ title, lives, stages }) {
+      return unwrap(await sb.rpc('challenge_save', { p_title: title, p_lives: lives, p_stages: stages }));
+    },
+    async challengeResult(win) { return unwrap(await sb.rpc('challenge_result', { p_win: win })); },
+    async challengeUndo() { return unwrap(await sb.rpc('challenge_undo')); },
+    async challengeGoto(index) { return unwrap(await sb.rpc('challenge_goto', { p_index: index })); },
+    async challengeReset() { return unwrap(await sb.rpc('challenge_reset')); },
+    async challengeAllowAdmins(on) { return unwrap(await sb.rpc('challenge_allow_admins', { p_on: on })); },
+    // Namen der Admins (Mods) – als Vorschläge für die Gegner
+    async getModNames() {
+      return (unwrap(await sb.from('profiles').select('username').eq('is_admin', true).order('username')) ?? []).map((p) => p.username);
+    },
+    onChallenge(cb) {
+      sb.channel('win-challenge')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'win_challenge' }, (p) => cb(p.new))
+        .subscribe();
+    },
     // ---------- Laufband im Overlay ----------
     async getTicker() {
       return unwrap(await sb.from('ticker').select('items').eq('id', 1).maybeSingle())?.items ?? null;
@@ -581,6 +604,14 @@ function createLocalApi() {
   addEventListener('storage', (e) => {
     if (e.key === 'zd_shop_runs') (demoListeners.shop_runs ?? []).forEach((cb) => cb(null));
   });
+  async function changeChallenge(fn) {
+    await requireAdmin();
+    const ch = { ...DEFAULT_CHALLENGE, ...store.get('win_challenge', {}) };
+    const next = { ...fn(ch, store.get('users', {})[current.email]?.username ?? ''), updated_at: new Date().toISOString() };
+    store.set('win_challenge', next);
+    emitDemo('win_challenge', next);
+    return next;
+  }
   function addPetEvent(ev) {
     const row = { id: nextId++, created_at: new Date().toISOString(), ...ev };
     store.set('pet_events', [row, ...store.get('pet_events', [])].slice(0, 40));
@@ -1052,6 +1083,20 @@ function createLocalApi() {
     async getShopLobbyById(id) { return pubLobby(demoLobbies().find((x) => x.id === id)); },
     async getLobbyRuns(lobbyId) { return store.get('shop_runs', []).filter((r) => r.lobby_id === lobbyId).sort((a, b) => b.score - a.score); },
     onShopRuns(cb) { (demoListeners.shop_runs ??= []).push(cb); },
+    // ---------- Win-Challenge (Demo: Admins gelten als Dave) ----------
+    async getChallenge() { return { ...DEFAULT_CHALLENGE, ...store.get('win_challenge', {}) }; },
+    async challengeAccess() {
+      const admin = isAdminNow();
+      return { can_edit: admin, is_owner: admin, admins_can_edit: !!store.get('win_challenge', {}).admins_can_edit };
+    },
+    async saveChallenge(patch) { return changeChallenge((ch, by) => saveChallenge(ch, patch, by)); },
+    async challengeResult(win) { return changeChallenge((ch, by) => applyResult(ch, win, by)); },
+    async challengeUndo() { return changeChallenge((ch, by) => undoChallenge(ch, by)); },
+    async challengeGoto(index) { return changeChallenge((ch, by) => gotoStage(ch, index, by)); },
+    async challengeReset() { return changeChallenge((ch, by) => resetChallenge(ch, by)); },
+    async challengeAllowAdmins(on) { return changeChallenge((ch) => ({ ...ch, admins_can_edit: !!on })); },
+    async getModNames() { return Object.values(store.get('users', {})).filter((u) => u.is_admin).map((u) => u.username).sort(); },
+    onChallenge(cb) { (demoListeners.win_challenge ??= []).push(cb); },
     // ---------- Laufband (Demo) ----------
     async getTicker() { return store.get('ticker', null)?.items ?? DEFAULT_TICKER; },
     async saveTicker(items) {

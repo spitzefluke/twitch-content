@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/bingo.css">
   <link rel="stylesheet" href="css/pet.css">
   <link rel="stylesheet" href="css/shop.css">
+  <link rel="stylesheet" href="css/challenge.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -896,6 +897,72 @@
     <div class="shop-fx" id="shop-fx"></div>
   </dialog>
 
+  <!-- Win-Challenge: nur Dave trägt ein, alle sehen den Stand -->
+  <dialog id="ch-dialog" class="dialog dialog--challenge" aria-labelledby="ch-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Nur für Dave · Games, Runden, Fights gegen Mods</p>
+        <h2 id="ch-title">Win-Challenge</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <p class="prank-note" id="ch-note" hidden></p>
+    <div class="ch-layout">
+      <div class="ch-main">
+        <div class="ch-hero" id="ch-hero">
+          <div class="ch-hero-top">
+            <span class="ch-status" id="ch-status"></span>
+            <span class="ch-hearts" id="ch-hearts" aria-label="Leben"></span>
+          </div>
+          <div class="ch-progress" aria-hidden="true"><div class="ch-progress-bar" id="ch-progress"></div></div>
+          <p class="ch-progress-text" id="ch-progress-text"></p>
+        </div>
+
+        <!-- Dave (und freigeschaltete Admins): Ergebnisse eintragen -->
+        <div class="ch-controls" id="ch-controls" hidden>
+          <p class="ch-now" id="ch-now"></p>
+          <div class="ch-buttons">
+            <button class="ch-btn ch-btn--win" type="button" id="ch-win"><span aria-hidden="true">✅</span> Sieg</button>
+            <button class="ch-btn ch-btn--loss" type="button" id="ch-loss"><span aria-hidden="true">❌</span> Niederlage</button>
+          </div>
+          <div class="ch-small">
+            <button class="btn btn--ghost btn--sm" type="button" id="ch-undo">↩ Rückgängig</button>
+            <button class="btn btn--ghost btn--sm" type="button" id="ch-skip">⏭ Stufe überspringen</button>
+            <button class="btn btn--ghost btn--sm" type="button" id="ch-reset">🔄 Neu starten</button>
+          </div>
+        </div>
+        <p class="shop-wait" id="ch-viewer" hidden>Hier trägt nur Dave ein – du siehst den Stand live, genau wie im Stream.</p>
+
+        <h3 class="prank-h3">Die Stufen</h3>
+        <ol class="ch-ladder" id="ch-ladder"></ol>
+      </div>
+
+      <div class="q-side ch-side" id="ch-side" hidden>
+        <section class="bingo-box">
+          <h3 class="prank-h3">Challenge einrichten</h3>
+          <form class="ch-form" id="ch-form" novalidate>
+            <div class="ch-form-row">
+              <label class="field"><span>Name</span><input type="text" name="ch_title" maxlength="60" required></label>
+              <label class="field ch-lives-field"><span>Leben <small>(0 = ohne)</small></span><input type="number" name="lives" min="0" max="10" step="1" required></label>
+            </div>
+            <ol class="ch-edit" id="ch-edit"></ol>
+            <div class="ch-add">
+              <button class="btn btn--ghost btn--sm" type="button" data-ch-add="game">🎮 + Game</button>
+              <button class="btn btn--ghost btn--sm" type="button" data-ch-add="round">🔁 + Runden</button>
+              <button class="btn btn--ghost btn--sm" type="button" data-ch-add="fight">⚔️ + Fight gegen Mod</button>
+            </div>
+            <datalist id="ch-mods"></datalist>
+            <p class="form-hint">Ziel = so viele Siege braucht die Stufe (z. B. Fight „first to 2“). Siege und Niederlagen bleiben beim Speichern erhalten.</p>
+            <p class="form-msg" role="alert"></p>
+            <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
+          </form>
+          <label class="toggle ch-allow" id="ch-allow-wrap" hidden><input type="checkbox" id="ch-allow"><span class="toggle-ui" aria-hidden="true"></span>Admins (Mods) dürfen Ergebnisse eintragen</label>
+        </section>
+      </div>
+    </div>
+    <div class="shop-fx" id="ch-fx"></div>
+  </dialog>
+
   <!-- Daves Dino: füttern, streicheln – im Overlay läuft er durchs Bild -->
   <dialog id="pet-dialog" class="dialog dialog--pet" aria-labelledby="pet-title">
     <div class="dialog-head">
@@ -1073,6 +1140,10 @@
             <label class="obs-size"><span class="sr-only">Größe der Fragen-Karte</span><input type="range" name="qsize" min="50" max="200" step="5" value="100"><output name="qsize-out"></output></label>
           </div>
           <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="challenge_on" checked><span class="toggle-ui" aria-hidden="true"></span>Win-Challenge</label>
+            <label class="obs-size"><span class="sr-only">Größe der Win-Challenge-Karte</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
+          </div>
+          <div class="obs-part">
             <label class="toggle"><input type="checkbox" name="shop_on" checked><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
             <label class="obs-size"><span class="sr-only">Größe der Kisten-Shop-Karte</span><input type="range" name="ssize" min="50" max="200" step="5" value="100"><output name="ssize-out"></output></label>
           </div>
@@ -1113,6 +1184,7 @@
         <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="shop" value="tl" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="challenge" value="tl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 

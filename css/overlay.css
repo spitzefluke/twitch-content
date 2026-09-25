@@ -403,3 +403,46 @@ p { margin: 0; }
 .ov-shop.is-end .tug-seg:not(.is-winner) { filter: saturate(.35) brightness(.65); }
 .ov-shop.is-end { box-shadow: 0 0 0 .15em #ffd36b, 0 0 2em rgba(255, 211, 107, .5); }
 @keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Win-Challenge ---------- */
+.ov-challenge {
+  --c: #ff5c5c;
+  font-size: calc(16px * var(--cs, 1));
+  width: 21em; animation: ov-in .6s var(--ease-out) both;
+}
+.ov-ch-body { position: relative; padding: .8em 1em 1em; display: grid; gap: .6em; }
+.ov-ch-stage { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: .6em; align-items: center; }
+.ov-ch-icon { font-size: 1.8em; line-height: 1; text-align: center; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.ov-ch-name { display: grid; min-width: 0; line-height: 1.15; }
+.ov-ch-name b { font-family: var(--font-display); font-size: 1.35em; font-weight: 800; color: #fff; overflow-wrap: anywhere; }
+.ov-ch-name small { color: #ff9a9a; font-weight: 700; font-size: .9em; }
+.ov-ch-row { display: flex; align-items: center; justify-content: space-between; gap: .6em; }
+.ov-ch-pips { font-size: 1.1em; }
+.ov-ch-hearts { font-size: 1.25em; }
+.ov-ch-track { display: flex; gap: .25em; }
+.ov-ch-track span { flex: 1; height: .45em; border-radius: 999px; background: rgba(255, 255, 255, .12); transition: background .4s; }
+.ov-ch-track span.is-done { background: linear-gradient(90deg, #5cc36b, #9be15d); }
+.ov-ch-track span.is-active { background: #ff5c5c; animation: ov-ch-blink 1.2s ease-in-out infinite; }
+@keyframes ov-ch-blink { 50% { opacity: .45; } }
+.ov-challenge.is-won { box-shadow: 0 0 0 .15em #ffd36b, 0 0 2em rgba(255, 211, 107, .55); }
+.ov-challenge.is-failed { filter: saturate(.5); box-shadow: 0 0 0 .15em #7a1a2a; }
+.ov-challenge.is-flash-win { animation: ov-ch-flash-win .9s ease-out; }
+.ov-challenge.is-flash-loss { animation: ov-ch-flash-loss .9s ease-out; }
+@keyframes ov-ch-flash-win { 20% { box-shadow: 0 0 0 .2em #5cc36b, 0 0 3em rgba(92, 195, 107, .8); transform: scale(1.04); } }
+@keyframes ov-ch-flash-loss { 15% { box-shadow: 0 0 0 .2em #ff4d6d, 0 0 3em rgba(255, 60, 80, .8); transform: translateX(-.4em); } 30% { transform: translateX(.4em); } 45% { transform: translateX(-.25em); } 60% { transform: none; } }
+/* Sieg/Niederlage direkt auf der Karte: Symbol und Wort nebeneinander */
+.ov-challenge .ch-burst { font-size: 1em; grid-auto-flow: column; align-items: center; gap: .35em; background: rgba(6, 8, 13, .88); }
+.ov-challenge .ch-burst.is-win { background: radial-gradient(circle, rgba(40, 110, 55, .95), rgba(6, 8, 13, .92) 75%); }
+.ov-challenge .ch-burst.is-loss { background: radial-gradient(circle, rgba(130, 25, 40, .95), rgba(6, 8, 13, .92) 75%); }
+.ov-challenge .ch-burst-icon { font-size: 2.4em; }
+.ov-challenge .ch-burst-text { font-size: 2.5em; -webkit-text-stroke-width: .05em; }
+.ov-challenge .ch-burst-sub { display: none; }
+/* Große Effekte übers ganze Bild – außen durchsichtig, damit das Spiel sichtbar bleibt */
+.ov-ch-fx { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+.ov-ch-fx .ch-burst.is-stage { background: radial-gradient(circle, rgba(255, 211, 107, .3), rgba(5, 7, 12, .55) 45%, transparent 75%); }
+.ov-ch-fx .ch-burst.is-won { background: radial-gradient(circle at 50% 45%, rgba(255, 211, 107, .45), rgba(5, 7, 12, .7) 50%, rgba(5, 7, 12, .2) 85%); }
+.ov-ch-fx .ch-burst.is-failed { background: radial-gradient(circle, rgba(120, 10, 30, .65), rgba(5, 3, 6, .7) 50%, rgba(5, 3, 6, .2) 85%); }
+.ov-ch-fx .ch-burst { pointer-events: none; }
+.ov-ch-fx .ch-burst-text { font-size: 150px; }
+.ov-ch-fx .ch-burst-icon { font-size: 140px; }
+.ov-ch-fx .ch-burst-sub { font-size: 34px; }

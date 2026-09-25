@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0b12"/><stop offset=".6" stop-color="#160610"/><stop offset="1" stop-color="#08030a"/></linearGradient>
+<radialGradient id="glow" cx=".5" cy=".35" r=".55"><stop offset="0" stop-color="#ff5c5c" stop-opacity=".55"/><stop offset="1" stop-color="#ff5c5c" stop-opacity="0"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset=".5" stop-color="#ffc933"/><stop offset="1" stop-color="#b8780a"/></linearGradient>
+<filter id="shadow"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity=".6"/></filter>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<!-- Stufen der Leiter -->
+<g fill="#3a1420" stroke="#ff5c5c" stroke-opacity=".35" stroke-width="2">
+<rect x="120" y="400" width="140" height="100"/>
+<rect x="260" y="340" width="140" height="160"/>
+<rect x="400" y="280" width="140" height="220"/>
+<rect x="540" y="220" width="140" height="280"/>
+</g>
+<g fill="#ff5c5c" opacity=".7" font-family="Arial, sans-serif" font-weight="900" font-size="30" text-anchor="middle">
+<text x="190" y="450">1</text><text x="330" y="390">2</text><text x="470" y="330">3</text><text x="610" y="270">4</text>
+</g>
+<!-- Pokal oben -->
+<g filter="url(#shadow)" transform="translate(560 60)">
+<path d="M20 10 H80 V40 C80 70 62 84 50 86 C38 84 20 70 20 40 Z" fill="url(#gold)" stroke="#7a4a00" stroke-width="3"/>
+<path d="M20 18 H6 C6 42 14 52 24 54 M80 18 H94 C94 42 86 52 76 54" fill="none" stroke="#ffc933" stroke-width="6" stroke-linecap="round"/>
+<rect x="44" y="86" width="12" height="18" fill="#d99a16"/>
+<rect x="30" y="104" width="40" height="12" rx="3" fill="#8a5a00"/>
+<path d="M50 26 l5 10 11 1.5 -8 7.5 2 11 -10 -5.5 -10 5.5 2 -11 -8 -7.5 11 -1.5 z" fill="#fff6c8"/>
+</g>
+<!-- gekreuzte Schwerter -->
+<g stroke="#e8edf5" stroke-width="10" stroke-linecap="round" opacity=".85" filter="url(#shadow)">
+<path d="M150 120 L300 270"/><path d="M300 120 L150 270"/>
+</g>
+<g stroke="#b8780a" stroke-width="14" stroke-linecap="round"><path d="M168 150 L190 128"/><path d="M282 150 L260 128"/></g>
+</svg>

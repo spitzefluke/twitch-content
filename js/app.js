@@ -11,6 +11,9 @@ import {
   DEFAULT_SHOP, GOLD, PLAYER_COLORS, catalogFromText, pointsText, catalogToText, chestSvg, coinsLeft, colorOf, itemIcon, priceOf, renderLoadout, renderTug,
   scoreOf, sortByRarity, versusIntro, versusOrder, versusWinner, winnersOf,
 } from './shop.js';
+import {
+  KINDS, challengeBurst, challengeSummary, currentStage, doneCount, heartsHtml, pipsHtml, stageDone, stageLabel,
+} from './challenge.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -63,6 +66,16 @@ const state = {
     error: '',
     list: [],           // eigene Fragen, für Admins alle
     stage: null,        // was gerade im Stream steht
+    subscribed: false,
+  },
+  // Win-Challenge (nur Dave trägt ein)
+  challenge: {
+    on: false,
+    error: '',
+    data: null,
+    access: { can_edit: false, is_owner: false, admins_can_edit: false },
+    mods: [],
+    editing: false,     // Editor geändert, noch nicht gespeichert
     subscribed: false,
   },
   // Kisten-Shop
@@ -379,6 +392,7 @@ async function enterApp(user) {
   loadQuestions();
   loadPet();
   loadShop();
+  loadChallenge();
 }
 
 function leaveApp() {
@@ -622,7 +636,7 @@ function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
-  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile };
+  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -877,6 +891,7 @@ function setupDialogs() {
   setupQuestions();
   setupPet();
   setupShop();
+  setupChallenge();
   document.querySelectorAll('[data-tile-start]').forEach((input) => {
     input.addEventListener('change', (e) => { e.stopPropagation(); saveTileStart(input); });
   });
@@ -2103,6 +2118,278 @@ function paintPetTile(el = $('.tile--pet')) {
   const hungry = state.pet.on && isHungry(pet);
   label.textContent = !state.pet.on ? '🦖 Wohnt im Stream' : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
   el.classList.toggle('is-hungry', hungry);
+}
+
+// ============================================================
+// Win-Challenge
+// ============================================================
+function buildChallengeTile(tile, i) {
+  const el = buildActionTile(tile, i, { cls: 'tile--challenge', cta: 'Zur Challenge →', onClick: openChallenge });
+  paintChallengeTile(el);
+  return el;
+}
+
+function paintChallengeTile(el = $('.tile--challenge')) {
+  const label = el?.querySelector('.tile-live-status');
+  if (label) label.textContent = challengeSummary(state.challenge.on ? state.challenge.data : null);
+}
+
+function setupChallenge() {
+  $('#ch-win').addEventListener('click', () => challengeAction('result', true));
+  $('#ch-loss').addEventListener('click', () => challengeAction('result', false));
+  $('#ch-undo').addEventListener('click', () => challengeAction('undo'));
+  $('#ch-skip').addEventListener('click', () => {
+    const ch = state.challenge.data;
+    if (ch.current >= ch.stages.length - 1) return toast('Das ist schon die letzte Stufe.', 'info');
+    if (confirm(`Stufe ${ch.current + 1} überspringen? Sie zählt dann nicht als geschafft.`)) challengeAction('goto', ch.current + 1);
+  });
+  $('#ch-reset').addEventListener('click', () => {
+    if (confirm('Challenge neu starten? Alle Siege, Niederlagen und Leben gehen auf Anfang.')) challengeAction('reset');
+  });
+  $('#ch-form').addEventListener('submit', saveChallengeForm);
+  $('#ch-form').addEventListener('input', () => { state.challenge.editing = true; });
+  document.querySelectorAll('[data-ch-add]').forEach((b) => b.addEventListener('click', () => {
+    const kind = b.dataset.chAdd;
+    const list = readChallengeEdit();
+    if (list.length >= 30) return toast('Höchstens 30 Stufen.', 'info');
+    list.push({ id: '', kind, title: '', opponent: '', target: kind === 'round' ? 3 : kind === 'fight' ? 2 : 1 });
+    state.challenge.editing = true;
+    renderChallengeEdit(list);
+    $('#ch-edit').lastElementChild?.querySelector('input[name="title"]')?.focus();
+  }));
+  $('#ch-allow').addEventListener('change', async (e) => {
+    try {
+      state.challenge.data = await state.api.challengeAllowAdmins(e.target.checked);
+      state.challenge.access.admins_can_edit = e.target.checked;
+      toast(e.target.checked ? 'Die Admins dürfen jetzt Ergebnisse eintragen.' : 'Nur du trägst ein.', 'ok');
+    } catch (err) {
+      e.target.checked = !e.target.checked;
+      toast(germanError(err), 'error');
+    }
+  });
+  $('#ch-dialog').addEventListener('close', () => $('#ch-fx').replaceChildren());
+}
+
+async function loadChallenge() {
+  const c = state.challenge;
+  try {
+    const [data, access] = await Promise.all([
+      state.api.getChallenge(),
+      state.user ? state.api.challengeAccess().catch(() => null) : null,
+    ]);
+    Object.assign(c, { data, on: !!data, error: '' });
+    if (access) c.access = access;
+    if (c.access.can_edit && !c.mods.length) c.mods = await state.api.getModNames().catch(() => []);
+  } catch (err) {
+    console.warn('Win-Challenge nicht verfügbar:', err);
+    Object.assign(c, { on: false, error: germanError(err) });
+  }
+  if (c.on && !c.subscribed) {
+    c.subscribed = true;
+    state.api.onChallenge(applyChallenge);
+  }
+  paintChallengeTile();
+}
+
+// Neuer Stand (eigener Klick oder Realtime): bei neuem Ereignis den Effekt zeigen
+function applyChallenge(next) {
+  if (!next) return;
+  const before = state.challenge.data;
+  state.challenge.data = next;
+  const ev = next.last_event;
+  if (before && ev?.n && ev.n !== before.last_event?.n && $('#ch-dialog').open) {
+    challengeBurst($('#ch-fx'), ev, next, { sfx: prankSfx(true) });
+  }
+  paintChallengeTile();
+  if ($('#ch-dialog').open) renderChallenge({ changed: before });
+}
+
+async function openChallenge() {
+  state.challenge.editing = false;
+  renderChallenge();
+  $('#ch-dialog').showModal();
+  await loadChallenge();
+  renderChallenge();
+}
+
+function renderChallenge({ changed = null } = {}) {
+  const c = state.challenge;
+  const ch = c.data;
+  const canEdit = !!c.access.can_edit && c.on;
+  const note = $('#ch-note');
+  note.hidden = c.on;
+  note.textContent = c.on ? '' : state.profile?.is_admin
+    ? (c.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20261003000000_win_challenge.sql ausführen.')
+    : 'Die Win-Challenge ist noch nicht eingerichtet.';
+  $('#ch-dialog').classList.toggle('has-side', canEdit);
+  $('#ch-side').hidden = !canEdit;
+  $('#ch-controls').hidden = !canEdit;
+  $('#ch-viewer').hidden = canEdit || !c.on;
+  if (!ch) return;
+  $('#ch-title').textContent = ch.title;
+
+  // Kopf: Stand, Leben, Fortschritt
+  const done = doneCount(ch);
+  const hero = $('#ch-hero');
+  hero.classList.toggle('is-won', ch.status === 'won');
+  hero.classList.toggle('is-failed', ch.status === 'failed');
+  $('#ch-status').textContent = {
+    ready: '🎯 Bereit – der erste Sieg startet die Challenge',
+    running: `🔥 Stufe ${Math.min(ch.current + 1, ch.stages.length)} von ${ch.stages.length}`,
+    won: '🏆 Challenge geschafft!',
+    failed: '💀 Gescheitert – keine Leben mehr',
+  }[ch.status];
+  const hearts = $('#ch-hearts');
+  hearts.innerHTML = heartsHtml(ch);
+  if (changed && ch.lives && changed.lives_left > ch.lives_left) hearts.children[ch.lives_left]?.classList.add('is-breaking');
+  $('#ch-progress').style.width = `${Math.round((done / ch.stages.length) * 100)}%`;
+  const losses = ch.stages.reduce((n, s) => n + s.losses, 0);
+  const wins = ch.stages.reduce((n, s) => n + s.wins, 0);
+  $('#ch-progress-text').textContent = `${done} von ${ch.stages.length} Stufen geschafft · ${wins} Siege · ${losses} Niederlagen${ch.lives ? '' : ' · ohne Leben'}`;
+
+  // Knöpfe
+  const over = ch.status === 'won' || ch.status === 'failed';
+  const stage = currentStage(ch);
+  $('#ch-now').innerHTML = '';
+  if (over) {
+    $('#ch-now').textContent = ch.status === 'won' ? 'Geschafft! Mit „Neu starten“ geht es von vorn los.' : 'Vorbei. „Rückgängig“ holt die letzte Niederlage zurück, „Neu starten“ fängt von vorn an.';
+  } else {
+    const b = document.createElement('span');
+    b.textContent = `${KINDS[stage.kind].icon} Jetzt: ${stageLabel(stage)}`;
+    const small = document.createElement('small');
+    small.textContent = `${stage.wins} von ${stage.target} Siegen${stage.losses ? ` · ${stage.losses} Niederlage${stage.losses === 1 ? '' : 'n'}` : ''}`;
+    $('#ch-now').append(b, small);
+  }
+  $('#ch-win').disabled = over;
+  $('#ch-loss').disabled = over;
+  $('#ch-undo').disabled = !ch.history?.length;
+  $('#ch-skip').disabled = over || ch.current >= ch.stages.length - 1;
+  $('#ch-reset').disabled = false;
+
+  // Die Leiter
+  $('#ch-ladder').replaceChildren(...ch.stages.map((s, i) => {
+    const li = document.createElement('li');
+    const active = i === ch.current && !over;
+    li.className = `ch-stage${stageDone(s) ? ' is-done' : active ? ' is-active' : i > ch.current ? ' is-next' : ' is-skipped'}`;
+    li.innerHTML = `<span class="ch-stage-no">${i + 1}</span><span class="ch-stage-icon" aria-hidden="true">${KINDS[s.kind].icon}</span>
+      <span class="ch-stage-name"><b></b><small></small></span>
+      <span class="ch-stage-score"><span class="ch-pips">${pipsHtml(s)}</span><small></small></span>`;
+    li.querySelector('b').textContent = s.title;
+    const small = li.querySelector('.ch-stage-name small');
+    small.textContent = KINDS[s.kind].name;
+    if (s.kind === 'fight' && s.opponent) {
+      const vs = document.createElement('span');
+      vs.className = 'ch-vs';
+      vs.textContent = ` · vs ${s.opponent}`;
+      small.append(vs);
+    }
+    li.querySelector('.ch-stage-score small').textContent = s.losses ? `${s.losses}× verloren` : '';
+    // Neuer Sieg: Punkt springt auf
+    const prev = changed?.stages?.find((x) => x.id === s.id);
+    if (prev && s.wins > prev.wins) li.querySelectorAll('.ch-pip.is-on')[s.wins - 1]?.classList.add('is-pop');
+    if (canEdit && i !== ch.current) {
+      li.classList.add('can-jump');
+      li.title = 'Zu dieser Stufe springen';
+      li.addEventListener('click', () => {
+        if (confirm(`Zu Stufe ${i + 1} „${s.title}“ springen?`)) challengeAction('goto', i);
+      });
+    }
+    return li;
+  }));
+
+  // Einrichten (nur wenn nicht gerade bearbeitet)
+  if (canEdit) {
+    const f = $('#ch-form');
+    if (!c.editing) {
+      f.ch_title.value = ch.title;
+      f.lives.value = ch.lives;
+      renderChallengeEdit(ch.stages);
+    }
+    $('#ch-mods').replaceChildren(...c.mods.map((name) => Object.assign(document.createElement('option'), { value: name })));
+    $('#ch-allow-wrap').hidden = !c.access.is_owner;
+    $('#ch-allow').checked = !!ch.admins_can_edit;
+  }
+}
+
+function renderChallengeEdit(stages) {
+  $('#ch-edit').replaceChildren(...stages.map((s, i, all) => {
+    const li = document.createElement('li');
+    li.dataset.id = s.id ?? '';
+    li.innerHTML = `<select name="kind" aria-label="Art">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}">${v.icon} ${v.name}</option>`).join('')}</select>
+      <input type="text" name="title" maxlength="60" placeholder="z. B. Gewinne ein Solo-Game" aria-label="Aufgabe">
+      <input type="number" name="target" min="1" max="99" step="1" aria-label="Siege nötig" title="Siege nötig">
+      <span class="ch-edit-tools">
+        <button type="button" data-move="-1" aria-label="Nach oben" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" data-move="1" aria-label="Nach unten" ${i === all.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" data-remove aria-label="Entfernen">✕</button>
+      </span>
+      <input type="text" name="opponent" class="ch-edit-opp" maxlength="30" list="ch-mods" placeholder="Gegner (Mod)" aria-label="Gegner">`;
+    li.querySelector('[name="kind"]').value = s.kind;
+    li.querySelector('[name="title"]').value = s.title ?? '';
+    li.querySelector('[name="target"]').value = s.target ?? 1;
+    const opp = li.querySelector('[name="opponent"]');
+    opp.value = s.opponent ?? '';
+    opp.hidden = s.kind !== 'fight';
+    li.querySelector('[name="kind"]').addEventListener('change', (e) => { opp.hidden = e.target.value !== 'fight'; });
+    li.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
+      const list = readChallengeEdit();
+      const j = i + Number(b.dataset.move);
+      [list[i], list[j]] = [list[j], list[i]];
+      state.challenge.editing = true;
+      renderChallengeEdit(list);
+    }));
+    li.querySelector('[data-remove]').addEventListener('click', () => {
+      const list = readChallengeEdit();
+      if (list.length <= 1) return toast('Mindestens eine Stufe braucht die Challenge.', 'info');
+      list.splice(i, 1);
+      state.challenge.editing = true;
+      renderChallengeEdit(list);
+    });
+    return li;
+  }));
+}
+
+function readChallengeEdit() {
+  return [...$('#ch-edit').children].map((li) => ({
+    id: li.dataset.id,
+    kind: li.querySelector('[name="kind"]').value,
+    title: li.querySelector('[name="title"]').value.trim(),
+    opponent: li.querySelector('[name="opponent"]').value.trim(),
+    target: Math.round(Number(li.querySelector('[name="target"]').value)) || 1,
+  }));
+}
+
+async function saveChallengeForm(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const stages = readChallengeEdit();
+  const lives = Math.round(Number(form.lives.value));
+  if (!stages.length) return formMsg(form, 'Mindestens eine Stufe braucht die Challenge.');
+  if (!(lives >= 0 && lives <= 10)) return formMsg(form, 'Leben: 0 bis 10.');
+  if (stages.some((s) => !s.title)) return formMsg(form, 'Jede Stufe braucht eine Aufgabe.');
+  if (stages.some((s) => s.target < 1 || s.target > 99)) return formMsg(form, 'Siege nötig: 1 bis 99.');
+  await withLoading(form, async () => {
+    const next = await state.api.saveChallenge({ title: form.ch_title.value.trim(), lives, stages });
+    state.challenge.editing = false;
+    applyChallenge(next);
+    formMsg(form, 'Gespeichert – läuft so auch im Stream.', true);
+  });
+}
+
+async function challengeAction(kind, arg) {
+  const buttons = ['#ch-win', '#ch-loss', '#ch-undo', '#ch-skip', '#ch-reset'].map((sel) => $(sel));
+  buttons.forEach((b) => { b.disabled = true; });
+  try {
+    const api = state.api;
+    const next = kind === 'result' ? await api.challengeResult(arg)
+      : kind === 'undo' ? await api.challengeUndo()
+        : kind === 'goto' ? await api.challengeGoto(arg)
+          : await api.challengeReset();
+    applyChallenge(next);
+  } catch (err) {
+    toast(germanError(err), 'error');
+    renderChallenge();
+  }
 }
 
 // ============================================================
@@ -3338,6 +3625,7 @@ async function saveTileStart(input) {
 const THEME_BG = {
   tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
   prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg', shop: 'assets/bg-shop.svg',
+  challenge: 'assets/bg-challenge.svg',
 };
 
 function openTile(id) {
@@ -3420,9 +3708,9 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge'];
+const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -3478,10 +3766,10 @@ function obsUrl({ preview = false } = {}) {
   const f = $('#obs-options');
   const url = new URL('overlay.html', location.href);
   const p = url.searchParams;
-  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, Bingo, Fragen und Shop nur wenn geändert.
+  // Glücksrad und nächste Abfahrt stehen immer in der Adresse, die anderen Karten nur wenn geändert.
   for (const key of OBS_PARTS) {
     const value = f.elements[`${key}_on`].checked ? f.elements[key].value : '0';
-    if (!['bingo', 'quest', 'shop'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
+    if (!['bingo', 'quest', 'shop', 'challenge'].includes(key) || value !== f.elements[key].defaultValue) p.set(key, value);
   }
   for (const el of obsFields()) {
     if (OBS_PARTS.includes(el.name) || el.name.endsWith('_on')) continue;

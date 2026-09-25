@@ -1,0 +1,141 @@
+/* Win-Challenge (js/challenge.js) – Webseite und OBS-Overlay */
+/* Nutzt die Keyframes vs-* aus shop.css – beide Seiten laden shop.css mit. */
+.ch-hearts { display: inline-flex; gap: .15em; font-size: 20px; line-height: 1; }
+.ch-heart { color: #ff4d6d; filter: drop-shadow(0 0 .25em rgba(255, 77, 109, .6)); transition: transform .3s, color .3s, filter .3s; }
+.ch-heart.is-lost { color: #3a3f4d; filter: none; transform: scale(.85); }
+.ch-heart.is-breaking { animation: ch-break .9s ease-out; }
+@keyframes ch-break { 20% { transform: scale(1.5) rotate(-12deg); color: #ff4d6d; } 60% { transform: scale(.7) rotate(10deg); } }
+.ch-pip { display: inline-block; width: .8em; height: .8em; margin-right: .25em; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); vertical-align: middle; transition: background .3s, border-color .3s, transform .3s; }
+.ch-pip.is-on { background: #5cc36b; border-color: #5cc36b; box-shadow: 0 0 .5em rgba(92, 195, 107, .7); }
+.ch-pip.is-pop { animation: ch-pip-pop .6s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes ch-pip-pop { 40% { transform: scale(1.8); } }
+.ch-count { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---------- Dialog ---------- */
+.dialog--challenge { width: min(96vw, 1120px); }
+.ch-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(18px, 3vw, 32px); padding: 18px 24px 26px; align-items: start; }
+.dialog--challenge.has-side .ch-layout { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.ch-main { display: grid; gap: 16px; min-width: 0; }
+.ch-hero {
+  display: grid; gap: 10px; padding: 16px 18px; border-radius: 16px;
+  background: radial-gradient(circle at 0 0, rgba(255, 92, 92, .2), transparent 60%), rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 92, 92, .25);
+}
+.ch-hero.is-won { border-color: #ffd36b; background: radial-gradient(circle at 0 0, rgba(255, 211, 107, .3), transparent 60%), rgba(255, 255, 255, .04); }
+.ch-hero.is-failed { border-color: #5a2230; filter: saturate(.6); }
+.ch-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ch-status { font-family: var(--font-display, sans-serif); font-weight: 800; font-size: 22px; }
+.ch-progress { height: 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.ch-progress-bar { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ff5c5c, #ffb13c, #ffd36b); transition: width .8s cubic-bezier(.34, 1.56, .64, 1); }
+.ch-progress-text { margin: 0; color: var(--muted, #aab); font-size: 14px; }
+
+.ch-controls { display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); }
+.ch-now { margin: 0; font-weight: 700; font-size: 17px; }
+.ch-now small { display: block; color: var(--muted, #aab); font-weight: 500; font-size: 13px; }
+.ch-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ch-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; border-radius: 14px; border: 0; cursor: pointer;
+  font: 800 22px/1 var(--font-display, sans-serif); text-transform: uppercase; color: #fff; letter-spacing: .02em;
+  box-shadow: inset 0 -.2em 0 rgba(0, 0, 0, .25), 0 8px 24px rgba(0, 0, 0, .3); transition: transform .12s, filter .15s;
+}
+.ch-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+.ch-btn:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+.ch-btn:disabled { opacity: .45; cursor: default; }
+.ch-btn--win { background: linear-gradient(180deg, #5cd66f, #238a35); }
+.ch-btn--loss { background: linear-gradient(180deg, #ff6b6b, #b0232f); }
+.ch-small { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ch-ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: ch; }
+.ch-stage {
+  position: relative; display: grid; grid-template-columns: 2.4em 2em minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid transparent;
+  transition: background .3s, border-color .3s, opacity .3s;
+}
+.ch-stage-no { font-family: var(--font-display, sans-serif); font-weight: 900; font-size: 22px; color: var(--muted, #aab); text-align: center; }
+.ch-stage-icon { font-size: 22px; text-align: center; }
+.ch-stage-name { display: grid; min-width: 0; }
+.ch-stage-name b { font-size: 16px; overflow-wrap: anywhere; }
+.ch-stage-name small { color: var(--muted, #aab); font-size: 13px; }
+.ch-stage-name .ch-vs { color: #ff8a8a; font-weight: 700; }
+.ch-stage-score { display: grid; justify-items: end; gap: 2px; }
+.ch-stage-score small { color: var(--muted, #aab); font-size: 12px; }
+.ch-stage.is-done { background: rgba(92, 195, 107, .1); }
+.ch-stage.is-done .ch-stage-no { color: #5cc36b; }
+.ch-stage.is-done .ch-stage-no::after { content: " ✓"; font-size: 16px; }
+.ch-stage.is-active { background: rgba(255, 92, 92, .12); border-color: rgba(255, 92, 92, .6); box-shadow: 0 0 24px rgba(255, 92, 92, .2); }
+.ch-stage.is-active .ch-stage-no { color: #ff8a8a; }
+.ch-stage.is-active::before { content: "▶"; position: absolute; left: -14px; color: #ff5c5c; font-size: 14px; animation: ch-nudge 1s ease-in-out infinite; }
+@keyframes ch-nudge { 50% { transform: translateX(4px); } }
+.ch-stage.is-next { opacity: .7; }
+.ch-stage.is-skipped .ch-stage-name b { text-decoration: line-through; opacity: .7; }
+.ch-stage.can-jump { cursor: pointer; }
+.ch-stage.can-jump:hover { border-color: rgba(255, 255, 255, .2); }
+
+/* Einrichten */
+.ch-form { display: grid; gap: 12px; }
+.ch-form-row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5em; gap: 10px; }
+.ch-edit { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: che; }
+.ch-edit li {
+  counter-increment: che; display: grid; grid-template-columns: 1.6em minmax(0, 1fr) 4.2em auto; gap: 6px; align-items: center;
+  padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, .04);
+}
+.ch-edit li::before { content: counter(che); grid-row: 1; font-weight: 800; color: var(--muted, #aab); text-align: center; }
+.ch-edit select { grid-row: 1; grid-column: 2; }
+.ch-edit input[name="target"] { grid-row: 1; grid-column: 3; }
+.ch-edit input[name="title"] { grid-column: 2 / 5; }
+.ch-edit select, .ch-edit input {
+  width: 100%; min-width: 0; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line-2, rgba(255, 255, 255, .15));
+  background: var(--bg-2, #151a26); color: inherit; font: inherit; font-size: 14px;
+}
+.ch-edit .ch-edit-opp { grid-column: 2 / 5; }
+.ch-edit .ch-edit-tools { display: flex; gap: 2px; grid-row: 1; grid-column: 4; }
+.ch-edit .ch-edit-tools button { padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--muted, #aab); cursor: pointer; font-size: 14px; }
+.ch-edit .ch-edit-tools button:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.ch-edit input[name="target"] { text-align: center; }
+.ch-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.ch-allow { margin-top: 12px; }
+
+/* ---------- Effekte ---------- */
+.ch-burst {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: .2em; text-align: center; overflow: hidden;
+  pointer-events: auto; cursor: pointer; animation: vs-in .2s ease both;
+  --bc: #5cc36b;
+}
+.ch-burst.is-win { --bc: #5cc36b; background: radial-gradient(circle, rgba(92, 195, 107, .35), transparent 60%); }
+.ch-burst.is-loss { --bc: #ff4d6d; background: radial-gradient(circle, rgba(255, 60, 80, .4), transparent 62%); animation: vs-in .15s ease both, vs-shake .45s linear .05s; }
+.ch-burst.is-stage { --bc: #ffd36b; background: radial-gradient(circle, rgba(255, 211, 107, .35), rgba(5, 7, 12, .7) 70%); }
+.ch-burst.is-won { --bc: #ffd36b; background: radial-gradient(circle at 50% 42%, rgba(255, 211, 107, .45), rgba(5, 7, 12, .92) 62%); }
+.ch-burst.is-failed { --bc: #ff4d6d; background: radial-gradient(circle, rgba(120, 10, 30, .6), rgba(5, 3, 6, .94) 65%); animation: vs-in .2s ease both, vs-shake .5s linear .1s; }
+.ch-burst-icon { position: relative; font-size: clamp(56px, 9vw, 110px); line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; animation: ch-icon .6s cubic-bezier(.2, 1.5, .4, 1) both; }
+.ch-burst.is-won .ch-burst-icon { animation: vs-crown .8s cubic-bezier(.2, 1.5, .4, 1) both, vs-float 2.4s ease-in-out .8s infinite; }
+@keyframes ch-icon { from { transform: scale(0) rotate(-40deg); } }
+.ch-burst-text {
+  position: relative; font-family: var(--font-display, sans-serif); font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1;
+  font-size: clamp(44px, 9vw, 120px); color: #fff; -webkit-text-stroke: 3px rgba(0, 0, 0, .55); paint-order: stroke fill;
+  text-shadow: 0 0 .4em var(--bc), 0 .06em 0 rgba(0, 0, 0, .5);
+  animation: vs-slam .5s cubic-bezier(.2, 1.4, .4, 1) .08s both;
+}
+.ch-burst.is-stage .ch-burst-text, .ch-burst.is-won .ch-burst-text { color: #ffe27a; }
+.ch-burst.is-failed .ch-burst-text { color: #ff6b7f; letter-spacing: .06em; }
+.ch-burst-sub { position: relative; margin: .3em 0 0; max-width: 90vw; color: #fff; font-weight: 700; font-size: clamp(16px, 2.2vw, 26px); text-shadow: 0 2px 8px rgba(0, 0, 0, .8); animation: vs-up .45s ease .35s both; }
+.ch-burst-rays {
+  position: absolute; left: 50%; top: 45%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; pointer-events: none;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--bc) 30%, transparent) 0 9deg, transparent 9deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0 12%, transparent 45%); mask: radial-gradient(circle, #000 0 12%, transparent 45%);
+  animation: vs-spin 16s linear infinite;
+}
+.ch-burst.is-failed .ch-burst-rays { animation-duration: 40s; opacity: .6; }
+.ch-burst.is-out { animation: vs-out .4s ease forwards; }
+
+@media (max-width: 800px) {
+  .dialog--challenge.has-side .ch-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .ch-buttons { grid-template-columns: 1fr; }
+  .ch-stage { grid-template-columns: 2em 1.6em minmax(0, 1fr); }
+  .ch-stage-score { grid-column: 3; justify-items: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ch-burst, .ch-burst * { animation: none !important; }
+  .ch-stage.is-active::before { animation: none; }
+}

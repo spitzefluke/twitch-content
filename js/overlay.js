@@ -33,6 +33,8 @@
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
 //   shop=tl|…|0                Position der Kisten-Shop-Karte (Standard tl = oben links), 0 = aus
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
+//   challenge=tl|…|0           Position der Win-Challenge-Karte (Standard tl = oben links), 0 = aus
+//   csize=100                  Größe der Win-Challenge-Karte in Prozent (50 – 200)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -47,6 +49,7 @@ import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
+import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
@@ -115,6 +118,8 @@ const opt = {
   dsize: number('dsize', 100, 50, 200) / 100,
   shop: position(params.get('shop'), 'tl'),
   ssize: number('ssize', 100, 50, 200) / 100,
+  challenge: position(params.get('challenge'), 'tl'),
+  csize: number('csize', 100, 50, 200) / 100,
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -146,6 +151,7 @@ root.setProperty('--bs', opt.bsize);
 root.setProperty('--qs', opt.qsize);
 root.setProperty('--ts', opt.tsize);
 root.setProperty('--ss', opt.ssize);
+root.setProperty('--cs', opt.csize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -164,6 +170,8 @@ else $('ov-quest').remove();
 if (!opt.pet) $('ov-pet').remove();
 if (opt.shop) place($('ov-shop'), opt.shop);
 else $('ov-shop').remove();
+if (opt.challenge) place($('ov-challenge'), opt.challenge);
+else $('ov-challenge').remove();
 place($('ov-ticker'), opt.ticker);
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
@@ -213,6 +221,7 @@ async function start() {
   if (opt.quest) setupQuestions(source);
   if (opt.pet) setupPet(source);
   if (opt.shop) setupShop(source);
+  if (opt.challenge) setupChallenge(source);
   setupTicker(source);
   if (LIVE) watchOverlayConfig(source);
 }
@@ -288,6 +297,12 @@ async function connect() {
     shopImages: async () => rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({
       name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
     }))),
+    challenge: () => rows(sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()),
+    onChallenge(cb) {
+      sb.channel('overlay-challenge')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'win_challenge' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für die Win-Challenge fehlgeschlagen'); });
+    },
     onOverlayConfig(cb) {
       sb.channel('overlay-config')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'overlay_config' }, (p) => cb(p.new.params))
@@ -361,6 +376,10 @@ function demoSource() {
       addEventListener('storage', (e) => { if (e.key === 'zd_shop_runs') cb(null); });
     },
     shopImages: async () => read('bingo_items', []).map((i) => ({ name: i.name, url: i.url })),
+    challenge: async () => ({ ...DEFAULT_CHALLENGE, ...read('win_challenge', {}) }),
+    onChallenge(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_win_challenge') cb({ ...DEFAULT_CHALLENGE, ...read('win_challenge', {}) }); });
+    },
     onOverlayConfig(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_overlay_config') cb(read('overlay_config', null)?.params ?? ''); });
     },
@@ -978,6 +997,82 @@ async function setupShop(source) {
 }
 
 // ============================================================
+// Win-Challenge: Daves Stufen, Siege und Leben
+// ============================================================
+// Zu sehen, sobald die Challenge läuft; nach dem Ende noch 10 Minuten.
+const CHALLENGE_SHOW_AFTER_MS = 10 * 60 * 1000;
+
+async function setupChallenge(source) {
+  const card = $('ov-challenge');
+  const fx = $('ov-ch-fx');
+  const sfx = new Sfx({ volume: opt.volume });
+  let ch = null;
+  let hideTimer = 0;
+
+  const paint = (next, { effects = true } = {}) => {
+    const before = ch;
+    ch = next;
+    if (!ch) { card.hidden = true; return; }
+    const over = ch.status === 'won' || ch.status === 'failed';
+    const recent = !over || Date.now() - Date.parse(ch.finished_at ?? ch.updated_at ?? 0) < CHALLENGE_SHOW_AFTER_MS;
+    card.hidden = !(opt.edit || opt.test || (ch.status !== 'ready' && recent));
+    clearTimeout(hideTimer);
+    if (over && !opt.edit && !opt.test) hideTimer = setTimeout(() => { card.hidden = true; }, CHALLENGE_SHOW_AFTER_MS);
+    card.classList.toggle('is-won', ch.status === 'won');
+    card.classList.toggle('is-failed', ch.status === 'failed');
+    const stage = currentStage(ch);
+    $('ov-ch-title').textContent = ch.title;
+    $('ov-ch-step').textContent = ch.status === 'won' ? '🏆 geschafft!' : ch.status === 'failed' ? '💀 gescheitert'
+      : `Stufe ${Math.min(ch.current + 1, ch.stages.length)}/${ch.stages.length}`;
+    $('ov-ch-icon').textContent = ch.status === 'won' ? '🏆' : KINDS[stage.kind].icon;
+    $('ov-ch-name').textContent = ch.status === 'won' ? 'Alle Stufen geschafft!' : stage.title;
+    $('ov-ch-vs').textContent = ch.status === 'won' ? '' : stage.kind === 'fight' && stage.opponent ? `vs ${stage.opponent}` : KINDS[stage.kind].name;
+    $('ov-ch-pips').innerHTML = ch.status === 'won' ? '' : pipsHtml(stage);
+    $('ov-ch-hearts').innerHTML = heartsHtml(ch);
+    $('ov-ch-track').replaceChildren(...ch.stages.map((s, i) => {
+      const seg = document.createElement('span');
+      if (stageDone(s)) seg.className = 'is-done';
+      else if (i === ch.current && !over) seg.className = 'is-active';
+      return seg;
+    }));
+    // Neues Ereignis: Effekt zeigen
+    const ev = ch.last_event;
+    if (!effects || !before || !ev?.n || ev.n === before.last_event?.n || card.hidden) return;
+    if (before.lives && ch.lives_left < before.lives_left) $('ov-ch-hearts').children[ch.lives_left]?.classList.add('is-breaking');
+    if (ev.type === 'win' || ev.type === 'loss') {
+      const pip = $('ov-ch-pips').querySelectorAll('.ch-pip.is-on')[stage.wins - 1];
+      if (ev.type === 'win') pip?.classList.add('is-pop');
+      card.classList.remove('is-flash-win', 'is-flash-loss');
+      void card.offsetWidth;
+      card.classList.add(ev.type === 'win' ? 'is-flash-win' : 'is-flash-loss');
+      challengeBurst(card, ev, ch, { sfx });
+    } else if (['stage', 'won', 'failed'].includes(ev.type)) {
+      challengeBurst(fx, ev, ch, { sfx });
+    }
+  };
+
+  if (opt.test || opt.edit) {
+    // Probe zum Einrichten: Sieg, Niederlage, Stufe geschafft im Wechsel
+    let demo = { ...DEFAULT_CHALLENGE, status: 'running', current: 1, lives_left: 2, stages: DEFAULT_CHALLENGE.stages.map((s, i) => ({ ...s, wins: i === 0 ? s.target : i === 1 ? 1 : 0 })) };
+    paint(demo, { effects: false });
+    if (opt.test) {
+      let n = 0;
+      setInterval(() => {
+        const stages = demo.stages.map((s) => ({ ...s }));
+        const type = ['win', 'loss', 'win'][n % 3];
+        if (type === 'win') stages[1].wins = Math.min(stages[1].target, stages[1].wins + 1);
+        demo = { ...demo, stages, lives_left: type === 'loss' ? Math.max(1, demo.lives_left - 1) : demo.lives_left, last_event: { n: ++n, type, stage: 1 } };
+        if (stages[1].wins >= stages[1].target) demo = { ...demo, stages: stages.map((s, i) => (i === 1 ? { ...s, wins: 1 } : s)) };
+        paint(demo);
+      }, 6000);
+    }
+    return;
+  }
+  paint(await source.challenge().catch((err) => { console.warn('Overlay: Win-Challenge nicht verfügbar', err); return null; }), { effects: false });
+  source.onChallenge((next) => paint(next));
+}
+
+// ============================================================
 // Laufband: andere Seiten und Socials, immer an
 // ============================================================
 async function setupTicker(source) {
@@ -1022,7 +1117,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-ticker', 'ticker']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);
