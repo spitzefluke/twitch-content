@@ -6,6 +6,7 @@ import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIco
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, dinoSvg, hungerOf, isHungry, runDino } from './pet.js';
+import { DEFAULT_TICKER } from './ticker.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2633,7 +2634,7 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', dsize: '%', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest'];
 const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
@@ -2645,6 +2646,7 @@ function setupObs() {
   form.addEventListener('change', () => updateObs());
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
+  $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
   $('#obs-apply').addEventListener('click', applyObs);
@@ -2727,6 +2729,7 @@ async function openObsDialog() {
   loadObs();
   $('#obs-dialog').showModal();
   updateObs({ now: true });
+  loadTickerTexts();
   paintObsConnection();
   // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
   const saved = readObsLogin();
@@ -2748,6 +2751,34 @@ async function openObsDialog() {
       : 'Das Overlay ist noch nicht freigeschaltet und bleibt in OBS vorerst leer. Ein Admin muss dafür einmal die Datenbank einrichten – sag Dave Bescheid.';
     note.hidden = ready;
   }
+}
+
+// Laufband-Texte: nur Admins sehen und ändern sie hier
+async function loadTickerTexts() {
+  const form = $('#obs-ticker-form');
+  form.hidden = !state.profile?.is_admin;
+  if (form.hidden) return;
+  formMsg(form, '');
+  try {
+    const items = await state.api.getTicker();
+    form.items.value = (items ?? DEFAULT_TICKER).join('\n');
+  } catch (err) {
+    form.items.value = DEFAULT_TICKER.join('\n');
+    formMsg(form, germanError(err));
+  }
+}
+
+async function saveTickerTexts(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const items = form.items.value.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!items.length) return formMsg(form, 'Das Laufband braucht mindestens einen Text.');
+  await withLoading(form, async () => {
+    const saved = await state.api.saveTicker(items);
+    form.items.value = saved.join('\n');
+    formMsg(form, 'Gespeichert – läuft jetzt in OBS.', true);
+    renderObsPreview();
+  });
 }
 
 let obsPreviewTimer = 0;

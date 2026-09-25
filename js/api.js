@@ -5,6 +5,7 @@ import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, cardCell, fullBetLines } from './bingo.js';
 import { DEFAULT_PET } from './pet.js';
 import { DEFAULT_STAGE } from './questions.js';
+import { DEFAULT_TICKER } from './ticker.js';
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -25,6 +26,7 @@ const ERRORS = [
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
   [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
+  [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
@@ -341,6 +343,13 @@ async function createSupabaseApi() {
       sb.channel('question-stage')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
         .subscribe();
+    },
+    // ---------- Laufband im Overlay ----------
+    async getTicker() {
+      return unwrap(await sb.from('ticker').select('items').eq('id', 1).maybeSingle())?.items ?? null;
+    },
+    async saveTicker(items) {
+      return unwrap(await sb.from('ticker').update({ items }).eq('id', 1).select('items').single()).items;
     },
     // ---------- Daves Dino ----------
     async getPet() {
@@ -742,6 +751,15 @@ function createLocalApi() {
     },
     onQuestions(cb) { (demoListeners.questions ??= []).push(cb); },
     onQuestionStage(cb) { (demoListeners.question_stage ??= []).push(cb); },
+    // ---------- Laufband (Demo) ----------
+    async getTicker() { return store.get('ticker', null)?.items ?? DEFAULT_TICKER; },
+    async saveTicker(items) {
+      await requireAdmin();
+      const list = items.map((t) => t.trim().slice(0, 120)).filter(Boolean).slice(0, 30);
+      if (!list.length) throw new Error('Das Laufband braucht mindestens einen Text.');
+      store.set('ticker', { items: list, updated_at: new Date().toISOString() });
+      return list;
+    },
     // ---------- Daves Dino (Demo) ----------
     async getPet() { return { ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...store.get('pet', {}) }; },
     async getPetEvents(limit = 20) { return store.get('pet_events', []).slice(0, limit); },

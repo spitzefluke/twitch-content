@@ -29,6 +29,10 @@
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
 //   pet=0                      Daves Dino aus (läuft sonst unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
+//   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
+//   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
+//   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
+//   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -39,6 +43,7 @@ import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
+import { TICKER_STYLES, fillTicker } from './ticker.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -84,6 +89,11 @@ const opt = {
   qsize: number('qsize', 100, 50, 200) / 100,
   pet: flag('pet', true),
   dsize: number('dsize', 100, 50, 200) / 100,
+  // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
+  ticker: position(params.get('ticker'), 'bc') ?? 'bc',
+  tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
+  tsize: number('tsize', 100, 50, 200) / 100,
+  tspeed: number('tspeed', 70, 20, 300),
   test: flag('test', false),
   edit: flag('edit', false),
 };
@@ -108,6 +118,7 @@ root.setProperty('--bga', opt.bg);
 root.setProperty('--ps', opt.psize);
 root.setProperty('--bs', opt.bsize);
 root.setProperty('--qs', opt.qsize);
+root.setProperty('--ts', opt.tsize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -124,6 +135,8 @@ else $('ov-bingo').remove();
 if (opt.quest) place($('ov-quest'), opt.quest);
 else $('ov-quest').remove();
 if (!opt.pet) $('ov-pet').remove();
+place($('ov-ticker'), opt.ticker);
+$('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
 
 // Ecke (br, tl, …) per CSS-Klasse, freie Position als linke obere Ecke in Prozent.
@@ -170,6 +183,7 @@ async function start() {
   if (opt.bingo) setupBingo(source);
   if (opt.quest) setupQuestions(source);
   if (opt.pet) setupPet(source);
+  setupTicker(source);
 }
 
 // ============================================================
@@ -222,6 +236,12 @@ async function connect() {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
+    },
+    ticker: async () => (await rows(sb.from('ticker').select('items').eq('id', 1).maybeSingle()))?.items ?? null,
+    onTicker(cb) {
+      sb.channel('overlay-ticker')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ticker' }, (p) => cb(p.new.items))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Laufband fehlgeschlagen'); });
     },
     // An wem darf der Dino knabbern? Wer zuletzt gefüttert, geworfen oder gedreht hat.
     async recentNames() {
@@ -278,6 +298,10 @@ function demoSource() {
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
+    },
+    ticker: async () => read('ticker', null)?.items ?? null,
+    onTicker(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_ticker') cb(read('ticker', null)?.items ?? null); });
     },
     pet: async () => ({ ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...read('pet', {}) }),
     onPet(cb) {
@@ -750,6 +774,23 @@ async function setupPet(source) {
   });
 }
 
+// ============================================================
+// Laufband: andere Seiten und Socials, immer an
+// ============================================================
+async function setupTicker(source) {
+  const track = $('ov-ticker-track');
+  // Fehlt die Tabelle noch, läuft das Band mit den Standardtexten
+  let items = await source.ticker().catch((err) => { console.warn('Overlay: Laufband-Texte nicht verfügbar', err); return null; });
+  let timer = 0;
+  const draw = () => fillTicker(track, items, { speed: opt.tspeed * opt.tsize });
+  draw();
+  document.fonts?.ready.then(draw);
+  addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(draw, 200); });
+  // Wird es in der Vorschau breiter/schmaler geschoben, neu messen
+  new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(draw, 200); }).observe($('ov-ticker'));
+  source.onTicker((next) => { items = next; draw(); });
+}
+
 // Probekarte für die Vorschau, solange noch keine echte gezogen ist
 function testCard() {
   const items = [['🔫', 'Sturmgewehr'], ['💊', 'Medkit'], ['🧪', 'Schildtrank'], ['🎣', 'Angel'], ['🏹', 'Bogen'],
@@ -778,7 +819,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);

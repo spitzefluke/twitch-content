@@ -966,6 +966,18 @@
               </select>
             </label>
           </div>
+          <div class="obs-part obs-part--ticker">
+            <span class="obs-part-label">📢 Laufband <small>immer an</small></span>
+            <label class="obs-size obs-style"><span class="sr-only">Design des Laufbands</span>
+              <select name="tstyle">
+                <option value="bar" selected>Laufband</option>
+                <option value="neon">Neon</option>
+                <option value="board">Bahnhofs-Anzeige</option>
+              </select>
+            </label>
+            <label class="obs-size"><span class="sr-only">Größe des Laufbands</span><input type="range" name="tsize" min="50" max="200" step="5" value="100"><output name="tsize-out"></output></label>
+            <label class="obs-size" title="Tempo"><span class="sr-only">Tempo des Laufbands</span><input type="range" name="tspeed" min="20" max="200" step="5" value="70"><output name="tspeed-out"></output></label>
+          </div>
           <div class="obs-part">
             <span class="obs-part-label">🔊 Lautstärke</span>
             <label class="obs-size"><span class="sr-only">Lautstärke</span><input type="range" name="vol" min="0" max="100" step="5" value="100"><output name="vol-out"></output></label>
@@ -976,6 +988,7 @@
         <input type="text" name="next" value="bl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
         <details class="obs-more">
@@ -1022,6 +1035,19 @@
           </div>
         </details>
         <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
+      </form>
+
+      <!-- Texte fürs Laufband: gelten für alle OBS-Quellen, nur Admins ändern sie -->
+      <form class="obs-ticker-edit" id="obs-ticker-form" hidden novalidate>
+        <details>
+          <summary>📢 Laufband-Texte bearbeiten</summary>
+          <label class="field"><span>Eine Zeile pro Eintrag – z. B. „YouTube: youtube.com/@…“ oder „TikTok: @…“</span>
+            <textarea name="items" rows="6" maxlength="4000"></textarea>
+          </label>
+          <p class="form-hint"><code>{seite}</code> wird zur Adresse dieser Webseite. Passende Symbole (Twitch, YouTube, TikTok, Instagram, Discord …) kommen von selbst dazu. Änderungen laufen sofort in allen OBS-Quellen.</p>
+          <p class="form-msg" role="alert"></p>
+          <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
+        </details>
       </form>
 
       <!-- 4. Ergebnis -->

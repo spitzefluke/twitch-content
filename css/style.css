@@ -2085,3 +2085,10 @@ code { font-family: var(--font-mono); font-size: .9em; }
   .dialog--questions.is-admin .q-layout, .dialog--pet.is-admin .pet-layout { grid-template-columns: minmax(0, 1fr); }
   .pet-stage { height: 200px; }
 }
+
+/* OBS-Dialog: Laufband */
+.obs-part-label small { font-weight: 500; color: var(--dim); text-transform: none; letter-spacing: 0; }
+.obs-ticker-edit details { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); }
+.obs-ticker-edit summary { cursor: pointer; font-weight: 700; }
+.obs-ticker-edit[open] summary, .obs-ticker-edit details[open] summary { margin-bottom: 10px; }
+.obs-ticker-edit details > * + * { margin-top: 8px; }
