@@ -5,7 +5,7 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Intro v2 (aus Claude Design)** – eine durchgehende Reise durch die Nacht: Berglandschaft mit fahrendem Zug → Tunnel → der Zug rast frontal auf die Kamera zu → Einfahrt in den Bahnhof → die Abfahrtstafel blättert ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen, die Kamera fährt ins Licht. Himmel, Wolken, Regen, Schnee, Nebel und Gewitter richten sich nach Tageszeit und aktuellem Wetter in Deutschland. Überspringen mit Esc, Enter oder Leertaste.
 - **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
-- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express) – Admins ändern Ergebnisse, Varianten und Kanalpunkte-Kosten direkt auf der Seite
+- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 4 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express, Waffen-Lotto – dort dreht nach der Waffe sofort ein zweites Rad die Seltenheit) – Admins ändern Ergebnisse, Varianten und Kanalpunkte-Kosten direkt auf der Seite
 - **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -165,7 +165,11 @@ Dreht Dave selbst auf der Webseite, kann er mit dem Schalter „Ergebnis als …
 - **Kosten auf Twitch:** Kanalpunkte pro Drehung (1 bis 1.000.000) eintragen und „Auf Twitch übernehmen“ – die Belohnung auf Twitch ändert sich sofort und die Kosten bleiben auch beim erneuten Verbinden erhalten.
 - **Varianten und Ergebnisse:** Name, Farbe und Beschreibung jeder Variante sowie ihre Ergebnisse (Titel auf dem Rad + Erklärung, was gilt) ändern, verschieben, löschen und neue anlegen (2 bis 16 Ergebnisse pro Variante, bis zu 8 Varianten). Die Vorschau zeigt das Rad sofort. „Varianten speichern“ gilt gleich für die Webseite, Kanalpunkte-Drehungen im Chat und das OBS-Overlay; alte Drehungen bleiben, wie sie waren.
 
+- **Zweites Rad:** Pro Variante lässt sich „Danach dreht sofort ein zweites Rad“ einschalten (Vorlage: Seltenheit). Über „1. Rad / 2. Rad“ bearbeitest du beide; im zweiten Rad hat jedes Feld seine eigene Farbe.
+
 Einmal nötig: Migration `20261006000000_wheel_edit.sql` ausführen (die Edge Function `twitch-oauth` kommt beim Merge automatisch).
+
+**Waffen-Lotto:** Die Variante lost zuerst Daves einzige Waffe aus (Sturmgewehr, Schrotflinte, MP, Pistole, Scharfschützengewehr, Explosivwaffe, Bogen/Armbrust, Maschinengewehr). Direkt danach wechselt das Rad auf die **Seltenheit** (Gewöhnlich bis Mythisch, in Fortnite-Farben) und dreht noch einmal – auf der Webseite, bei Kanalpunkten und im OBS-Overlay. Im Chat steht z. B. „[Waffen-Lotto] Sturmgewehr + Seltenheit: Episch!“. Einmal nötig: Migration `20261007000000_wheel_bonus.sql` (legt die Variante an und speichert das zweite Rad bei jeder Drehung mit).
 
 ### 6. Chat-Bot verbinden
 
@@ -244,8 +248,11 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `ssize=120` | Größe der Kisten-Shop-Karte in Prozent |
 | `challenge=tl` / … | Win-Challenge-Karte an |
 | `csize=120` | Größe der Win-Challenge-Karte in Prozent |
-| `alerts=tr` / … | Alert-Feld an (neue Follower, Abos, Resubs, verschenkte Abos) |
-| `asize=120` | Größe des Alert-Felds in Prozent |
+| `alerts=tr` / … | Alerts an (neue Follower, Abos, Resubs, verschenkte Abos) – nur zu sehen, wenn einer kommt |
+| `asize=120` | Größe der Alerts in Prozent |
+| `recent=tl` / … | Karte „Letzter Follower & letztes Abo“ an (eigene Karte, dauerhaft sichtbar) |
+| `rsize=120` | Größe dieser Karte in Prozent |
+| `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `c:<pfad>` für einen hochgeladenen Sound oder `none`; ohne Angabe der Standardklang |
 | `pet=1` | Daves Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
@@ -259,7 +266,11 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 ### Alerts für Follower und Abos
 
-Das **Alert-Feld** (im OBS-Dialog „Alerts (Follower & Abos)“ einschalten und in der Vorschau verschieben) zeigt zwischendurch den **letzten Follower** und das **letzte Abo**. Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht) oder werden Abos verschenkt, springt es mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Kommen mehrere gleichzeitig, laufen sie nacheinander. Admins schicken im OBS-Dialog unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
+Zwei eigene Bausteine, im OBS-Dialog einzeln ein- und ausschaltbar, verschiebbar und in der Größe einstellbar:
+- **Alerts:** Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht) oder werden Abos verschenkt, springt die Karte mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Dazwischen ist sie unsichtbar. Kommen mehrere gleichzeitig, laufen sie nacheinander.
+- **Letzter Follower & Abo:** kleine Karte, die immer den letzten Follower und das letzte Abo zeigt.
+
+Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein Sound vom Soundboard oder ein hochgeladener Sound aus „Ärgere den Dave“ – mit ▶ zum Anhören. Admins schicken unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
 
 Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **Dave muss Twitch einmal neu verbinden** (oben rechts „Twitch“) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der OBS-Dialog zeigt, ob die Rechte schon da sind.
 

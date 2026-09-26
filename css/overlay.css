@@ -98,7 +98,17 @@ p { margin: 0; }
   margin-top: .152em; font-family: var(--font-display); font-size: 2.3em; font-weight: 800; line-height: 1;
   text-transform: uppercase; text-wrap: balance; overflow-wrap: anywhere;
 }
+.ov-result.is-long { font-size: 1.7em; hyphens: auto; }
 .ov-detail { margin-top: .5em; font-size: 1em; line-height: 1.35; color: #c4cad6; }
+.ov-bonus {
+  display: none; justify-self: start; margin-top: .35em; padding: .15em .55em; border-radius: 999px;
+  font-family: var(--font-display); font-size: 1.25em; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--b); background: color-mix(in srgb, var(--b) 18%, transparent); border: 1px solid color-mix(in srgb, var(--b) 60%, transparent);
+  box-shadow: 0 0 .9em color-mix(in srgb, var(--b) 45%, transparent);
+}
+.ov-spin.is-done .ov-bonus:not([hidden]) { display: inline-block; animation: ov-pop .5s var(--ease-spring) .08s both; }
+.ov-wheel canvas { transition: transform .26s var(--ease-out), opacity .26s; }
+.ov-wheel canvas.is-swap { transform: scale(.82) rotate(-25deg); opacity: .2; }
 .ov-result, .ov-detail { display: none; }
 .ov-spin.is-done .ov-status { display: none; }
 .ov-spin.is-done .ov-result, .ov-spin.is-done .ov-detail { display: block; }
@@ -405,30 +415,34 @@ p { margin: 0; }
 @keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* ---------- Alerts (Follower, Abos) ---------- */
+/* Nur sichtbar, solange ein Alert läuft */
 .ov-alert {
   --c: #9146ff;
   font-size: calc(16px * var(--as, 1));
-  width: 22em; animation: ov-in .6s var(--ease-out) both;
-  transition: box-shadow .4s;
+  width: 22em;
+  opacity: 0; visibility: hidden; transform: scale(.9);
+  transition: opacity .4s var(--ease-out), transform .5s var(--ease-spring), visibility 0s linear .5s;
 }
 .ov-alert[data-kind="sub"], .ov-alert[data-kind="resub"], .ov-alert[data-kind="gift"] { --c: #ffb81c; }
-.ov-al-idle { display: grid; gap: .45em; padding: .8em 1.1em 1em; }
-.ov-al-last { display: flex; align-items: baseline; justify-content: space-between; gap: .8em; min-width: 0; }
-.ov-al-last span { flex: none; font-size: .85em; color: #8f99ae; }
-.ov-al-last b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 1.35em; font-weight: 700; color: var(--text); }
-.ov-al-show { display: none; }
-.ov-alert.is-alert { animation: ov-al-in .7s var(--ease-spring); box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 60%, transparent); }
-.ov-alert.is-alert .ov-al-idle { display: none; }
-.ov-alert.is-alert .ov-al-show { display: grid; justify-items: center; gap: .15em; padding: .9em 1.2em 1.2em; text-align: center; }
-.ov-al-icon { font-size: 3em; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; animation: ov-al-bounce .9s var(--ease-spring) .1s both; }
+.ov-alert.is-alert {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity .3s var(--ease-out), transform .5s var(--ease-spring), visibility 0s;
+  animation: ov-al-in .7s var(--ease-spring);
+  box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 60%, transparent);
+}
+.ov-al-show { display: grid; justify-items: center; gap: .15em; padding: .9em 1.2em 1.2em; text-align: center; }
+.ov-al-icon { font-size: 3em; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .ov-al-title { font-family: var(--font-mono); font-size: .8em; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
 .ov-al-name {
   max-width: 100%; font-family: var(--font-display); font-size: 2.5em; font-weight: 800; line-height: 1.05;
   text-transform: uppercase; overflow-wrap: anywhere; color: #fff;
   text-shadow: 0 0 .5em color-mix(in srgb, var(--c) 55%, transparent);
-  animation: ov-pop .6s var(--ease-spring) .2s both;
 }
-.ov-al-sub { font-size: 1em; line-height: 1.35; color: #c4cad6; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; animation: ov-rise .5s var(--ease-out) .35s both; }
+.ov-al-sub { font-size: 1em; line-height: 1.35; color: #c4cad6; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Beim Aufspringen jedes Mal neu animieren */
+.ov-alert.is-alert .ov-al-icon { animation: ov-al-bounce .9s var(--ease-spring) .1s both; }
+.ov-alert.is-alert .ov-al-name { animation: ov-pop .6s var(--ease-spring) .2s both; }
+.ov-alert.is-alert .ov-al-sub { animation: ov-rise .5s var(--ease-out) .35s both; }
 /* Lichtstreifen über die Karte */
 .ov-alert.is-alert::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -449,6 +463,14 @@ p { margin: 0; }
   from { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
   to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 5em)) rotate(var(--r)) scale(1); opacity: 0; }
 }
+
+/* ---------- Zuletzt: letzter Follower, letztes Abo ---------- */
+.ov-recent { --c: #9146ff; font-size: calc(16px * var(--rs, 1)); width: 20em; animation: ov-in .6s var(--ease-out) both; }
+.ov-rc-body { display: grid; gap: .45em; padding: .8em 1.1em 1em; }
+.ov-rc-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8em; min-width: 0; }
+.ov-rc-row span { flex: none; font-size: .85em; color: #8f99ae; }
+.ov-rc-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 1.35em; font-weight: 700; color: var(--text); }
+.ov-rc-row.is-new b { animation: ov-pop .6s var(--ease-spring); color: #fff; text-shadow: 0 0 .6em rgba(177, 134, 255, .8); }
 
 /* ---------- Win-Challenge ---------- */
 .ov-challenge {

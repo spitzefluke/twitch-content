@@ -36,8 +36,12 @@
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
 //   challenge=tl|…             Win-Challenge-Karte an dieser Stelle; fehlt es, ist sie aus
 //   csize=100                  Größe der Win-Challenge-Karte in Prozent (50 – 200)
-//   alerts=tr|…                Alert-Feld (neue Follower und Abos) an dieser Stelle; fehlt es, ist es aus
-//   asize=100                  Größe des Alert-Felds in Prozent (50 – 200)
+//   alerts=tr|…                Alerts (neue Follower, Abos …) an dieser Stelle – nur sichtbar, wenn einer kommt; fehlt es, sind sie aus
+//   asize=100                  Größe der Alerts in Prozent (50 – 200)
+//   recent=tl|…                Karte „Letzter Follower / Letztes Abo“ an dieser Stelle; fehlt es, ist sie aus
+//   rsize=100                  Größe dieser Karte in Prozent (50 – 200)
+//   sfollow=… / ssub=… / sresub=… / sgift=…
+//                              Sound je Alert-Art: none, ein Soundboard-Sound (gong, whistle …) oder c:<pfad> (hochgeladen)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -46,7 +50,7 @@
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
 import { CONFIG } from './config.js';
-import { DEFAULT_TILES, DEFAULT_VARIANTS } from './defaults.js';
+import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
@@ -54,7 +58,7 @@ import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
-import { alertSound, alertText, sampleAlert } from './alerts.js';
+import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
@@ -126,6 +130,9 @@ const opt = {
   csize: number('csize', 100, 50, 200) / 100,
   alerts: position(params.get('alerts'), null),
   asize: number('asize', 100, 50, 200) / 100,
+  recent: position(params.get('recent'), null),
+  rsize: number('rsize', 100, 50, 200) / 100,
+  asound: Object.fromEntries(ALERT_KINDS.map((k) => [k.kind, (params.get(k.param) ?? '').slice(0, 300) || 'default'])),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -159,6 +166,7 @@ root.setProperty('--ts', opt.tsize);
 root.setProperty('--ss', opt.ssize);
 root.setProperty('--cs', opt.csize);
 root.setProperty('--as', opt.asize);
+root.setProperty('--rs', opt.rsize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -181,6 +189,8 @@ if (opt.challenge) place($('ov-challenge'), opt.challenge);
 else $('ov-challenge').remove();
 if (opt.alerts) place($('ov-alert'), opt.alerts);
 else $('ov-alert').remove();
+if (opt.recent) place($('ov-recent'), opt.recent);
+else $('ov-recent').remove();
 place($('ov-ticker'), opt.ticker);
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
@@ -231,7 +241,7 @@ async function start() {
   if (opt.pet) setupPet(source);
   if (opt.shop) setupShop(source);
   if (opt.challenge) setupChallenge(source);
-  if (opt.alerts) setupAlerts(source);
+  if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
   if (LIVE) watchOverlayConfig(source);
 }
@@ -488,7 +498,8 @@ function setupSpins(source) {
   async function show(spin) {
     // Admins können das Rad auf der Webseite ändern – dann die neuen Varianten holen
     const known = variants.find((v) => v.id === spin.variant_id);
-    if (known?.segments[spin.segment_index]?.label !== spin.result) {
+    const bonusOk = spin.bonus_index == null || known?.bonus?.segments?.[spin.bonus_index]?.label === spin.bonus_result;
+    if (known?.segments[spin.segment_index]?.label !== spin.result || !bonusOk) {
       const fresh = await source.variants().catch(() => null);
       if (fresh?.length) variants = fresh;
     }
@@ -502,7 +513,14 @@ function setupSpins(source) {
     $('ov-variant').textContent = variant.name;
     $('ov-status').textContent = 'Das Rad dreht sich …';
     $('ov-result').textContent = spin.result;
-    $('ov-detail').textContent = spin.detail;
+    // Lange Wörter (z. B. „Scharfschützengewehr“) kleiner statt mitten im Wort umbrechen
+    $('ov-result').classList.toggle('is-long', Math.max(...spin.result.split(/\s+/).map((w) => w.length)) > 11);
+    $('ov-detail').textContent = [spin.detail, spin.bonus_detail].filter(Boolean).join(' ');
+    const bonus = spin.bonus_index != null ? bonusWheel(variant) : null;
+    const bonusEl = $('ov-bonus');
+    bonusEl.hidden = !spin.bonus_result;
+    bonusEl.textContent = spin.bonus_result ? `${spin.bonus_name ?? bonus?.name ?? 'Bonus'}: ${spin.bonus_result}` : '';
+    bonusEl.style.setProperty('--b', bonus?.segments[spin.bonus_index]?.color ?? 'var(--c)');
     card.classList.remove('is-done', 'is-idle');
     wheel.setVariant(variant);
 
@@ -514,6 +532,22 @@ function setupSpins(source) {
     wheel.start();
     await wait(900);
     await wheel.spinTo(index);
+
+    // Zweites Rad (z. B. Seltenheit beim Waffen-Lotto) direkt hinterher
+    if (bonus) {
+      sound.ding();
+      $('ov-status').textContent = `${spin.result} ✓ – jetzt: ${bonus.name}`;
+      await wait(1300);
+      const canvas = $('ov-canvas');
+      canvas.classList.add('is-swap');
+      sound.whoosh();
+      await wait(260);
+      wheel.setVariant(bonus);
+      canvas.classList.remove('is-swap');
+      wheel.start();
+      await wait(700);
+      await wheel.spinTo(spin.bonus_index);
+    }
 
     card.classList.add('is-done');
     sound.ding();
@@ -548,6 +582,10 @@ function setupSpins(source) {
         id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
         variant_id: v.id, variant_name: v.name, segment_index: i,
         result: v.segments[i].label, detail: v.segments[i].detail,
+        ...(v.bonus?.segments?.length ? (() => {
+          const b = Math.floor(Math.random() * v.bonus.segments.length);
+          return { bonus_name: v.bonus.name, bonus_index: b, bonus_result: v.bonus.segments[b].label, bonus_detail: v.bonus.segments[b].detail };
+        })() : {}),
         requested_by: names[Math.floor(Math.random() * names.length)],
       });
     };
@@ -1109,7 +1147,8 @@ async function setupChallenge(source) {
 // ============================================================
 // Alerts: neue Follower, Abos, Resubs, verschenkte Abos
 // ============================================================
-// Zwischen den Alerts stehen der letzte Follower und das letzte Abo (ohne Probe-Alerts).
+// Zwei Karten: Alerts (nur wenn einer kommt) und „Zuletzt“ mit dem letzten
+// Follower und dem letzten Abo (ohne Probe-Alerts). Beide sind einzeln an/aus.
 const ALERT_HOLD_MS = 7000;
 
 async function setupAlerts(source) {
@@ -1121,9 +1160,13 @@ async function setupAlerts(source) {
   let playing = false;
 
   const setLast = (a) => {
-    if (a.test) return;
-    if (a.kind === 'follow') $('ov-al-follow').textContent = a.user_name;
-    else $('ov-al-sub').textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)` : a.user_name;
+    if (a.test || !$('ov-recent')) return;
+    const el = a.kind === 'follow' ? $('ov-al-follow') : $('ov-al-sub');
+    el.textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)` : a.user_name;
+    const row = el.parentElement;
+    row.classList.remove('is-new');
+    void row.offsetWidth;
+    row.classList.add('is-new');
   };
   const fill = (a) => {
     const t = alertText(a);
@@ -1138,19 +1181,26 @@ async function setupAlerts(source) {
     playing = true;
     while (queue.length) {
       const a = queue.shift();
-      if (Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
+      if (!card || Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
       fill(a);
       card.classList.remove('is-alert');
       void card.offsetWidth;
       card.classList.add('is-alert');
       burst(fx, a.kind);
-      alertSound(sfx, a.kind);
+      playAlertSound(sfx, a.kind, opt.asound[a.kind], source.soundUrl);
       await wait(ALERT_HOLD_MS);
       card.classList.remove('is-alert');
       setLast(a);
-      await wait(600);
+      await wait(700);
     }
     playing = false;
+    if (opt.edit) showSample();
+  }
+  // Vorschau: ein stehender Alert zeigt Platz und Größe
+  function showSample() {
+    if (!card) return;
+    fill(sampleAlert('sub'));
+    card.classList.add('is-alert', 'is-still');
   }
   const enqueue = (a) => {
     if (!a || seen.has(a.id)) return;
@@ -1159,19 +1209,15 @@ async function setupAlerts(source) {
     if (!playing) play();
   };
 
-  // Letzte echte Namen fürs Wartebild
+  // Letzte echte Namen für die Karte „Zuletzt“
   const recent = await source.alerts().catch((err) => { console.warn('Overlay: Alerts nicht verfügbar', err); return []; });
   for (const a of [...(recent ?? [])].reverse()) { seen.add(a.id); setLast(a); }
+  $('ov-recent')?.querySelectorAll('.is-new').forEach((r) => r.classList.remove('is-new'));
 
-  if (opt.edit) {
-    // Vorschau: ein stehender Alert zeigt die volle Größe
-    fill(sampleAlert('sub'));
-    card.classList.add('is-alert', 'is-still');
-    setTimeout(() => card.classList.remove('is-alert', 'is-still'), 4000);
-  }
-  source.onAlert?.(enqueue);
+  if (opt.edit) showSample();
+  source.onAlert?.(opt.edit ? (a) => { card?.classList.remove('is-still'); enqueue(a); } : enqueue);
 
-  if (opt.test && !opt.edit) {
+  if (opt.test && !opt.edit && card) {
     let n = 0;
     const kinds = ['follow', 'sub', 'resub', 'gift'];
     const fake = () => { if (!playing) enqueue(sampleAlert(kinds[n % kinds.length], n++)); };
@@ -1245,7 +1291,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-alert', 'alerts'], ['ov-ticker', 'ticker']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-alert', 'alerts'], ['ov-recent', 'recent'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);

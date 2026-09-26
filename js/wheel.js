@@ -153,7 +153,8 @@ export class Wheel {
     ctx.translate(c, c);
     ctx.rotate(this.angle);
     for (let i = 0; i < n; i++) {
-      const fill = n % 2 === 1 && i === n - 1 ? fills[2] : fills[i % 2];
+      // Eigene Farbe je Feld (z. B. Seltenheit), sonst abwechselnd in der Variantenfarbe
+      const fill = segments[i].color || (n % 2 === 1 && i === n - 1 ? fills[2] : fills[i % 2]);
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.arc(0, 0, r, i * arc, (i + 1) * arc);
