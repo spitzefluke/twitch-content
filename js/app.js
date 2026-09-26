@@ -3,7 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
-import { ALERT_KINDS, playAlertSound } from './alerts.js';
+import { ALERT_KINDS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -4444,13 +4444,13 @@ async function uploadAlertSound() {
   msg.classList.remove('is-ok');
   const file = fileEl.files[0];
   if (!file) { msg.textContent = 'Bitte zuerst eine Sound-Datei wählen.'; return; }
-  if (file.size > 1024 * 1024) { msg.textContent = 'Die Datei ist zu groß (höchstens 1 MB).'; return; }
+  if (file.size > ALERT_SOUND_BYTES) { msg.textContent = `Die Datei ist zu groß (höchstens ${ALERT_SOUND_BYTES / 1024 / 1024} MB).`; return; }
   const name = (nameEl.value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 30);
   btn.disabled = true;
   try {
     const duration = await audioDuration(file);
-    if (duration > MAX_SOUND_SECONDS + 0.4) throw new Error(`Der Sound ist ${duration.toFixed(1)} Sekunden lang – höchstens ${MAX_SOUND_SECONDS} Sekunden.`);
-    const sound = await state.api.uploadAlertSound(file, name, Math.round(duration * 10) / 10);
+    if (duration > ALERT_SOUND_SECONDS + 0.4) throw new Error(`Der Sound ist ${duration.toFixed(1)} Sekunden lang – höchstens ${ALERT_SOUND_SECONDS} Sekunden.`);
+    const sound = await state.api.uploadAlertSound(file, name, Math.round(Math.min(duration, ALERT_SOUND_SECONDS) * 10) / 10);
     obs.alertSounds = [sound, ...(obs.alertSounds ?? [])];
     obs.alertSoundsError = '';
     paintAlertSoundOptions();

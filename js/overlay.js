@@ -1191,9 +1191,10 @@ async function setupAlerts(source) {
       void card.offsetWidth;
       card.classList.add('is-alert');
       burst(fx, a.kind);
-      playAlertSound(sfx, a.kind, opt.asound[a.kind],
+      const sound = playAlertSound(sfx, a.kind, opt.asound[a.kind],
         (choice) => (choice.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(choice.slice(2)));
-      await wait(ALERT_HOLD_MS);
+      // Stehen bleiben, bis Zeit und Sound (bis 20 Sekunden) durch sind
+      await Promise.all([wait(ALERT_HOLD_MS), sound]);
       card.classList.remove('is-alert');
       setLast(a);
       await wait(700);
