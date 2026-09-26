@@ -2,6 +2,19 @@
 // Im Live-Betrieb kommen dieselben Daten aus Supabase
 // (siehe supabase/migrations/20260918000000_init.sql).
 
+// Zweites Rad fürs Waffen-Lotto – auch Vorlage, wenn im Editor ein zweites Rad eingeschaltet wird
+export const RARITY_WHEEL = {
+  name: 'Seltenheit',
+  segments: [
+    { label: 'Gewöhnlich', detail: 'Nur die graue Version – kein Upgrade.', color: '#9aa3ad' },
+    { label: 'Ungewöhnlich', detail: 'Nur die grüne Version.', color: '#3ddc84' },
+    { label: 'Selten', detail: 'Nur die blaue Version.', color: '#35a7ff' },
+    { label: 'Episch', detail: 'Nur die lila Version.', color: '#b45cff' },
+    { label: 'Legendär', detail: 'Nur die goldene Version – such gut!', color: '#ffa928' },
+    { label: 'Mythisch', detail: 'Mythisch oder Boss-Version – bis dahin jede Seltenheit.', color: '#ffd84a' },
+  ],
+};
+
 export const DEFAULT_VARIANTS = [
   {
     id: 'waffen',
@@ -54,7 +67,34 @@ export const DEFAULT_VARIANTS = [
       { label: 'Freifahrt', detail: 'Glück gehabt: keine Challenge!' },
     ],
   },
+  {
+    // Zwei Räder hintereinander: erst die Waffe, dann die Seltenheit (bonus)
+    id: 'waffen-lotto',
+    position: 4,
+    name: 'Waffen-Lotto',
+    description: 'Lost Daves einzige Waffe aus – danach dreht das Rad die Seltenheit.',
+    color: '#ff5a4e',
+    segments: [
+      { label: 'Sturmgewehr', detail: 'Ein Sturmgewehr ist Daves einzige Waffe.' },
+      { label: 'Schrotflinte', detail: 'Eine Schrotflinte ist Daves einzige Waffe.' },
+      { label: 'Maschinenpistole', detail: 'Eine Maschinenpistole ist Daves einzige Waffe.' },
+      { label: 'Pistole', detail: 'Eine Pistole ist Daves einzige Waffe.' },
+      { label: 'Scharfschützengewehr', detail: 'Ein Scharfschützengewehr ist Daves einzige Waffe.' },
+      { label: 'Explosivwaffe', detail: 'Raketenwerfer, Granatwerfer & Co. – nur Explosives.' },
+      { label: 'Bogen / Armbrust', detail: 'Ein Bogen oder eine Armbrust ist Daves einzige Waffe.' },
+      { label: 'Maschinengewehr', detail: 'Ein Maschinengewehr ist Daves einzige Waffe.' },
+    ],
+    bonus: RARITY_WHEEL,
+  },
 ];
+
+// Zweites Rad einer Variante als eigenes Rad (gleiche Form wie eine Variante)
+export const bonusWheel = (variant) => (variant?.bonus?.segments?.length
+  ? { id: `${variant.id}:bonus`, name: variant.bonus.name, color: variant.color, segments: variant.bonus.segments }
+  : null);
+
+// Ergebnis einer Drehung als eine Zeile, z. B. „Sturmgewehr · Episch“
+export const spinTitle = (spin) => (spin.bonus_result ? `${spin.result} · ${spin.bonus_result}` : spin.result);
 
 export const DEFAULT_TILES = [
   {
@@ -62,7 +102,7 @@ export const DEFAULT_TILES = [
     position: 1,
     kind: 'wheel',
     title: 'Fortnite-Glücksrad',
-    description: 'Drei Varianten, die Daves nächste Runde auf den Kopf stellen. Auch per Kanalpunkte direkt aus dem Chat drehbar.',
+    description: 'Vier Varianten, die Daves nächste Runde auf den Kopf stellen – beim Waffen-Lotto dreht danach noch die Seltenheit. Auch per Kanalpunkte direkt aus dem Chat drehbar.',
     theme: 'wheel',
     target_at: null,
     background: null,

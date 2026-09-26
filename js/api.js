@@ -34,6 +34,7 @@ const ERRORS = [
   [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
   [/relation "public\.stream_alerts"|could not find the (table|function) '?public\.(stream_alerts|alert_test|alerts_status)/i, 'In der Datenbank fehlen die Alerts: supabase/migrations/20261005000000_stream_alerts.sql im SQL Editor ausführen.'],
+  [/column .*bonus|'bonus' column/i, 'In der Datenbank fehlt das zweite Glücksrad: supabase/migrations/20261007000000_wheel_bonus.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.wheel_variants_save/i, 'In der Datenbank fehlt das Bearbeiten des Glücksrads: supabase/migrations/20261006000000_wheel_edit.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
@@ -529,6 +530,14 @@ function createLocalApi() {
       detail: seg.detail,
       requested_by: requestedBy,
     };
+    // Zweites Rad (z. B. Seltenheit beim Waffen-Lotto)
+    if (variant.bonus?.segments?.length) {
+      const b = randomInt(variant.bonus.segments.length);
+      Object.assign(spin, {
+        bonus_name: variant.bonus.name, bonus_index: b,
+        bonus_result: variant.bonus.segments[b].label, bonus_detail: variant.bonus.segments[b].detail ?? '',
+      });
+    }
     store.set('spins', [spin, ...store.get('spins', [])].slice(0, 30));
     return spin;
   }
@@ -557,7 +566,25 @@ function createLocalApi() {
         if (detail.length > 200) throw new Error('Eine Erklärung ist zu lang (höchstens 200 Zeichen).');
         return { label, detail };
       });
-      return { id, position: i + 1, name, description, color: v.color.toLowerCase(), segments };
+      let bonus = null;
+      if (v.bonus) {
+        const bname = String(v.bonus.name ?? '').trim();
+        if (!bname || bname.length > 40) throw new Error('Das zweite Rad braucht einen Namen (höchstens 40 Zeichen).');
+        const bsegs = Array.isArray(v.bonus.segments) ? v.bonus.segments : [];
+        if (bsegs.length < 2 || bsegs.length > 16) throw new Error('Das zweite Rad braucht 2 bis 16 Ergebnisse.');
+        bonus = {
+          name: bname,
+          segments: bsegs.map((s) => {
+            const label = String(s.label ?? '').trim();
+            const detail = String(s.detail ?? '').trim();
+            if (!label || label.length > 32) throw new Error('Jedes Ergebnis im zweiten Rad braucht einen Titel (höchstens 32 Zeichen).');
+            if (detail.length > 200) throw new Error('Eine Erklärung ist zu lang (höchstens 200 Zeichen).');
+            if (s.color && !/^#[0-9a-f]{6}$/i.test(s.color)) throw new Error('Ungültige Farbe im zweiten Rad.');
+            return { label, detail, ...(s.color ? { color: s.color.toLowerCase() } : {}) };
+          }),
+        };
+      }
+      return { id, position: i + 1, name, description, color: v.color.toLowerCase(), segments, bonus };
     });
   }
 

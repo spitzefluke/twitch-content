@@ -2,6 +2,8 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
+import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
+import { ALERT_KINDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -18,6 +20,7 @@ import {
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
 const OBS_PAGE = new URLSearchParams(location.search).has('obs');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -985,7 +988,8 @@ function renderWheelPanel() {
 // mehr zur Drehung – dann frisch laden, damit das Rad auf dem richtigen Feld hält.
 async function freshVariantFor(spin) {
   const v = state.variants.find((x) => x.id === spin.variant_id);
-  if (v && v.segments[spin.segment_index]?.label === spin.result) return;
+  const bonusOk = spin.bonus_index == null || v?.bonus?.segments?.[spin.bonus_index]?.label === spin.bonus_result;
+  if (v && v.segments[spin.segment_index]?.label === spin.result && bonusOk) return;
   const variants = await state.api.getVariants().catch(() => null);
   if (!variants?.length) return;
   state.variants = variants;
@@ -1004,16 +1008,16 @@ const WE_MIN_SEGS = 2;
 const WE_MAX_SEGS = 16;
 
 function setupWheelEdit() {
-  const we = state.wheelEdit = { list: [], sel: 0, dirty: false, preview: null };
+  const we = state.wheelEdit = { list: [], sel: 0, part: 'main', dirty: false, preview: null };
   $('#wheel-edit-btn').addEventListener('click', openWheelEdit);
   $('#wheel-cost-form').addEventListener('submit', saveWheelCost);
   $('#we-name').addEventListener('input', (e) => weChange({ name: e.target.value }));
   $('#we-desc').addEventListener('input', (e) => weChange({ description: e.target.value }));
   $('#we-color').addEventListener('input', (e) => weChange({ color: e.target.value }));
   $('#we-add-seg').addEventListener('click', () => {
-    const v = we.list[we.sel];
-    if (v.segments.length >= WE_MAX_SEGS) return;
-    v.segments.push({ label: '', detail: '' });
+    const segs = weSegs();
+    if (segs.length >= WE_MAX_SEGS) return;
+    segs.push(we.part === 'bonus' ? { label: '', detail: '', color: WE_COLORS[segs.length % WE_COLORS.length] } : { label: '', detail: '' });
     weTouched();
     renderWeSegments();
     $('#we-segs').lastElementChild?.querySelector('.we-label').focus();
@@ -1029,17 +1033,18 @@ function setupWheelEdit() {
   });
   $('#we-segs').addEventListener('input', (e) => {
     const row = e.target.closest('li');
-    const seg = we.list[we.sel].segments[Number(row?.dataset.i)];
+    const seg = weSegs()[Number(row?.dataset.i)];
     if (!seg) return;
     if (e.target.classList.contains('we-label')) seg.label = e.target.value;
     if (e.target.classList.contains('we-detail')) seg.detail = e.target.value;
+    if (e.target.classList.contains('we-seg-color')) seg.color = e.target.value;
     weTouched();
     drawWePreview();
   });
   $('#we-segs').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-act]');
     if (!btn) return;
-    const segs = we.list[we.sel].segments;
+    const segs = weSegs();
     const i = Number(btn.closest('li').dataset.i);
     const to = btn.dataset.act === 'up' ? i - 1 : i + 1;
     if (btn.dataset.act === 'del') {
@@ -1059,6 +1064,40 @@ function setupWheelEdit() {
     startWheelEdit();
   });
   $('#we-save').addEventListener('click', saveWheelVariants);
+  // Zweites Rad an/aus – beim Ausschalten bleibt es bis zum Speichern zum Zurückholen
+  $('#we-bonus-on').addEventListener('change', (e) => {
+    const v = we.list[we.sel];
+    if (e.target.checked) {
+      v.bonus = v.bonusOff ?? structuredClone(RARITY_WHEEL);
+      we.part = 'bonus';
+    } else {
+      v.bonusOff = v.bonus;
+      v.bonus = null;
+      we.part = 'main';
+    }
+    weTouched();
+    renderWheelEdit();
+  });
+  $('#we-parts').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-part]');
+    if (!btn) return;
+    we.part = btn.dataset.part;
+    renderWheelEdit();
+  });
+  $('#we-bonus-name').addEventListener('input', (e) => {
+    const v = we.list[we.sel];
+    if (!v.bonus) return;
+    v.bonus.name = e.target.value;
+    $('#we-bonus-label').textContent = e.target.value.trim() || 'ohne Namen';
+    weTouched();
+  });
+}
+
+// Die Ergebnisse, die gerade bearbeitet werden: erstes oder zweites Rad
+function weSegs() {
+  const we = state.wheelEdit;
+  const v = we.list[we.sel];
+  return we.part === 'bonus' && v.bonus ? v.bonus.segments : v.segments;
 }
 
 function openWheelEdit() {
@@ -1077,6 +1116,7 @@ function startWheelEdit() {
   const we = state.wheelEdit;
   we.list = structuredClone(state.variants);
   we.sel = Math.max(0, we.list.findIndex((v) => v.id === state.variantId));
+  we.part = 'main';
   we.dirty = false;
   $('#we-msg').textContent = '';
   renderWheelEdit();
@@ -1103,6 +1143,14 @@ function renderWheelEdit() {
   $('#we-desc').value = v.description ?? '';
   $('#we-color').value = v.color;
   $('#we-del-variant').disabled = we.list.length <= 1;
+  if (!v.bonus) we.part = 'main';
+  $('#we-bonus-on').checked = !!v.bonus;
+  $('#we-parts').hidden = !v.bonus;
+  $('#we-bonus-name-wrap').hidden = we.part !== 'bonus';
+  $('#we-bonus-name').value = v.bonus?.name ?? '';
+  $('#we-bonus-label').textContent = v.bonus?.name.trim() || 'ohne Namen';
+  $('#we-parts').querySelectorAll('[data-part]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.part === we.part)));
+  $('#we-segs-title').textContent = we.part === 'bonus' ? 'Ergebnisse des zweiten Rads' : 'Ergebnisse';
   renderWeSegments();
 }
 
@@ -1116,7 +1164,7 @@ function renderWeTabs() {
     b.setAttribute('aria-pressed', String(i === we.sel));
     b.innerHTML = '<span class="swatch"></span><span class="we-tab-name"></span>';
     b.querySelector('.we-tab-name').textContent = v.name.trim() || 'Ohne Namen';
-    b.addEventListener('click', () => { we.sel = i; renderWheelEdit(); drawWePreview(); });
+    b.addEventListener('click', () => { we.sel = i; we.part = 'main'; renderWheelEdit(); drawWePreview(); });
     return b;
   });
   const add = document.createElement('button');
@@ -1133,6 +1181,7 @@ function renderWeTabs() {
       segments: [{ label: '', detail: '' }, { label: '', detail: '' }],
     });
     we.sel = we.list.length - 1;
+    we.part = 'main';
     weTouched();
     renderWheelEdit();
     drawWePreview();
@@ -1143,11 +1192,13 @@ function renderWeTabs() {
 
 function renderWeSegments() {
   const we = state.wheelEdit;
-  const segs = we.list[we.sel].segments;
+  const segs = weSegs();
+  const bonus = we.part === 'bonus';
+  $('#we-segs').classList.toggle('is-bonus', bonus);
   $('#we-segs').replaceChildren(...segs.map((seg, i) => {
     const li = document.createElement('li');
     li.dataset.i = i;
-    li.innerHTML = `<span class="we-num">${i + 1}</span>
+    li.innerHTML = `${bonus ? `<input type="color" class="we-seg-color" aria-label="Farbe von Ergebnis ${i + 1}">` : `<span class="we-num">${i + 1}</span>`}
       <div class="we-seg-fields">
         <input class="we-label" maxlength="32" placeholder="Titel auf dem Rad" aria-label="Titel von Ergebnis ${i + 1}">
         <input class="we-detail" maxlength="200" placeholder="Was gilt dann? (Erklärung)" aria-label="Erklärung von Ergebnis ${i + 1}">
@@ -1159,6 +1210,7 @@ function renderWeSegments() {
       </div>`;
     li.querySelector('.we-label').value = seg.label;
     li.querySelector('.we-detail').value = seg.detail ?? '';
+    if (bonus) li.querySelector('.we-seg-color').value = seg.color ?? we.list[we.sel].color;
     li.querySelector('[data-act="up"]').disabled = i === 0;
     li.querySelector('[data-act="down"]').disabled = i === segs.length - 1;
     li.querySelector('[data-act="del"]').disabled = segs.length <= WE_MIN_SEGS;
@@ -1173,7 +1225,7 @@ function drawWePreview() {
   const we = state.wheelEdit;
   const v = we.list[we.sel];
   if (!we.preview || !v) return;
-  we.preview.setVariant({ color: v.color, segments: v.segments.map((s, i) => ({ ...s, label: s.label.trim() || `Ergebnis ${i + 1}` })) });
+  we.preview.setVariant({ color: v.color, segments: weSegs().map((s, i) => ({ ...s, label: s.label.trim() || `Ergebnis ${i + 1}` })) });
 }
 
 // Dieselben Regeln wie in der Datenbank – hier nur mit genauer Stelle
@@ -1182,7 +1234,12 @@ function weProblem(list) {
     const where = `„${v.name.trim() || `Variante ${vi + 1}`}“`;
     if (!v.name.trim()) return [vi, `Variante ${vi + 1} braucht einen Namen.`];
     const empty = v.segments.findIndex((s) => !s.label.trim());
-    if (empty >= 0) return [vi, `${where}: Ergebnis ${empty + 1} braucht einen Titel.`];
+    if (empty >= 0) return [vi, `${where}: Ergebnis ${empty + 1} braucht einen Titel.`, 'main'];
+    if (v.bonus) {
+      if (!v.bonus.name.trim()) return [vi, `${where}: Das zweite Rad braucht einen Namen.`, 'bonus'];
+      const bEmpty = v.bonus.segments.findIndex((s) => !s.label.trim());
+      if (bEmpty >= 0) return [vi, `${where}: Ergebnis ${bEmpty + 1} im zweiten Rad braucht einen Titel.`, 'bonus'];
+    }
   }
   return null;
 }
@@ -1195,6 +1252,7 @@ async function saveWheelVariants() {
   const problem = weProblem(we.list);
   if (problem) {
     we.sel = problem[0];
+    we.part = problem[2] ?? 'main';
     renderWheelEdit();
     msg.textContent = problem[1];
     return;
@@ -1205,6 +1263,12 @@ async function saveWheelVariants() {
     const saved = await state.api.saveVariants(we.list.map((v) => ({
       id: v.id || null, name: v.name.trim(), description: (v.description ?? '').trim(), color: v.color,
       segments: v.segments.map((s) => ({ label: s.label.trim(), detail: (s.detail ?? '').trim() })),
+      bonus: v.bonus
+        ? {
+          name: v.bonus.name.trim(),
+          segments: v.bonus.segments.map((s) => ({ label: s.label.trim(), detail: (s.detail ?? '').trim(), ...(s.color ? { color: s.color } : {}) })),
+        }
+        : null,
     })));
     const selId = saved[we.sel]?.id;
     state.variants = saved;
@@ -1283,12 +1347,16 @@ async function spinFromWeb() {
   btn.textContent = 'Das Rad dreht sich …';
   setVariantInputsDisabled(true);
   showResultPending();
+  // Nach einem zweiten Rad steht noch dieses da – zurück auf die Variante
+  const v = currentVariant();
+  if (v) state.wheel.setVariant(v);
   state.wheel.start();
   try {
     const announce = !$('#announce-wrap').hidden && $('#announce').checked;
     const { spin, announced } = await state.api.spin(state.variantId, announce);
     await freshVariantFor(spin);
     await state.wheel.spinTo(spin.segment_index);
+    await spinBonus(spin);
     showResult(spin, announced ? 'Steht jetzt auch im Twitch-Chat.' : '');
     addSpin(spin);
   } catch (err) {
@@ -1326,7 +1394,7 @@ function handleIncomingSpin(spin) {
     drainQueue();
   } else {
     addSpin(spin);
-    toast(`@${spin.requested_by} hat das Glücksrad gedreht: ${spin.variant_name} → ${spin.result}`, 'twitch', 7000);
+    toast(`@${spin.requested_by} hat das Glücksrad gedreht: ${spin.variant_name} → ${spinTitle(spin)}`, 'twitch', 7000);
   }
 }
 
@@ -1340,6 +1408,7 @@ async function drainQueue() {
   selectVariant(spin.variant_id);
   showResultPending(`@${spin.requested_by} hat Kanalpunkte eingelöst …`);
   await state.wheel.spinTo(spin.segment_index);
+  await spinBonus(spin);
   showResult(spin, `Eingelöst von @${spin.requested_by} über Kanalpunkte`);
   addSpin(spin);
   state.spinning = false;
@@ -1349,9 +1418,33 @@ async function drainQueue() {
   drainQueue();
 }
 
+// Zweites Rad (z. B. Seltenheit beim Waffen-Lotto): dreht direkt nach dem ersten Ergebnis
+async function spinBonus(spin) {
+  if (spin.bonus_index == null) return;
+  const wheel = bonusWheel(state.variants.find((x) => x.id === spin.variant_id));
+  const el = $('#result');
+  el.querySelector('.result-label').textContent = `${spin.variant_name} · 1. Rad`;
+  el.querySelector('.result-title').textContent = spin.result;
+  el.querySelector('.result-detail').textContent = `Jetzt kommt das zweite Rad: ${wheel?.name ?? spin.bonus_name ?? 'Bonus'} …`;
+  el.classList.remove('is-new');
+  void el.offsetWidth;
+  el.classList.add('is-new');
+  if (!wheel) return;
+  const canvas = $('#wheel-canvas');
+  await sleep(1200);
+  canvas.classList.add('is-swap');
+  await sleep(reducedMotion ? 0 : 260);
+  state.wheel.setVariant(wheel);
+  canvas.classList.remove('is-swap');
+  state.wheel.start();
+  await sleep(700);
+  await state.wheel.spinTo(spin.bonus_index);
+}
+
 function showResultPending(text = 'Das Rad dreht sich …') {
   const el = $('#result');
   el.classList.remove('is-new');
+  el.querySelector('.result-bonus').hidden = true;
   el.querySelector('.result-label').textContent = 'Ergebnis';
   el.querySelector('.result-title').textContent = '···';
   el.querySelector('.result-detail').textContent = text;
@@ -1360,6 +1453,7 @@ function showResultPending(text = 'Das Rad dreht sich …') {
 function resetResult() {
   const el = $('#result');
   el.classList.remove('is-new');
+  el.querySelector('.result-bonus').hidden = true;
   el.querySelector('.result-title').textContent = 'Noch nicht gedreht';
   el.querySelector('.result-detail').textContent = 'Wähle eine Variante und dreh das Rad.';
 }
@@ -1370,7 +1464,13 @@ function showResult(spin, note) {
   el.style.setProperty('--c', v?.color ?? 'var(--amber)');
   el.querySelector('.result-label').textContent = `${spin.variant_name}${note ? ` · ${note}` : ''}`;
   el.querySelector('.result-title').textContent = spin.result;
-  el.querySelector('.result-detail').textContent = `${spin.detail} Gilt für die nächste Runde.`;
+  const badge = el.querySelector('.result-bonus');
+  badge.hidden = !spin.bonus_result;
+  if (spin.bonus_result) {
+    badge.textContent = `${spin.bonus_name ?? 'Bonus'}: ${spin.bonus_result}`;
+    badge.style.setProperty('--b', v?.bonus?.segments?.[spin.bonus_index]?.color ?? v?.color ?? 'var(--amber)');
+  }
+  el.querySelector('.result-detail').textContent = `${[spin.detail, spin.bonus_detail].filter(Boolean).join(' ')} Gilt für die nächste Runde.`;
   el.classList.remove('is-new');
   void el.offsetWidth;
   el.classList.add('is-new');
@@ -1397,7 +1497,7 @@ function renderHistory(newId) {
     const main = document.createElement('span');
     main.className = 'h-main';
     main.innerHTML = '<strong></strong> <small></small>';
-    main.querySelector('strong').textContent = s.result;
+    main.querySelector('strong').textContent = spinTitle(s);
     main.querySelector('small').textContent = `· ${s.variant_name} · ${s.requested_by}`;
     const time = document.createElement('time');
     time.dateTime = s.created_at;
@@ -4008,9 +4108,9 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent'];
+const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -4025,6 +4125,10 @@ function setupObs() {
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
+  $('#obs-alert-sounds').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-sound-test]');
+    if (btn) testAlertSound(btn.dataset.soundTest);
+  });
   $('#obs-alerts').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-alert]');
     if (btn) testAlert(btn.dataset.alert, btn);
@@ -4097,6 +4201,7 @@ function loadObs() {
   for (const el of obsFields()) {
     if (!(el.name in saved)) continue;
     if (el.type === 'checkbox') el.checked = Boolean(saved[el.name]);
+    else if (el.tagName === 'SELECT') setSelect(el, String(saved[el.name]));
     else el.value = String(saved[el.name]);
   }
 }
@@ -4139,6 +4244,7 @@ async function openObsDialog({ page = false } = {}) {
   updateObs({ now: true });
   loadTickerTexts();
   loadAlertsStatus();
+  fillAlertSounds();
   loadObsLive();
   paintObsConnection();
   // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
@@ -4190,6 +4296,7 @@ function applyObsParams(query) {
     const v = p.get(el.name);
     if (el.type === 'checkbox') el.checked = v === null ? def : v !== '0';
     else if (el.type === 'color') el.value = v === null ? def : `#${v}`;
+    else if (el.tagName === 'SELECT') setSelect(el, v === null ? def : v);
     else if (OBS_PARTS.includes(el.name)) el.value = v === null || v === '0' ? def : v;
     else el.value = v === null ? def : v;
   }
@@ -4259,6 +4366,44 @@ async function loadTickerTexts() {
     form.items.value = DEFAULT_TICKER.join('\n');
     formMsg(form, germanError(err));
   }
+}
+
+// Wert in eine Auswahl setzen – fehlt die Option noch (z. B. ein eigener Sound,
+// der noch lädt), kommt sie dazu, damit die Einstellung nicht verloren geht.
+function setSelect(el, value) {
+  if (![...el.options].some((o) => o.value === value)) el.add(new Option(value.startsWith('c:') ? 'Eigener Sound' : value, value));
+  el.value = value;
+}
+
+// ---------- Alert-Sounds ----------
+async function fillAlertSounds() {
+  const sounds = await state.api.getSounds().catch(() => []);
+  obs.sounds = sounds;
+  for (const k of ALERT_KINDS) {
+    const el = $('#obs-options').elements[k.param];
+    const current = el.value;
+    const board = document.createElement('optgroup');
+    board.label = 'Soundboard';
+    board.append(...BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id)));
+    const own = document.createElement('optgroup');
+    own.label = 'Hochgeladene Sounds';
+    own.append(...sounds.map((x) => new Option(x.name, `c:${x.path}`)));
+    el.replaceChildren(new Option('Standard', ''), new Option('Kein Ton', 'none'), board, ...(sounds.length ? [own] : []));
+    el.options[0].defaultSelected = true;
+    setSelect(el, current);
+  }
+}
+
+async function testAlertSound(kind) {
+  const f = $('#obs-options');
+  const choice = f.elements[ALERT_KINDS.find((k) => k.kind === kind).param].value || 'default';
+  obs.sfx ??= new Sfx();
+  const vol = Number(f.elements.vol.value);
+  obs.sfx.volume = Number.isFinite(vol) ? vol / 100 : 1;
+  if (!obs.sfx.volume) { toast('Die Lautstärke steht auf 0.', 'error'); return; }
+  // Beim ersten Klick muss der Browser den Ton erst freigeben
+  if (!obs.sfx.get()) await obs.sfx.ctx?.resume().catch(() => {});
+  playAlertSound(obs.sfx, kind, choice, (path) => obs.sounds?.find((x) => x.path === path)?.url);
 }
 
 // ---------- Alerts (Follower, Abos) ----------

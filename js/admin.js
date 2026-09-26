@@ -389,7 +389,7 @@ function renderFeed(spins) {
     const isNew = !firstRender && !seen.has(s.id);
     return `<li class="${isNew ? 'is-new' : ''}">
       <span class="src src--${s.source === 'twitch' ? 'twitch' : 'web'}">${s.source === 'twitch' ? 'Twitch' : 'Web'}</span>
-      <span class="f-main"><strong>${escapeHtml(s.result)}</strong><small>${escapeHtml(s.variant_name)} · ${escapeHtml(s.requested_by)}</small></span>
+      <span class="f-main"><strong>${escapeHtml(s.bonus_result ? `${s.result} · ${s.bonus_result}` : s.result)}</strong><small>${escapeHtml(s.variant_name)} · ${escapeHtml(s.requested_by)}</small></span>
       <time datetime="${escapeAttr(s.created_at)}" title="${escapeAttr(new Date(s.created_at).toLocaleString('de-DE'))}">${relTime(s.created_at)}</time>
     </li>`;
   }).join('');

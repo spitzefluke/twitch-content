@@ -45,6 +45,7 @@
         <p class="ov-variant" id="ov-variant"></p>
         <p class="ov-status" id="ov-status">Das Rad dreht sich …</p>
         <p class="ov-result" id="ov-result"></p>
+        <p class="ov-bonus" id="ov-bonus" hidden></p>
         <p class="ov-detail" id="ov-detail"></p>
       </div>
     </div>
@@ -140,23 +141,31 @@
   <!-- Große Effekte der Win-Challenge (Stufe geschafft, Challenge geschafft/gescheitert) -->
   <div class="ov-ch-fx" id="ov-ch-fx"></div>
 
-  <!-- Alerts: neue Follower, Abos, Resubs, verschenkte Abos – dazwischen die letzten Namen -->
+  <!-- Alerts: springt nur bei neuen Followern, Abos, Resubs und verschenkten Abos auf -->
   <section class="ov-card ov-alert" id="ov-alert" aria-live="polite">
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
-      <span>Alerts</span>
+      <span>Alert</span>
     </header>
-    <div class="ov-al-idle">
-      <p class="ov-al-last"><span>💜 Letzter Follower</span><b id="ov-al-follow">–</b></p>
-      <p class="ov-al-last"><span>⭐ Letztes Abo</span><b id="ov-al-sub">–</b></p>
-    </div>
-    <div class="ov-al-show" id="ov-al-show" aria-hidden="true">
+    <div class="ov-al-show">
       <span class="ov-al-icon" id="ov-al-icon"></span>
       <span class="ov-al-title" id="ov-al-title"></span>
       <b class="ov-al-name" id="ov-al-name"></b>
       <span class="ov-al-sub" id="ov-al-sub-text"></span>
     </div>
     <div class="ov-al-fx" id="ov-al-fx" aria-hidden="true"></div>
+  </section>
+
+  <!-- Letzter Follower und letztes Abo: eigene, dauerhaft sichtbare Karte -->
+  <section class="ov-card ov-recent" id="ov-recent">
+    <header class="ov-head">
+      <span class="ov-dot" aria-hidden="true"></span>
+      <span>Zuletzt</span>
+    </header>
+    <div class="ov-rc-body">
+      <p class="ov-rc-row" id="ov-rc-follow-row"><span>💜 Letzter Follower</span><b id="ov-al-follow">–</b></p>
+      <p class="ov-rc-row" id="ov-rc-sub-row"><span>⭐ Letztes Abo</span><b id="ov-al-sub">–</b></p>
+    </div>
   </section>
 
   <!-- Laufband: andere Seiten und Socials, immer an (verschiebbar im OBS-Dialog) -->

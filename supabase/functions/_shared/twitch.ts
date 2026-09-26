@@ -183,8 +183,9 @@ export async function sendChat(conn: Connection, message: string) {
 }
 
 // ---------- Glücksrad ----------
-type Segment = { label: string; detail: string };
-type Variant = { id: string; name: string; color: string; segments: Segment[] };
+type Segment = { label: string; detail: string; color?: string };
+// bonus: zweites Rad, das direkt danach dreht (z. B. Seltenheit nach der Waffe)
+type Variant = { id: string; name: string; color: string; segments: Segment[]; bonus?: { name: string; segments: Segment[] } | null };
 
 // Unverzerrte Zufallszahl 0..max-1
 export function randomInt(max: number): number {
@@ -212,7 +213,19 @@ export async function performSpin(opts: {
 
   const index = randomInt(variant.segments.length);
   const segment = variant.segments[index];
+  // Die Spalten fürs zweite Rad gibt es erst mit …_wheel_bonus.sql – nur mitschicken, wenn es eins gibt
+  const bonus = variant.bonus?.segments?.length ? variant.bonus : null;
+  const bonusIndex = bonus ? randomInt(bonus.segments.length) : null;
+  const bonusFields = bonus && bonusIndex !== null
+    ? {
+      bonus_name: bonus.name,
+      bonus_index: bonusIndex,
+      bonus_result: bonus.segments[bonusIndex].label,
+      bonus_detail: bonus.segments[bonusIndex].detail ?? "",
+    }
+    : {};
   const { data: spin, error: insertError } = await db.from("spins").insert({
+    ...bonusFields,
     source: opts.source,
     variant_id: variant.id,
     variant_name: variant.name,
@@ -230,7 +243,15 @@ export async function performSpin(opts: {
   return spin;
 }
 
-export function chatText(spin: { source: string; requested_by: string; variant_name: string; result: string; detail: string }) {
+export function chatText(spin: {
+  source: string; requested_by: string; variant_name: string; result: string; detail: string;
+  bonus_name?: string | null; bonus_result?: string | null; bonus_detail?: string | null;
+}) {
   const who = spin.source === "twitch" ? `für @${spin.requested_by}` : "(Website)";
+  if (spin.bonus_result) {
+    const extra = [spin.detail, spin.bonus_detail].filter(Boolean).join(" ");
+    return `🎡 Glücksrad ${who}: [${spin.variant_name}] ${spin.result} + ${spin.bonus_name ?? "Bonus"}: ${spin.bonus_result}! ${extra} Gilt für die nächste Runde!`
+      .replace(/\s+/g, " ");
+  }
   return `🎡 Glücksrad ${who}: [${spin.variant_name}] ${spin.result} – ${spin.detail} Gilt für die nächste Runde!`;
 }

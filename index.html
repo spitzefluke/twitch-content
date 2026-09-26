@@ -264,6 +264,7 @@
         <div id="result" class="result" aria-live="polite">
           <span class="result-label">Ergebnis</span>
           <strong class="result-title">Noch nicht gedreht</strong>
+          <span class="result-bonus" hidden></span>
           <span class="result-detail">Wähle eine Variante und dreh das Rad.</span>
         </div>
 
@@ -322,8 +323,21 @@
               <span>Beschreibung</span>
               <input id="we-desc" maxlength="160" autocomplete="off">
             </label>
+            <label class="toggle we-bonus-toggle">
+              <input type="checkbox" id="we-bonus-on">
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Danach dreht sofort ein zweites Rad (z. B. die Seltenheit)
+            </label>
+            <div class="we-parts" id="we-parts" hidden>
+              <button type="button" class="we-part" data-part="main" aria-pressed="true">1. Rad</button>
+              <button type="button" class="we-part" data-part="bonus" aria-pressed="false">2. Rad · <span id="we-bonus-label"></span></button>
+            </div>
+            <label class="field" id="we-bonus-name-wrap" hidden>
+              <span>Name des zweiten Rads</span>
+              <input id="we-bonus-name" maxlength="40" autocomplete="off">
+            </label>
             <div class="we-segs-head">
-              <span>Ergebnisse</span>
+              <span id="we-segs-title">Ergebnisse</span>
               <small id="we-count"></small>
             </div>
             <ol class="we-segs" id="we-segs"></ol>
@@ -1061,8 +1075,12 @@
             <label class="obs-size"><span class="sr-only">Größe der Win-Challenge-Karte</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
           </div>
           <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="alerts_on"><span class="toggle-ui" aria-hidden="true"></span>Alerts (Follower &amp; Abos)</label>
-            <label class="obs-size"><span class="sr-only">Größe des Alert-Felds</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
+            <label class="toggle"><input type="checkbox" name="alerts_on"><span class="toggle-ui" aria-hidden="true"></span>Alerts</label>
+            <label class="obs-size"><span class="sr-only">Größe der Alerts</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
+          </div>
+          <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="recent_on"><span class="toggle-ui" aria-hidden="true"></span>Letzter Follower &amp; Abo</label>
+            <label class="obs-size"><span class="sr-only">Größe der Karte Letzter Follower und Abo</span><input type="range" name="rsize" min="50" max="200" step="5" value="100"><output name="rsize-out"></output></label>
           </div>
           <div class="obs-part">
             <label class="toggle"><input type="checkbox" name="shop_on"><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
@@ -1107,6 +1125,7 @@
         <input type="text" name="shop" value="tl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="challenge" value="tl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="recent" value="tl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
@@ -1151,6 +1170,20 @@
               <span class="toggle-ui" aria-hidden="true"></span>
               Glücksrad in der Farbe der Variante
             </label>
+          </div>
+        </details>
+        <details class="obs-more obs-alert-sounds">
+          <summary>🔔 Alert-Sounds</summary>
+          <p class="form-hint">Welcher Ton bei welchem Alert läuft – Standard, ein Sound vom Soundboard, ein hochgeladener Sound aus „Ärgere den Dave“ oder gar keiner.</p>
+          <div class="obs-sound-grid" id="obs-alert-sounds">
+            <label class="field"><span>💜 Follower</span><select name="sfollow"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="follow" aria-label="Follower-Sound anhören">▶</button>
+            <label class="field"><span>⭐ Abo</span><select name="ssub"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="sub" aria-label="Abo-Sound anhören">▶</button>
+            <label class="field"><span>🚂 Resub</span><select name="sresub"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="resub" aria-label="Resub-Sound anhören">▶</button>
+            <label class="field"><span>🎁 Verschenkte Abos</span><select name="sgift"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="gift" aria-label="Sound für verschenkte Abos anhören">▶</button>
           </div>
         </details>
         <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
