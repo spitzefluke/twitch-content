@@ -33,6 +33,8 @@ const ERRORS = [
   [/could not find the function '?public\.(shop_join_lobby|shop_leave_lobby|shop_start_lobby|shop_lobby_tick)|column .*(started_at|vs_at|chests_until)/i, 'In der Datenbank fehlt das Koop-Duell im Kisten-Shop: supabase/migrations/20261002000000_shop_versus.sql im SQL Editor ausführen.'],
   [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
+  [/relation "public\.stream_alerts"|could not find the (table|function) '?public\.(stream_alerts|alert_test|alerts_status)/i, 'In der Datenbank fehlen die Alerts: supabase/migrations/20261005000000_stream_alerts.sql im SQL Editor ausführen.'],
+  [/could not find the function '?public\.wheel_variants_save/i, 'In der Datenbank fehlt das Bearbeiten des Glücksrads: supabase/migrations/20261006000000_wheel_edit.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
@@ -121,6 +123,14 @@ async function createSupabaseApi() {
     },
     async getVariants() {
       return unwrap(await sb.from('wheel_variants').select('*').order('position'));
+    },
+    // Admins: alle Varianten auf einmal speichern (Reihenfolge = Position, fehlende werden gelöscht)
+    async saveVariants(variants) {
+      return unwrap(await sb.rpc('wheel_variants_save', { p_variants: variants }));
+    },
+    // Admins: Kosten der Glücksrad-Belohnung auf Twitch ändern
+    async setWheelCost(cost) {
+      return invoke('twitch-oauth', { action: 'wheel_cost', cost });
     },
     // Vorschläge aus der Community. Die Tabellen kamen erst später dazu –
     // fehlen sie noch, liefert die Abfrage einen Fehler und app.js blendet
@@ -454,6 +464,17 @@ async function createSupabaseApi() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, (p) => cb(p.new))
         .subscribe();
     },
+    // ---------- Alerts im Overlay (Follower, Abos) ----------
+    async getAlerts(limit = 10) {
+      return unwrap(await sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(limit));
+    },
+    onAlerts(cb) {
+      sb.channel('stream-alerts')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stream_alerts' }, (p) => cb(p.new))
+        .subscribe();
+    },
+    async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
+    async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
     async twitchStatus() {
       return unwrap(await sb.rpc('twitch_status'));
     },
@@ -510,6 +531,34 @@ function createLocalApi() {
     };
     store.set('spins', [spin, ...store.get('spins', [])].slice(0, 30));
     return spin;
+  }
+
+  const demoVariants = () => store.get('wheel_variants', null) ?? DEFAULT_VARIANTS;
+  // Dieselben Regeln wie wheel_variants_save in der Datenbank
+  function cleanVariants(variants) {
+    if (!Array.isArray(variants) || !variants.length) throw new Error('Mindestens eine Variante wird gebraucht.');
+    if (variants.length > 8) throw new Error('Höchstens 8 Varianten.');
+    const ids = new Set();
+    return variants.map((v, i) => {
+      const id = String(v.id ?? '').trim() || `v-${(nextId++).toString(36)}`;
+      if (ids.has(id)) throw new Error('Eine Variante ist doppelt.');
+      ids.add(id);
+      const name = String(v.name ?? '').trim();
+      if (!name || name.length > 40) throw new Error('Jede Variante braucht einen Namen (höchstens 40 Zeichen).');
+      const description = String(v.description ?? '').trim();
+      if (description.length > 160) throw new Error('Die Beschreibung ist zu lang (höchstens 160 Zeichen).');
+      if (!/^#[0-9a-f]{6}$/i.test(v.color ?? '')) throw new Error('Ungültige Farbe.');
+      const segs = Array.isArray(v.segments) ? v.segments : [];
+      if (segs.length < 2 || segs.length > 16) throw new Error('Jede Variante braucht 2 bis 16 Ergebnisse.');
+      const segments = segs.map((s) => {
+        const label = String(s.label ?? '').trim();
+        const detail = String(s.detail ?? '').trim();
+        if (!label || label.length > 32) throw new Error('Jedes Ergebnis braucht einen Titel (höchstens 32 Zeichen).');
+        if (detail.length > 200) throw new Error('Eine Erklärung ist zu lang (höchstens 200 Zeichen).');
+        return { label, detail };
+      });
+      return { id, position: i + 1, name, description, color: v.color.toLowerCase(), segments };
+    });
   }
 
   async function requireAdmin() {
@@ -672,7 +721,20 @@ function createLocalApi() {
       store.set('tiles', tiles);
       return tiles.find((t) => t.id === id);
     },
-    async getVariants() { return DEFAULT_VARIANTS; },
+    async getVariants() { return demoVariants(); },
+    async saveVariants(variants) {
+      await requireAdmin();
+      const list = cleanVariants(variants);
+      store.set('wheel_variants', list);
+      return list;
+    },
+    async setWheelCost(cost) {
+      await requireAdmin();
+      const n = Math.round(Number(cost));
+      if (!Number.isFinite(n) || n < 1 || n > 1000000) throw new Error('Die Kosten müssen zwischen 1 und 1.000.000 Kanalpunkten liegen.');
+      store.set('wheel_cost', n);
+      return { cost: n, title: 'Glücksrad' };
+    },
     async getIdeas(limit = 12) {
       const me = current?.email ?? '';
       return store.get('ideas', DEFAULT_IDEAS)
@@ -1149,7 +1211,8 @@ function createLocalApi() {
       return next;
     },
     async spin(variantId) {
-      const variant = DEFAULT_VARIANTS.find((v) => v.id === variantId) ?? DEFAULT_VARIANTS[0];
+      const variants = demoVariants();
+      const variant = variants.find((v) => v.id === variantId) ?? variants[0];
       const profile = await this.getProfile(current);
       return { spin: makeSpin(variant, 'web', profile.username), announced: false };
     },
@@ -1157,11 +1220,32 @@ function createLocalApi() {
     // Nur Demo: tut so, als hätte ein Zuschauer die Kanalpunkte-Belohnung eingelöst.
     simulateRedemption() {
       const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
-      const variant = DEFAULT_VARIANTS[randomInt(DEFAULT_VARIANTS.length)];
+      const variants = demoVariants();
+      const variant = variants[randomInt(variants.length)];
       const spin = makeSpin(variant, 'twitch', names[randomInt(names.length)]);
       setTimeout(() => spinListeners.forEach((cb) => cb(spin)), 250);
     },
-    async twitchStatus() { return { connected: false }; },
+    // ---------- Alerts (Demo) ----------
+    // Neue Einträge in zd_stream_alerts erreichen das Overlay im selben Browser über das storage-Ereignis.
+    async getAlerts(limit = 10) { return store.get('stream_alerts', []).slice(0, limit); },
+    onAlerts(cb) { (demoListeners.stream_alerts ??= []).push(cb); },
+    async testAlert(kind) {
+      await requireAdmin();
+      if (!['follow', 'sub', 'resub', 'gift'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
+      const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina', 'Gleis9dreiviertel'];
+      const row = {
+        id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: '1000',
+        months: kind === 'resub' ? 3 + randomInt(20) : 0,
+        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : 0,
+        message: kind === 'resub' ? 'Test-Nachricht: Weiter so, Dave!' : '', test: true,
+      };
+      store.set('stream_alerts', [row, ...store.get('stream_alerts', [])].slice(0, 30));
+      emitDemo('stream_alerts', row);
+      return row;
+    },
+    async alertsStatus() { return { connected: false, follows: false, subs: false }; },
+    // Demo: Kosten fürs Glücksrad lassen sich zum Ausprobieren einstellen
+    async twitchStatus() { return { connected: false, reward_cost: store.get('wheel_cost', 10000) }; },
     async twitchConnect() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },

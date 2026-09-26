@@ -269,12 +269,80 @@
 
         <div id="reward-info" class="reward-info"></div>
         <button id="simulate-btn" class="btn btn--ghost btn--block btn--sm" type="button" hidden>Kanalpunkte-Einlösung simulieren</button>
+        <button id="wheel-edit-btn" class="btn btn--ghost btn--block btn--sm" type="button" hidden>✎ Kosten und Ergebnisse bearbeiten</button>
 
         <div class="history">
           <h3>Letzte Drehungen</h3>
           <ol id="history-list"></ol>
         </div>
       </div>
+    </div>
+  </dialog>
+
+  <!-- ============ GLÜCKSRAD BEARBEITEN (Admins) ============ -->
+  <dialog id="wheel-edit-dialog" class="dialog dialog--wheel-edit" aria-labelledby="we-title">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">Nur für Admins</p>
+        <h2 id="we-title">Glücksrad bearbeiten</h2>
+      </div>
+      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+    </div>
+    <div class="we-body">
+      <form id="wheel-cost-form" class="we-card we-cost">
+        <h3>Kosten auf Twitch</h3>
+        <p class="we-hint" id="wheel-cost-hint"></p>
+        <div class="we-cost-row">
+          <label class="field">
+            <span>Kanalpunkte pro Drehung</span>
+            <input name="cost" type="number" min="1" max="1000000" step="1" inputmode="numeric" required>
+          </label>
+          <button class="btn btn--primary" type="submit">Auf Twitch übernehmen</button>
+        </div>
+        <p class="form-msg" role="status"></p>
+      </form>
+
+      <section class="we-card">
+        <h3>Varianten und Ergebnisse</h3>
+        <p class="we-hint">Was auf dem Rad steht und was es bedeutet. Gilt sofort für die Webseite, den Twitch-Chat und das OBS-Overlay.</p>
+        <div class="we-tabs" id="we-tabs"></div>
+        <div class="we-layout">
+          <div class="we-form">
+            <div class="we-row">
+              <label class="field">
+                <span>Name der Variante</span>
+                <input id="we-name" maxlength="40" autocomplete="off">
+              </label>
+              <label class="field we-color">
+                <span>Farbe</span>
+                <input id="we-color" type="color">
+              </label>
+            </div>
+            <label class="field">
+              <span>Beschreibung</span>
+              <input id="we-desc" maxlength="160" autocomplete="off">
+            </label>
+            <div class="we-segs-head">
+              <span>Ergebnisse</span>
+              <small id="we-count"></small>
+            </div>
+            <ol class="we-segs" id="we-segs"></ol>
+            <div class="we-seg-actions">
+              <button type="button" class="btn btn--ghost btn--sm" id="we-add-seg">+ Ergebnis</button>
+              <button type="button" class="btn btn--ghost btn--sm we-danger" id="we-del-variant">Variante löschen</button>
+            </div>
+          </div>
+          <div class="we-preview" aria-hidden="true">
+            <div class="wheel-pointer"></div>
+            <canvas id="we-canvas"></canvas>
+          </div>
+        </div>
+        <p class="form-msg" id="we-msg" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn--ghost" id="we-reset">Änderungen verwerfen</button>
+          <button type="button" class="btn btn--primary" id="we-save">Varianten speichern</button>
+        </div>
+      </section>
     </div>
   </dialog>
 
@@ -993,6 +1061,10 @@
             <label class="obs-size"><span class="sr-only">Größe der Win-Challenge-Karte</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
           </div>
           <div class="obs-part">
+            <label class="toggle"><input type="checkbox" name="alerts_on"><span class="toggle-ui" aria-hidden="true"></span>Alerts (Follower &amp; Abos)</label>
+            <label class="obs-size"><span class="sr-only">Größe des Alert-Felds</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
+          </div>
+          <div class="obs-part">
             <label class="toggle"><input type="checkbox" name="shop_on"><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
             <label class="obs-size"><span class="sr-only">Größe der Kisten-Shop-Karte</span><input type="range" name="ssize" min="50" max="200" step="5" value="100"><output name="ssize-out"></output></label>
           </div>
@@ -1034,6 +1106,7 @@
         <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="shop" value="tl" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="challenge" value="tl" hidden aria-hidden="true" tabindex="-1">
+        <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
         <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
@@ -1095,6 +1168,21 @@
           <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
         </details>
       </form>
+
+      <!-- Alerts testen: schickt einen Probe-Alert in alle OBS-Quellen (nur Admins) -->
+      <section class="obs-alerts" id="obs-alerts" hidden>
+        <details>
+          <summary>🔔 Alerts testen</summary>
+          <p class="obs-alerts-status" id="obs-alerts-status"></p>
+          <div class="obs-alerts-btns">
+            <button class="btn btn--outline btn--sm" type="button" data-alert="follow">💜 Follower</button>
+            <button class="btn btn--outline btn--sm" type="button" data-alert="sub">⭐ Abo</button>
+            <button class="btn btn--outline btn--sm" type="button" data-alert="resub">🚂 Resub</button>
+            <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
+          </div>
+          <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
+        </details>
+      </section>
 
       <!-- Live: Einstellungen gelten sofort in OBS -->
       <div class="obs-live" id="obs-live">

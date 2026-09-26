@@ -36,6 +36,8 @@
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
 //   challenge=tl|…             Win-Challenge-Karte an dieser Stelle; fehlt es, ist sie aus
 //   csize=100                  Größe der Win-Challenge-Karte in Prozent (50 – 200)
+//   alerts=tr|…                Alert-Feld (neue Follower und Abos) an dieser Stelle; fehlt es, ist es aus
+//   asize=100                  Größe des Alert-Felds in Prozent (50 – 200)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -52,6 +54,7 @@ import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
+import { alertSound, alertText, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
@@ -121,6 +124,8 @@ const opt = {
   ssize: number('ssize', 100, 50, 200) / 100,
   challenge: position(params.get('challenge'), null),
   csize: number('csize', 100, 50, 200) / 100,
+  alerts: position(params.get('alerts'), null),
+  asize: number('asize', 100, 50, 200) / 100,
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -153,6 +158,7 @@ root.setProperty('--qs', opt.qsize);
 root.setProperty('--ts', opt.tsize);
 root.setProperty('--ss', opt.ssize);
 root.setProperty('--cs', opt.csize);
+root.setProperty('--as', opt.asize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -173,6 +179,8 @@ if (opt.shop) place($('ov-shop'), opt.shop);
 else $('ov-shop').remove();
 if (opt.challenge) place($('ov-challenge'), opt.challenge);
 else $('ov-challenge').remove();
+if (opt.alerts) place($('ov-alert'), opt.alerts);
+else $('ov-alert').remove();
 place($('ov-ticker'), opt.ticker);
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
@@ -223,6 +231,7 @@ async function start() {
   if (opt.pet) setupPet(source);
   if (opt.shop) setupShop(source);
   if (opt.challenge) setupChallenge(source);
+  if (opt.alerts) setupAlerts(source);
   setupTicker(source);
   if (LIVE) watchOverlayConfig(source);
 }
@@ -299,6 +308,12 @@ async function connect() {
       name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
     }))),
     challenge: () => rows(sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()),
+    alerts: () => rows(sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(20)),
+    onAlert(cb) {
+      sb.channel('overlay-alerts')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stream_alerts' }, (p) => cb(p.new))
+        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Alerts fehlgeschlagen'); });
+    },
     onChallenge(cb) {
       sb.channel('overlay-challenge')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'win_challenge' }, (p) => cb(p.new))
@@ -336,7 +351,7 @@ function demoSource() {
     try { const v = localStorage.getItem(`zd_${key}`); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
   };
   return {
-    variants: async () => DEFAULT_VARIANTS,
+    variants: async () => read('wheel_variants', null) ?? DEFAULT_VARIANTS,
     tiles: async () => read('tiles', DEFAULT_TILES),
     onSpin(cb) {
       const known = new Set(read('spins', []).map((s) => s.id));
@@ -378,6 +393,18 @@ function demoSource() {
     },
     shopImages: async () => read('bingo_items', []).map((i) => ({ name: i.name, url: i.url })),
     challenge: async () => ({ ...DEFAULT_CHALLENGE, ...read('win_challenge', {}) }),
+    alerts: async () => read('stream_alerts', []),
+    onAlert(cb) {
+      const known = new Set(read('stream_alerts', []).map((a) => a.id));
+      addEventListener('storage', (e) => {
+        if (e.key !== 'zd_stream_alerts') return;
+        for (const a of read('stream_alerts', []).reverse()) {
+          if (known.has(a.id)) continue;
+          known.add(a.id);
+          cb(a);
+        }
+      });
+    },
     onChallenge(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_win_challenge') cb({ ...DEFAULT_CHALLENGE, ...read('win_challenge', {}) }); });
     },
@@ -459,6 +486,12 @@ function setupSpins(source) {
   }
 
   async function show(spin) {
+    // Admins können das Rad auf der Webseite ändern – dann die neuen Varianten holen
+    const known = variants.find((v) => v.id === spin.variant_id);
+    if (known?.segments[spin.segment_index]?.label !== spin.result) {
+      const fresh = await source.variants().catch(() => null);
+      if (fresh?.length) variants = fresh;
+    }
     const variant = variants.find((v) => v.id === spin.variant_id) ?? variants[0];
     const index = Math.min(Math.max(0, spin.segment_index | 0), variant.segments.length - 1);
 
@@ -1074,6 +1107,100 @@ async function setupChallenge(source) {
 }
 
 // ============================================================
+// Alerts: neue Follower, Abos, Resubs, verschenkte Abos
+// ============================================================
+// Zwischen den Alerts stehen der letzte Follower und das letzte Abo (ohne Probe-Alerts).
+const ALERT_HOLD_MS = 7000;
+
+async function setupAlerts(source) {
+  const card = $('ov-alert');
+  const fx = $('ov-al-fx');
+  const sfx = new Sfx({ volume: opt.volume });
+  const queue = [];
+  const seen = new Set();
+  let playing = false;
+
+  const setLast = (a) => {
+    if (a.test) return;
+    if (a.kind === 'follow') $('ov-al-follow').textContent = a.user_name;
+    else $('ov-al-sub').textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)` : a.user_name;
+  };
+  const fill = (a) => {
+    const t = alertText(a);
+    card.dataset.kind = a.kind;
+    $('ov-al-icon').textContent = t.icon;
+    $('ov-al-title').textContent = t.title;
+    $('ov-al-name').textContent = a.user_name;
+    $('ov-al-sub-text').textContent = t.sub;
+  };
+
+  async function play() {
+    playing = true;
+    while (queue.length) {
+      const a = queue.shift();
+      if (Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
+      fill(a);
+      card.classList.remove('is-alert');
+      void card.offsetWidth;
+      card.classList.add('is-alert');
+      burst(fx, a.kind);
+      alertSound(sfx, a.kind);
+      await wait(ALERT_HOLD_MS);
+      card.classList.remove('is-alert');
+      setLast(a);
+      await wait(600);
+    }
+    playing = false;
+  }
+  const enqueue = (a) => {
+    if (!a || seen.has(a.id)) return;
+    seen.add(a.id);
+    queue.push(a);
+    if (!playing) play();
+  };
+
+  // Letzte echte Namen fürs Wartebild
+  const recent = await source.alerts().catch((err) => { console.warn('Overlay: Alerts nicht verfügbar', err); return []; });
+  for (const a of [...(recent ?? [])].reverse()) { seen.add(a.id); setLast(a); }
+
+  if (opt.edit) {
+    // Vorschau: ein stehender Alert zeigt die volle Größe
+    fill(sampleAlert('sub'));
+    card.classList.add('is-alert', 'is-still');
+    setTimeout(() => card.classList.remove('is-alert', 'is-still'), 4000);
+  }
+  source.onAlert?.(enqueue);
+
+  if (opt.test && !opt.edit) {
+    let n = 0;
+    const kinds = ['follow', 'sub', 'resub', 'gift'];
+    const fake = () => { if (!playing) enqueue(sampleAlert(kinds[n % kinds.length], n++)); };
+    setTimeout(fake, 2000);
+    setInterval(fake, 15000);
+  }
+}
+
+// Konfetti und Sterne aus der Karte heraus
+function burst(host, kind) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = kind === 'follow' ? ['#b186ff', '#9146ff', '#ffffff'] : ['#ffd36b', '#ffb81c', '#ff7ac8', '#3ddc84', '#35c7ff'];
+  const count = kind === 'follow' ? 18 : 34;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('i');
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 4 + Math.random() * 9;
+    p.style.setProperty('--dx', `${Math.cos(angle) * dist}em`);
+    p.style.setProperty('--dy', `${Math.sin(angle) * dist * 0.6 - 2}em`);
+    p.style.setProperty('--r', `${Math.round(Math.random() * 720 - 360)}deg`);
+    p.style.background = colors[i % colors.length];
+    p.style.animationDelay = `${Math.random() * 0.15}s`;
+    if (i % 3 === 0) p.classList.add('is-round');
+    host.append(p);
+    setTimeout(() => p.remove(), 1800);
+  }
+}
+
+// ============================================================
 // Laufband: andere Seiten und Socials, immer an
 // ============================================================
 async function setupTicker(source) {
@@ -1118,7 +1245,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-ticker', 'ticker']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-alert', 'alerts'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);
