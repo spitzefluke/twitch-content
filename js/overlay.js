@@ -32,6 +32,8 @@
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
 //   pet=1                      Daves Dino an (läuft unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
+//   pground=edge               Dino läuft am Bildrand statt oben auf dem Laufband
+//   pclimb=0                   Dino klettert bei Heißhunger nicht an Karten hoch
 //   shop=tl|…                  Kisten-Shop-Karte an dieser Stelle; fehlt es, ist sie aus
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
 //   challenge=tl|…             Win-Challenge-Karte an dieser Stelle; fehlt es, ist sie aus
@@ -125,6 +127,8 @@ const opt = {
   qsize: number('qsize', 100, 50, 200) / 100,
   pet: flag('pet', false),
   dsize: number('dsize', 100, 50, 200) / 100,
+  pground: params.get('pground') === 'edge' ? 'edge' : 'ticker',
+  pclimb: flag('pclimb', true),
   shop: position(params.get('shop'), null),
   ssize: number('ssize', 100, 50, 200) / 100,
   challenge: position(params.get('challenge'), null),
@@ -567,6 +571,7 @@ function setupSpins(source) {
     $('ov-who').textContent = '@Beispiel löst Kanalpunkte ein';
     $('ov-variant').textContent = v.name;
     $('ov-result').textContent = v.segments[0].label;
+    $('ov-result').classList.toggle('is-long', Math.max(...v.segments[0].label.split(/\s+/).map((w) => w.length)) > 11);
     $('ov-detail').textContent = v.segments[0].detail;
     card.classList.add('is-in', 'is-done');
     requestAnimationFrame(() => wheel.resize());
@@ -902,10 +907,10 @@ async function setupPet(source) {
     return;
   }
   const sfx = new Sfx({ volume: opt.volume * 0.8 });
-  // Steht das Laufband unten, läuft der Dino oben darauf statt davor
+  // Steht das Laufband unten, läuft der Dino oben darauf statt davor (außer pground=edge)
   const ground = () => {
     const band = $('ov-ticker')?.getBoundingClientRect();
-    const onBottom = band && band.top > innerHeight * 0.6;
+    const onBottom = opt.pground !== 'edge' && band && band.top > innerHeight * 0.6;
     layer.style.bottom = onBottom ? `${Math.round(innerHeight - band.top + 4)}px` : '';
   };
   ground();
@@ -916,8 +921,16 @@ async function setupPet(source) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
     pet = { ...pet, last_fed_at: new Date(Date.now() - 86400000).toISOString() };
   }
+  // Heißhunger: an diesen Karten darf er hochklettern – nur, was gerade zu sehen ist
+  const cards = () => [...document.querySelectorAll('.ov-card')].filter((el) => {
+    if (el.id === 'ov-ticker' || el.hidden) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5 && r.width > 80 && r.height > 60;
+  });
   runDino(dino, {
     getPet: () => pet,
+    cards: opt.pclimb && !opt.edit ? cards : null,
     names: async () => {
       const list = await source.recentNames().catch(() => []);
       return list.length ? list : opt.test ? ['Lokfuehrer_Lena', 'SchienenSeb', 'Bahnhofskater'] : [];
@@ -925,6 +938,7 @@ async function setupPet(source) {
     idleEvery: opt.test ? [8, 14] : [45, 90],
     nibbleEvery: opt.test ? [16, 24] : [40, 75],
     trickEvery: opt.test ? [5, 9] : [18, 40],
+    climbEvery: opt.test ? [20, 30] : [50, 90],
   });
   source.onPet((row, ev) => {
     if (row) {
@@ -1191,9 +1205,10 @@ async function setupAlerts(source) {
       void card.offsetWidth;
       card.classList.add('is-alert');
       burst(fx, a.kind);
-      playAlertSound(sfx, a.kind, opt.asound[a.kind],
+      const sound = playAlertSound(sfx, a.kind, opt.asound[a.kind],
         (choice) => (choice.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(choice.slice(2)));
-      await wait(ALERT_HOLD_MS);
+      // Stehen bleiben, bis Zeit und Sound (bis 20 Sekunden) durch sind
+      await Promise.all([wait(ALERT_HOLD_MS), sound]);
       card.classList.remove('is-alert');
       setLast(a);
       await wait(700);
@@ -1300,9 +1315,17 @@ function setupEdit() {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);
-  // Die Seite schickt den Kamera-Bereich, wenn sie ihn aus OBS ausgelesen hat.
+  // Die Seite schickt den Kamera-Bereich, wenn sie ihn aus OBS ausgelesen hat,
+  // und welche Ebene gerade in der Liste aufgeklappt ist (wird hier markiert).
   addEventListener('message', (e) => {
-    if (e.origin !== location.origin || e.data?.type !== 'stellwerk-cam') return;
+    if (e.origin !== location.origin) return;
+    if (e.data?.type === 'stellwerk-select') {
+      document.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'));
+      const key = e.data.key === 'prank' ? 'cam' : e.data.key;
+      if (key) document.querySelector(`[data-drag="${key}"]`)?.classList.add('is-selected');
+      return;
+    }
+    if (e.data?.type !== 'stellwerk-cam') return;
     opt.cam = camera(e.data.value);
     setCam(opt.cam);
   });
@@ -1317,6 +1340,8 @@ function startDrag(e) {
   const el = e.target.closest('[data-drag]');
   if (!el || e.button !== 0) return;
   e.preventDefault();
+  // Klick auf eine Karte: rechts im OBS-Fenster ihre Einstellungen öffnen
+  parent.postMessage({ type: 'stellwerk-obs-select', key: el.dataset.drag }, location.origin);
   const resize = !!e.target.closest('[data-resize]');
   const W = innerWidth;
   const H = innerHeight;

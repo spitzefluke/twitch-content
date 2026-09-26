@@ -3,7 +3,7 @@ import { createApi, germanError } from './api.js';
 import { playIntro } from './intro.js';
 import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
-import { ALERT_KINDS, playAlertSound } from './alerts.js';
+import { ALERT_KINDS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -4142,6 +4142,7 @@ function setupObs() {
   $('#obs-apply').addEventListener('click', applyObs);
   $('#obs-cam-source').addEventListener('change', useObsCamera);
   $('#obs-share').addEventListener('click', shareObsWindow);
+  setupObsLayers();
   // Vorschau und Bildabruf beim Schließen beenden – sie liefen sonst im Hintergrund weiter.
   $('#obs-dialog').addEventListener('close', () => {
     clearTimeout(obsPreviewTimer);
@@ -4153,13 +4154,121 @@ function setupObs() {
 
   // Verschieben in der Vorschau meldet das Overlay per postMessage.
   addEventListener('message', (e) => {
-    if (e.origin !== location.origin || e.data?.type !== 'stellwerk-obs') return;
+    if (e.origin !== location.origin) return;
+    if (e.data?.type === 'stellwerk-obs-select') { openObsLayer(e.data.key === 'cam' ? 'prank' : e.data.key, { scroll: true }); return; }
+    if (e.data?.type !== 'stellwerk-obs') return;
     if (obsLocked()) { renderObsPreview(); return; } // nicht erlaubt: zurück auf den gespeicherten Stand
     const field = form.elements[e.data.key];
     if (!field || typeof e.data.value !== 'string') return;
     field.value = e.data.value;
     if (e.data.key === 'cam') $('#obs-cam-source').value = '';
     updateObs({ fromPreview: true });
+  });
+}
+
+// ---------- OBS-Fenster v2: Reiter und Ebenen ----------
+// Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
+// die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
+const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', prank: 'prank', pet: 'pet', ticker: null };
+const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
+const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
+let obsSelected = null;
+
+function setupObsLayers() {
+  const dlg = $('#obs-dialog');
+  dlg.querySelectorAll('.obs-tab').forEach((tab) => tab.addEventListener('click', () => showObsTab(tab.dataset.tab)));
+  dlg.querySelectorAll('.obs-layer').forEach((row) => {
+    row.querySelector('.obs-layer-name').addEventListener('click', () => {
+      openObsLayer(obsSelected === row.dataset.layer ? null : row.dataset.layer);
+    });
+  });
+  // Standardplatz: Wert aus dem Formular-Standard (index.html)
+  dlg.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-reset-pos]');
+    if (!btn) return;
+    const el = $('#obs-options').elements[btn.dataset.resetPos];
+    if (!el || obsLocked()) return;
+    el.value = obsDefault(el);
+    updateObs({ now: true });
+  });
+  $('#obs-pill').addEventListener('click', () => {
+    const box = $('#obs-connect');
+    box.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+    if (!obs.ws?.connected) $('#obs-ws-form').password.focus({ preventScroll: true });
+  });
+  $('#obs-head-apply').addEventListener('click', applyObs);
+  $('#obs-pet-say').addEventListener('submit', obsPetSay);
+}
+
+function showObsTab(name) {
+  const dlg = $('#obs-dialog');
+  dlg.querySelectorAll('.obs-tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+  dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
+}
+
+// Ebene auf- oder zuklappen und in der Vorschau markieren
+function openObsLayer(key, { scroll = false } = {}) {
+  obsSelected = key;
+  $('#obs-dialog').querySelectorAll('.obs-layer').forEach((row) => {
+    const open = row.dataset.layer === key;
+    row.classList.toggle('is-open', open);
+    row.querySelector('.obs-layer-body').hidden = !open;
+    row.querySelector('.obs-layer-name').setAttribute('aria-expanded', String(open));
+    if (open && scroll) {
+      showObsTab('layers');
+      row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+    }
+  });
+  highlightObsLayer();
+}
+
+function highlightObsLayer() {
+  $('#obs-preview iframe')?.contentWindow?.postMessage({ type: 'stellwerk-select', key: obsSelected }, location.origin);
+}
+
+function describeObsPos(value) {
+  if (POS_NAMES[value]) return POS_NAMES[value];
+  const [x, y] = String(value).split(',').map(Number);
+  return Number.isFinite(x) && Number.isFinite(y) ? `frei · ${Math.round(x)} % / ${Math.round(y)} %` : '–';
+}
+
+function paintObsLayers() {
+  const f = $('#obs-options');
+  const dlg = $('#obs-dialog');
+  dlg.querySelectorAll('.obs-layer').forEach((row) => {
+    const key = row.dataset.layer;
+    const sw = OBS_LAYER_SWITCH[key];
+    const on = sw ? f.elements[sw].checked : true;
+    row.classList.toggle('is-on', on);
+    const size = f.elements[OBS_LAYER_SIZE[key]];
+    row.querySelector('.obs-layer-size').textContent = size ? `${size.value} %` : '';
+    const pos = row.querySelector('[data-pos-for]');
+    if (pos) {
+      const el = f.elements[key];
+      pos.textContent = describeObsPos(el.value);
+      row.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
+    }
+  });
+  dlg.querySelectorAll('[data-group]').forEach((g) => {
+    const rows = [...g.querySelectorAll('.obs-layer')];
+    g.querySelector('.obs-group-count').textContent = `${rows.filter((r) => r.classList.contains('is-on')).length} / ${rows.length} an`;
+  });
+  // Texte & Tests: nur Admins sehen dort etwas
+  const admin = !!state.profile?.is_admin;
+  $('#obs-pet-say').hidden = !admin || !state.pet?.on;
+  $('#obs-admin-empty').hidden = admin || !$('#obs-allow-wrap').hidden;
+}
+
+async function obsPetSay(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const text = form.text.value.trim();
+  if (!text) return;
+  formMsg(form, '');
+  await withLoading(form, async () => {
+    await state.api.petSay(text);
+    form.reset();
+    formMsg(form, '✓ Rexi sagt es jetzt im Stream.', true);
   });
 }
 
@@ -4320,6 +4429,10 @@ function paintObsLive() {
       : access.admins_can_edit || !state.profile?.is_admin
         ? '🔒 Das Overlay passen Dave und von ihm freigeschaltete Admins an. Du siehst hier die aktuellen Einstellungen.'
         : '🔒 Dave hat Admins das Anpassen noch nicht erlaubt. Du siehst hier die aktuellen Einstellungen.';
+  const saved = $('#obs-saved');
+  saved.dataset.state = !ready ? 'off' : access.can_edit ? 'on' : 'locked';
+  saved.textContent = !ready ? 'Adresse enthält alles' : access.can_edit ? 'Live gespeichert' : 'Nur ansehen';
+  saved.title = status.textContent;
 }
 
 function scheduleObsSave() {
@@ -4444,13 +4557,13 @@ async function uploadAlertSound() {
   msg.classList.remove('is-ok');
   const file = fileEl.files[0];
   if (!file) { msg.textContent = 'Bitte zuerst eine Sound-Datei wählen.'; return; }
-  if (file.size > 1024 * 1024) { msg.textContent = 'Die Datei ist zu groß (höchstens 1 MB).'; return; }
+  if (file.size > ALERT_SOUND_BYTES) { msg.textContent = `Die Datei ist zu groß (höchstens ${ALERT_SOUND_BYTES / 1024 / 1024} MB).`; return; }
   const name = (nameEl.value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 30);
   btn.disabled = true;
   try {
     const duration = await audioDuration(file);
-    if (duration > MAX_SOUND_SECONDS + 0.4) throw new Error(`Der Sound ist ${duration.toFixed(1)} Sekunden lang – höchstens ${MAX_SOUND_SECONDS} Sekunden.`);
-    const sound = await state.api.uploadAlertSound(file, name, Math.round(duration * 10) / 10);
+    if (duration > ALERT_SOUND_SECONDS + 0.4) throw new Error(`Der Sound ist ${duration.toFixed(1)} Sekunden lang – höchstens ${ALERT_SOUND_SECONDS} Sekunden.`);
+    const sound = await state.api.uploadAlertSound(file, name, Math.round(Math.min(duration, ALERT_SOUND_SECONDS) * 10) / 10);
     obs.alertSounds = [sound, ...(obs.alertSounds ?? [])];
     obs.alertSoundsError = '';
     paintAlertSoundOptions();
@@ -4575,10 +4688,13 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   for (const key of OBS_PARTS) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
   f.psize.disabled = !f.prank.checked;
   f.dsize.disabled = !f.pet.checked;
+  f.pground.disabled = !f.pet.checked;
+  f.pclimb.disabled = !f.pet.checked;
   f.bstyle.disabled = !f.bingo_on.checked;
   // Ohne Recht zum Ändern: alles nur ansehen
   if (obsLocked()) obsFields().forEach((el) => { el.disabled = true; });
   saveObs(values);
+  paintObsLayers();
   // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
   $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();
   scheduleObsSave();
@@ -4600,6 +4716,7 @@ function renderObsPreview() {
   const frame = document.createElement('iframe');
   frame.title = 'Vorschau des OBS-Overlays – Karten lassen sich verschieben';
   frame.src = frame.dataset.src = src;
+  frame.addEventListener('load', highlightObsLayer);
   box.append(frame);
   fitObsPreview();
 }
@@ -4683,6 +4800,14 @@ function paintObsConnection() {
     : 'Dann siehst du unten dein echtes OBS-Bild, die Seite findet Daves Kamera und richtet das Overlay in OBS ein.';
   $('#obs-preview-label').textContent = on ? `Live aus OBS · ${obs.scene ?? ''}` : obs.stream ? 'Geteiltes Fenster' : 'Beispielbild';
   $('#obs-preview').classList.toggle('has-shot', on || !!obs.stream);
+  const pill = $('#obs-pill');
+  pill.dataset.state = box.dataset.state;
+  $('#obs-pill-title').textContent = on ? 'Mit OBS verbunden' : box.dataset.state === 'busy' ? 'Verbinde mit OBS …' : 'Nicht mit OBS verbunden';
+  const cam = obs.sources?.[Number($('#obs-cam-source').value)]?.name;
+  $('#obs-pill-detail').textContent = on
+    ? [`Szene „${obs.scene ?? '…'}“`, cam && `Kamera: ${cam}`].filter(Boolean).join(' · ')
+    : obs.stream ? 'Geteiltes Fenster als Vorschau' : 'Verbinden zeigt das echte Bild und richtet die Quelle ein.';
+  $('#obs-head-apply').hidden = !on;
 }
 
 // Bildquellen der aktuellen Szene; die wahrscheinliche Kamera wird vorgeschlagen.
@@ -4738,9 +4863,9 @@ function pollObsShot() {
 }
 
 async function applyObs() {
-  const btn = $('#obs-apply');
-  btn.disabled = true;
-  btn.classList.add('is-loading');
+  const btns = [$('#obs-apply'), $('#obs-head-apply')];
+  const busy = (on) => btns.forEach((b) => { b.disabled = on; b.classList.toggle('is-loading', on); });
+  busy(true);
   try {
     if (obsLive.ready && obsLive.access.can_edit) await saveObsLive();
     const { scene, created } = await obs.ws.applyOverlay(obsLive.ready ? obsLiveUrl() : obsUrl());
@@ -4750,8 +4875,7 @@ async function applyObs() {
   } catch (err) {
     toast(`OBS: ${err.message}`, 'error', 7000);
   } finally {
-    btn.disabled = false;
-    btn.classList.remove('is-loading');
+    busy(false);
   }
 }
 

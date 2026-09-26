@@ -992,18 +992,36 @@
 
   <!-- ============ OBS-OVERLAY ============ -->
   <dialog id="obs-dialog" class="dialog dialog--obs" aria-labelledby="obs-title">
-    <div class="dialog-head">
+    <div class="dialog-head obs-head">
       <div>
         <p class="eyebrow">Für den Stream</p>
         <h2 id="obs-title">OBS-Overlay</h2>
       </div>
-      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+      <button class="obs-pill" id="obs-pill" type="button" data-state="off">
+        <span class="obs-dot" aria-hidden="true"></span>
+        <span class="obs-pill-text"><b id="obs-pill-title">Nicht mit OBS verbunden</b><small id="obs-pill-detail">Verbinden zeigt das echte Bild und richtet die Quelle ein.</small></span>
+      </button>
+      <div class="obs-head-actions">
+        <span class="obs-saved" id="obs-saved" data-state="off"></span>
+        <button class="btn btn--primary" type="button" id="obs-head-apply" hidden>In OBS übernehmen</button>
+        <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
+      </div>
     </div>
     <div class="obs-body">
-      <p class="obs-lead">Ein Link für OBS mit allem, was im Stream laufen soll. Am Anfang ist alles aus – schalte unten ein, was du im Stream zeigen willst.</p>
-      <p class="obs-note" id="obs-note" hidden></p>
-
-      <!-- 1. Verbindung zu OBS: echtes Bild in der Vorschau, Kamera erkennen, Quelle anlegen -->
+      <!-- Links: Vorschau, Adresse, Verbindung zu OBS -->
+      <div class="obs-left">
+        <p class="obs-note" id="obs-note" hidden></p>
+        <div class="obs-preview" id="obs-preview">
+          <img class="obs-bg" id="obs-shot" alt="" hidden>
+          <video class="obs-bg" id="obs-video" muted playsinline hidden></video>
+          <span class="obs-preview-label" id="obs-preview-label">Beispielbild</span>
+        </div>
+        <p class="obs-hint obs-drag-hint">Karten ziehen: Sie rasten am Rand und in der Mitte ein. Klick auf eine Karte öffnet rechts ihre Einstellungen. Den <b class="obs-red">roten Rahmen</b> auf Daves Kamera legen – dort landen die Würfe.</p>
+        <div class="obs-url">
+          <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
+          <button id="obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
+        </div>
+        <p class="obs-live-status" id="obs-live-status" aria-live="polite"></p>
       <section class="obs-connect" id="obs-connect" data-state="off">
         <div class="obs-connect-head">
           <span class="obs-dot" aria-hidden="true"></span>
@@ -1038,141 +1056,229 @@
         </details>
         <button class="obs-share" id="obs-share" type="button">Ohne Verbindung: stattdessen das OBS-Fenster teilen</button>
       </section>
-
-      <!-- 2. Vorschau: Karten und Kamera-Rahmen mit der Maus verschieben -->
-      <div class="obs-preview" id="obs-preview">
-        <img class="obs-bg" id="obs-shot" alt="" hidden>
-        <video class="obs-bg" id="obs-video" muted playsinline hidden></video>
-        <span class="obs-preview-label" id="obs-preview-label">Beispielbild</span>
+      <details class="obs-manual">
+        <summary>Ohne Verbindung von Hand einrichten</summary>
+        <ol class="obs-steps">
+          <li>Adresse oben <b>kopieren</b>.</li>
+          <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken, <b>Browser</b> wählen, Adresse einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b>.</li>
+          <li><b>„Audio über OBS steuern“</b> anhaken – dann ist der Ton im Audio-Mixer regelbar.</li>
+          <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über Daves Kamera.</li>
+          <li>Das war’s: Änderungen hier erscheinen sofort in OBS – die Adresse bleibt immer gleich.</li>
+        </ol>
+      </details>
       </div>
-      <p class="obs-hint obs-drag-hint">Karten mit der Maus an ihren Platz ziehen – sie rasten am Rand und in der Mitte ein. Den <b class="obs-red">roten Rahmen</b> auf Daves Kamera legen, unten rechts in der Größe anpassen: Dort landen die Würfe.</p>
 
-      <!-- 3. Was ist zu sehen – und wie groß -->
-      <form class="obs-options" id="obs-options">
-        <div class="obs-parts">
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="wheel_on"><span class="toggle-ui" aria-hidden="true"></span>Glücksrad</label>
-            <label class="obs-size"><span class="sr-only">Größe Glücksrad</span><input type="range" name="wsize" min="50" max="200" step="5" value="100"><output name="wsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="next_on"><span class="toggle-ui" aria-hidden="true"></span>Nächste Abfahrt</label>
-            <label class="obs-size"><span class="sr-only">Größe Nächste Abfahrt</span><input type="range" name="nsize" min="50" max="200" step="5" value="100"><output name="nsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="bingo_on"><span class="toggle-ui" aria-hidden="true"></span>Fortnite-Bingo</label>
-            <label class="obs-size"><span class="sr-only">Größe Bingo-Karte</span><input type="range" name="bsize" min="50" max="200" step="5" value="100"><output name="bsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="prank"><span class="toggle-ui" aria-hidden="true"></span>Würfe &amp; Sounds</label>
-            <label class="obs-size"><span class="sr-only">Größe der Würfe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="quest_on"><span class="toggle-ui" aria-hidden="true"></span>Unangenehme Fragen</label>
-            <label class="obs-size"><span class="sr-only">Größe der Fragen-Karte</span><input type="range" name="qsize" min="50" max="200" step="5" value="100"><output name="qsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="challenge_on"><span class="toggle-ui" aria-hidden="true"></span>Win-Challenge</label>
-            <label class="obs-size"><span class="sr-only">Größe der Win-Challenge-Karte</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="alerts_on"><span class="toggle-ui" aria-hidden="true"></span>Alerts</label>
-            <label class="obs-size"><span class="sr-only">Größe der Alerts</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="recent_on"><span class="toggle-ui" aria-hidden="true"></span>Letzter Follower &amp; Abo</label>
-            <label class="obs-size"><span class="sr-only">Größe der Karte Letzter Follower und Abo</span><input type="range" name="rsize" min="50" max="200" step="5" value="100"><output name="rsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="shop_on"><span class="toggle-ui" aria-hidden="true"></span>Kisten-Shop</label>
-            <label class="obs-size"><span class="sr-only">Größe der Kisten-Shop-Karte</span><input type="range" name="ssize" min="50" max="200" step="5" value="100"><output name="ssize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <label class="toggle"><input type="checkbox" name="pet"><span class="toggle-ui" aria-hidden="true"></span>Daves Dino</label>
-            <label class="obs-size"><span class="sr-only">Größe des Dinos</span><input type="range" name="dsize" min="50" max="200" step="5" value="100"><output name="dsize-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <span class="obs-part-label">🎨 Bingo-Design</span>
-            <label class="obs-size obs-style"><span class="sr-only">Design der Bingo-Karte</span>
-              <select name="bstyle">
-                <option value="classic" selected>Klassisch – bunt</option>
-                <option value="neon">Neon</option>
-                <option value="paper">Papier</option>
-              </select>
-            </label>
-          </div>
-          <div class="obs-part obs-part--ticker">
-            <span class="obs-part-label">📢 Laufband <small>immer an</small></span>
-            <label class="obs-size obs-style"><span class="sr-only">Design des Laufbands</span>
-              <select name="tstyle">
-                <option value="bar" selected>Laufband</option>
-                <option value="neon">Neon</option>
-                <option value="board">Bahnhofs-Anzeige</option>
-              </select>
-            </label>
-            <label class="obs-size"><span class="sr-only">Größe des Laufbands</span><input type="range" name="tsize" min="50" max="200" step="5" value="100"><output name="tsize-out"></output></label>
-            <label class="obs-size" title="Tempo"><span class="sr-only">Tempo des Laufbands</span><input type="range" name="tspeed" min="20" max="200" step="5" value="70"><output name="tspeed-out"></output></label>
-          </div>
-          <div class="obs-part">
-            <span class="obs-part-label">🔊 Lautstärke</span>
-            <label class="obs-size"><span class="sr-only">Lautstärke</span><input type="range" name="vol" min="0" max="100" step="5" value="100"><output name="vol-out"></output></label>
-          </div>
+      <!-- Rechts: Ebenen, Aussehen & Ton, Texte & Tests -->
+      <div class="obs-right">
+        <div class="obs-tabs" role="tablist" aria-label="OBS-Einstellungen">
+          <button class="obs-tab" type="button" role="tab" data-tab="layers" aria-selected="true">Ebenen</button>
+          <button class="obs-tab" type="button" role="tab" data-tab="look" aria-selected="false">Aussehen &amp; Ton</button>
+          <button class="obs-tab" type="button" role="tab" data-tab="admin" aria-selected="false">Texte &amp; Tests</button>
         </div>
-        <!-- Positionen setzt die Vorschau (verschieben); Standard = Ecken -->
-        <input type="text" name="wheel" value="br" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="next" value="bl" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="shop" value="tl" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="challenge" value="tl" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="recent" value="tl" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
-        <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
-        <details class="obs-more">
-          <summary>Mehr Einstellungen</summary>
-          <div class="obs-more-grid">
-            <label class="field"><span>Glücksrad zeigen bei</span>
-              <select name="from">
-                <option value="all">allen Drehungen</option>
-                <option value="twitch">nur Kanalpunkten</option>
-                <option value="web">nur Drehungen von Admins auf der Seite</option>
-              </select>
-            </label>
-            <label class="field obs-range"><span>Ergebnis stehen lassen <output name="hold-out"></output></span>
-              <input type="range" name="hold" min="3" max="30" step="1" value="9">
-            </label>
-            <label class="field"><span>Überschrift Glücksrad</span>
-              <input type="text" name="wlabel" maxlength="40" placeholder="Glücksrad">
-            </label>
-            <label class="field"><span>Überschrift Nächste Abfahrt</span>
-              <input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt">
-            </label>
-            <label class="field obs-range"><span>Nächste Idee nach <output name="rotate-out"></output></span>
-              <input type="range" name="rotate" min="5" max="60" step="1" value="12">
-            </label>
-            <label class="field obs-range"><span>Kartenhintergrund <output name="bg-out"></output></span>
-              <input type="range" name="bg" min="0" max="100" step="2" value="94">
-            </label>
-            <label class="field obs-color"><span>Akzentfarbe</span>
-              <input type="color" name="accent" value="#ffb81c">
-            </label>
-            <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
-              <input type="range" name="margin" min="0" max="200" step="4" value="40">
-            </label>
-            <label class="toggle obs-wide">
-              <input type="checkbox" name="always">
-              <span class="toggle-ui" aria-hidden="true"></span>
-              Glücksrad immer sichtbar, nicht nur beim Drehen
-            </label>
-            <label class="toggle obs-wide">
-              <input type="checkbox" name="vcolor" checked>
-              <span class="toggle-ui" aria-hidden="true"></span>
-              Glücksrad in der Farbe der Variante
-            </label>
+        <form class="obs-options" id="obs-options">
+          <div class="obs-pane obs-layers" data-pane="layers">
+            <section class="obs-group" data-group>
+              <p class="obs-group-head"><span>Immer im Bild</span><span class="obs-group-count"></span></p>
+              <div class="obs-layer" data-layer="ticker" style="--lc: #ffb81c">
+                <div class="obs-layer-head">
+                  <span class="obs-switch obs-switch--always" title="immer an" aria-hidden="true"></span>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Laufband<small>immer an</small></button>
+                  <span class="obs-layer-size" data-size-for="ticker"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="tsize" min="50" max="200" step="5" value="100"><output name="tsize-out"></output></label>
+                  <label class="obs-row"><span>Tempo</span><input type="range" name="tspeed" min="20" max="200" step="5" value="70"><output name="tspeed-out"></output></label>
+                  <label class="obs-row"><span>Design</span><select name="tstyle"><option value="bar" selected>Laufband</option><option value="neon">Neon</option><option value="board">Bahnhofs-Anzeige</option></select></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="ticker"></span><button class="obs-mini-btn" type="button" data-reset-pos="ticker">Zurück an den Standardplatz</button></span></div>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="pet" style="--lc: #5cc36b">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="pet"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Daves Dino zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Daves Dino</button>
+                  <span class="obs-layer-size" data-size-for="pet"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="dsize" min="50" max="200" step="5" value="100"><output name="dsize-out"></output></label>
+                  <label class="obs-row"><span>Läuft auf</span><select name="pground"><option value="ticker" selected>dem Laufband</option><option value="edge">dem Bildrand</option></select></label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="pclimb" checked><span class="toggle-ui" aria-hidden="true"></span>Bei Heißhunger an Karten hochklettern und knabbern</label>
+                </div>
+              </div>
+            </section>
+            <section class="obs-group" data-group>
+              <p class="obs-group-head"><span>Bei Aktion</span><span class="obs-group-count"></span></p>
+              <div class="obs-layer" data-layer="wheel" style="--lc: #ffb81c">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="wheel_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Glücksrad zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Glücksrad</button>
+                  <span class="obs-layer-size" data-size-for="wheel"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="wsize" min="50" max="200" step="5" value="100"><output name="wsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="wheel"></span><button class="obs-mini-btn" type="button" data-reset-pos="wheel">Zurück an den Standardplatz</button></span></div>
+                  <label class="obs-row"><span>Zeigen bei</span><select name="from"><option value="all">allen Drehungen</option><option value="twitch">nur Kanalpunkten</option><option value="web">nur Drehungen von Admins auf der Seite</option></select></label>
+                  <label class="obs-row"><span>Ergebnis</span><input type="range" name="hold" min="3" max="30" step="1" value="9"><output name="hold-out"></output></label>
+                  <label class="obs-row"><span>Überschrift</span><input type="text" name="wlabel" maxlength="40" placeholder="Glücksrad"></label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="always"><span class="toggle-ui" aria-hidden="true"></span>Immer sichtbar, nicht nur beim Drehen</label>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="alerts" style="--lc: #9146ff">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="alerts_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Alerts zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Alerts</button>
+                  <span class="obs-layer-size" data-size-for="alerts"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="alerts"></span><button class="obs-mini-btn" type="button" data-reset-pos="alerts">Zurück an den Standardplatz</button></span></div>
+                  <p class="obs-row-hint">Sounds unter „Aussehen &amp; Ton“, Probe-Alerts unter „Texte &amp; Tests“.</p>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="prank" style="--lc: #ff5a4e">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="prank"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Würfe &amp; Sounds zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Würfe &amp; Sounds<small>auf Daves Kamera</small></button>
+                  <span class="obs-layer-size" data-size-for="prank"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
+                  <p class="obs-row-hint">Den <b class="obs-red">roten Rahmen</b> in der Vorschau auf Daves Kamera legen – dort landen die Würfe.</p>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="quest" style="--lc: #ff5fa8">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="quest_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Unangenehme Fragen zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Unangenehme Fragen</button>
+                  <span class="obs-layer-size" data-size-for="quest"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="qsize" min="50" max="200" step="5" value="100"><output name="qsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="quest"></span><button class="obs-mini-btn" type="button" data-reset-pos="quest">Zurück an den Standardplatz</button></span></div>
+                </div>
+              </div>
+            </section>
+            <section class="obs-group" data-group>
+              <p class="obs-group-head"><span>Info</span><span class="obs-group-count"></span></p>
+              <div class="obs-layer" data-layer="next" style="--lc: #ffb81c">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="next_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Nächste Abfahrt zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Nächste Abfahrt</button>
+                  <span class="obs-layer-size" data-size-for="next"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="nsize" min="50" max="200" step="5" value="100"><output name="nsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="next"></span><button class="obs-mini-btn" type="button" data-reset-pos="next">Zurück an den Standardplatz</button></span></div>
+                  <label class="obs-row"><span>Überschrift</span><input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt"></label>
+                  <label class="obs-row"><span>Nächste Idee</span><input type="range" name="rotate" min="5" max="60" step="1" value="12"><output name="rotate-out"></output></label>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="recent" style="--lc: #9146ff">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="recent_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Letzter Follower &amp; Abo zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Letzter Follower &amp; Abo</button>
+                  <span class="obs-layer-size" data-size-for="recent"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="rsize" min="50" max="200" step="5" value="100"><output name="rsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="recent"></span><button class="obs-mini-btn" type="button" data-reset-pos="recent">Zurück an den Standardplatz</button></span></div>
+                </div>
+              </div>
+            </section>
+            <section class="obs-group" data-group>
+              <p class="obs-group-head"><span>Spiele</span><span class="obs-group-count"></span></p>
+              <div class="obs-layer" data-layer="bingo" style="--lc: #4fc3ff">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="bingo_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Fortnite-Bingo zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Fortnite-Bingo</button>
+                  <span class="obs-layer-size" data-size-for="bingo"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="bsize" min="50" max="200" step="5" value="100"><output name="bsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="bingo"></span><button class="obs-mini-btn" type="button" data-reset-pos="bingo">Zurück an den Standardplatz</button></span></div>
+                  <label class="obs-row"><span>Design</span><select name="bstyle"><option value="classic" selected>Klassisch – bunt</option><option value="neon">Neon</option><option value="paper">Papier</option></select></label>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="shop" style="--lc: #ffc933">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="shop_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Kisten-Shop zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Kisten-Shop</button>
+                  <span class="obs-layer-size" data-size-for="shop"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="ssize" min="50" max="200" step="5" value="100"><output name="ssize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="shop"></span><button class="obs-mini-btn" type="button" data-reset-pos="shop">Zurück an den Standardplatz</button></span></div>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="challenge" style="--lc: #ff5c5c">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="challenge_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Win-Challenge zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Win-Challenge</button>
+                  <span class="obs-layer-size" data-size-for="challenge"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="csize" min="50" max="200" step="5" value="100"><output name="csize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="challenge"></span><button class="obs-mini-btn" type="button" data-reset-pos="challenge">Zurück an den Standardplatz</button></span></div>
+                </div>
+              </div>
+            </section>
           </div>
-        </details>
-        <details class="obs-more obs-alert-sounds">
+
+          <!-- Positionen setzt die Vorschau (verschieben); Standard = Ecken -->
+          <input type="text" name="wheel" value="br" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="next" value="bl" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="bingo" value="tr" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="quest" value="tc" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="shop" value="tl" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="challenge" value="tl" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="recent" value="tl" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
+
+          <div class="obs-pane obs-look" data-pane="look" hidden>
+            <div class="obs-look-grid">
+              <label class="field obs-color"><span>Akzentfarbe</span>
+                <input type="color" name="accent" value="#ffb81c">
+              </label>
+              <label class="field obs-range"><span>Kartenhintergrund <output name="bg-out"></output></span>
+                <input type="range" name="bg" min="0" max="100" step="2" value="94">
+              </label>
+              <label class="field obs-range"><span>Abstand zum Rand <output name="margin-out"></output></span>
+                <input type="range" name="margin" min="0" max="200" step="4" value="40">
+              </label>
+              <label class="field obs-range"><span>Lautstärke <output name="vol-out"></output></span>
+                <input type="range" name="vol" min="0" max="100" step="5" value="100">
+              </label>
+              <label class="toggle obs-wide">
+                <input type="checkbox" name="vcolor" checked>
+                <span class="toggle-ui" aria-hidden="true"></span>
+                Glücksrad in der Farbe der Variante
+              </label>
+            </div>
+        <details class="obs-more obs-alert-sounds" open>
           <summary>🔔 Alert-Sounds</summary>
           <p class="form-hint">Welcher Ton bei welchem Alert läuft – Standard, ein eigener Alert-Sound, ein Sound vom Soundboard, ein Sound aus „Ärgere den Dave“ oder gar keiner.</p>
           <div class="obs-sound-grid" id="obs-alert-sounds">
@@ -1193,7 +1299,7 @@
             <h4>Eigene Alert-Sounds</h4>
             <ul class="obs-alert-sound-list" id="obs-alert-sound-list"></ul>
             <div class="obs-alert-upload-row">
-              <label class="field"><span>Sound-Datei (MP3, OGG, WAV, M4A · höchstens 1 MB, 10 Sekunden)</span>
+              <label class="field"><span>Sound-Datei (MP3, OGG, WAV, M4A · höchstens 4 MB, 20 Sekunden)</span>
                 <input type="file" id="obs-alert-file" accept="audio/*">
               </label>
               <label class="field"><span>Name</span>
@@ -1204,10 +1310,12 @@
             <p class="form-msg" id="obs-alert-upload-msg" role="alert"></p>
           </div>
         </details>
-        <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
-      </form>
+            <button class="btn btn--ghost btn--sm obs-reset" type="reset">Alles zurücksetzen</button>
+          </div>
+        </form>
 
-      <!-- Texte fürs Laufband: gelten für alle OBS-Quellen, nur Admins ändern sie -->
+        <div class="obs-pane obs-admin" data-pane="admin" hidden>
+          <p class="obs-admin-empty" id="obs-admin-empty" hidden>Texte und Tests gibt es nur für Admins.</p>
       <form class="obs-ticker-edit" id="obs-ticker-form" hidden novalidate>
         <details>
           <summary>📢 Laufband-Texte bearbeiten</summary>
@@ -1219,8 +1327,6 @@
           <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
         </details>
       </form>
-
-      <!-- Alerts testen: schickt einen Probe-Alert in alle OBS-Quellen (nur Admins) -->
       <section class="obs-alerts" id="obs-alerts" hidden>
         <details>
           <summary>🔔 Alerts testen</summary>
@@ -1236,31 +1342,25 @@
         </details>
       </section>
 
-      <!-- Live: Einstellungen gelten sofort in OBS -->
-      <div class="obs-live" id="obs-live">
-        <p class="obs-live-status" id="obs-live-status" aria-live="polite"></p>
-        <label class="toggle" id="obs-allow-wrap" hidden>
-          <input type="checkbox" id="obs-allow-admins">
-          <span class="toggle-ui" aria-hidden="true"></span>
-          Admins (Mods) dürfen das Overlay anpassen
-        </label>
+          <!-- Dino sagt im Stream sofort einen eigenen Satz (nur Admins) -->
+          <form class="obs-card-form" id="obs-pet-say" hidden novalidate>
+            <b>🦖 Dino sagt im Stream</b>
+            <small>Rexi sagt sofort einen eigenen Satz – in allen OBS-Quellen.</small>
+            <div class="obs-inline">
+              <input type="text" name="text" maxlength="100" placeholder="z. B. Gleich geht’s los!" autocomplete="off" aria-label="Satz für den Dino">
+              <button class="btn btn--outline btn--sm" type="submit">Sagen</button>
+            </div>
+            <p class="form-msg" role="alert"></p>
+          </form>
+          <div class="obs-live">
+            <label class="toggle" id="obs-allow-wrap" hidden>
+              <input type="checkbox" id="obs-allow-admins">
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Admins (Mods) dürfen das Overlay anpassen
+            </label>
+          </div>
+        </div>
       </div>
-
-      <!-- 4. Ergebnis -->
-      <div class="obs-url">
-        <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
-        <button id="obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
-      </div>
-      <details class="obs-manual">
-        <summary>Ohne Verbindung von Hand einrichten</summary>
-        <ol class="obs-steps">
-          <li>Adresse oben <b>kopieren</b>.</li>
-          <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken, <b>Browser</b> wählen, Adresse einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b>.</li>
-          <li><b>„Audio über OBS steuern“</b> anhaken – dann ist der Ton im Audio-Mixer regelbar.</li>
-          <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über Daves Kamera.</li>
-          <li>Das war’s: Änderungen hier erscheinen sofort in OBS – die Adresse bleibt immer gleich.</li>
-        </ol>
-      </details>
     </div>
   </dialog>
 

@@ -3,47 +3,120 @@
 .dino {
   --ds: 150px;
   position: absolute; left: 0; bottom: 0; z-index: 2;
-  width: var(--ds); height: calc(var(--ds) * .79);
+  width: var(--ds); height: calc(var(--ds) * .824);
   pointer-events: none; will-change: transform;
 }
+/* Ausrichtung: Blickrichtung (dino-body) und Klettern (dino-pose) */
+.dino-pose { width: 100%; height: 100%; transform-origin: 50% 86%; transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.dino.is-climb.climb-right .dino-pose { transform: rotate(-80deg); }
+.dino.is-climb.climb-left .dino-pose { transform: rotate(80deg); }
 .dino-body { width: 100%; height: 100%; transition: transform .25s ease; transform-origin: 50% 50%; }
 .dino-body.is-left { transform: scaleX(-1); }
 .dino-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 calc(var(--ds) * .03) calc(var(--ds) * .04) rgba(0, 0, 0, .45)); }
 
-/* Laufen: Beine im Wechsel, Körper wippt */
-.dino-leg { transform-box: fill-box; transform-origin: 50% 0; }
-.dino.is-walking .dino-leg-a { animation: dino-step .42s ease-in-out infinite; }
-.dino.is-walking .dino-leg-b { animation: dino-step .42s ease-in-out infinite reverse; }
-.dino.is-walking .dino-svg { animation: dino-bob .42s ease-in-out infinite; }
-@keyframes dino-step { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-18deg); } }
-@keyframes dino-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3%); } }
-.dino-tail { transform-box: fill-box; transform-origin: 100% 60%; animation: dino-tail 1.6s ease-in-out infinite; }
-@keyframes dino-tail { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-8deg); } }
+/* Teile und ihre Drehpunkte (SVG-Einheiten, viewBox 170 × 140) */
+.dino-svg g { transform-box: view-box; }
+.dino-shadow { opacity: .45; transform-box: fill-box; transform-origin: 50% 50%; transition: opacity .3s; }
+.dino-bodyg { transform-origin: 80px 121px; animation: dino-breathe 2.6s ease-in-out infinite; }
+.dino-tail { transform-origin: 52px 72px; animation: dino-tail-idle 2.4s ease-in-out infinite; }
+.dino-leg-b { transform-origin: 69px 96px; }
+.dino-leg-a { transform-origin: 87px 96px; }
+.dino-arm { transform-origin: 104px 75px; }
+.dino-whistle { transform-origin: 112px 76px; }
+.dino-head { transform-origin: 100px 58px; transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
+.dino-jaw { transform-origin: 103px 58px; transition: transform .12s ease; }
+.dino-eye { transform-origin: 120px 38px; transition: transform .08s; }
+.dino-pupil { transform: translate(1px, 0); transition: transform .4s; }
+.dino-brow { opacity: 0; transition: opacity .4s; }
+.dino-cap { transform-origin: 122px 26px; transition: transform .5s; }
 
-/* Kopf, Kiefer, Augen */
-.dino-jaw { transform-box: view-box; transform-origin: 84px 46px; transition: transform .12s ease; }
-.dino.is-talking .dino-jaw { animation: dino-talk .22s ease-in-out 5; }
-.dino.is-chomp .dino-jaw { transform: rotate(24deg); }
-@keyframes dino-talk { 50% { transform: rotate(14deg); } }
-.dino-eye { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .08s; }
+@keyframes dino-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, .985); } }
+@keyframes dino-tail-idle { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-8deg); } }
+
+/* Laufen: federt zweimal pro Schritt, Schwanz schwingt gegen, Kopf bleibt ruhig, Pfeife pendelt nach */
+.dino.is-walking .dino-shadow { animation: dino-shadow-walk .62s ease-in-out infinite; }
+.dino.is-walking .dino-bodyg { animation: dino-bob .62s ease-in-out infinite; }
+.dino.is-walking .dino-tail { animation: dino-tail-walk .62s ease-in-out infinite; }
+.dino.is-walking .dino-leg-a { animation: dino-leg .62s ease-in-out infinite; }
+.dino.is-walking .dino-leg-b { animation: dino-leg .62s ease-in-out -.31s infinite; }
+.dino.is-walking .dino-arm { animation: dino-arm-walk .62s ease-in-out infinite; }
+.dino.is-walking .dino-whistle { animation: dino-whistle .62s ease-in-out -.15s infinite; }
+.dino.is-walking .dino-head { animation: dino-head-walk .62s ease-in-out infinite; }
+.dino.is-walking .dino-pupil { transform: translate(2px, 0); }
+/* Vor dem Umdrehen schauen die Pupillen schon in die neue Richtung */
+.dino.is-glance .dino-pupil { transform: translate(-2.5px, 0); transition-duration: .15s; }
+@keyframes dino-bob { 0% { transform: translateY(2px) rotate(-1.2deg); } 25% { transform: translateY(-3px) rotate(0deg); } 50% { transform: translateY(2px) rotate(1.2deg); } 75% { transform: translateY(-3px) rotate(0deg); } 100% { transform: translateY(2px) rotate(-1.2deg); } }
+@keyframes dino-shadow-walk { 0%, 50%, 100% { transform: scaleX(1); opacity: .5; } 25%, 75% { transform: scaleX(.88); opacity: .38; } }
+@keyframes dino-leg { 0% { transform: rotate(24deg) translateY(0); } 25% { transform: rotate(0deg) translateY(-6px); } 50% { transform: rotate(-24deg) translateY(0); } 100% { transform: rotate(24deg) translateY(0); } }
+@keyframes dino-tail-walk { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(-7deg); } }
+@keyframes dino-head-walk { 0%, 50%, 100% { transform: translateY(-2px) rotate(1.5deg); } 25%, 75% { transform: translateY(1px) rotate(-1deg); } }
+@keyframes dino-whistle { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(16deg); } }
+@keyframes dino-arm-walk { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+
+/* Sprechen */
+.dino.is-talking .dino-jaw { animation: dino-talk .24s ease-in-out 5; }
+.dino.is-talking:not(.is-walking) .dino-whistle { animation: dino-whistle 2.6s ease-in-out infinite; }
+@keyframes dino-talk { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(16deg); } }
+.dino.is-chomp .dino-jaw { transform: rotate(28deg); }
+
+/* Blinzeln */
 .dino.is-blink .dino-eye { transform: scaleY(.1); }
-.dino-brow { opacity: 0; transition: opacity .3s; }
-.dino.is-hungry .dino-brow { opacity: 1; }
-.dino.is-hungry .dino-pupil { transform: translate(1px, 1px); }
-.dino.is-happy .dino-svg { animation: dino-hop .5s ease-out 2; }
-@keyframes dino-hop { 40% { transform: translateY(-14%); } }
-.dino-head { transform-box: view-box; transform-origin: 90px 40px; }
-.dino.is-hungry:not(.is-walking) .dino-head { animation: dino-sniff 1.4s ease-in-out infinite; }
-@keyframes dino-sniff { 50% { transform: rotate(-5deg); } }
 
-/* Name unter den Füßen */
-.dino-tag {
-  position: absolute; left: 50%; bottom: calc(var(--ds) * -.12); transform: translateX(-50%);
-  padding: .05em .55em; border-radius: 999px; white-space: nowrap;
-  background: rgba(15, 20, 30, .8); color: #c9f0a8;
-  font: 800 calc(var(--ds) * .1)/1.3 "Barlow Condensed", "Arial Narrow", sans-serif; letter-spacing: .04em; text-transform: uppercase;
+/* Hunger: schnüffelt, Braue runter, Mütze verrutscht, alle paar Sekunden knurrt der Bauch */
+.dino.is-hungry .dino-brow { opacity: 1; }
+.dino.is-hungry .dino-pupil { transform: translate(1px, 1.5px); }
+.dino.is-hungry .dino-cap { transform: rotate(-6deg); }
+.dino.is-hungry:not(.is-walking):not(.is-climb) .dino-bodyg { animation: dino-growl 3s linear infinite; }
+.dino.is-hungry:not(.is-walking):not(.is-climb) .dino-head { animation: dino-sniff 2s ease-in-out infinite; }
+.dino.is-hungry:not(.is-walking) .dino-tail { animation-duration: 4s; }
+@keyframes dino-sniff { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-6deg) translateY(1px); } 30% { transform: rotate(-3deg); } 40% { transform: rotate(-7deg); } 55% { transform: rotate(0deg); } }
+@keyframes dino-growl { 0%, 84%, 100% { transform: translateX(0); } 86% { transform: translateX(-2px); } 88% { transform: translateX(2px); } 90% { transform: translateX(-2px); } 92% { transform: translateX(1px); } }
+
+/* Glücklich (gefüttert, gestreichelt): staucht sich, hüpft, Schwanz und Pfeife wedeln */
+.dino.is-happy .dino-bodyg { animation: dino-happy 1.2s ease-out 2; }
+.dino.is-happy .dino-tail { animation: dino-tail-walk .35s ease-in-out infinite; }
+.dino.is-happy .dino-arm { animation: dino-arm-walk .35s ease-in-out infinite; }
+.dino.is-happy .dino-whistle { animation: dino-whistle .35s ease-in-out infinite; }
+.dino.is-happy .dino-eye { transform: scaleY(.5); }
+@keyframes dino-happy { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.06, .94); } 40% { transform: translateY(-12px) scale(.97, 1.03); } 62% { transform: translateY(0) scale(1.05, .95); } 78% { transform: none; } }
+
+/* Klettern an einer Karte (Heißhunger) */
+.dino.is-climb .dino-shadow { opacity: 0; }
+.dino.is-climb .dino-bodyg { animation: dino-climb .5s ease-in-out infinite; }
+.dino.is-climb .dino-leg-a { animation: dino-climb-leg .5s ease-in-out infinite; }
+.dino.is-climb .dino-leg-b { animation: dino-climb-leg .5s ease-in-out -.25s infinite; }
+.dino.is-climb .dino-arm { animation: dino-climb-leg .5s ease-in-out -.12s infinite; }
+.dino.is-climb .dino-whistle { animation: dino-whistle .5s ease-in-out infinite; }
+.dino.is-climb .dino-tail { animation: dino-tail-walk .5s ease-in-out infinite; }
+.dino.is-climb .dino-pupil { transform: translate(2.5px, 1px); }
+.dino.is-climb .dino-tag { opacity: 0; }
+@keyframes dino-climb { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes dino-climb-leg { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-32deg) translateY(-4px); } }
+
+/* Angeknabberte Karte (im Overlay): Löcher per Maske (js/pet.js), wachsen nach dem Füttern zu */
+@property --bite { syntax: "<number>"; inherits: false; initial-value: 1; }
+.dino-bitten { --bite: 1; transition: --bite .8s cubic-bezier(.2, .8, .2, 1); }
+.dino-bitten.dino-regrowing { --bite: 0; }
+.dino-crumb {
+  position: absolute; z-index: 3; pointer-events: none; width: 7px; height: 7px; border-radius: 2px;
+  background: #1a2131; border: 1px solid rgba(255, 255, 255, .2);
+  animation: dino-crumb 1.4s ease-in both;
 }
-.dino.is-hungry .dino-tag::after { content: " · Hunger!"; color: #ffb3b3; }
+@keyframes dino-crumb { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), 90px) rotate(160deg); } }
+
+/* Name unter den Füßen, Punkt grün (satt) oder rot (Hunger) */
+.dino-tag {
+  position: absolute; left: 50%; bottom: calc(var(--ds) * -.09); transform: translateX(-50%);
+  display: flex; align-items: center; gap: .4em;
+  padding: .12em .6em; border-radius: 999px; white-space: nowrap;
+  background: rgba(15, 20, 30, .85); border: 1px solid rgba(255, 184, 28, .35); color: #c9f0a8;
+  font: 800 calc(var(--ds) * .088)/1.3 "Barlow Condensed", "Arial Narrow", sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  transition: opacity .3s;
+}
+.dino-tag i { width: .45em; height: .45em; border-radius: 50%; background: #5cc36b; }
+.dino.is-hungry .dino-tag i { background: #ff5a4e; }
+.dino.is-hungry .dino-tag b::after { content: " · Hunger!"; color: #ffb3b3; }
+.dino-tag b { font-weight: inherit; }
 
 /* Sprechblase */
 .dino-bubble {
@@ -91,41 +164,38 @@
 .dino-heart { bottom: calc(var(--ds) * .7); font-size: calc(var(--ds) * .18); animation: dino-heart 2s ease-out both; }
 @keyframes dino-heart { from { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: 1; } to { opacity: 0; transform: translateY(calc(var(--ds) * -.9)) scale(1.1); } }
 
-/* Schatten unter den Füßen */
-.dino::before {
-  content: ""; position: absolute; left: 22%; right: 18%; bottom: -1%; height: 7%; border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, .45), transparent 70%); z-index: -1;
-  transition: transform .2s, opacity .2s;
-}
-.dino.is-hop::before { animation: dino-shadow .52s ease-in-out; }
-@keyframes dino-shadow { 45% { transform: scale(.6); opacity: .5; } }
-
 /* Einlagen */
 .dino.is-hop .dino-svg { animation: dino-jump .52s cubic-bezier(.3, .7, .4, 1); }
+.dino.is-hop .dino-shadow { animation: dino-shadow-hop .52s ease-in-out; }
 @keyframes dino-jump {
   0% { transform: translateY(0) scale(1.08, .9); }
   35% { transform: translateY(-38%) scale(.95, 1.06); }
   70% { transform: translateY(0) scale(1.1, .88); }
   100% { transform: none; }
 }
+@keyframes dino-shadow-hop { 45% { transform: scale(.6); opacity: .2; } }
 .dino.is-roar .dino-jaw { transform: rotate(32deg); transition-duration: .08s; }
 .dino.is-roar .dino-head { transform: rotate(-12deg); transition: transform .15s; }
 .dino.is-roar .dino-svg { animation: dino-shake .12s linear infinite; }
 @keyframes dino-shake { 25% { transform: translateX(-1.5%); } 75% { transform: translateX(1.5%); } }
 .dino.is-look .dino-head { animation: dino-look 1.8s ease-in-out; }
-@keyframes dino-look { 20%, 40% { transform: rotate(-10deg); } 60%, 80% { transform: rotate(8deg) translateY(2px); } }
+@keyframes dino-look { 20%, 40% { transform: rotate(-8deg); } 60%, 80% { transform: rotate(6deg) translateY(2px); } }
 .dino.is-look .dino-pupil { animation: dino-pupil 1.8s ease-in-out; }
-@keyframes dino-pupil { 20%, 40% { transform: translate(2px, -1px); } 60%, 80% { transform: translate(-2px, 1px); } }
+@keyframes dino-pupil { 20%, 40% { transform: translate(2px, -1px); } 60%, 80% { transform: translate(-2.5px, 1px); } }
 .dino.is-dance .dino-svg { animation: dino-dance .4s ease-in-out infinite; transform-origin: 50% 100%; }
 @keyframes dino-dance { 0%, 100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(7deg) translateY(-6%); } }
-.dino.is-dance .dino-arm { animation: dino-wave .4s ease-in-out infinite; transform-box: fill-box; transform-origin: 0 0; }
+.dino.is-dance .dino-arm { animation: dino-wave .4s ease-in-out infinite; }
+.dino.is-dance .dino-whistle { animation: dino-whistle .4s ease-in-out infinite; }
 @keyframes dino-wave { 50% { transform: rotate(-35deg); } }
 
-/* Nickerchen */
-.dino.is-sleep .dino-eye { transform: scaleY(.1); }
-.dino.is-sleep .dino-svg { animation: dino-breathe 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
-.dino.is-sleep .dino-tail { animation-duration: 4s; }
-@keyframes dino-breathe { 50% { transform: scale(1.03, .97); } }
+/* Nickerchen: Mütze rutscht über die Augen, langsamer, tiefer Atem */
+.dino.is-sleep .dino-eye { transform: scaleY(.08); }
+.dino.is-sleep .dino-head { transform: rotate(10deg) translateY(3px); }
+.dino.is-sleep .dino-cap { transform: rotate(14deg) translate(2px, 5px); }
+.dino.is-sleep .dino-bodyg { animation: dino-sleep 3.2s ease-in-out infinite; }
+.dino.is-sleep .dino-tail { animation-duration: 6s; }
+.dino.is-sleep .dino-shadow { opacity: .4; }
+@keyframes dino-sleep { 0%, 100% { transform: translateY(5px) scale(1, 1); } 50% { transform: translateY(6px) scale(1.03, .96); } }
 .dino-zzz {
   --ds: 150px;
   position: absolute; bottom: calc(var(--ds) * .75); z-index: 3; pointer-events: none;
@@ -146,6 +216,9 @@
 @keyframes dino-dust { from { transform: scale(.4); opacity: .8; } to { transform: translate(calc(var(--ds) * -.08), calc(var(--ds) * -.08)) scale(1.8); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .dino.is-walking .dino-leg-a, .dino.is-walking .dino-leg-b, .dino.is-walking .dino-svg, .dino-tail,
-  .dino.is-hop .dino-svg, .dino.is-roar .dino-svg, .dino.is-dance .dino-svg, .dino.is-sleep .dino-svg { animation: none; }
+  .dino-svg *, .dino-svg { animation: none !important; }
+  .dino-pose, .dino-body { transition: none; }
 }
+
+/* Kachel auf der Webseite: kleiner Hüpfer beim Überfahren */
+@keyframes dino-hop { 40% { transform: translateY(-14%); } }

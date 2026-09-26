@@ -11,6 +11,10 @@ export const ALERT_KINDS = [
   { kind: 'bits', param: 'sbits', label: '💎 Bits' },
 ];
 
+// Eigene Alert-Sounds: so lang und so groß dürfen sie sein (wie in …_alert_sound_length.sql)
+export const ALERT_SOUND_SECONDS = 20;
+export const ALERT_SOUND_BYTES = 4 * 1024 * 1024;
+
 const TIERS = { 2000: 'Stufe 2', 3000: 'Stufe 3' };
 
 // Was die Karte bei einem Alert zeigt
@@ -69,16 +73,19 @@ export function alertSound(sfx, kind) {
 // Sound eines Alerts: "default" (eigener Klang je Art), "none", ein Sound vom
 // Soundboard (z. B. "gong"), ein eigener Alert-Sound als "a:<pfad>" oder ein
 // Sound aus „Ärgere den Dave“ als "c:<pfad>". urlFor bekommt den ganzen Wert.
+// Liefert ein Promise, das endet, wenn eine Sound-Datei fertig ist – so bleibt
+// der Alert stehen, solange sein Sound läuft.
 export function playAlertSound(sfx, kind, choice = 'default', urlFor = null) {
-  if (choice === 'none') return;
+  if (choice === 'none') return Promise.resolve();
   if (/^[ac]:/.test(choice)) {
     const url = urlFor?.(choice);
-    if (url) { sfx.playUrl(url); return; }
+    if (url) return sfx.playUrl(url, choice.startsWith('a:') ? ALERT_SOUND_SECONDS : undefined);
   } else if (BOARD.some((b) => b.id === choice)) {
     sfx.play(choice);
-    return;
+    return Promise.resolve();
   }
   alertSound(sfx, kind);
+  return Promise.resolve();
 }
 
 // Probe-Alerts zum Einrichten (test=1)

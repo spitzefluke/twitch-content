@@ -320,14 +320,14 @@ export class Sfx {
     board[id]?.();
   }
 
-  // Eigener Sound: höchstens MAX_SOUND_SECONDS lang
-  playUrl(url) {
+  // Eigener Sound: höchstens maxSeconds lang (Zuschauer-Sounds 10, Alert-Sounds 20 Sekunden)
+  playUrl(url, maxSeconds = MAX_SOUND_SECONDS) {
     return new Promise((resolve) => {
       if (!this.volume) { resolve(); return; }
       const audio = new Audio(url);
       audio.volume = Math.min(1, this.volume);
       const done = () => { clearTimeout(timer); audio.pause(); resolve(); };
-      const timer = setTimeout(done, MAX_SOUND_SECONDS * 1000);
+      const timer = setTimeout(done, maxSeconds * 1000);
       audio.addEventListener('ended', done, { once: true });
       audio.addEventListener('error', done, { once: true });
       audio.play().catch(done);
