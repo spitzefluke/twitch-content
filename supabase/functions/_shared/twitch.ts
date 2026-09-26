@@ -41,10 +41,10 @@ export async function getUserFromRequest(req: Request) {
 // ---------- Twitch API ----------
 // Dave: Kanalpunkte verwalten, Vorhersagen fürs Bingo starten und dem Bot erlauben,
 // in seinem Chat zu schreiben. Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
-// Dazu Follower und Abos lesen – für das Alert-Feld im OBS-Overlay.
+// Dazu Follower, Abos und Bits lesen – für die Alerts im OBS-Overlay.
 export const BROADCASTER_SCOPES = [
   "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
-  "moderator:read:followers", "channel:read:subscriptions",
+  "moderator:read:followers", "channel:read:subscriptions", "bits:read",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und Daves Chat lesen – für Befehle wie !füttern.

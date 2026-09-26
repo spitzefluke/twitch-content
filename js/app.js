@@ -4125,6 +4125,9 @@ function setupObs() {
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
+  $('#obs-alert-upload-btn').addEventListener('click', uploadAlertSound);
+  // Die Upload-Felder gehören nicht zu den OBS-Einstellungen
+  for (const type of ['input', 'change']) $('#obs-alert-upload').addEventListener(type, (e) => e.stopPropagation());
   $('#obs-alert-sounds').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-sound-test]');
     if (btn) testAlertSound(btn.dataset.soundTest);
@@ -4377,33 +4380,132 @@ function setSelect(el, value) {
 
 // ---------- Alert-Sounds ----------
 async function fillAlertSounds() {
-  const sounds = await state.api.getSounds().catch(() => []);
+  const [sounds, alertSounds] = await Promise.all([
+    state.api.getSounds().catch(() => []),
+    state.api.getAlertSounds().catch((err) => { console.warn('Alert-Sounds nicht geladen:', err); obs.alertSoundsError = germanError(err); return []; }),
+  ]);
   obs.sounds = sounds;
+  obs.alertSounds = alertSounds;
+  paintAlertSoundOptions();
+  renderAlertSoundList();
+}
+
+// Auswahl je Alert-Art: Standard, kein Ton, eigene Alert-Sounds, Soundboard, Sounds aus „Ärgere den Dave“
+function paintAlertSoundOptions() {
+  const group = (label, options) => {
+    const g = document.createElement('optgroup');
+    g.label = label;
+    g.append(...options);
+    return g;
+  };
   for (const k of ALERT_KINDS) {
     const el = $('#obs-options').elements[k.param];
     const current = el.value;
-    const board = document.createElement('optgroup');
-    board.label = 'Soundboard';
-    board.append(...BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id)));
-    const own = document.createElement('optgroup');
-    own.label = 'Hochgeladene Sounds';
-    own.append(...sounds.map((x) => new Option(x.name, `c:${x.path}`)));
-    el.replaceChildren(new Option('Standard', ''), new Option('Kein Ton', 'none'), board, ...(sounds.length ? [own] : []));
+    const groups = [
+      obs.alertSounds?.length && group('Eigene Alert-Sounds', obs.alertSounds.map((x) => new Option(`🔔 ${x.name}`, `a:${x.path}`))),
+      group('Soundboard', BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id))),
+      obs.sounds?.length && group('Aus „Ärgere den Dave“', obs.sounds.map((x) => new Option(x.name, `c:${x.path}`))),
+    ].filter(Boolean);
+    el.replaceChildren(new Option('Standard', ''), new Option('Kein Ton', 'none'), ...groups);
     el.options[0].defaultSelected = true;
     setSelect(el, current);
   }
 }
 
-async function testAlertSound(kind) {
+function renderAlertSoundList() {
+  const box = $('#obs-alert-upload');
+  box.hidden = !state.profile?.is_admin;
+  if (box.hidden) return;
+  const list = $('#obs-alert-sound-list');
+  if (!obs.alertSounds?.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = obs.alertSoundsError || 'Noch keine eigenen Alert-Sounds.';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...obs.alertSounds.map((x) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<button class="icon-btn icon-btn--sm" type="button" aria-label="Anhören">▶</button><span></span><small>${x.duration.toFixed(1)} s</small>
+      <button class="icon-btn icon-btn--sm" type="button" aria-label="Löschen">✕</button>`;
+    li.querySelector('span').textContent = x.name;
+    const [play, del] = li.querySelectorAll('button');
+    play.addEventListener('click', () => playPreview(`a:${x.path}`, 'follow'));
+    del.addEventListener('click', () => deleteAlertSound(x, del));
+    return li;
+  }));
+}
+
+async function uploadAlertSound() {
+  const msg = $('#obs-alert-upload-msg');
+  const fileEl = $('#obs-alert-file');
+  const nameEl = $('#obs-alert-name');
+  const btn = $('#obs-alert-upload-btn');
+  msg.classList.remove('is-ok');
+  const file = fileEl.files[0];
+  if (!file) { msg.textContent = 'Bitte zuerst eine Sound-Datei wählen.'; return; }
+  if (file.size > 1024 * 1024) { msg.textContent = 'Die Datei ist zu groß (höchstens 1 MB).'; return; }
+  const name = (nameEl.value.trim() || file.name.replace(/\.[^.]+$/, '')).slice(0, 30);
+  btn.disabled = true;
+  try {
+    const duration = await audioDuration(file);
+    if (duration > MAX_SOUND_SECONDS + 0.4) throw new Error(`Der Sound ist ${duration.toFixed(1)} Sekunden lang – höchstens ${MAX_SOUND_SECONDS} Sekunden.`);
+    const sound = await state.api.uploadAlertSound(file, name, Math.round(duration * 10) / 10);
+    obs.alertSounds = [sound, ...(obs.alertSounds ?? [])];
+    obs.alertSoundsError = '';
+    paintAlertSoundOptions();
+    renderAlertSoundList();
+    fileEl.value = '';
+    nameEl.value = '';
+    msg.textContent = `✓ „${sound.name}“ hochgeladen – oben bei einer Alert-Art auswählen.`;
+    msg.classList.add('is-ok');
+  } catch (err) {
+    console.error(err);
+    msg.textContent = germanError(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteAlertSound(sound, btn) {
+  if (!confirm(`Alert-Sound „${sound.name}“ löschen?`)) return;
+  btn.disabled = true;
+  try {
+    await state.api.deleteAlertSound(sound);
+    obs.alertSounds = obs.alertSounds.filter((x) => x.id !== sound.id);
+    // Wer den Sound benutzt hat, bekommt wieder den Standardklang
+    const f = $('#obs-options');
+    let changed = false;
+    for (const k of ALERT_KINDS) {
+      if (f.elements[k.param].value === `a:${sound.path}`) { f.elements[k.param].value = ''; changed = true; }
+    }
+    paintAlertSoundOptions();
+    renderAlertSoundList();
+    if (changed) updateObs();
+  } catch (err) {
+    btn.disabled = false;
+    $('#obs-alert-upload-msg').textContent = germanError(err);
+  }
+}
+
+function testAlertSound(kind) {
   const f = $('#obs-options');
-  const choice = f.elements[ALERT_KINDS.find((k) => k.kind === kind).param].value || 'default';
+  playPreview(f.elements[ALERT_KINDS.find((k) => k.kind === kind).param].value || 'default', kind);
+}
+
+// Einen Alert-Sound hier im Browser anhören (mit der Lautstärke aus dem Dialog)
+async function playPreview(choice, kind) {
+  const f = $('#obs-options');
   obs.sfx ??= new Sfx();
   const vol = Number(f.elements.vol.value);
   obs.sfx.volume = Number.isFinite(vol) ? vol / 100 : 1;
   if (!obs.sfx.volume) { toast('Die Lautstärke steht auf 0.', 'error'); return; }
   // Beim ersten Klick muss der Browser den Ton erst freigeben
   if (!obs.sfx.get()) await obs.sfx.ctx?.resume().catch(() => {});
-  playAlertSound(obs.sfx, kind, choice, (path) => obs.sounds?.find((x) => x.path === path)?.url);
+  playAlertSound(obs.sfx, kind, choice, (value) => {
+    const [prefix, path] = [value.slice(0, 1), value.slice(2)];
+    return (prefix === 'a' ? obs.alertSounds : obs.sounds)?.find((x) => x.path === path)?.url;
+  });
 }
 
 // ---------- Alerts (Follower, Abos) ----------
@@ -4420,13 +4522,13 @@ async function loadAlertsStatus() {
   }
   try {
     const s = await state.api.alertsStatus();
-    const missing = [!s.follows && 'Follower', !s.subs && 'Abos'].filter(Boolean);
+    const missing = [!s.follows && 'Follower', !s.subs && 'Abos', s.bits === false && 'Bits'].filter(Boolean);
     status.classList.toggle('is-warn', !s.connected || missing.length > 0);
     status.textContent = !s.connected
       ? 'Twitch ist noch nicht verbunden. Probe-Alerts gehen trotzdem – echte kommen, sobald Dave Twitch verbindet.'
       : missing.length
-        ? `Für echte Alerts (${missing.join(' und ')}) muss Dave Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
-        : 'Twitch meldet neue Follower, Abos und verschenkte Abos – sie erscheinen sofort im Alert-Feld.';
+        ? `Für echte Alerts (${missing.join(', ').replace(/, ([^,]*)$/, ' und $1')}) muss Dave Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
+        : 'Twitch meldet neue Follower, Abos, verschenkte Abos und Bits – sie erscheinen sofort bei den Alerts.';
   } catch (err) {
     status.classList.add('is-warn');
     status.textContent = germanError(err);
@@ -4707,7 +4809,7 @@ function renderTwitchDialog() {
         <li><span>Kanalpunkte-Belohnungen verwalten<small>Legt die Belohnung „Glücksrad“ an und markiert Einlösungen als erledigt.</small></span></li>
         <li><span>Kanalpunkte-Einlösungen lesen<small>Damit das Rad sich dreht, auch wenn diese Seite geschlossen ist.</small></span></li>
         <li><span>Chat-Bot zulassen<small>Der Stellwerk-Bot darf das Ergebnis jeder Drehung in den Chat schreiben. In Daves Namen schreibt die Seite nie.</small></span></li>
-        <li><span>Follower und Abos lesen<small>Für das Alert-Feld im OBS-Overlay: neue Follower, Abos und verschenkte Abos.</small></span></li>
+        <li><span>Follower, Abos und Bits lesen<small>Für die Alerts im OBS-Overlay: neue Follower, Abos, verschenkte Abos und Bits.</small></span></li>
       </ul>
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">

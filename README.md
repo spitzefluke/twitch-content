@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -144,7 +144,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
    - `channel:manage:redemptions` (Belohnung anlegen, Einlösungen erledigen)
    - `channel:read:redemptions` (Einlösungen empfangen)
    - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
-   - `moderator:read:followers` und `channel:read:subscriptions` (neue Follower und Abos fürs Alert-Feld im Overlay)
+   - `moderator:read:followers`, `channel:read:subscriptions` und `bits:read` (neue Follower, Abos und Bits für die Alerts im Overlay)
 4. Danach passiert automatisch Folgendes:
    - Die Belohnung „Glücksrad“ für 10.000 Kanalpunkte wird angelegt.
    - Der EventSub-Webhook wird registriert.
@@ -252,7 +252,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `asize=120` | Größe der Alerts in Prozent |
 | `recent=tl` / … | Karte „Letzter Follower & letztes Abo“ an (eigene Karte, dauerhaft sichtbar) |
 | `rsize=120` | Größe dieser Karte in Prozent |
-| `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `c:<pfad>` für einen hochgeladenen Sound oder `none`; ohne Angabe der Standardklang |
+| `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none`, `sbits=…` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `a:<pfad>` für einen eigenen Alert-Sound, `c:<pfad>` für einen Sound aus „Ärgere den Dave“ oder `none`; ohne Angabe der Standardklang |
 | `pet=1` | Daves Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
@@ -264,15 +264,17 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
 
-### Alerts für Follower und Abos
+### Alerts für Follower, Abos und Bits
 
 Zwei eigene Bausteine, im OBS-Dialog einzeln ein- und ausschaltbar, verschiebbar und in der Größe einstellbar:
-- **Alerts:** Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht) oder werden Abos verschenkt, springt die Karte mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Dazwischen ist sie unsichtbar. Kommen mehrere gleichzeitig, laufen sie nacheinander.
-- **Letzter Follower & Abo:** kleine Karte, die immer den letzten Follower und das letzte Abo zeigt.
+- **Alerts:** Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht), werden Abos verschenkt oder Bits gecheert (mit Anzahl und Nachricht), springt die Karte mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Dazwischen ist sie unsichtbar. Kommen mehrere gleichzeitig, laufen sie nacheinander.
+- **Letzter Follower & Abo:** kleine Karte, die immer den letzten Follower, das letzte Abo und die letzten Bits zeigt.
 
-Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein Sound vom Soundboard oder ein hochgeladener Sound aus „Ärgere den Dave“ – mit ▶ zum Anhören. Admins schicken unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
+Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Dave“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 1 MB und 10 Sekunden, bis zu 30 Stück). Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins schicken unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
 
 Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **Dave muss Twitch einmal neu verbinden** (oben rechts „Twitch“) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der OBS-Dialog zeigt, ob die Rechte schon da sind.
+
+**Bits und eigene Alert-Sounds:** Einmal nötig: Migration `20261009000000_alert_bits_sounds.sql` ausführen und **Dave verbindet Twitch noch einmal neu** – für Bits braucht die Seite das Recht `bits:read`.
 
 ### Laufband
 

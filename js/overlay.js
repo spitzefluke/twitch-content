@@ -40,8 +40,9 @@
 //   asize=100                  Größe der Alerts in Prozent (50 – 200)
 //   recent=tl|…                Karte „Letzter Follower / Letztes Abo“ an dieser Stelle; fehlt es, ist sie aus
 //   rsize=100                  Größe dieser Karte in Prozent (50 – 200)
-//   sfollow=… / ssub=… / sresub=… / sgift=…
-//                              Sound je Alert-Art: none, ein Soundboard-Sound (gong, whistle …) oder c:<pfad> (hochgeladen)
+//   sfollow=… / ssub=… / sresub=… / sgift=… / sbits=…
+//                              Sound je Alert-Art: none, ein Soundboard-Sound (gong, whistle …),
+//                              a:<pfad> (eigener Alert-Sound) oder c:<pfad> (Sound aus „Ärgere den Dave“)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -282,6 +283,7 @@ async function connect() {
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Würfe fehlgeschlagen'); });
     },
     soundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
+    alertSoundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`,
     bingoCard: async () => (await rows(sb.from('bingo_card').select('*').eq('id', 1).maybeSingle())) ?? null,
     bingoItems: () => rows(sb.from('bingo_items').select('*')),
     onBingo(cb) {
@@ -386,6 +388,7 @@ function demoSource() {
       });
     },
     soundUrl: (path) => read('sounds', []).find((x) => x.path === path)?.url ?? '',
+    alertSoundUrl: (path) => read('alert_sounds', []).find((x) => x.path === path)?.url ?? '',
     bingoCard: async () => read('bingo_card', null),
     bingoItems: async () => read('bingo_items', []),
     onBingo(cb) {
@@ -1161,8 +1164,9 @@ async function setupAlerts(source) {
 
   const setLast = (a) => {
     if (a.test || !$('ov-recent')) return;
-    const el = a.kind === 'follow' ? $('ov-al-follow') : $('ov-al-sub');
-    el.textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)` : a.user_name;
+    const el = a.kind === 'follow' ? $('ov-al-follow') : a.kind === 'bits' ? $('ov-al-bits') : $('ov-al-sub');
+    el.textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)`
+      : a.kind === 'bits' ? `${a.user_name} (${Number(a.amount).toLocaleString('de-DE')})` : a.user_name;
     const row = el.parentElement;
     row.classList.remove('is-new');
     void row.offsetWidth;
@@ -1187,7 +1191,8 @@ async function setupAlerts(source) {
       void card.offsetWidth;
       card.classList.add('is-alert');
       burst(fx, a.kind);
-      playAlertSound(sfx, a.kind, opt.asound[a.kind], source.soundUrl);
+      playAlertSound(sfx, a.kind, opt.asound[a.kind],
+        (choice) => (choice.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(choice.slice(2)));
       await wait(ALERT_HOLD_MS);
       card.classList.remove('is-alert');
       setLast(a);
@@ -1219,7 +1224,7 @@ async function setupAlerts(source) {
 
   if (opt.test && !opt.edit && card) {
     let n = 0;
-    const kinds = ['follow', 'sub', 'resub', 'gift'];
+    const kinds = ALERT_KINDS.map((k) => k.kind);
     const fake = () => { if (!playing) enqueue(sampleAlert(kinds[n % kinds.length], n++)); };
     setTimeout(fake, 2000);
     setInterval(fake, 15000);

@@ -34,6 +34,7 @@ const ERRORS = [
   [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.shop_lobby_by_(code|id)/i, 'In der Datenbank fehlt eine Sicherheits-Anpassung für den Kisten-Shop: supabase/migrations/20261008000000_shop_lobby_access.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
+  [/relation "public\.alert_sounds"|could not find the table '?public\.alert_sounds|stream_alerts_kind_check/i, 'In der Datenbank fehlen Bits und eigene Alert-Sounds: supabase/migrations/20261009000000_alert_bits_sounds.sql im SQL Editor ausführen.'],
   [/relation "public\.stream_alerts"|could not find the (table|function) '?public\.(stream_alerts|alert_test|alerts_status)/i, 'In der Datenbank fehlen die Alerts: supabase/migrations/20261005000000_stream_alerts.sql im SQL Editor ausführen.'],
   [/column .*bonus|'bonus' column/i, 'In der Datenbank fehlt das zweite Glücksrad: supabase/migrations/20261007000000_wheel_bonus.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.wheel_variants_save/i, 'In der Datenbank fehlt das Bearbeiten des Glücksrads: supabase/migrations/20261006000000_wheel_edit.sql im SQL Editor ausführen.'],
@@ -479,6 +480,40 @@ async function createSupabaseApi() {
     },
     async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
     async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
+    // Eigene Alert-Sounds (nur Admins laden hoch), Bucket "alert-sounds"
+    alertSoundUrl(path) {
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`;
+    },
+    async getAlertSounds() {
+      const rows = unwrap(await sb.from('alert_sounds').select('id, name, path, duration, created_at').order('created_at', { ascending: false }));
+      return rows.map((r) => ({ ...r, url: this.alertSoundUrl(r.path) }));
+    },
+    async uploadAlertSound(file, name, duration) {
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? 'mp3').toLowerCase();
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from('alert-sounds').upload(path, file, {
+        contentType: file.type || 'audio/mpeg',
+        cacheControl: '31536000',
+        upsert: false,
+      });
+      // „Bucket not found“ hieße sonst „Ärgere den Dave fehlt“
+      if (up.error && /bucket not found/i.test(up.error.message)) throw new Error('relation "public.alert_sounds" does not exist');
+      unwrap(up);
+      const { data, error } = await sb.from('alert_sounds')
+        .insert({ name, path, duration })
+        .select('id, name, path, duration, created_at')
+        .single();
+      if (error) {
+        await sb.storage.from('alert-sounds').remove([path]).catch(() => {});
+        throw error;
+      }
+      return { ...data, url: this.alertSoundUrl(path) };
+    },
+    async deleteAlertSound(sound) {
+      unwrap(await sb.from('alert_sounds').delete().eq('id', sound.id));
+      const { error } = await sb.storage.from('alert-sounds').remove([sound.path]);
+      if (error) console.warn('Alert-Sound-Datei nicht gelöscht:', error);
+    },
     async twitchStatus() {
       return unwrap(await sb.rpc('twitch_status'));
     },
@@ -1261,19 +1296,43 @@ function createLocalApi() {
     onAlerts(cb) { (demoListeners.stream_alerts ??= []).push(cb); },
     async testAlert(kind) {
       await requireAdmin();
-      if (!['follow', 'sub', 'resub', 'gift'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
+      if (!['follow', 'sub', 'resub', 'gift', 'bits'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
       const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina', 'Gleis9dreiviertel'];
       const row = {
         id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: '1000',
         months: kind === 'resub' ? 3 + randomInt(20) : 0,
-        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : 0,
-        message: kind === 'resub' ? 'Test-Nachricht: Weiter so, Dave!' : '', test: true,
+        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : 0,
+        message: kind === 'resub' ? 'Test-Nachricht: Weiter so, Dave!' : kind === 'bits' ? 'Test-Cheer: Volle Fahrt voraus!' : '', test: true,
       };
       store.set('stream_alerts', [row, ...store.get('stream_alerts', [])].slice(0, 30));
       emitDemo('stream_alerts', row);
       return row;
     },
-    async alertsStatus() { return { connected: false, follows: false, subs: false }; },
+    async alertsStatus() { return { connected: false, follows: false, subs: false, bits: false }; },
+    // Demo: Die Datei landet als data:-URL im localStorage – höchstens 400 KB
+    async getAlertSounds() { return store.get('alert_sounds', []); },
+    async uploadAlertSound(file, name, duration) {
+      await requireAdmin();
+      if (file.size > 400 * 1024) throw new Error('Im Demo-Modus höchstens 400 KB (live: 1 MB).');
+      const url = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
+        reader.readAsDataURL(file);
+      });
+      const id = `demo-${nextId++}`;
+      const sound = { id, name, path: `${id}.mp3`, duration, created_at: new Date().toISOString(), url };
+      try {
+        store.set('alert_sounds', [sound, ...store.get('alert_sounds', [])]);
+      } catch {
+        throw new Error('Im Browser ist kein Platz mehr – lösch einen Sound.');
+      }
+      return sound;
+    },
+    async deleteAlertSound(sound) {
+      await requireAdmin();
+      store.set('alert_sounds', store.get('alert_sounds', []).filter((x) => x.id !== sound.id));
+    },
     // Demo: Kosten fürs Glücksrad lassen sich zum Ausprobieren einstellen
     async twitchStatus() { return { connected: false, reward_cost: store.get('wheel_cost', 10000) }; },
     async twitchConnect() {

@@ -1,7 +1,7 @@
-// Alerts im OBS-Overlay: neue Follower, Abos, Resubs und verschenkte Abos.
+// Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos und Bits.
 // Twitch meldet sie über EventSub an twitch-eventsub, hier landen sie in
 // stream_alerts – das Overlay liest die Tabelle per Realtime (auch ohne Login).
-// Dave braucht dafür die Scopes moderator:read:followers und channel:read:subscriptions
+// Dave braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
 // (einmal Twitch neu verbinden).
 import { db, getAppToken, helix } from "./twitch.ts";
 
@@ -18,6 +18,7 @@ export const ALERT_TYPES: AlertType[] = [
   { type: "channel.subscribe", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "channel.subscription.message", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "channel.subscription.gift", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.cheer", version: "1", scope: "bits:read", condition: (id) => ({ broadcaster_user_id: id }) },
 ];
 export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === type);
 
@@ -59,8 +60,12 @@ type AlertEvent = {
   tier?: string;
   total?: number;
   cumulative_months?: number;
-  message?: { text?: string };
+  message?: { text?: string } | string;
+  bits?: number;
 };
+
+// Resub schickt {text}, Cheer einen einfachen Text
+const messageText = (event: AlertEvent) => (typeof event.message === "string" ? event.message : event.message?.text ?? "");
 
 // Ein Ereignis von Twitch → eine Zeile in stream_alerts.
 // messageId (Twitch-Eventsub-Message-Id) verhindert Doppelte, wenn Twitch erneut zustellt.
@@ -73,11 +78,14 @@ export async function handleAlert(type: string, event: AlertEvent, messageId: st
   if (type === "channel.subscription.message") {
     row = {
       kind: "resub", user_name: name, tier: event.tier ?? "",
-      months: event.cumulative_months ?? 0, message: (event.message?.text ?? "").slice(0, 300),
+      months: event.cumulative_months ?? 0, message: messageText(event).slice(0, 300),
     };
   }
   if (type === "channel.subscription.gift") {
     row = { kind: "gift", user_name: event.is_anonymous ? "Anonym" : name, tier: event.tier ?? "", amount: event.total ?? 1 };
+  }
+  if (type === "channel.cheer") {
+    row = { kind: "bits", user_name: event.is_anonymous ? "Anonym" : name, amount: event.bits ?? 0, message: messageText(event).slice(0, 300) };
   }
   if (!row) return;
   const { error } = await db.from("stream_alerts").upsert({ ...row, event_id: messageId }, { onConflict: "event_id", ignoreDuplicates: true });
