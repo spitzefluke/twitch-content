@@ -29,6 +29,10 @@ supabase/functions/
 
 GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne geöffnete Seite funktionieren, braucht Twitch einen Server, den es anrufen kann. Diese Rolle übernehmen die **Supabase Edge Functions** (der kostenlose Tarif reicht). Supabase kümmert sich außerdem um Accounts und die Datenbank.
 
+### Versionsnummern (Cache)
+
+GitHub Pages lässt JS- und CSS-Dateien bis zu 10 Minuten im Browser-Cache. Damit nach einem Update nie alte und neue Dateien gemischt werden (Fehler wie „does not provide an export named …“), hängt `tools/stamp-versions.mjs` an jede Datei `?v=<Hash ihres Inhalts>` – für die JS-Module über eine Import-Map in `index.html`, `overlay.html` und `admin.html`. Nach Änderungen an `js/` oder `css/` einmal `node tools/stamp-versions.mjs` ausführen; vergisst man es, erledigt das die GitHub Action „Versionsnummern aktualisieren“ nach dem Push auf `main`. Das OBS-Overlay schaut alle 3 Minuten nach, ob es eine neue Version gibt, und lädt sich dann von selbst neu – OBS muss dafür nicht angefasst werden.
+
 ## Demo-Modus
 
 Solange in `js/config.js` nichts eingetragen ist, läuft die Seite im Demo-Modus. Accounts und Kacheln werden dann nur im Browser gespeichert, und der erste registrierte Account darf Kacheln bearbeiten. Mit „Kanalpunkte-Einlösung simulieren“ im Glücksrad lässt sich testen, wie eine Twitch-Einlösung aussieht.

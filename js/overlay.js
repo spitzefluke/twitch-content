@@ -249,6 +249,24 @@ async function start() {
   if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
   if (LIVE) watchOverlayConfig(source);
+  if (!opt.edit) watchForUpdate();
+}
+
+// Neue Version der Seite? OBS behält Dateien sehr lange im Cache – deshalb schaut das
+// Overlay alle paar Minuten in overlay.html nach der Versionsnummer von overlay.js
+// (tools/stamp-versions.mjs) und lädt sich neu, sobald sie sich geändert hat.
+const UPDATE_CHECK_MS = 3 * 60 * 1000;
+function watchForUpdate() {
+  const mine = new URL(import.meta.url).searchParams.get('v');
+  if (!mine) return; // ohne Versionsnummer (lokal) nichts zu vergleichen
+  setInterval(async () => {
+    try {
+      const res = await fetch(`overlay.html?check=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const latest = /\.\/js\/overlay\.js\?v=([0-9a-f]+)/.exec(await res.text())?.[1];
+      if (latest && latest !== mine) location.reload();
+    } catch { /* offline: später noch mal */ }
+  }, UPDATE_CHECK_MS);
 }
 
 // Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
