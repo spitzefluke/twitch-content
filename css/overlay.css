@@ -282,6 +282,7 @@ p { margin: 0; }
 .is-edit [data-drag] { cursor: grab; touch-action: none; }
 .is-edit [data-drag]:hover { outline: 4px dashed rgba(255, 255, 255, .75); outline-offset: 6px; }
 .is-edit .is-dragging { cursor: grabbing; outline: 4px solid #ffb81c; outline-offset: 6px; }
+.is-edit .is-selected:not(.is-dragging) { outline: 4px dashed #ffb81c; outline-offset: 6px; }
 .is-edit .ov-spin, .is-edit .ov-next, .is-edit .ov-bingo { animation: none; transition: none; }
 .ov-cam-frame {
   position: fixed; z-index: 4; box-sizing: border-box;

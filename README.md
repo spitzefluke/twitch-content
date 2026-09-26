@@ -208,11 +208,11 @@ Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mi
 
 ## OBS-Overlay
 
-Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Die OBS-Einstellungen öffnen sich in einem **eigenen Fenster** (`index.html?obs`), nicht als Pop-up; „← Zur Webseite“ schließt es wieder. **Am Anfang ist alles aus** – nur das Laufband läuft immer. Unten einschalten, was im Stream zu sehen sein soll. Am einfachsten auf dem PC, auf dem OBS läuft:
+Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Die OBS-Einstellungen öffnen sich in einem **eigenen Fenster** (`index.html?obs`), nicht als Pop-up; „← Zur Webseite“ schließt es wieder. **Am Anfang ist alles aus** – nur das Laufband läuft immer. Aufbau: **links die Vorschau** mit Adresse und OBS-Verbindung, **rechts die Ebenen**, gruppiert nach „Immer im Bild“, „Bei Aktion“, „Info“ und „Spiele“. Jede Ebene hat einen Schalter und klappt auf Klick ihre Einstellungen auf (Größe, Platz mit „Zurück an den Standardplatz“, dazu z. B. beim Glücksrad „Zeigen bei“ und Ergebnisdauer, beim Dino „Läuft auf“ und das Klettern). Ein Klick auf eine Karte in der Vorschau öffnet ihre Ebene, die offene Ebene ist in der Vorschau markiert. Weitere Reiter: **„Aussehen & Ton“** (Akzentfarbe, Kartenhintergrund, Abstand, Lautstärke, Alert-Sounds) und **„Texte & Tests“** (Laufband-Texte, Probe-Alerts, „Dino sagt im Stream“, Admin-Freigabe). Die Kopfzeile zeigt, ob OBS verbunden ist und ob live gespeichert wird. Am einfachsten auf dem PC, auf dem OBS läuft:
 
 1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
 2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt Daves Kamera in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
-3. **Karten verschieben:** Glücksrad, nächste Abfahrt und Bingo in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Darunter: was zu sehen ist, Größen, Lautstärke – der Rest unter „Mehr Einstellungen“.
+3. **Karten verschieben:** Karten in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Rechts bei den Ebenen: was zu sehen ist, Größen und die Einstellungen jeder Karte.
 4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„Stellwerk-Overlay“** an (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
 
 **Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **Dave** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann Dave mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
@@ -255,6 +255,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none`, `sbits=…` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `a:<pfad>` für einen eigenen Alert-Sound, `c:<pfad>` für einen Sound aus „Ärgere den Dave“ oder `none`; ohne Angabe der Standardklang |
 | `pet=1` | Daves Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
+| `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
+| `pclimb=0` | Dino klettert bei Heißhunger nicht an Karten hoch |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
 | `tstyle=bar` / `neon` / `board` | Design des Laufbands: Laufband, Neon oder Bahnhofs-Anzeige (gelbe LED-Schrift) |
 | `tsize=120` / `tspeed=70` | Größe in Prozent / Tempo in Pixeln pro Sekunde |
@@ -330,13 +332,15 @@ Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer 
 
 ## Daves Dino
 
-Ein kleiner Dino (Standardname „Rexi“) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
+Ein kleiner Dino (Standardname „Rexi“, der Schaffner-Dino mit Mütze und Pfeife) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf – oder mit „Läuft auf: dem Bildrand“ ganz unten) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
 
 **Füttern im Stream:** Zuschauer schreiben den Chat-Befehl (Standard **`!füttern`**, im Dialog änderbar) in Daves Twitch-Chat – höchstens alle 10 Minuten pro Person. Dann fällt Futter vom Himmel und der Dino bedankt sich mit Namen. Dafür liest der Chat-Bot Daves Chat mit (Berechtigung `user:read:chat`): **Den Chat-Bot im Admin-Bereich einmal neu verbinden**, danach richtet die Seite das Chat-Abo selbst ein (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog).
 
 **Auf der Webseite** füttern und streicheln Zuschauer den Dino nur für sich – im Stream passiert dabei nichts. Admins können beides: mit **„Auch im Stream“** (Standard an) erscheint es in OBS, ohne nur auf der Seite.
 
 Wird er eine Weile nicht gefüttert (Standard 45 Minuten), bekommt er **Hunger**: Er meckert und **knabbert an den Zuschauern** – ein Namensschild von jemandem, der zuletzt gefüttert, geworfen oder gedreht hat, fällt ins Bild, der Dino läuft hin und beißt hinein.
+
+**Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) klettert Rexi im Overlay an einer sichtbaren Karte hoch und beißt Stücke aus dem Rand – die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert, klettert er runter, frisst und der Rand wächst wieder zu. Abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`).
 
 Admins stellen im Dialog Name, Hunger-Zeit und die Sprüche ein und können den Dino über **Dino sagt im Stream** sofort etwas sagen lassen.
 
