@@ -31,7 +31,7 @@ GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne
 
 ### Versionsnummern (Cache)
 
-GitHub Pages lässt JS- und CSS-Dateien bis zu 10 Minuten im Browser-Cache. Damit nach einem Update nie alte und neue Dateien gemischt werden (Fehler wie „does not provide an export named …“), hängt `tools/stamp-versions.mjs` an jede Datei `?v=<Hash ihres Inhalts>` – für die JS-Module über eine Import-Map in `index.html`, `overlay.html` und `admin.html`. Nach Änderungen an `js/` oder `css/` einmal `node tools/stamp-versions.mjs` ausführen; vergisst man es, erledigt das die GitHub Action „Versionsnummern aktualisieren“ nach dem Push auf `main`.
+GitHub Pages lässt JS- und CSS-Dateien bis zu 10 Minuten im Browser-Cache. Damit nach einem Update nie alte und neue Dateien gemischt werden (Fehler wie „does not provide an export named …“), hängt `tools/stamp-versions.mjs` an jede Datei `?v=<Hash ihres Inhalts>` – für die JS-Module über eine Import-Map in `index.html`, `overlay.html` und `admin.html`. Nach Änderungen an `js/` oder `css/` einmal `node tools/stamp-versions.mjs` ausführen; vergisst man es, erledigt das die GitHub Action „Versionsnummern aktualisieren“ nach dem Push auf `main`. Das OBS-Overlay schaut alle 3 Minuten nach, ob es eine neue Version gibt, und lädt sich dann von selbst neu – OBS muss dafür nicht angefasst werden.
 
 ## Demo-Modus
 
