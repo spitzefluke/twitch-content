@@ -887,6 +887,7 @@ function setupDialogs() {
   setupObs();
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
+  setupWheelEdit();
   $('#tile-edit-btn').addEventListener('click', () => showTileForm(true));
   $('#tile-cancel-btn').addEventListener('click', () => showTileForm(false));
   $('#tile-form').addEventListener('submit', saveTile);
@@ -965,6 +966,7 @@ function renderWheelPanel() {
   $('#announce-wrap').hidden = !(profile?.is_admin && twitch.connected && twitch.bot_connected);
   $('#announce-text').textContent = `Ergebnis als ${twitch.bot_name ?? 'Chat-Bot'} im Chat posten`;
   $('#simulate-btn').hidden = !state.api.demo;
+  $('#wheel-edit-btn').hidden = !profile?.is_admin;
 
   const info = $('#reward-info');
   if (twitch.connected && twitch.reward_active) {
@@ -977,6 +979,293 @@ function renderWheelPanel() {
 
   renderHistory();
   selectVariant(state.variantId);
+}
+
+// Hat ein Admin das Rad inzwischen geändert, passt die geladene Variante nicht
+// mehr zur Drehung – dann frisch laden, damit das Rad auf dem richtigen Feld hält.
+async function freshVariantFor(spin) {
+  const v = state.variants.find((x) => x.id === spin.variant_id);
+  if (v && v.segments[spin.segment_index]?.label === spin.result) return;
+  const variants = await state.api.getVariants().catch(() => null);
+  if (!variants?.length) return;
+  state.variants = variants;
+  if (!variants.some((x) => x.id === state.variantId)) state.variantId = variants[0].id;
+  renderWheelPanel();
+  renderHero();
+  if (state.spinning) setVariantInputsDisabled(true);
+}
+
+// ============================================================
+// Glücksrad bearbeiten (Admins): Kosten auf Twitch, Varianten, Ergebnisse
+// ============================================================
+const WE_COLORS = ['#ffb81c', '#3ddc84', '#9146ff', '#ff5a4e', '#35c7ff', '#ff7ac8', '#c6ff4d', '#ff9f43'];
+const WE_MAX_VARIANTS = 8;
+const WE_MIN_SEGS = 2;
+const WE_MAX_SEGS = 16;
+
+function setupWheelEdit() {
+  const we = state.wheelEdit = { list: [], sel: 0, dirty: false, preview: null };
+  $('#wheel-edit-btn').addEventListener('click', openWheelEdit);
+  $('#wheel-cost-form').addEventListener('submit', saveWheelCost);
+  $('#we-name').addEventListener('input', (e) => weChange({ name: e.target.value }));
+  $('#we-desc').addEventListener('input', (e) => weChange({ description: e.target.value }));
+  $('#we-color').addEventListener('input', (e) => weChange({ color: e.target.value }));
+  $('#we-add-seg').addEventListener('click', () => {
+    const v = we.list[we.sel];
+    if (v.segments.length >= WE_MAX_SEGS) return;
+    v.segments.push({ label: '', detail: '' });
+    weTouched();
+    renderWeSegments();
+    $('#we-segs').lastElementChild?.querySelector('.we-label').focus();
+  });
+  $('#we-del-variant').addEventListener('click', () => {
+    const v = we.list[we.sel];
+    if (we.list.length <= 1) return;
+    if (!confirm(`Variante „${v.name || 'ohne Namen'}“ wirklich löschen? Das passiert erst beim Speichern.`)) return;
+    we.list.splice(we.sel, 1);
+    we.sel = Math.max(0, we.sel - 1);
+    weTouched();
+    renderWheelEdit();
+  });
+  $('#we-segs').addEventListener('input', (e) => {
+    const row = e.target.closest('li');
+    const seg = we.list[we.sel].segments[Number(row?.dataset.i)];
+    if (!seg) return;
+    if (e.target.classList.contains('we-label')) seg.label = e.target.value;
+    if (e.target.classList.contains('we-detail')) seg.detail = e.target.value;
+    weTouched();
+    drawWePreview();
+  });
+  $('#we-segs').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const segs = we.list[we.sel].segments;
+    const i = Number(btn.closest('li').dataset.i);
+    const to = btn.dataset.act === 'up' ? i - 1 : i + 1;
+    if (btn.dataset.act === 'del') {
+      if (segs.length <= WE_MIN_SEGS) return;
+      segs.splice(i, 1);
+    } else {
+      if (to < 0 || to >= segs.length) return;
+      [segs[i], segs[to]] = [segs[to], segs[i]];
+    }
+    weTouched();
+    renderWeSegments();
+    const focus = btn.dataset.act === 'del' ? null : $('#we-segs').children[to]?.querySelector(`[data-act="${btn.dataset.act}"]`);
+    (focus && !focus.disabled ? focus : null)?.focus();
+  });
+  $('#we-reset').addEventListener('click', () => {
+    if (we.dirty && !confirm('Alle ungespeicherten Änderungen verwerfen?')) return;
+    startWheelEdit();
+  });
+  $('#we-save').addEventListener('click', saveWheelVariants);
+}
+
+function openWheelEdit() {
+  // Ungespeicherte Änderungen bleiben beim Schließen erhalten
+  if (!state.wheelEdit.dirty) startWheelEdit();
+  else renderWheelEdit();
+  renderWheelCost();
+  $('#wheel-edit-dialog').showModal();
+  const we = state.wheelEdit;
+  if (!we.preview) we.preview = new Wheel($('#we-canvas'));
+  we.preview.resize();
+  drawWePreview();
+}
+
+function startWheelEdit() {
+  const we = state.wheelEdit;
+  we.list = structuredClone(state.variants);
+  we.sel = Math.max(0, we.list.findIndex((v) => v.id === state.variantId));
+  we.dirty = false;
+  $('#we-msg').textContent = '';
+  renderWheelEdit();
+}
+
+function weTouched() {
+  state.wheelEdit.dirty = true;
+  $('#we-msg').textContent = '';
+}
+
+function weChange(patch) {
+  const we = state.wheelEdit;
+  Object.assign(we.list[we.sel], patch);
+  weTouched();
+  renderWeTabs();
+  drawWePreview();
+}
+
+function renderWheelEdit() {
+  const we = state.wheelEdit;
+  const v = we.list[we.sel];
+  renderWeTabs();
+  $('#we-name').value = v.name;
+  $('#we-desc').value = v.description ?? '';
+  $('#we-color').value = v.color;
+  $('#we-del-variant').disabled = we.list.length <= 1;
+  renderWeSegments();
+}
+
+function renderWeTabs() {
+  const we = state.wheelEdit;
+  const tabs = we.list.map((v, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `we-tab${i === we.sel ? ' is-active' : ''}`;
+    b.style.setProperty('--c', v.color);
+    b.setAttribute('aria-pressed', String(i === we.sel));
+    b.innerHTML = '<span class="swatch"></span><span class="we-tab-name"></span>';
+    b.querySelector('.we-tab-name').textContent = v.name.trim() || 'Ohne Namen';
+    b.addEventListener('click', () => { we.sel = i; renderWheelEdit(); drawWePreview(); });
+    return b;
+  });
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'we-tab we-tab--add';
+  add.textContent = '+ Variante';
+  add.disabled = we.list.length >= WE_MAX_VARIANTS;
+  add.title = add.disabled ? `Höchstens ${WE_MAX_VARIANTS} Varianten` : 'Neue Variante anlegen';
+  add.addEventListener('click', () => {
+    const used = new Set(we.list.map((x) => x.color));
+    we.list.push({
+      id: '', name: 'Neue Variante', description: '',
+      color: WE_COLORS.find((c) => !used.has(c)) ?? WE_COLORS[we.list.length % WE_COLORS.length],
+      segments: [{ label: '', detail: '' }, { label: '', detail: '' }],
+    });
+    we.sel = we.list.length - 1;
+    weTouched();
+    renderWheelEdit();
+    drawWePreview();
+    $('#we-name').select();
+  });
+  $('#we-tabs').replaceChildren(...tabs, add);
+}
+
+function renderWeSegments() {
+  const we = state.wheelEdit;
+  const segs = we.list[we.sel].segments;
+  $('#we-segs').replaceChildren(...segs.map((seg, i) => {
+    const li = document.createElement('li');
+    li.dataset.i = i;
+    li.innerHTML = `<span class="we-num">${i + 1}</span>
+      <div class="we-seg-fields">
+        <input class="we-label" maxlength="32" placeholder="Titel auf dem Rad" aria-label="Titel von Ergebnis ${i + 1}">
+        <input class="we-detail" maxlength="200" placeholder="Was gilt dann? (Erklärung)" aria-label="Erklärung von Ergebnis ${i + 1}">
+      </div>
+      <div class="we-seg-btns">
+        <button type="button" class="icon-btn icon-btn--sm" data-act="up" aria-label="Nach oben">↑</button>
+        <button type="button" class="icon-btn icon-btn--sm" data-act="down" aria-label="Nach unten">↓</button>
+        <button type="button" class="icon-btn icon-btn--sm" data-act="del" aria-label="Ergebnis ${i + 1} löschen">✕</button>
+      </div>`;
+    li.querySelector('.we-label').value = seg.label;
+    li.querySelector('.we-detail').value = seg.detail ?? '';
+    li.querySelector('[data-act="up"]').disabled = i === 0;
+    li.querySelector('[data-act="down"]').disabled = i === segs.length - 1;
+    li.querySelector('[data-act="del"]').disabled = segs.length <= WE_MIN_SEGS;
+    return li;
+  }));
+  $('#we-count').textContent = `${segs.length} von höchstens ${WE_MAX_SEGS}`;
+  $('#we-add-seg').disabled = segs.length >= WE_MAX_SEGS;
+  drawWePreview();
+}
+
+function drawWePreview() {
+  const we = state.wheelEdit;
+  const v = we.list[we.sel];
+  if (!we.preview || !v) return;
+  we.preview.setVariant({ color: v.color, segments: v.segments.map((s, i) => ({ ...s, label: s.label.trim() || `Ergebnis ${i + 1}` })) });
+}
+
+// Dieselben Regeln wie in der Datenbank – hier nur mit genauer Stelle
+function weProblem(list) {
+  for (const [vi, v] of list.entries()) {
+    const where = `„${v.name.trim() || `Variante ${vi + 1}`}“`;
+    if (!v.name.trim()) return [vi, `Variante ${vi + 1} braucht einen Namen.`];
+    const empty = v.segments.findIndex((s) => !s.label.trim());
+    if (empty >= 0) return [vi, `${where}: Ergebnis ${empty + 1} braucht einen Titel.`];
+  }
+  return null;
+}
+
+async function saveWheelVariants() {
+  const we = state.wheelEdit;
+  const msg = $('#we-msg');
+  msg.classList.remove('is-ok');
+  if (state.spinning) { msg.textContent = 'Das Rad dreht sich gerade – kurz warten, dann speichern.'; return; }
+  const problem = weProblem(we.list);
+  if (problem) {
+    we.sel = problem[0];
+    renderWheelEdit();
+    msg.textContent = problem[1];
+    return;
+  }
+  const btn = $('#we-save');
+  btn.disabled = true;
+  try {
+    const saved = await state.api.saveVariants(we.list.map((v) => ({
+      id: v.id || null, name: v.name.trim(), description: (v.description ?? '').trim(), color: v.color,
+      segments: v.segments.map((s) => ({ label: s.label.trim(), detail: (s.detail ?? '').trim() })),
+    })));
+    const selId = saved[we.sel]?.id;
+    state.variants = saved;
+    if (!saved.some((x) => x.id === state.variantId)) state.variantId = saved[0].id;
+    we.list = structuredClone(saved);
+    we.sel = Math.max(0, saved.findIndex((x) => x.id === selId));
+    we.dirty = false;
+    renderWheelEdit();
+    renderWheelPanel();
+    renderHero();
+    msg.textContent = '✓ Gespeichert – das Rad dreht ab jetzt mit den neuen Ergebnissen.';
+    msg.classList.add('is-ok');
+  } catch (err) {
+    console.error(err);
+    msg.textContent = germanError(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderWheelCost() {
+  const { twitch, api } = state;
+  const form = $('#wheel-cost-form');
+  const canSave = api.demo || twitch.connected;
+  form.cost.value = Number(twitch.reward_cost ?? 10000);
+  form.cost.disabled = !canSave;
+  form.querySelector('button').disabled = !canSave;
+  formMsg(form, '');
+  $('#wheel-cost-hint').textContent = api.demo
+    ? 'Demo: Die Kosten werden nur hier im Browser gespeichert.'
+    : twitch.connected
+      ? `So viele Kanalpunkte kostet „${twitch.reward_title ?? 'Glücksrad'}“ auf Twitch. Die Änderung gilt sofort.`
+      : 'Sobald Dave Twitch verbindet, lassen sich hier die Kosten der Kanalpunkte-Belohnung ändern.';
+}
+
+async function saveWheelCost(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const cost = Math.round(Number(form.cost.value));
+  if (!Number.isFinite(cost) || cost < 1 || cost > 1000000) {
+    formMsg(form, 'Bitte eine Zahl von 1 bis 1.000.000.');
+    return;
+  }
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const res = await state.api.setWheelCost(cost);
+    state.twitch = { ...state.twitch, reward_cost: res.cost, reward_title: res.title ?? state.twitch.reward_title };
+    renderWheelPanel();
+    renderHero();
+    formMsg(form, `✓ Drehen kostet jetzt ${Number(res.cost).toLocaleString('de-DE')} Kanalpunkte.`, true);
+  } catch (err) {
+    console.error(err);
+    const codes = {
+      not_affiliate: 'Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.',
+      reward_exists: 'Auf Twitch gibt es schon eine manuell erstellte Belohnung „Glücksrad“. Bitte im Twitch-Dashboard löschen und erneut versuchen.',
+    };
+    formMsg(form, codes[err.message] ?? germanError(err));
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function tickPointer() {
@@ -998,6 +1287,7 @@ async function spinFromWeb() {
   try {
     const announce = !$('#announce-wrap').hidden && $('#announce').checked;
     const { spin, announced } = await state.api.spin(state.variantId, announce);
+    await freshVariantFor(spin);
     await state.wheel.spinTo(spin.segment_index);
     showResult(spin, announced ? 'Steht jetzt auch im Twitch-Chat.' : '');
     addSpin(spin);
@@ -1046,6 +1336,7 @@ async function drainQueue() {
   state.spinning = true;
   $('#spin-btn').disabled = true;
   setVariantInputsDisabled(true);
+  await freshVariantFor(spin);
   selectVariant(spin.variant_id);
   showResultPending(`@${spin.requested_by} hat Kanalpunkte eingelöst …`);
   await state.wheel.spinTo(spin.segment_index);
@@ -3717,9 +4008,9 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts'];
+const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -3734,6 +4025,10 @@ function setupObs() {
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
+  $('#obs-alerts').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-alert]');
+    if (btn) testAlert(btn.dataset.alert, btn);
+  });
   $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
@@ -3843,6 +4138,7 @@ async function openObsDialog({ page = false } = {}) {
   else $('#obs-dialog').showModal();
   updateObs({ now: true });
   loadTickerTexts();
+  loadAlertsStatus();
   loadObsLive();
   paintObsConnection();
   // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
@@ -3962,6 +4258,49 @@ async function loadTickerTexts() {
   } catch (err) {
     form.items.value = DEFAULT_TICKER.join('\n');
     formMsg(form, germanError(err));
+  }
+}
+
+// ---------- Alerts (Follower, Abos) ----------
+async function loadAlertsStatus() {
+  const box = $('#obs-alerts');
+  box.hidden = !state.profile?.is_admin;
+  if (box.hidden) return;
+  const status = $('#obs-alerts-status');
+  $('#obs-alerts-msg').textContent = '';
+  status.classList.remove('is-warn');
+  if (state.api.demo) {
+    status.textContent = 'Demo: Probe-Alerts erscheinen in der Vorschau und in Overlays in diesem Browser.';
+    return;
+  }
+  try {
+    const s = await state.api.alertsStatus();
+    const missing = [!s.follows && 'Follower', !s.subs && 'Abos'].filter(Boolean);
+    status.classList.toggle('is-warn', !s.connected || missing.length > 0);
+    status.textContent = !s.connected
+      ? 'Twitch ist noch nicht verbunden. Probe-Alerts gehen trotzdem – echte kommen, sobald Dave Twitch verbindet.'
+      : missing.length
+        ? `Für echte Alerts (${missing.join(' und ')}) muss Dave Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
+        : 'Twitch meldet neue Follower, Abos und verschenkte Abos – sie erscheinen sofort im Alert-Feld.';
+  } catch (err) {
+    status.classList.add('is-warn');
+    status.textContent = germanError(err);
+  }
+}
+
+async function testAlert(kind, btn) {
+  const msg = $('#obs-alerts-msg');
+  msg.classList.remove('is-ok');
+  btn.disabled = true;
+  try {
+    await state.api.testAlert(kind);
+    const on = $('#obs-options').elements.alerts_on.checked;
+    msg.textContent = on ? '✓ Probe-Alert geschickt.' : '✓ Probe-Alert geschickt – zu sehen, sobald „Alerts“ oben eingeschaltet ist.';
+    msg.classList.add('is-ok');
+  } catch (err) {
+    msg.textContent = germanError(err);
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -4223,6 +4562,7 @@ function renderTwitchDialog() {
         <li><span>Kanalpunkte-Belohnungen verwalten<small>Legt die Belohnung „Glücksrad“ an und markiert Einlösungen als erledigt.</small></span></li>
         <li><span>Kanalpunkte-Einlösungen lesen<small>Damit das Rad sich dreht, auch wenn diese Seite geschlossen ist.</small></span></li>
         <li><span>Chat-Bot zulassen<small>Der Stellwerk-Bot darf das Ergebnis jeder Drehung in den Chat schreiben. In Daves Namen schreibt die Seite nie.</small></span></li>
+        <li><span>Follower und Abos lesen<small>Für das Alert-Feld im OBS-Overlay: neue Follower, Abos und verschenkte Abos.</small></span></li>
       </ul>
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">

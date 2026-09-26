@@ -404,6 +404,52 @@ p { margin: 0; }
 .ov-shop.is-end { box-shadow: 0 0 0 .15em #ffd36b, 0 0 2em rgba(255, 211, 107, .5); }
 @keyframes ov-shop-pop { from { transform: scale(.8) translateX(-1em); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* ---------- Alerts (Follower, Abos) ---------- */
+.ov-alert {
+  --c: #9146ff;
+  font-size: calc(16px * var(--as, 1));
+  width: 22em; animation: ov-in .6s var(--ease-out) both;
+  transition: box-shadow .4s;
+}
+.ov-alert[data-kind="sub"], .ov-alert[data-kind="resub"], .ov-alert[data-kind="gift"] { --c: #ffb81c; }
+.ov-al-idle { display: grid; gap: .45em; padding: .8em 1.1em 1em; }
+.ov-al-last { display: flex; align-items: baseline; justify-content: space-between; gap: .8em; min-width: 0; }
+.ov-al-last span { flex: none; font-size: .85em; color: #8f99ae; }
+.ov-al-last b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 1.35em; font-weight: 700; color: var(--text); }
+.ov-al-show { display: none; }
+.ov-alert.is-alert { animation: ov-al-in .7s var(--ease-spring); box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 60%, transparent); }
+.ov-alert.is-alert .ov-al-idle { display: none; }
+.ov-alert.is-alert .ov-al-show { display: grid; justify-items: center; gap: .15em; padding: .9em 1.2em 1.2em; text-align: center; }
+.ov-al-icon { font-size: 3em; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; animation: ov-al-bounce .9s var(--ease-spring) .1s both; }
+.ov-al-title { font-family: var(--font-mono); font-size: .8em; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
+.ov-al-name {
+  max-width: 100%; font-family: var(--font-display); font-size: 2.5em; font-weight: 800; line-height: 1.05;
+  text-transform: uppercase; overflow-wrap: anywhere; color: #fff;
+  text-shadow: 0 0 .5em color-mix(in srgb, var(--c) 55%, transparent);
+  animation: ov-pop .6s var(--ease-spring) .2s both;
+}
+.ov-al-sub { font-size: 1em; line-height: 1.35; color: #c4cad6; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; animation: ov-rise .5s var(--ease-out) .35s both; }
+/* Lichtstreifen über die Karte */
+.ov-alert.is-alert::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .22) 50%, transparent 65%);
+  transform: translateX(-100%); animation: ov-al-shine 1.2s ease-out .15s forwards;
+}
+.ov-alert.is-still, .ov-alert.is-still *, .ov-alert.is-still::after { animation: none !important; }
+.ov-al-fx { position: absolute; inset: 0; pointer-events: none; }
+.ov-al-fx i {
+  position: absolute; left: 50%; top: 35%; width: .45em; height: .75em; border-radius: .1em;
+  animation: ov-al-confetti 1.6s cubic-bezier(.15, .7, .3, 1) both;
+}
+.ov-al-fx i.is-round { width: .55em; height: .55em; border-radius: 50%; }
+@keyframes ov-al-in { 0% { transform: scale(.85); } 60% { transform: scale(1.05); } 100% { transform: none; } }
+@keyframes ov-al-bounce { 0% { transform: scale(0) rotate(-20deg); } 70% { transform: scale(1.2) rotate(8deg); } 100% { transform: none; } }
+@keyframes ov-al-shine { to { transform: translateX(100%); } }
+@keyframes ov-al-confetti {
+  from { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+  to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 5em)) rotate(var(--r)) scale(1); opacity: 0; }
+}
+
 /* ---------- Win-Challenge ---------- */
 .ov-challenge {
   --c: #ff5c5c;

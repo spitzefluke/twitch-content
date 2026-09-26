@@ -2,6 +2,7 @@
 //   POST {action:"start"}          → Twitch-Login-URL für Daves Kanal (angemeldeter User nötig)
 //   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
 //   POST {action:"sync_pranks"}    → Kanalpunkte-Belohnungen fürs Ärgern anlegen/abgleichen (nur Admin)
+//   POST {action:"wheel_cost", cost} → Kosten der Glücksrad-Belohnung ändern (nur Admin)
 //   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für Daves Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
@@ -11,6 +12,7 @@ import {
 } from "../_shared/twitch.ts";
 import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
+import { ensureAlertSubscriptions } from "../_shared/alerts.ts";
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
@@ -23,11 +25,12 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     const user = await getUserFromRequest(req);
     if (!user) return json({ error: "Nicht angemeldet" }, 401);
-    const { action } = await req.json().catch(() => ({}));
+    const { action, cost } = await req.json().catch(() => ({}));
     try {
       if (action === "start") return json({ url: await startTwitchLogin(user.id, "broadcaster") });
       if (action === "disconnect") return await disconnect(user.id);
       if (action === "sync_pranks") return await syncPranks(user.id);
+      if (action === "wheel_cost") return await setWheelCost(user.id, cost);
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error(e);
@@ -93,7 +96,8 @@ async function handleCallback(url: URL) {
 
     const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
     if (previous && previous.broadcaster_id !== me.id && !starterIsAdmin) throw new CodedError("wrong_account");
-    const reward = await ensureReward(me.id, tok.access_token, previous?.reward_id);
+    // Beim erneuten Verbinden bleiben die auf der Webseite eingestellten Kosten
+    const reward = await ensureReward(me.id, tok.access_token, previous?.reward_id, previous?.reward_cost);
 
     const base = {
       id: 1,
@@ -134,6 +138,7 @@ async function handleCallback(url: URL) {
     const subscriptionId = await ensureRedemptionSubscription(me.id, eventsubCallback(), env("EVENTSUB_SECRET"));
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
     await chatSubscription(me.id);
+    await alertSubscriptions(me.id, tok.scope ?? []);
 
     return backToSite({ twitch: "connected" });
   } catch (e) {
@@ -169,6 +174,16 @@ async function saveBot(me: { id: string; login: string; display_name: string }, 
   return backToSite({ twitch: "bot_connected", bot: me.display_name }, "admin.html");
 }
 
+// Alerts (Follower, Abos): scheitert es, läuft der Rest trotzdem
+async function alertSubscriptions(broadcasterId: string, scopes: string[]) {
+  try {
+    return await ensureAlertSubscriptions(broadcasterId, eventsubCallback(), env("EVENTSUB_SECRET"), scopes);
+  } catch (e) {
+    console.warn("Alert-Abos nicht angelegt:", e);
+    return null;
+  }
+}
+
 // Chat lesen (für !füttern): klappt nur mit Bot, der user:read:chat freigegeben hat.
 // Scheitert es, laufen Glücksrad und Kanalpunkte trotzdem.
 async function chatSubscription(broadcasterId: string) {
@@ -179,9 +194,9 @@ async function chatSubscription(broadcasterId: string) {
   }
 }
 
-async function ensureReward(broadcasterId: string, token: string, knownId?: string | null) {
+async function ensureReward(broadcasterId: string, token: string, knownId?: string | null, knownCost?: number | null) {
   const title = Deno.env.get("REWARD_TITLE") ?? "Glücksrad";
-  const cost = Number(Deno.env.get("REWARD_COST") ?? 10000);
+  const cost = knownCost ?? Number(Deno.env.get("REWARD_COST") ?? 10000);
   const settings = {
     title,
     cost,
@@ -234,10 +249,35 @@ async function syncPranks(userId: string) {
     const subscriptionId = await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"));
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
     await chatSubscription(conn.broadcaster_id);
+    await alertSubscriptions(conn.broadcaster_id, conn.scopes ?? []);
     return json(result);
   } catch (e) {
     console.error(e);
     return json({ error: (e as Error).message }, e instanceof CodedError ? 400 : 500);
+  }
+}
+
+// Admin: Kosten fürs Drehen auf Twitch ändern (1 bis 1.000.000 Kanalpunkte)
+async function setWheelCost(userId: string, raw: unknown) {
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Kosten ändern." }, 403);
+  const cost = Math.round(Number(raw));
+  if (!Number.isFinite(cost) || cost < 1 || cost > 1_000_000) {
+    return json({ error: "Die Kosten müssen zwischen 1 und 1.000.000 Kanalpunkten liegen." }, 400);
+  }
+  const conn = await getConnection();
+  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Dave muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
+  try {
+    const reward = await ensureReward(conn.broadcaster_id, conn.access_token, conn.reward_id, cost);
+    const { error } = await db.from("twitch_connection")
+      .update({ reward_id: reward.id, reward_title: reward.title, reward_cost: reward.cost, updated_at: new Date().toISOString() })
+      .eq("id", 1);
+    if (error) throw error;
+    return json({ cost: reward.cost, title: reward.title });
+  } catch (e) {
+    console.error(e);
+    if (e instanceof CodedError) return json({ error: e.code }, 400);
+    return json({ error: (e as Error).message }, 500);
   }
 }
 

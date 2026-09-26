@@ -5,14 +5,14 @@ Webseite zum Verwalten von Content-Ideen für den Twitch-Streamer **Zugfahrer_Da
 - **Intro v2 (aus Claude Design)** – eine durchgehende Reise durch die Nacht: Berglandschaft mit fahrendem Zug → Tunnel → der Zug rast frontal auf die Kamera zu → Einfahrt in den Bahnhof → die Abfahrtstafel blättert ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen, die Kamera fährt ins Licht. Himmel, Wolken, Regen, Schnee, Nebel und Gewitter richten sich nach Tageszeit und aktuellem Wetter in Deutschland. Überspringen mit Esc, Enter oder Leertaste.
 - **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
-- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express)
+- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 3 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express) – Admins ändern Ergebnisse, Varianten und Kanalpunkte-Kosten direkt auf der Seite
 - **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (Dave kann Titel, Text, Datum und Hintergrund bearbeiten)
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **Ärgere den Dave**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf Dave“ oder „🔊 Sound für Dave“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Daves Kamera, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
 - **Fortnite-Bingo**: Admins laden Bilder von Fortnite-Items hoch, daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). Daves Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
-- **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown. Den Link gibt's im Dashboard unter **OBS**.
-- **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
+- **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown, und ein Alert-Feld zeigt neue Follower und Abos. Den Link gibt's im Dashboard unter **OBS**.
+- **Twitch-Integration**: Dave verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
 ## Aufbau
 
@@ -74,7 +74,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -134,7 +134,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `SITE_URL` | wohin Dave nach dem Twitch-Login zurückgeschickt wird |
 | `BROADCASTER_LOGIN` | **Pflicht:** nur dieser Twitch-Kanal darf sich verbinden (und wird dabei Admin). Fehlt es, dürfen sich aus Sicherheitsgründen nur Admins verbinden. |
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
-| `REWARD_COST` *(optional)* | Kosten in Kanalpunkten, Standard `10000` |
+| `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
 
 ### 5. Dave verbindet Twitch
 
@@ -144,6 +144,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
    - `channel:manage:redemptions` (Belohnung anlegen, Einlösungen erledigen)
    - `channel:read:redemptions` (Einlösungen empfangen)
    - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
+   - `moderator:read:followers` und `channel:read:subscriptions` (neue Follower und Abos fürs Alert-Feld im Overlay)
 4. Danach passiert automatisch Folgendes:
    - Die Belohnung „Glücksrad“ für 10.000 Kanalpunkte wird angelegt.
    - Der EventSub-Webhook wird registriert.
@@ -159,6 +160,12 @@ Löst ab jetzt ein Zuschauer die Belohnung ein, passiert Folgendes:
 5. Ist die Webseite gerade offen, dreht sich das Rad dort live mit (Supabase Realtime).
 
 Dreht Dave selbst auf der Webseite, kann er mit dem Schalter „Ergebnis als … im Chat posten“ bestimmen, ob das Ergebnis auch im Chat landet.
+
+**Glücksrad bearbeiten (Admins):** Im Glücksrad-Dialog unten auf **„✎ Kosten und Ergebnisse bearbeiten“**:
+- **Kosten auf Twitch:** Kanalpunkte pro Drehung (1 bis 1.000.000) eintragen und „Auf Twitch übernehmen“ – die Belohnung auf Twitch ändert sich sofort und die Kosten bleiben auch beim erneuten Verbinden erhalten.
+- **Varianten und Ergebnisse:** Name, Farbe und Beschreibung jeder Variante sowie ihre Ergebnisse (Titel auf dem Rad + Erklärung, was gilt) ändern, verschieben, löschen und neue anlegen (2 bis 16 Ergebnisse pro Variante, bis zu 8 Varianten). Die Vorschau zeigt das Rad sofort. „Varianten speichern“ gilt gleich für die Webseite, Kanalpunkte-Drehungen im Chat und das OBS-Overlay; alte Drehungen bleiben, wie sie waren.
+
+Einmal nötig: Migration `20261006000000_wheel_edit.sql` ausführen (die Edge Function `twitch-oauth` kommt beim Merge automatisch).
 
 ### 6. Chat-Bot verbinden
 
@@ -237,6 +244,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `ssize=120` | Größe der Kisten-Shop-Karte in Prozent |
 | `challenge=tl` / … | Win-Challenge-Karte an |
 | `csize=120` | Größe der Win-Challenge-Karte in Prozent |
+| `alerts=tr` / … | Alert-Feld an (neue Follower, Abos, Resubs, verschenkte Abos) |
+| `asize=120` | Größe des Alert-Felds in Prozent |
 | `pet=1` | Daves Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
@@ -247,6 +256,12 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 **Daves Kamera:** Im OBS-Dialog unter „Ärgere den Dave“ eine Vorlage wählen oder in der Vorschau einen Rahmen um die Stelle ziehen, an der die Kamera im Stream sitzt. In OBS die Browserquelle **über** die Kamera-Quelle schieben, sonst fliegt alles hinter Dave vorbei. Läuft das Overlay in mehreren Browserquellen, bei allen außer einer `prank=0` setzen – sonst kommt jeder Sound doppelt.
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
+
+### Alerts für Follower und Abos
+
+Das **Alert-Feld** (im OBS-Dialog „Alerts (Follower & Abos)“ einschalten und in der Vorschau verschieben) zeigt zwischendurch den **letzten Follower** und das **letzte Abo**. Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht) oder werden Abos verschenkt, springt es mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Kommen mehrere gleichzeitig, laufen sie nacheinander. Admins schicken im OBS-Dialog unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
+
+Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **Dave muss Twitch einmal neu verbinden** (oben rechts „Twitch“) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der OBS-Dialog zeigt, ob die Rechte schon da sind.
 
 ### Laufband
 

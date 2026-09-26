@@ -1,6 +1,7 @@
 // Webhook für Twitch EventSub.
 // Wird von Twitch aufgerufen, wenn ein Zuschauer in Daves Kanal Kanalpunkte einlöst
-// (und bei Chat-Nachrichten, siehe _shared/chat.ts – z. B. !füttern für Daves Dino):
+// (bei Chat-Nachrichten, siehe _shared/chat.ts – z. B. !füttern für Daves Dino –
+// und bei Follows und Abos für das Alert-Feld, siehe _shared/alerts.ts):
 //   „Glücksrad“            → Rad drehen, Ergebnis in den Chat
 //   „🍅 Wirf was auf Dave“  → Wurf im OBS-Overlay (eingetippt: was fliegt)
 //   „🔊 Sound für Dave“     → Sound im OBS-Overlay (eingetippt: welcher)
@@ -10,6 +11,7 @@ import {
 } from "../_shared/twitch.ts";
 import { BOARD_SOUNDS, matchBoardSound, matchCustomSound, matchThrow, prankState, THROW_ITEMS } from "../_shared/pranks.ts";
 import { handleChatMessage } from "../_shared/chat.ts";
+import { handleAlert, isAlertType } from "../_shared/alerts.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -52,6 +54,14 @@ Deno.serve(async (req) => {
   if (type === "revocation") {
     console.warn("EventSub widerrufen:", payload.subscription?.status);
     await db.from("twitch_connection").update({ subscription_id: null }).eq("subscription_id", payload.subscription.id);
+    return new Response(null, { status: 204 });
+  }
+
+  if (type === "notification" && isAlertType(payload.subscription?.type ?? "")) {
+    const task = handleAlert(payload.subscription.type, payload.event, req.headers.get("Twitch-Eventsub-Message-Id"))
+      .catch((e) => console.error("Alert fehlgeschlagen:", e));
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
+    else await task;
     return new Response(null, { status: 204 });
   }
 
