@@ -32,6 +32,7 @@ const ERRORS = [
   [/relation "public\.overlay_config"|could not find the (table|function) '?public\.(overlay_config|overlay_access|overlay_save|overlay_allow_admins)/i, 'In der Datenbank fehlt das Live-Overlay: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.(shop_join_lobby|shop_leave_lobby|shop_start_lobby|shop_lobby_tick)|column .*(started_at|vs_at|chests_until)/i, 'In der Datenbank fehlt das Koop-Duell im Kisten-Shop: supabase/migrations/20261002000000_shop_versus.sql im SQL Editor ausführen.'],
   [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
+  [/could not find the function '?public\.shop_lobby_by_(code|id)/i, 'In der Datenbank fehlt eine Sicherheits-Anpassung für den Kisten-Shop: supabase/migrations/20261008000000_shop_lobby_access.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
   [/relation "public\.stream_alerts"|could not find the (table|function) '?public\.(stream_alerts|alert_test|alerts_status)/i, 'In der Datenbank fehlen die Alerts: supabase/migrations/20261005000000_stream_alerts.sql im SQL Editor ausführen.'],
   [/column .*bonus|'bonus' column/i, 'In der Datenbank fehlt das zweite Glücksrad: supabase/migrations/20261007000000_wheel_bonus.sql im SQL Editor ausführen.'],
@@ -397,11 +398,13 @@ async function createSupabaseApi() {
     async startShopLobby(code) { return unwrap(await sb.rpc('shop_start_lobby', { p_code: code })); },
     // Läuft eine Zeit ab (Kisten, Shop), schiebt das die Runde in die nächste Phase
     async tickShopLobby(code) { return unwrap(await sb.rpc('shop_lobby_tick', { p_code: code })); },
+    // Gelesen wird über Funktionen (Migration …_shop_lobby_access.sql): per Code für alle
+    // Angemeldeten, per ID nur für Ersteller, Mitspieler und Admins
     async getShopLobby(code) {
-      return unwrap(await sb.from('shop_lobbies_public').select('*').eq('code', code.trim().toUpperCase()).maybeSingle());
+      return unwrap(await sb.rpc('shop_lobby_by_code', { p_code: code.trim() }).maybeSingle());
     },
     async getShopLobbyById(id) {
-      return unwrap(await sb.from('shop_lobbies_public').select('*').eq('id', id).maybeSingle());
+      return unwrap(await sb.rpc('shop_lobby_by_id', { p_id: id }).maybeSingle());
     },
     async getLobbyRuns(lobbyId) {
       return unwrap(await sb.from('shop_runs').select('*').eq('lobby_id', lobbyId).order('score', { ascending: false }));
