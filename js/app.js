@@ -4258,7 +4258,7 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat'];
 const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize' };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
@@ -4877,8 +4877,12 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   const values = {};
   for (const el of obsFields()) values[el.name] = el.type === 'checkbox' ? el.checked : el.value;
   for (const [name, unit] of Object.entries(OBS_UNITS)) f.elements[`${name}-out`].value = `${f.elements[name].value}${unit}`;
+  // Chat-Höhe ganz links = wächst mit den Nachrichten
+  if (Number(f.elements.chh.value) < 20) f.elements['chh-out'].value = 'auto';
   obsFields().forEach((el) => { el.disabled = false; });
   for (const key of OBS_PARTS) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
+  // Chat mit fester Höhe: die Höhe bestimmt, wie viele Nachrichten zu sehen sind
+  if (Number(f.elements.chh.value) >= 20) f.elements.chmax.disabled = true;
   f.psize.disabled = !f.prank.checked;
   f.dsize.disabled = !f.pet.checked;
   f.pground.disabled = !f.pet.checked;

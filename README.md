@@ -263,7 +263,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
 | `pclimb=0` | Dino klettert bei Heißhunger nicht an Karten hoch |
 | `chat=tl` / `x,y` | Twitch-Chat an dieser Stelle (Standard im OBS-Dialog: rechts oben, frei verschiebbar) |
-| `chsize=120` / `chmax=8` | Größe in Prozent / höchstens so viele Nachrichten (3 – 20) |
+| `chsize=120` / `chmax=8` | Größe in Prozent / höchstens so viele Nachrichten (3 – 50) |
+| `chh=60` | feste Höhe des Chats in Prozent der Bildhöhe (20 – 95) – neue Nachrichten unten, alte rutschen oben raus, `chmax` gilt dann nicht; ohne Angabe wächst er mit den Nachrichten |
 | `chfade=30` | Nachrichten verschwinden nach so vielen Sekunden (Standard 0 = bleiben, bis neue sie verdrängen) |
 | `yt=@kanal` | YouTube-Livechat dazumischen (Kanal als `@name` oder Kanal-ID `UC…`) – jede Nachricht bekommt dann das Twitch- bzw. YouTube-Logo |
 | `chtw=0` | Twitch-Chat weglassen (nur YouTube) |

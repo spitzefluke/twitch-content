@@ -47,7 +47,9 @@
 //                              a:<pfad> (eigener Alert-Sound) oder c:<pfad> (Sound aus „Ärgere den Dave“)
 //   chat=tl|… oder 76,22       Twitch-Chat an dieser Stelle; fehlt es, ist er aus
 //   chsize=100                 Größe des Chats in Prozent (50 – 200)
-//   chmax=8                    so viele Nachrichten stehen höchstens da (3 – 20)
+//   chmax=8                    so viele Nachrichten stehen höchstens da (3 – 50)
+//   chh=60                     feste Höhe des Chats in Prozent der Bildhöhe (20 – 95), dann gilt chmax nicht;
+//                              fehlt es, wächst er mit den Nachrichten
 //   chfade=0                   Sekunden, bis eine Nachricht verschwindet (0 = bleibt, bis neue sie verdrängen)
 //   chcmd=1                    Befehle (!füttern, !change …) auch zeigen – sonst ausgeblendet
 //   chbots=1                   Bots (StreamElements, Nightbot …) auch zeigen – sonst ausgeblendet
@@ -150,7 +152,8 @@ const opt = {
   asound: Object.fromEntries(ALERT_KINDS.map((k) => [k.kind, (params.get(k.param) ?? '').slice(0, 300) || 'default'])),
   chat: position(params.get('chat'), null),
   chsize: number('chsize', 100, 50, 200) / 100,
-  chmax: number('chmax', 8, 3, 20),
+  chmax: number('chmax', 8, 3, 50),
+  chh: number('chh', 0, 0, 95),
   chfadeMs: number('chfade', 0, 0, 600) * 1000,
   chcmd: flag('chcmd', false),
   chbots: flag('chbots', false),
@@ -1323,6 +1326,13 @@ function burst(host, kind) {
 function setupChat() {
   const card = $('ov-chat');
   const list = $('ov-chat-list');
+  // Feste Höhe: neue Nachrichten unten, alte rutschen oben aus dem Bild – dann
+  // entscheidet die Höhe, wie viele Nachrichten zu sehen sind (chmax gilt nicht)
+  const max = opt.chh >= 20 ? 50 : opt.chmax;
+  if (opt.chh >= 20) {
+    card.classList.add('has-height');
+    card.style.height = `calc(${opt.chh}vh - 2 * var(--m))`;
+  }
   const empty = () => card.classList.toggle('is-empty', !list.childElementCount && !opt.edit);
   // Mehrere Plattformen: vor jedem Namen das Logo (Twitch oder YouTube)
   const showPlatform = !!opt.yt && opt.chtw;
@@ -1332,7 +1342,11 @@ function setupChat() {
     if (!opt.chbots && CHAT_BOTS.includes(msg.login)) return;
     const row = renderMessage(msg, { showPlatform });
     list.append(row);
-    while (list.childElementCount > opt.chmax) list.firstElementChild.remove();
+    while (list.childElementCount > max) list.firstElementChild.remove();
+    // Bei fester Höhe: was oben nicht mehr ganz hineinpasst, fällt weg
+    if (card.classList.contains('has-height')) {
+      while (list.childElementCount > 1 && list.scrollHeight > list.clientHeight + 1) list.firstElementChild.remove();
+    }
     if (opt.chfadeMs && !opt.edit) {
       setTimeout(() => {
         row.classList.add('is-out');
@@ -1359,7 +1373,8 @@ function setupChat() {
   if (opt.test || opt.edit) {
     const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
     let n = 0;
-    for (; n < Math.min(4, opt.chmax); n++) add(sample(n));
+    // Mit fester Höhe mehr Probe-Nachrichten, damit man sieht, wie voll es wird
+    for (; n < Math.min(opt.chh >= 20 ? 30 : 4, max); n++) add(sample(n));
     if (!opt.edit) setInterval(() => add(sample(n++)), 4000);
   }
 }
