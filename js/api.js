@@ -80,6 +80,8 @@ async function createSupabaseApi() {
 
   return {
     demo: false,
+    // Für die neueren Content-Ideen (js/extras-api.js)
+    raw: { sb, unwrap, invoke },
     async getUser() {
       const { data } = await sb.auth.getSession();
       return data.session?.user ?? null;
@@ -625,6 +627,13 @@ function createLocalApi() {
   }
 
   const demoVariants = () => store.get('wheel_variants', null) ?? DEFAULT_VARIANTS;
+  // Gespeicherte Kacheln plus neue Standard-Kacheln (neue Content-Ideen kommen so auch in alte Demos)
+  function demoTiles() {
+    const saved = store.get('tiles', null);
+    if (!saved) return DEFAULT_TILES;
+    const missing = DEFAULT_TILES.filter((d) => !saved.some((t) => t.id === d.id));
+    return missing.length ? [...saved, ...missing].sort((a, b) => a.position - b.position) : saved;
+  }
   // Dieselben Regeln wie wheel_variants_save in der Datenbank
   function cleanVariants(variants) {
     if (!Array.isArray(variants) || !variants.length) throw new Error('Mindestens eine Variante wird gebraucht.');
@@ -783,6 +792,14 @@ function createLocalApi() {
 
   return {
     demo: true,
+    // Für die neueren Content-Ideen (js/extras-api.js)
+    raw: {
+      store,
+      me: () => current,
+      name: () => store.get('users', {})[current?.email]?.username ?? current?.email ?? 'Zuschauer',
+      isAdmin: () => isAdminNow(),
+      requireAdmin,
+    },
     async getUser() { return current; },
     onAuthChange(cb) { listeners.push(cb); },
     async signIn(email, password) {
@@ -824,9 +841,9 @@ function createLocalApi() {
       const u = store.get('users', {})[user.email] ?? {};
       return { username: u.username ?? user.email, is_admin: !!u.is_admin };
     },
-    async getTiles() { return store.get('tiles', DEFAULT_TILES); },
+    async getTiles() { return demoTiles(); },
     async updateTile(id, patch) {
-      const tiles = store.get('tiles', DEFAULT_TILES).map((t) => (t.id === id ? { ...t, ...patch } : t));
+      const tiles = demoTiles().map((t) => (t.id === id ? { ...t, ...patch } : t));
       store.set('tiles', tiles);
       return tiles.find((t) => t.id === id);
     },

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04161f"/><stop offset="1" stop-color="#06070b"/></linearGradient>
+<radialGradient id="glow" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#35c7ff" stop-opacity=".45"/><stop offset="1" stop-color="#35c7ff" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="middle" fill="#04222e"><rect x="180" y="150" width="200" height="90" rx="18" fill="#35c7ff" opacity=".85"/><rect x="420" y="150" width="200" height="90" rx="18" fill="#35c7ff" opacity=".55"/><rect x="180" y="270" width="200" height="90" rx="18" fill="#3ddc84" opacity=".85"/><rect x="420" y="270" width="200" height="90" rx="18" fill="#35c7ff" opacity=".55"/><text x="280" y="215" font-size="60">A</text><text x="520" y="215" font-size="60">B</text><text x="280" y="335" font-size="60">C</text><text x="520" y="335" font-size="60">D</text></g>
+</svg>

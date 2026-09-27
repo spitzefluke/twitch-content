@@ -16,6 +16,7 @@ import {
 import {
   KINDS, challengeBurst, challengeSummary, currentStage, doneCount, heartsHtml, pipsHtml, stageDone, stageLabel,
 } from './challenge.js';
+import { EXTRA_KINDS, buildExtraTile, extraIcon, loadExtras, openExtra, setupExtras } from './extras.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -409,6 +410,7 @@ async function enterApp(user) {
   loadPet();
   loadShop();
   loadChallenge();
+  loadExtras().then(() => { if ($('#obs-dialog')?.open && state.profile?.is_admin) renderObsContent(); });
   if (OBS_PAGE) startObsPage();
 }
 
@@ -464,7 +466,7 @@ const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - 
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
 // "Ärgere den Streamer", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
-const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind)
+const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge', ...EXTRA_KINDS].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
 const streamerName = () => state.streamer.name || 'Streamer';
@@ -675,7 +677,10 @@ function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Streamer“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
-  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile };
+  const build = {
+    prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
+    ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
+  };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -909,6 +914,8 @@ setInterval(() => {
 // Dialoge allgemein
 // ============================================================
 function setupDialogs() {
+  // Die neueren Content-Ideen legen ihre Dialoge selbst an (js/extras.js) – vor dem Verdrahten unten
+  setupExtras({ state, toast, germanError, buildActionTile, tileByKind, isLocked, openTile });
   document.querySelectorAll('dialog').forEach((dlg) => {
     dlg.addEventListener('click', (e) => {
       // Klick daneben schließt nur Pop-ups – das OBS-Fenster ist eine eigene Seite
@@ -4311,6 +4318,7 @@ const THEME_BG = {
   tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
   prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg', shop: 'assets/bg-shop.svg',
   challenge: 'assets/bg-challenge.svg',
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, `assets/bg-${k}.svg`])),
 };
 
 function openTile(id) {
@@ -4393,9 +4401,12 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize' };
+const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards'];
+const OBS_SIZE = {
+  wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize',
+};
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -4464,7 +4475,9 @@ function setupObs() {
 // ---------- OBS-Fenster v2: Reiter und Ebenen ----------
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
-const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null };
+const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null,
+  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', pause: 'pause',
+};
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
 const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
 let obsSelected = null;
@@ -4785,7 +4798,10 @@ function paintStreamerView({ firstOpen = false } = {}) {
   loadMods();
 }
 
-const TILE_ICON = { wheel: '🎡', countdown: '📅', prank: '🍅', bingo: '🎯', questions: '❓', pet: '🦖', shop: '🛒', challenge: '🏆' };
+const TILE_ICON = {
+  wheel: '🎡', countdown: '📅', prank: '🍅', bingo: '🎯', questions: '❓', pet: '🦖', shop: '🛒', challenge: '🏆',
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, extraIcon(k)])),
+};
 const TILE_OPEN = {
   wheel: () => openWheel(),
   countdown: (t) => openTile(t.id),
@@ -4795,8 +4811,9 @@ const TILE_OPEN = {
   pet: () => openPet(),
   shop: () => openShop(),
   challenge: () => openChallenge(),
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, () => openExtra(k)])),
 };
-const hasStart = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind);
+const hasStart = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge', ...EXTRA_KINDS].includes(t.kind);
 
 function renderObsContent() {
   const list = $('#obs-content-list');

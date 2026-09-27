@@ -12,6 +12,7 @@ import {
 import { BOARD_SOUNDS, matchBoardSound, matchCustomSound, matchThrow, prankState, THROW_ITEMS } from "../_shared/pranks.ts";
 import { handleChatMessage } from "../_shared/chat.ts";
 import { handleAlert, isAlertType } from "../_shared/alerts.ts";
+import { handleExtraRedemption } from "../_shared/extras.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
 type Redemption = {
   id: string;
   broadcaster_user_id: string;
+  user_id?: string;
   user_login: string;
   user_name: string;
   user_input?: string;
@@ -95,6 +97,8 @@ async function handleRedemption(event: Redemption) {
   if (!conn) return;
   if (event.reward.id === conn.prank_throw_reward_id) return handlePrank(conn, event, "throw");
   if (event.reward.id === conn.prank_sound_reward_id) return handlePrank(conn, event, "sound");
+  // Vorlesen (Text-to-Speech) und Karten-Packs (Migration …_stream_extras.sql)
+  if (await handleExtraRedemption(conn, event)) return;
   if (event.reward.id !== conn.reward_id) return; // andere Belohnungen gehen uns nichts an
 
   let spin;

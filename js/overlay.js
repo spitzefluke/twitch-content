@@ -61,6 +61,8 @@
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
+//   forbid, subathon, pause, quiz, queue, tts, cards (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize)
+//                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -78,6 +80,7 @@ import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './tw
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
+import { setupOverlayExtras } from './overlay-extras.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -295,6 +298,7 @@ async function start() {
   if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
   if (opt.chat) setupChat();
+  setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
   if (LIVE) watchOverlayConfig(source);
   if (!opt.edit) watchForUpdate();
 }
@@ -339,6 +343,7 @@ async function connect() {
   });
   const rows = async (query) => { const { data, error } = await query; if (error) throw error; return data; };
   return {
+    client: sb,
     variants: () => rows(sb.from('wheel_variants').select('*').order('position')),
     tiles: () => rows(sb.from('tiles').select('*').order('position')),
     onSpin(cb) {

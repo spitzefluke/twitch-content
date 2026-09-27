@@ -3,6 +3,7 @@
 // Befehle: Daves Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]).
 import { db, getAppToken, getBot, helix } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
+import { handleExtraCommand } from "./extras.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const FEED_COOLDOWN_MS = 10 * 60_000; // pro Zuschauer
@@ -46,6 +47,7 @@ type ChatMessage = {
   chatter_user_id: string;
   chatter_user_login: string;
   chatter_user_name: string;
+  badges?: { set_id: string }[];
   message?: { text?: string };
 };
 
@@ -53,6 +55,12 @@ export async function handleChatMessage(event: ChatMessage) {
   const text = (event.message?.text ?? "").trim();
   if (!text.startsWith("!")) return;
   const [command, arg = ""] = text.split(/\s+/);
+
+  // Befehle der neueren Content-Ideen (Quiz, Mitspielen, Verbotenes Wort, Zahlenraten)
+  const self = await getBot();
+  if (!self || event.chatter_user_id !== self.user_id) {
+    await handleExtraCommand(event).catch((e) => console.warn("Chat-Befehl:", e));
+  }
 
   if (normalize(command) === "change") return await changeCostume(event, arg);
 
