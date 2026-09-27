@@ -22,7 +22,7 @@
       "./js/admin.js": "./js/admin.js?v=188f6a9537",
       "./js/alerts.js": "./js/alerts.js?v=fdc44d61a1",
       "./js/api.js": "./js/api.js?v=f4df2ed493",
-      "./js/app.js": "./js/app.js?v=cd7e038d80",
+      "./js/app.js": "./js/app.js?v=09eb49695c",
       "./js/bingo.js": "./js/bingo.js?v=eb0fb757e8",
       "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
       "./js/config.js": "./js/config.js?v=4c6e85333d",
@@ -31,7 +31,7 @@
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay.js": "./js/overlay.js?v=f263cafc24",
+      "./js/overlay.js": "./js/overlay.js?v=6a4020e89b",
       "./js/pet.js": "./js/pet.js?v=2dbd87aac3",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8a69fa372f",
       "./js/questions.js": "./js/questions.js?v=794f42e00a",
@@ -1149,7 +1149,8 @@
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="chat"></span><button class="obs-mini-btn" type="button" data-reset-pos="chat">Zurück an den Standardplatz</button></span></div>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chtw" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch-Chat</label>
                   <label class="obs-row"><span>YouTube</span><input type="text" name="yt" maxlength="80" placeholder="@Kanalname – leer = ohne YouTube" autocomplete="off" spellcheck="false"></label>
-                  <label class="obs-row"><span>Zeilen</span><input type="range" name="chmax" min="3" max="20" step="1" value="8"><output name="chmax-out"></output></label>
+                  <label class="obs-row" title="Ganz links: wächst mit den Nachrichten"><span>Höhe</span><input type="range" name="chh" min="15" max="95" step="5" value="15"><output name="chh-out"></output></label>
+                  <label class="obs-row"><span>Zeilen</span><input type="range" name="chmax" min="3" max="50" step="1" value="8"><output name="chmax-out"></output></label>
                   <label class="obs-row"><span>Ausblenden</span><select name="chfade"><option value="0" selected>nie – neue verdrängen alte</option><option value="15">nach 15 Sekunden</option><option value="30">nach 30 Sekunden</option><option value="60">nach 1 Minute</option><option value="120">nach 2 Minuten</option></select></label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chcmd"><span class="toggle-ui" aria-hidden="true"></span>Befehle (!füttern, !change …) auch zeigen</label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chbots"><span class="toggle-ui" aria-hidden="true"></span>Bots (StreamElements, Nightbot …) auch zeigen</label>

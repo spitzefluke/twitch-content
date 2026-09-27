@@ -335,6 +335,12 @@ p { margin: 0; }
 /* ---------- Twitch-Chat ---------- */
 .ov-chat { --c: #9146ff; font-size: calc(16px * var(--chs, 1)); width: 22em; transition: opacity .4s; animation: ov-in .6s var(--ease-out) both; }
 .ov-chat.is-empty { opacity: 0; }
+/* Feste Höhe (chh): Liste füllt die Karte, neue Nachrichten unten */
+.ov-chat.has-height { display: flex; flex-direction: column; }
+.ov-chat.has-height .chat-list {
+  flex: 1; min-height: 0; overflow: hidden; justify-content: flex-end;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 2.2em); mask-image: linear-gradient(180deg, transparent, #000 2.2em);
+}
 .chat-list { display: flex; flex-direction: column; gap: .35em; padding: .6em 1em .85em; }
 .chat-msg {
   font-size: .98em; line-height: 1.35; color: var(--text); overflow-wrap: anywhere;
