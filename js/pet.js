@@ -121,7 +121,16 @@ export const petLine = (who) => pick([
   `Hihi, das kitzelt, ${who}!`, `Rrrr … weiter so, ${who}.`, `${who} darf mich streicheln. Nur ${who}.`, 'Schnurr … äh, ich meine RAWR!',
   `Hinterm Ohr, ${who}! Ach, ich hab keine Ohren.`, `${who}, du hast warme Hände.`,
 ]);
+const SCREEN_LINES = [
+  'Mmh, knuspriger Bildschirm!',
+  'Ich fress euch das Bild weg!',
+  'Wenn ihr nicht füttert, ess ich den Stream!',
+  '{befehl} – oder der Bildschirm ist weg!',
+  'Pixel schmecken wie Chips!',
+  'Full HD? Gleich nur noch Half HD.',
+];
 export const nibbleLine = () => pick(NIBBLE_LINES);
+export const screenLine = () => pick(SCREEN_LINES);
 export const climbLine = () => pick(CLIMB_LINES);
 
 // Die Zeichnung (Rexi aus „OBS Overlay v2“ in Claude Design): seitlich, schaut nach rechts.
@@ -374,7 +383,8 @@ export class Dino {
     // Klettern: senkrecht zur Zielhöhe
     if (this.climbGoal) {
       const dy = this.climbGoal.y - this.y;
-      const speed = this.size * 0.9;
+      // Wird er gefüttert, springt er schnell herunter
+      const speed = this.size * 0.9 * (this.abortClimb ? 3.5 : 1);
       if (Math.abs(dy) < 2 || this.reducedMotion) {
         this.y = this.climbGoal.y;
         const done = this.climbGoal.resolve;
@@ -388,7 +398,7 @@ export class Dino {
       return;
     }
     if (this.goal || (!this.busy && !this.sleeping && t > this.pauseUntil)) {
-      if (this.goal) this.target = Math.min(max, Math.max(0, this.goal.x));
+      if (this.goal) this.target = this.goal.free ? this.goal.x : Math.min(max, Math.max(0, this.goal.x));
       else if (this.target === null) this.target = rand(0, max);
       const dx = this.target - this.x;
       const speed = this.size * (this.goal ? 1.1 : 0.55) * (this.el.classList.contains('is-hungry') ? 0.8 : 1);
@@ -503,10 +513,11 @@ export class Dino {
     this.pauseUntil = performance.now() + 600;
   }
 
-  walkTo(x) {
+  // free = true: auch über den Rand des Behälters hinaus (Bildschirmkante beim Fressen)
+  walkTo(x, { free = false } = {}) {
     return new Promise((resolve) => {
       this.goal?.resolve();
-      this.goal = { x, resolve };
+      this.goal = { x, resolve, free };
     });
   }
 
@@ -597,6 +608,85 @@ export class Dino {
     }
   }
 
+  // Heißhunger: an der Bildschirmkante hochklettern und Löcher ins Streambild fressen
+  // (holes = ScreenHoles aus js/screen-holes.js). Erst 8 Bissen in Folge, dann weiter,
+  // solange hold() stimmt – alle paar Sekunden ein neues, größeres Loch. Füttern beendet es.
+  async eatScreen(holes, { line = screenLine(), hold = () => false } = {}) {
+    this.wake();
+    if (this.busy || !holes) return false;
+    const box = this.container.getBoundingClientRect();
+    const size = this.size;
+    const w = size * (this.starving ? 1.3 : 1);
+    const h = size * 140 / 170;
+    // Zur näheren Kante des Bildschirms
+    const edge = box.left + this.x + size / 2 < innerWidth / 2 ? 'left' : 'right';
+    const lean = this.starving ? 0.19 * size : 0;
+    const x = edge === 'left' ? -box.left - 0.39 * size - lean : innerWidth - box.left - 0.61 * size + lean;
+    const liftFor = (screenY) => Math.max(w * 0.3, box.height - 0.14 * h - 0.43 * w - (screenY - box.top));
+    let lift = liftFor(innerHeight * rand(0.4, 0.55));
+    const top = liftFor(innerHeight * 0.14);
+
+    this.busy = true;
+    this.climbing = true;
+    this.screenHoles = holes;
+    let finished;
+    this.climbDone = new Promise((res) => { finished = res; });
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    // Loch auf Höhe des Mauls, an der Bildschirmkante – je länger er frisst,
+    // desto weiter ins Bild hinein (depth 0 … 1)
+    const bite = (r, depth) => {
+      const jaw = this.el.querySelector('.dino-jaw').getBoundingClientRect();
+      const inward = r * (0.25 + depth * 1.6) * rand(0.8, 1.2);
+      const cx = edge === 'left' ? inward : innerWidth - inward;
+      const cy = jaw.top + jaw.height / 2 - size * 0.06 + rand(-0.1, 0.1) * size;
+      holes.bite(cx, cy, r, { reducedMotion: this.reducedMotion });
+      if (!this.reducedMotion) holes.shake();
+    };
+    const started = Date.now();
+    try {
+      this.sound('growl');
+      await this.walkTo(x, { free: true });
+      this.face(edge === 'left' ? -1 : 1);
+      await wait(260);
+      this.el.classList.add('is-climb', edge === 'left' ? 'climb-left' : 'climb-right');
+      await wait(420);
+      await this.climbTo(lift);
+      this.say(line, 4200);
+      for (let i = 0; !this.abortClimb; i++) {
+        const eating = i < 8;
+        if (!eating && (!hold() || Date.now() - started > CLIMB_MAX)) break;
+        this.el.classList.add('is-chomp');
+        if (eating || i % 3 === 0) {
+          this.sound('bite');
+          bite(size * (eating ? rand(0.24, 0.34) : rand(0.3, 0.46)), Math.min(1, i / 30));
+        } else {
+          this.sound('chomp');
+        }
+        await wait(eating ? 260 : 220);
+        this.el.classList.remove('is-chomp');
+        // Er frisst sich die Kante hoch (und ab und zu wieder ein Stück runter)
+        if (i % 3 === 2 && !this.abortClimb) {
+          lift = Math.min(top, Math.max(w * 0.3, lift + size * (Math.random() < 0.75 ? rand(0.2, 0.4) : -rand(0.2, 0.5))));
+          await this.climbTo(lift);
+        }
+        await wait(eating ? BITE_EVERY - 260 : 900);
+        if (!eating && i % 10 === 0) this.say(line, 3600);
+      }
+      if (!this.abortClimb) await wait(800);
+      await this.climbTo(0);
+      this.el.classList.remove('is-climb', 'climb-right', 'climb-left');
+      await wait(200);
+      if (!this.abortClimb) await this.walkTo(edge === 'left' ? 0 : this.width() - size);
+      else this.x = Math.min(Math.max(0, this.x), this.width() - size);
+      return true;
+    } finally {
+      this.climbing = false;
+      this.busy = false;
+      this.pauseUntil = performance.now() + 2500;
+      finished();
+    }
+  }
+
   // Krümel fallen von der Bissstelle
   crumbs(card, side) {
     if (this.reducedMotion) return;
@@ -618,6 +708,7 @@ export class Dino {
   regrow() {
     for (const card of this.bitten) regrowCard(card);
     this.bitten.clear();
+    this.screenHoles?.repair();
   }
 
   // Sprechblase; mehrere Sätze kommen nacheinander
@@ -772,8 +863,9 @@ function regrowCard(card) {
 // Der Kopf der Sache: plant Sprüche, Einlagen, Nickerchen, Hunger und Knabbern.
 // getPet() liefert jeweils den aktuellen Stand, names() mögliche Opfer,
 // cards() (nur im Overlay) Karten, an denen er bei Heißhunger hochklettern darf –
-// die erste (die Karte „Als Nächstes“) bevorzugt er, von rechts.
-export function runDino(dino, { getPet, names, cards = null, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
+// die erste (die Karte „Als Nächstes“) bevorzugt er, von rechts. screen (ScreenHoles,
+// nur im Overlay): dann frisst er abwechselnd Löcher in den Bildschirm und Karten an.
+export function runDino(dino, { getPet, names, cards = null, screen = null, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
   let idleAt = Date.now() + rand(8, 20) * 1000;
   let nibbleAt = Date.now() + rand(10, 25) * 1000;
   let trickAt = Date.now() + rand(...trickEvery) * 1000;
@@ -781,6 +873,7 @@ export function runDino(dino, { getPet, names, cards = null, idleEvery = [45, 90
   let growlAt = Date.now() + rand(8, 16) * 1000;
   let hungryLineAt = 0;
   let frenzySeen = getPet()?.frenzy_at ?? null;
+  let screenTurn = true; // Heißhunger fängt mit dem Bildschirm an
   const fill = (text, pet) => text.replaceAll('{befehl}', pet?.feed_command || DEFAULT_PET.feed_command);
   const timer = setInterval(async () => {
     const pet = getPet();
@@ -798,13 +891,19 @@ export function runDino(dino, { getPet, names, cards = null, idleEvery = [45, 90
       dino.rumble();
     }
     if (dino.busy) return;
-    if (cards && starving && now > climbAt) {
+    if ((cards || screen) && starving && now > climbAt) {
       climbAt = now + rand(...climbEvery) * 1000;
-      const [first, ...rest] = cards();
+      const hold = () => isStarving(getPet());
+      const useScreen = screen && (screenTurn || !cards);
+      screenTurn = !screenTurn;
+      if (useScreen) {
+        if (await dino.eatScreen(screen, { line: fill(frenzy && Math.random() < 0.5 ? 'Wenn ihr nicht füttert, ess ich den Stream!' : screenLine(), pet), hold })) return;
+      }
+      const [first, ...rest] = cards?.() ?? [];
       const list = [first, ...rest.sort(() => Math.random() - 0.5)].filter(Boolean);
       const line = frenzy ? 'Wenn ihr nicht füttert, ess ich die Karten!' : fill(climbLine(), pet);
       for (const card of list) {
-        if (await dino.climb(card, { line, side: card === first ? 'right' : null, hold: () => isStarving(getPet()) })) return;
+        if (await dino.climb(card, { line, side: card === first ? 'right' : null, hold })) return;
       }
     }
     if (hungry && now > nibbleAt) {
