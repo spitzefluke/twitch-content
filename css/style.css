@@ -1373,6 +1373,11 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .obs-alerts details > * + * { margin-top: 8px; }
 .obs-alerts-status { color: var(--muted); font-size: 14px; }
 .obs-alerts-status.is-warn { color: var(--amber-2); }
+.obs-alerts-subs { list-style: none; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.obs-alerts-subs li { color: var(--muted); }
+.obs-alerts-subs b { color: var(--text); font-weight: 600; }
+.obs-alerts-subs .is-ok { color: var(--green, #3fb950); }
+.obs-alerts-subs .is-bad { color: var(--amber-2); }
 .obs-alerts-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* OBS-Dialog: Live-Status */

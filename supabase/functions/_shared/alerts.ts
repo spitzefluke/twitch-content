@@ -3,7 +3,7 @@
 // stream_alerts – das Overlay liest die Tabelle per Realtime (auch ohne Login).
 // Dave braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
 // (einmal Twitch neu verbinden).
-import { db, getAppToken, helix } from "./twitch.ts";
+import { db, getAppToken, helix, HelixError } from "./twitch.ts";
 
 type AlertType = {
   type: string;
@@ -24,16 +24,22 @@ export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === 
 
 // Für jede Alert-Art genau ein Abo auf diesen Webhook. Fehlt Dave ein Scope,
 // wird die Art übersprungen (Twitch würde das Abo sonst ablehnen).
+// Ergebnis je Art: ok (aktiv), pending (gerade angelegt, Twitch prüft den Webhook),
+// missing_scope (Twitch neu verbinden) oder error mit der Meldung von Twitch.
+export type AlertSubState = { state: "ok" | "pending" | "missing_scope" | "error"; message?: string };
 export async function ensureAlertSubscriptions(broadcasterId: string, callback: string, secret: string, scopes: string[] = []) {
   const appToken = await getAppToken();
-  const result: Record<string, string> = {};
+  const result: Record<string, AlertSubState> = {};
   for (const a of ALERT_TYPES) {
-    if (!scopes.includes(a.scope)) { result[a.type] = "missing_scope"; continue; }
+    if (!scopes.includes(a.scope)) { result[a.type] = { state: "missing_scope" }; continue; }
     try {
       const existing = await helix("eventsub/subscriptions", appToken, { query: { type: a.type } });
       type Sub = { id: string; status: string; condition?: { broadcaster_user_id?: string }; transport?: { callback?: string } };
       const mine = (existing.data ?? []).filter((s: Sub) => s.condition?.broadcaster_user_id === broadcasterId);
-      const good = mine.find((s: Sub) => s.status === "enabled" && s.transport?.callback === callback);
+      // Ein gerade angelegtes Abo wartet kurz auf die Webhook-Prüfung – das ist kein Fehler
+      const usable = (s: Sub) => s.transport?.callback === callback && (s.status === "enabled" || s.status === "webhook_callback_verification_pending");
+      const good = mine.find((s: Sub) => s.status === "enabled" && usable(s)) ?? mine.find(usable);
+      // Abgeschaltete Abos (z. B. nach Fehlern beim Zustellen) weg und neu anlegen
       for (const sub of mine) {
         if (sub !== good) await helix("eventsub/subscriptions", appToken, { method: "DELETE", query: { id: sub.id } });
       }
@@ -43,10 +49,11 @@ export async function ensureAlertSubscriptions(broadcasterId: string, callback: 
           body: { type: a.type, version: a.version, condition: a.condition(broadcasterId), transport: { method: "webhook", callback, secret } },
         });
       }
-      result[a.type] = "ok";
+      result[a.type] = { state: good?.status === "enabled" ? "ok" : "pending" };
     } catch (e) {
       console.warn(`Alert-Abo ${a.type} nicht angelegt:`, e);
-      result[a.type] = "error";
+      const message = e instanceof HelixError ? (e.data?.message ?? `Fehler ${e.status}`) : String((e as Error)?.message ?? e);
+      result[a.type] = { state: "error", message: message.slice(0, 200) };
     }
   }
   return result;

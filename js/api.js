@@ -480,6 +480,8 @@ async function createSupabaseApi() {
     },
     async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
     async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
+    // Twitch-Abos für die Alerts prüfen und fehlende neu anlegen (nur Admins)
+    async checkAlertSubscriptions() { return invoke('twitch-oauth', { action: 'alerts_check' }); },
     // Eigene Alert-Sounds (nur Admins laden hoch), Bucket "alert-sounds"
     alertSoundUrl(path) {
       return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`;

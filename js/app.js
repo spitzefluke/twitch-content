@@ -4136,6 +4136,7 @@ function setupObs() {
     const btn = e.target.closest('[data-alert]');
     if (btn) testAlert(btn.dataset.alert, btn);
   });
+  $('#obs-alerts-check').addEventListener('click', checkAlertSubscriptions);
   $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
@@ -4628,6 +4629,8 @@ async function loadAlertsStatus() {
   if (box.hidden) return;
   const status = $('#obs-alerts-status');
   $('#obs-alerts-msg').textContent = '';
+  $('#obs-alerts-subs').hidden = true;
+  $('#obs-alerts-check').hidden = true;
   status.classList.remove('is-warn');
   if (state.api.demo) {
     status.textContent = 'Demo: Probe-Alerts erscheinen in der Vorschau und in Overlays in diesem Browser.';
@@ -4641,10 +4644,48 @@ async function loadAlertsStatus() {
       ? 'Twitch ist noch nicht verbunden. Probe-Alerts gehen trotzdem – echte kommen, sobald Dave Twitch verbindet.'
       : missing.length
         ? `Für echte Alerts (${missing.join(', ').replace(/, ([^,]*)$/, ' und $1')}) muss Dave Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
-        : 'Twitch meldet neue Follower, Abos, verschenkte Abos und Bits – sie erscheinen sofort bei den Alerts.';
+        : 'Twitch hat die Rechte für Follower, Abos und Bits freigegeben.';
+    if (s.connected) await checkAlertSubscriptions();
   } catch (err) {
     status.classList.add('is-warn');
     status.textContent = germanError(err);
+  }
+}
+
+// Stehen die Abos bei Twitch wirklich? Fehlende oder abgeschaltete legt die
+// Edge Function gleich neu an – das Ergebnis steht je Alert-Art in der Liste.
+const ALERT_SUBS = [
+  ['channel.follow', '💜 Follower'],
+  ['channel.subscribe', '⭐ Abos'],
+  ['channel.subscription.message', '🚂 Resubs'],
+  ['channel.subscription.gift', '🎁 Verschenkte Abos'],
+  ['channel.cheer', '💎 Bits'],
+];
+async function checkAlertSubscriptions() {
+  const list = $('#obs-alerts-subs');
+  const btn = $('#obs-alerts-check');
+  btn.hidden = false;
+  btn.disabled = true;
+  list.hidden = false;
+  list.innerHTML = '<li>Frage Twitch …</li>';
+  try {
+    const r = await state.api.checkAlertSubscriptions();
+    if (!r?.connected) {
+      list.innerHTML = '<li class="is-bad">Twitch ist nicht verbunden.</li>';
+      return;
+    }
+    list.innerHTML = ALERT_SUBS.map(([type, label]) => {
+      const t = r.types?.[type] ?? { state: 'error', message: 'keine Antwort' };
+      const text = t.state === 'ok' ? '<span class="is-ok">✓ aktiv</span>'
+        : t.state === 'pending' ? '<span class="is-ok">✓ neu angelegt – Twitch schaltet es in ein paar Sekunden frei</span>'
+          : t.state === 'missing_scope' ? '<span class="is-bad">✕ Recht fehlt – Dave muss Twitch neu verbinden</span>'
+            : `<span class="is-bad">✕ Twitch lehnt ab: ${escapeHtml(t.message ?? 'unbekannter Fehler')}</span>`;
+      return `<li><b>${label}:</b> ${text}</li>`;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = `<li class="is-bad">${escapeHtml(/unbekannte aktion/i.test(err.message) ? 'Die Edge Function twitch-oauth ist noch alt – sie wird beim nächsten Merge neu hochgeladen.' : germanError(err))}</li>`;
+  } finally {
+    btn.disabled = false;
   }
 }
 
