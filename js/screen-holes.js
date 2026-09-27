@@ -94,14 +94,14 @@ export class ScreenHoles {
     const outline = biteOutline(c, r);
     const g = svgEl('g', { class: 'screen-hole-cracks' });
     for (const p of cracks(c, r)) {
-      g.append(svgEl('polyline', { points: p, fill: 'none', stroke: 'rgba(255,255,255,.55)', 'stroke-width': '1.4', 'stroke-linejoin': 'round' }));
+      g.append(svgEl('polyline', { points: p, fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': '2.2', 'stroke-linejoin': 'round' }));
     }
     edge.append(
       g,
       // Farbversatz am Rand: rot und blau leicht verschoben – wie ein kaputtes Display
-      svgEl('path', { d: outline, fill: 'none', stroke: 'rgba(255,40,90,.75)', 'stroke-width': '4', transform: 'translate(2.5 0)' }),
-      svgEl('path', { d: outline, fill: 'none', stroke: 'rgba(0,220,255,.75)', 'stroke-width': '4', transform: 'translate(-2.5 0)' }),
-      svgEl('path', { d: outline, fill: 'none', stroke: 'rgba(255,255,255,.85)', 'stroke-width': '3', 'stroke-linejoin': 'round' }),
+      svgEl('path', { d: outline, fill: 'none', stroke: 'rgba(255,40,90,.9)', 'stroke-width': '6', transform: 'translate(3.5 0)' }),
+      svgEl('path', { d: outline, fill: 'none', stroke: 'rgba(0,220,255,.9)', 'stroke-width': '6', transform: 'translate(-3.5 0)' }),
+      svgEl('path', { d: outline, fill: 'none', stroke: '#fff', 'stroke-width': '4', 'stroke-linejoin': 'round' }),
     );
     svg.append(svgEl('path', { d: outline, fill: `url(#${id}-void)` }));
     // Ein paar tote Pixel im Loch

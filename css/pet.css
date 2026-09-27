@@ -295,7 +295,7 @@
   transform-origin: 50% 50%;
   animation: screen-hole-in .45s cubic-bezier(.34, 1.56, .64, 1) both, screen-hole-glitch 3.2s steps(1) 1s infinite;
 }
-.screen-hole-edge { filter: drop-shadow(0 0 6px rgba(0, 0, 0, .7)) drop-shadow(0 0 18px rgba(120, 60, 255, .45)); }
+.screen-hole-edge { filter: drop-shadow(0 0 6px rgba(0, 0, 0, .8)) drop-shadow(0 0 14px rgba(255, 255, 255, .55)) drop-shadow(0 0 28px rgba(150, 80, 255, .8)); }
 .screen-hole-cracks { opacity: .85; }
 .screen-hole-pixel { animation: screen-pixel 1.4s steps(2) infinite; }
 .screen-hole.is-repair { animation: screen-hole-out .85s cubic-bezier(.5, 0, .75, 0) forwards; }

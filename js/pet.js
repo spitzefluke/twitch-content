@@ -632,13 +632,14 @@ export class Dino {
     let finished;
     this.climbDone = new Promise((res) => { finished = res; });
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-    // Loch auf Höhe des Mauls, an der Bildschirmkante – je länger er frisst,
-    // desto weiter ins Bild hinein (depth 0 … 1)
+    // Loch vor dem Maul – neben ihm im Bild, damit man es sieht (er hängt an der Kante).
+    // Je länger er frisst (depth 0 … 1), desto weiter ins Bild hinein.
     const bite = (r, depth) => {
       const jaw = this.el.querySelector('.dino-jaw').getBoundingClientRect();
-      const inward = r * (0.25 + depth * 1.6) * rand(0.8, 1.2);
-      const cx = edge === 'left' ? inward : innerWidth - inward;
-      const cy = jaw.top + jaw.height / 2 - size * 0.06 + rand(-0.1, 0.1) * size;
+      const jx = jaw.left + jaw.width / 2;
+      const inward = size * (0.45 + depth * 1.4) * rand(0.85, 1.15);
+      const cx = edge === 'left' ? Math.max(r * 0.4, jx + inward) : Math.min(innerWidth - r * 0.4, jx - inward);
+      const cy = jaw.top + jaw.height / 2 - size * 0.18 + rand(-0.15, 0.15) * size;
       holes.bite(cx, cy, r, { reducedMotion: this.reducedMotion });
       if (!this.reducedMotion) holes.shake();
     };
@@ -658,7 +659,7 @@ export class Dino {
         this.el.classList.add('is-chomp');
         if (eating || i % 3 === 0) {
           this.sound('bite');
-          bite(size * (eating ? rand(0.24, 0.34) : rand(0.3, 0.46)), Math.min(1, i / 30));
+          bite(size * (eating ? rand(0.32, 0.44) : rand(0.38, 0.56)), Math.min(1, i / 30));
         } else {
           this.sound('chomp');
         }
@@ -865,7 +866,8 @@ function regrowCard(card) {
 // cards() (nur im Overlay) Karten, an denen er bei Heißhunger hochklettern darf –
 // die erste (die Karte „Als Nächstes“) bevorzugt er, von rechts. screen (ScreenHoles,
 // nur im Overlay): dann frisst er abwechselnd Löcher in den Bildschirm und Karten an.
-export function runDino(dino, { getPet, names, cards = null, screen = null, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
+// screenOnFrenzy: Bildschirm nur bei Heißhunger per Knopf (Vorschau im OBS-Fenster).
+export function runDino(dino, { getPet, names, cards = null, screen = null, screenOnFrenzy = false, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
   let idleAt = Date.now() + rand(8, 20) * 1000;
   let nibbleAt = Date.now() + rand(10, 25) * 1000;
   let trickAt = Date.now() + rand(...trickEvery) * 1000;
@@ -894,12 +896,13 @@ export function runDino(dino, { getPet, names, cards = null, screen = null, idle
     if ((cards || screen) && starving && now > climbAt) {
       climbAt = now + rand(...climbEvery) * 1000;
       const hold = () => isStarving(getPet());
-      const useScreen = screen && (screenTurn || !cards);
+      const useScreen = screen && (!screenOnFrenzy || frenzy) && (screenTurn || !cards);
       screenTurn = !screenTurn;
       if (useScreen) {
         if (await dino.eatScreen(screen, { line: fill(frenzy && Math.random() < 0.5 ? 'Wenn ihr nicht füttert, ess ich den Stream!' : screenLine(), pet), hold })) return;
       }
-      const [first, ...rest] = cards?.() ?? [];
+      if (!cards) return;
+      const [first, ...rest] = cards();
       const list = [first, ...rest.sort(() => Math.random() - 0.5)].filter(Boolean);
       const line = frenzy ? 'Wenn ihr nicht füttert, ess ich die Karten!' : fill(climbLine(), pet);
       for (const card of list) {
