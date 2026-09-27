@@ -34,6 +34,7 @@
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
 //   pground=edge               Dino läuft am Bildrand statt oben auf dem Laufband
 //   pclimb=0                   Dino klettert bei Heißhunger nicht an Karten hoch
+//   pscreen=0                  Dino frisst bei Heißhunger keine Löcher in den Bildschirm
 //   shop=tl|…                  Kisten-Shop-Karte an dieser Stelle; fehlt es, ist sie aus
 //   ssize=100                  Größe der Kisten-Shop-Karte in Prozent (50 – 200)
 //   challenge=tl|…             Win-Challenge-Karte an dieser Stelle; fehlt es, ist sie aus
@@ -69,6 +70,7 @@ import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
+import { ScreenHoles } from './screen-holes.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
@@ -141,6 +143,7 @@ const opt = {
   dsize: number('dsize', 100, 50, 200) / 100,
   pground: params.get('pground') === 'edge' ? 'edge' : 'ticker',
   pclimb: flag('pclimb', true),
+  pscreen: flag('pscreen', true),
   shop: position(params.get('shop'), null),
   ssize: number('ssize', 100, 50, 200) / 100,
   challenge: position(params.get('challenge'), null),
@@ -975,6 +978,7 @@ async function setupPet(source) {
   runDino(dino, {
     getPet: () => pet,
     cards: opt.pclimb && !opt.edit ? cards : null,
+    screen: opt.pscreen && !opt.edit ? new ScreenHoles(document.body) : null,
     names: async () => {
       const list = await source.recentNames().catch(() => []);
       return list.length ? list : opt.test ? ['Lokfuehrer_Lena', 'SchienenSeb', 'Bahnhofskater'] : [];

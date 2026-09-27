@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/style.css?v=e2e2b015e5">
   <link rel="stylesheet" href="css/prank-fx.css?v=c051194a73">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
-  <link rel="stylesheet" href="css/pet.css?v=a6b2236f87">
+  <link rel="stylesheet" href="css/pet.css?v=db55f45e1c">
   <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
@@ -31,11 +31,12 @@
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay.js": "./js/overlay.js?v=6a4020e89b",
-      "./js/pet.js": "./js/pet.js?v=2dbd87aac3",
+      "./js/overlay.js": "./js/overlay.js?v=cd848dc1b1",
+      "./js/pet.js": "./js/pet.js?v=1f9d4b2a46",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8a69fa372f",
       "./js/questions.js": "./js/questions.js?v=794f42e00a",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=66d3439a86",
+      "./js/screen-holes.js": "./js/screen-holes.js?v=016578d301",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
       "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
@@ -1169,6 +1170,7 @@
                   <label class="obs-row"><span>Größe</span><input type="range" name="dsize" min="50" max="200" step="5" value="100"><output name="dsize-out"></output></label>
                   <label class="obs-row"><span>Läuft auf</span><select name="pground"><option value="ticker" selected>dem Laufband</option><option value="edge">dem Bildrand</option></select></label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="pclimb" checked><span class="toggle-ui" aria-hidden="true"></span>Bei Heißhunger an Karten hochklettern und knabbern</label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="pscreen" checked><span class="toggle-ui" aria-hidden="true"></span>Bei Heißhunger Löcher in den Bildschirm fressen</label>
                   <!-- Rexi selbst (nur Admins): gilt sofort in allen OBS-Quellen, steht in der Tabelle pet -->
                   <div class="obs-pet-admin" id="obs-pet-admin" hidden>
                     <p class="obs-row-hint">Rexi im Stream – gilt sofort in allen OBS-Quellen:</p>
