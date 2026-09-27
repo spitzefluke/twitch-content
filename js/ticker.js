@@ -1,16 +1,26 @@
 // Laufband im OBS-Overlay: andere Seiten und Socials laufen langsam von
 // rechts nach links durch. Die Texte pflegen Admins im OBS-Dialog.
+// Steht eine bekannte Plattform in der Zeile (twitch.tv, youtube.com, tiktok.com …),
+// bekommt sie das echte Logo (js/social-icons.js).
+import { socialBadge, socialFor } from './social-icons.js';
 
-export const DEFAULT_TICKER = ['🟣 twitch.tv/zugfahrer_davetv', '🚂 Content-Stellwerk: {seite}'];
+export const DEFAULT_TICKER = ['twitch.tv/zugfahrer_davetv', '🚂 Content-Stellwerk: {seite}'];
 export const TICKER_STYLES = ['bar', 'neon', 'board'];
 
-// Symbol passend zur Seite, falls die Zeile nicht schon mit einem beginnt
-const ICONS = [
-  [/twitch/i, '🟣'], [/youtu/i, '▶️'], [/tiktok/i, '🎵'], [/insta/i, '📸'], [/discord/i, '💬'],
-  [/(^|\W)(x\.com|twitter)/i, '𝕏'], [/kick\.com/i, '🟢'], [/spotify/i, '🎧'], [/steam/i, '🎮'],
-  [/throne|wunschliste|amazon/i, '🎁'], [/paypal|tipeee|streamlabs|kofi|ko-fi/i, '💛'],
-];
+// Symbole, die früher automatisch vor Socials standen (auch in gespeicherten Texten):
+// steht ein Logo davor, fallen sie weg
+const OLD_SOCIAL_EMOJI = /^(🟣|▶️|▶|🎵|📸|💬|𝕏|🟢|🎧|🎮|💛)\s*/u;
+// Für Seiten ohne Logo weiter ein Symbol
+const ICONS = [[/throne|wunschliste|amazon/i, '🎁'], [/tipeee|spende|donat/i, '💛']];
 const startsWithSymbol = (text) => /^[\p{Extended_Pictographic}\p{So}]/u.test(text);
+
+// Eine Zeile: Text und – falls bekannt – die Plattform fürs Logo
+export function tickerLine(line, site = siteAddress()) {
+  let text = String(line ?? '').replaceAll('{seite}', site).trim();
+  const social = text ? socialFor(text) : null;
+  if (social) text = text.replace(OLD_SOCIAL_EMOJI, '');
+  return { text: social ? text : tickerText(text, site), social };
+}
 
 // Adresse der Webseite ohne https:// – für {seite}
 export function siteAddress(loc = location) {
@@ -28,14 +38,15 @@ export function tickerText(line, site = siteAddress()) {
 // Füllt die Laufschrift und lässt sie mit gleichmäßigem Tempo (px/s) laufen.
 // Der Inhalt steht doppelt drin, damit das Band ohne Lücke weiterläuft.
 export function fillTicker(track, items, { speed = 70, site } = {}) {
-  const lines = (items?.length ? items : DEFAULT_TICKER).map((l) => tickerText(l, site)).filter(Boolean);
+  const lines = (items?.length ? items : DEFAULT_TICKER).map((l) => tickerLine(l, site)).filter((l) => l.text);
   const group = () => {
     const g = document.createElement('span');
     g.className = 'ticker-group';
     for (const line of lines) {
       const item = document.createElement('span');
       item.className = 'ticker-item';
-      item.textContent = line;
+      if (line.social) item.append(socialBadge(line.social));
+      item.append(line.text);
       const dot = document.createElement('span');
       dot.className = 'ticker-sep';
       dot.setAttribute('aria-hidden', 'true');

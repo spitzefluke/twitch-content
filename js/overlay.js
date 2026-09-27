@@ -45,6 +45,14 @@
 //   sfollow=… / ssub=… / sresub=… / sgift=… / sbits=…
 //                              Sound je Alert-Art: none, ein Soundboard-Sound (gong, whistle …),
 //                              a:<pfad> (eigener Alert-Sound) oder c:<pfad> (Sound aus „Ärgere den Dave“)
+//   chat=tl|… oder 76,22       Twitch-Chat an dieser Stelle; fehlt es, ist er aus
+//   chsize=100                 Größe des Chats in Prozent (50 – 200)
+//   chmax=8                    so viele Nachrichten stehen höchstens da (3 – 20)
+//   chfade=0                   Sekunden, bis eine Nachricht verschwindet (0 = bleibt, bis neue sie verdrängen)
+//   chcmd=1                    Befehle (!füttern, !change …) auch zeigen – sonst ausgeblendet
+//   chbots=1                   Bots (StreamElements, Nightbot …) auch zeigen – sonst ausgeblendet
+//   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
+//   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -61,6 +69,8 @@ import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
+import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
+import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
@@ -138,6 +148,14 @@ const opt = {
   recent: position(params.get('recent'), null),
   rsize: number('rsize', 100, 50, 200) / 100,
   asound: Object.fromEntries(ALERT_KINDS.map((k) => [k.kind, (params.get(k.param) ?? '').slice(0, 300) || 'default'])),
+  chat: position(params.get('chat'), null),
+  chsize: number('chsize', 100, 50, 200) / 100,
+  chmax: number('chmax', 8, 3, 20),
+  chfadeMs: number('chfade', 0, 0, 600) * 1000,
+  chcmd: flag('chcmd', false),
+  chbots: flag('chbots', false),
+  yt: youtubeChannel(params.get('yt')),
+  chtw: flag('chtw', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -172,6 +190,7 @@ root.setProperty('--ss', opt.ssize);
 root.setProperty('--cs', opt.csize);
 root.setProperty('--as', opt.asize);
 root.setProperty('--rs', opt.rsize);
+root.setProperty('--chs', opt.chsize);
 root.setProperty('--dsz', `${Math.round(170 * opt.dsize)}px`);
 if (opt.accent) root.setProperty('--accent', opt.accent);
 $('ov-wlabel').textContent = opt.wlabel;
@@ -196,6 +215,8 @@ if (opt.alerts) place($('ov-alert'), opt.alerts);
 else $('ov-alert').remove();
 if (opt.recent) place($('ov-recent'), opt.recent);
 else $('ov-recent').remove();
+if (opt.chat) place($('ov-chat'), opt.chat);
+else $('ov-chat').remove();
 place($('ov-ticker'), opt.ticker);
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
@@ -248,6 +269,7 @@ async function start() {
   if (opt.challenge) setupChallenge(source);
   if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
+  if (opt.chat) setupChat();
   if (LIVE) watchOverlayConfig(source);
   if (!opt.edit) watchForUpdate();
 }
@@ -1295,6 +1317,53 @@ function burst(host, kind) {
 // ============================================================
 // Laufband: andere Seiten und Socials, immer an
 // ============================================================
+// ============================================================
+// Twitch-Chat
+// ============================================================
+function setupChat() {
+  const card = $('ov-chat');
+  const list = $('ov-chat-list');
+  const empty = () => card.classList.toggle('is-empty', !list.childElementCount && !opt.edit);
+  // Mehrere Plattformen: vor jedem Namen das Logo (Twitch oder YouTube)
+  const showPlatform = !!opt.yt && opt.chtw;
+  const add = (msg) => {
+    const text = msg.text.trim();
+    if (!opt.chcmd && text.startsWith('!')) return;
+    if (!opt.chbots && CHAT_BOTS.includes(msg.login)) return;
+    const row = renderMessage(msg, { showPlatform });
+    list.append(row);
+    while (list.childElementCount > opt.chmax) list.firstElementChild.remove();
+    if (opt.chfadeMs && !opt.edit) {
+      setTimeout(() => {
+        row.classList.add('is-out');
+        setTimeout(() => { row.remove(); empty(); }, 600);
+      }, opt.chfadeMs);
+    }
+    empty();
+  };
+  empty();
+  const handlers = {
+    message: add,
+    remove: (id) => { list.querySelector(`[data-id="${CSS.escape(id ?? '')}"]`)?.remove(); empty(); },
+    // login = null: ganzer Chat geleert – aber nur die Nachrichten dieser Plattform
+    clear: (login, platform = 'twitch') => {
+      for (const row of [...list.children]) {
+        if (login ? row.dataset.user === login : row.dataset.platform === platform) row.remove();
+      }
+      empty();
+    },
+  };
+  if (opt.chtw) connectTwitchChat(CONFIG.CHANNEL, handlers);
+  if (opt.yt) connectYouTubeChat(opt.yt, handlers);
+  // Vorschau und Probe: ein paar Beispiel-Nachrichten, damit man Platz und Größe sieht
+  if (opt.test || opt.edit) {
+    const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
+    let n = 0;
+    for (; n < Math.min(4, opt.chmax); n++) add(sample(n));
+    if (!opt.edit) setInterval(() => add(sample(n++)), 4000);
+  }
+}
+
 async function setupTicker(source) {
   const track = $('ov-ticker-track');
   // Fehlt die Tabelle noch, läuft das Band mit den Standardtexten
@@ -1337,7 +1406,7 @@ function setupEdit() {
     document.body.append(cam);
     setCam(opt.cam);
   }
-  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-alert', 'alerts'], ['ov-recent', 'recent'], ['ov-ticker', 'ticker']]) {
+  for (const [id, key] of [['ov-spin', 'wheel'], ['ov-next', 'next'], ['ov-bingo', 'bingo'], ['ov-quest', 'quest'], ['ov-shop', 'shop'], ['ov-challenge', 'challenge'], ['ov-alert', 'alerts'], ['ov-recent', 'recent'], ['ov-chat', 'chat'], ['ov-ticker', 'ticker']]) {
     if ($(id)) $(id).dataset.drag = key;
   }
   addEventListener('pointerdown', startDrag);
