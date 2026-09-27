@@ -1513,6 +1513,23 @@ body.obs-page .dialog--obs .dialog-head .icon-btn { font-size: 16px; width: auto
 .obs-mini-btn:disabled { opacity: .4; cursor: default; }
 .obs-row-toggle { font-size: 13px; }
 .obs-row-hint { font-size: 12px; color: var(--dim); }
+/* Streameransicht: Content-Ideen und Mods */
+.obs-content { display: grid; gap: 12px; align-content: start; }
+.obs-mods.is-on { border-color: rgba(61, 220, 132, .45); }
+.obs-mods-status { font-size: 13px; color: var(--muted); }
+.obs-mods-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.obs-mods-list li { padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 12px; }
+.obs-mods-list:empty { display: none; }
+.obs-content-box { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); }
+.obs-content-head { font-weight: 700; }
+.obs-content-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.obs-content-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-soft, var(--line)); }
+.obs-content-icon { font-size: 20px; }
+.obs-content-main { display: grid; min-width: 0; }
+.obs-content-main b { overflow-wrap: anywhere; line-height: 1.25; }
+.obs-content-main small { color: var(--muted); font-size: 12px; }
+.obs-content-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.obs-content-empty { color: var(--muted); font-size: 14px; }
 .obs-pet-admin { display: grid; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .obs-pet-admin[hidden] { display: none; }
 .obs-pet-btns { display: flex; flex-wrap: wrap; gap: 8px; }

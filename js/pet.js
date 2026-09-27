@@ -1,4 +1,4 @@
-// Daves Dino: ein kleines Tamagotchi, das im OBS-Overlay (und in der Vorschau
+// Der Stream-Dino: ein kleines Tamagotchi, das im OBS-Overlay (und in der Vorschau
 // auf der Webseite) hin und her läuft, freche Sprüche sagt und an den
 // Zuschauern knabbert, wenn es Hunger hat. Bei Hunger wird er rot. Bei Heißhunger
 // (doppelte Hungerzeit oder per Knopf, pet.frenzy_at) wächst er, klettert im
@@ -28,35 +28,35 @@ export const DEFAULT_PET = {
     'Bitte zurückbleiben, der Dino fährt ein!',
     'Chat, habt ihr Snacks dabei?',
     'Ich bin nicht dick, ich bin prähistorisch.',
-    'Dave, du alte Pflaume!',
+    '{streamer}, du alte Pflaume!',
     'Zug hat Verspätung. Wie immer.',
     'Kurze Arme, große Klappe.',
-    'Ich hab mehr Zähne als Dave Kills.',
+    'Ich hab mehr Zähne als {streamer} Kills.',
     'Mein Opa war ein T-Rex. Und deiner?',
     'Ich bin kein Dino, ich bin ein Lebensgefühl.',
-    'Dave, das war ein Kunstschuss. Also Kunst. Kein Schuss.',
-    'Pssst … ich glaube, Dave hat Lag im Kopf.',
+    '{streamer}, das war ein Kunstschuss. Also Kunst. Kein Schuss.',
+    'Pssst … ich glaube, {streamer} hat Lag im Kopf.',
     'Einmal Victory Royale zum Mitnehmen, bitte.',
     'Meine Lieblingswaffe? Meine Zähne.',
     'Achtung an Gleis 3: Der Dino-Express fährt ein!',
     'Ich esse keine Zuschauer. Nur ein bisschen.',
-    'Da war ein Busch. Der Busch war Dave.',
+    'Da war ein Busch. Der Busch war {streamer}.',
     'Ich hab Angst vor Meteoriten. Frag nicht, warum.',
     'Emote-Spam macht auch nicht satt.',
     'Der Zug ist abgefahren. Ich sitz drin.',
     'Ich wurde ausgebrütet, um zu nerven.',
     'Wort des Tages: Flitzpiepe.',
-    'Wenn Dave gewinnt, ess ich einen Busch.',
+    'Wenn {streamer} gewinnt, ess ich einen Busch.',
     'Ich brauch keinen Baumodus, ich bin schon gebaut.',
     'Nächster Halt: Snackautomat.',
     'Pausenbrot? Wo? WO?!',
-    'Ich hab Dave ins Knie gebissen. Aus Liebe.',
+    'Ich hab {streamer} ins Knie gebissen. Aus Liebe.',
     'Rawr heißt übersetzt: Gib Snacks.',
     'Ich war Mitarbeiter des Monats. Im Jura.',
     'Wer hat mein Ei geklaut?!',
     'Ich bin nicht faul, ich spare Energie für die Evolution.',
     'Heute schon gestretcht? Ich komm nicht an meine Zehen.',
-    'Dave spielt wie ein Fahrplan: niemand versteht ihn.',
+    '{streamer} spielt wie ein Fahrplan: niemand versteht ihn.',
     'Klatscht mal alle! … Ich kann nicht, kurze Arme.',
     'Ich hätte gern einen Fensterplatz im Battle Bus.',
     'Ist das hier der Ruhewagen? Nein? Gut. RAWR!',
@@ -867,7 +867,7 @@ function regrowCard(card) {
 // die erste (die Karte „Als Nächstes“) bevorzugt er, von rechts. screen (ScreenHoles,
 // nur im Overlay): dann frisst er abwechselnd Löcher in den Bildschirm und Karten an.
 // screenOnFrenzy: Bildschirm nur bei Heißhunger per Knopf (Vorschau im OBS-Fenster).
-export function runDino(dino, { getPet, names, cards = null, screen = null, screenOnFrenzy = false, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
+export function runDino(dino, { getPet, names, streamer = null, cards = null, screen = null, screenOnFrenzy = false, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
   let idleAt = Date.now() + rand(8, 20) * 1000;
   let nibbleAt = Date.now() + rand(10, 25) * 1000;
   let trickAt = Date.now() + rand(...trickEvery) * 1000;
@@ -876,7 +876,9 @@ export function runDino(dino, { getPet, names, cards = null, screen = null, scre
   let hungryLineAt = 0;
   let frenzySeen = getPet()?.frenzy_at ?? null;
   let screenTurn = true; // Heißhunger fängt mit dem Bildschirm an
-  const fill = (text, pet) => text.replaceAll('{befehl}', pet?.feed_command || DEFAULT_PET.feed_command);
+  // {befehl} = Chat-Befehl zum Füttern, {streamer} = Name des Kanals
+  const fill = (text, pet) => text.replaceAll('{befehl}', pet?.feed_command || DEFAULT_PET.feed_command)
+    .replaceAll('{streamer}', streamer?.() || 'Streamer');
   const timer = setInterval(async () => {
     const pet = getPet();
     const hungry = isHungry(pet);

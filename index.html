@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zugfahrer_DaveTV · Content-Stellwerk</title>
-  <meta name="description" content="Content-Ideen, Countdowns und das Fortnite-Glücksrad für Zugfahrer_DaveTV.">
+  <title>Content-Stellwerk</title>
+  <meta name="description" content="Content-Ideen, Countdowns und das Fortnite-Glücksrad für den Stream.">
   <meta name="theme-color" content="#07090f">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=e2e2b015e5">
+  <link rel="stylesheet" href="css/style.css?v=32d6097674">
   <link rel="stylesheet" href="css/prank-fx.css?v=c051194a73">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=b60d3469b7">
@@ -19,28 +19,28 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=188f6a9537",
-      "./js/alerts.js": "./js/alerts.js?v=fdc44d61a1",
-      "./js/api.js": "./js/api.js?v=f4df2ed493",
-      "./js/app.js": "./js/app.js?v=09eb49695c",
+      "./js/admin.js": "./js/admin.js?v=0c4713e52d",
+      "./js/alerts.js": "./js/alerts.js?v=d780620ee2",
+      "./js/api.js": "./js/api.js?v=3119cdafdd",
+      "./js/app.js": "./js/app.js?v=837445d87b",
       "./js/bingo.js": "./js/bingo.js?v=eb0fb757e8",
       "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
       "./js/config.js": "./js/config.js?v=4c6e85333d",
-      "./js/defaults.js": "./js/defaults.js?v=e7f5e33395",
+      "./js/defaults.js": "./js/defaults.js?v=bf258d1c86",
       "./js/intro-engine.js": "./js/intro-engine.js?v=2f3a626469",
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay.js": "./js/overlay.js?v=a3579474f4",
-      "./js/pet.js": "./js/pet.js?v=ca60c7b876",
-      "./js/prank-fx.js": "./js/prank-fx.js?v=8a69fa372f",
-      "./js/questions.js": "./js/questions.js?v=794f42e00a",
+      "./js/overlay.js": "./js/overlay.js?v=3a7afad9c4",
+      "./js/pet.js": "./js/pet.js?v=17f758b878",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
+      "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=66d3439a86",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
       "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=6fb58637c0",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=6f930d3b9f",
       "./js/weather.js": "./js/weather.js?v=b1e3736ff5",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
@@ -96,12 +96,12 @@
     <section class="auth-hero">
       <div class="brand">
         <img src="assets/favicon.svg" alt="" width="34" height="34">
-        <span>Zugfahrer_DaveTV</span>
+        <span data-streamer>Streamer</span>
         <span class="brand-badge">Gleis 1</span>
       </div>
       <h1>Das Content-<wbr>Stellwerk</h1>
       <p class="auth-kicker"><span class="rule" aria-hidden="true"></span>Fahrplan · Glücksrad · Countdown</p>
-      <p class="auth-lead">Hier werden Ideen für den Stream gesammelt, getaktet und auf die Strecke geschickt – mit Countdown bis zur Abfahrt und einem Glücksrad, das Daves Fortnite-Runden durcheinanderbringt.</p>
+      <p class="auth-lead">Hier werden Ideen für den Stream gesammelt, getaktet und auf die Strecke geschickt – mit Countdown bis zur Abfahrt und einem Glücksrad, das die Fortnite-Runden des Streamers durcheinanderbringt.</p>
       <div class="site-status" aria-label="Stellwerk-Status">
         <span class="site-status__dot" aria-hidden="true"></span>
         <span><b>Stellwerk online</b> · Demo-Fahrplan synchronisiert</span>
@@ -182,7 +182,7 @@
       <div class="topbar-brand">
         <div class="brand">
           <img src="assets/favicon.svg" alt="" width="30" height="30">
-          <span>Zugfahrer_DaveTV</span>
+          <span data-streamer>Streamer</span>
         </div>
         <p class="topbar-greeting" id="greeting"></p>
       </div>
@@ -396,14 +396,14 @@
     <div class="dialog-head">
       <div>
         <p class="eyebrow">Jederzeit · live im Stream</p>
-        <h2 id="prank-title">Ärgere den Dave</h2>
+        <h2 id="prank-title">Ärgere den Streamer</h2>
       </div>
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
     <p class="prank-note" id="prank-note" hidden></p>
     <div class="prank-layout">
       <div class="prank-main">
-        <!-- Bühne: zeigt jeden Wurf auch hier, mit einem gezeichneten Dave -->
+        <!-- Bühne: zeigt jeden Wurf auch hier, mit einem gezeichneten Streamer -->
         <div class="prank-stage" id="prank-stage">
           <svg class="dave" id="prank-dave" viewBox="0 0 220 240" aria-hidden="true">
             <path d="M28 240 C34 192 70 174 110 174 C150 174 186 192 192 240Z" fill="#26335a"/>
@@ -466,7 +466,7 @@
               <input type="file" name="file" accept="audio/*,.mp3,.ogg,.wav,.m4a">
               <span class="sound-file-text">🎵 Sound-Datei wählen …</span>
             </label>
-            <label class="field"><span>Name</span><input name="name" maxlength="30" placeholder="z. B. Daves Lachen" autocomplete="off"></label>
+            <label class="field"><span>Name</span><input name="name" maxlength="30" placeholder="z. B. Lacher vom Streamer" autocomplete="off"></label>
             <p class="form-hint">MP3, OGG, WAV oder M4A · höchstens 10 Sekunden und 1 MB · bis zu 8 Sounds pro Person</p>
             <p class="form-msg" role="alert"></p>
             <button class="btn btn--outline btn--block" type="submit">Hochladen</button>
@@ -536,12 +536,12 @@
     <div class="bingo-layout">
       <div class="bingo-main">
         <div class="segmented bingo-tabs" role="tablist" data-active="dave">
-          <button type="button" role="tab" id="bingo-tab-dave" aria-selected="true" aria-controls="bingo-pane-dave" data-tab="dave">Daves Karte</button>
+          <button type="button" role="tab" id="bingo-tab-dave" aria-selected="true" aria-controls="bingo-pane-dave" data-tab="dave">Stream-Karte</button>
           <button type="button" role="tab" id="bingo-tab-mine" aria-selected="false" aria-controls="bingo-pane-mine" data-tab="mine">Meine Karte</button>
           <span class="segmented-thumb" aria-hidden="true"></span>
         </div>
 
-        <!-- Daves Karte: die im Stream -->
+        <!-- Stream-Karte: die im Stream -->
         <div class="bingo-pane" id="bingo-pane-dave" role="tabpanel" aria-labelledby="bingo-tab-dave">
           <div class="bingo-status" id="bingo-status" aria-live="polite"></div>
           <div class="bingo-card-wrap">
@@ -550,7 +550,7 @@
           </div>
           <p class="bingo-empty" id="bingo-empty" hidden>Noch keine Karte gezogen.</p>
           <div class="bingo-bet-note" id="bingo-bet-note" role="status" hidden></div>
-          <p class="bingo-help" id="bingo-help">Die Karte aus Daves Stream. Findet Dave ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
+          <p class="bingo-help" id="bingo-help">Die Karte aus dem Stream. Findet der Streamer ein Item, wird es abgehakt. Eine volle Reihe, Spalte oder Diagonale ist ein Bingo!</p>
         </div>
 
         <!-- Meine Karte: selbst ziehen und selbst abkreuzen -->
@@ -576,7 +576,7 @@
             <div class="bingo-win" id="my-bingo-win" aria-hidden="true">Bingo!</div>
           </div>
           <p class="bingo-empty" id="my-bingo-empty" hidden></p>
-          <p class="bingo-help">Deine eigene Karte – nur du siehst sie. Findet Dave im Stream eins deiner Items, klick es an und kreuz es ab. Nochmal klicken nimmt das Kreuz wieder weg.</p>
+          <p class="bingo-help">Deine eigene Karte – nur du siehst sie. Findet der Streamer eins deiner Items, klick es an und kreuz es ab. Nochmal klicken nimmt das Kreuz wieder weg.</p>
         </div>
       </div>
 
@@ -650,7 +650,7 @@
     </div>
   </dialog>
 
-  <!-- Unangenehme Fragen: Zuschauer fragen, Admins prüfen, Dave antwortet im Stream -->
+  <!-- Unangenehme Fragen: Zuschauer fragen, Admins prüfen, der Streamer antwortet im Stream -->
   <dialog id="questions-dialog" class="dialog dialog--questions" aria-labelledby="questions-title">
     <div class="dialog-head">
       <div>
@@ -672,14 +672,14 @@
         </section>
 
         <form class="q-form" id="q-form" novalidate>
-          <label class="field"><span>Deine Frage an Dave</span>
+          <label class="field"><span>Deine Frage an den Streamer</span>
             <textarea name="text" rows="3" maxlength="200" required placeholder="Was war dein peinlichster Moment im Stream?"></textarea>
           </label>
           <div class="q-form-row">
             <label class="toggle"><input type="checkbox" name="anonymous"><span class="toggle-ui" aria-hidden="true"></span>Im Stream anonym</label>
             <span class="q-count" id="q-count">0 / 200</span>
           </div>
-          <p class="form-hint">Admins prüfen jede Frage, bevor Dave sie sieht. Beantwortet er sie nicht, muss er eine Bestrafung machen. Höchstens 3 Fragen pro Tag.</p>
+          <p class="form-hint">Admins prüfen jede Frage, bevor der Streamer sie sieht. Beantwortet er sie nicht, muss er eine Bestrafung machen. Höchstens 3 Fragen pro Tag.</p>
           <p class="form-msg" role="alert"></p>
           <button class="btn btn--primary btn--block" type="submit">Frage abschicken</button>
         </form>
@@ -851,11 +851,11 @@
     <div class="shop-fx" id="shop-fx"></div>
   </dialog>
 
-  <!-- Win-Challenge: nur Dave trägt ein, alle sehen den Stand -->
+  <!-- Win-Challenge: nur der Streamer trägt ein, alle sehen den Stand -->
   <dialog id="ch-dialog" class="dialog dialog--challenge" aria-labelledby="ch-title">
     <div class="dialog-head">
       <div>
-        <p class="eyebrow">Nur für Dave · Games, Runden, Fights gegen Mods</p>
+        <p class="eyebrow">Für den Streamer · Games, Runden, Fights gegen Mods</p>
         <h2 id="ch-title">Win-Challenge</h2>
       </div>
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
@@ -872,7 +872,7 @@
           <p class="ch-progress-text" id="ch-progress-text"></p>
         </div>
 
-        <!-- Dave (und freigeschaltete Admins): Ergebnisse eintragen -->
+        <!-- Streamer (und freigeschaltete Admins): Ergebnisse eintragen -->
         <div class="ch-controls" id="ch-controls" hidden>
           <p class="ch-now" id="ch-now"></p>
           <div class="ch-buttons">
@@ -885,7 +885,7 @@
             <button class="btn btn--ghost btn--sm" type="button" id="ch-reset">🔄 Neu starten</button>
           </div>
         </div>
-        <p class="shop-wait" id="ch-viewer" hidden>Hier trägt nur Dave ein – du siehst den Stand live, genau wie im Stream.</p>
+        <p class="shop-wait" id="ch-viewer" hidden>Hier trägt nur der Streamer ein – du siehst den Stand live, genau wie im Stream.</p>
 
         <h3 class="prank-h3">Die Stufen</h3>
         <ol class="ch-ladder" id="ch-ladder"></ol>
@@ -925,12 +925,12 @@
     <div class="shop-fx" id="ch-fx"></div>
   </dialog>
 
-  <!-- Daves Dino: füttern, streicheln – im Overlay läuft er durchs Bild -->
+  <!-- Der Dino: füttern, streicheln – im Overlay läuft er durchs Bild -->
   <dialog id="pet-dialog" class="dialog dialog--pet" aria-labelledby="pet-title">
     <div class="dialog-head">
       <div>
         <p class="eyebrow">Tamagotchi · läuft im Stream herum</p>
-        <h2 id="pet-title">Daves Dino</h2>
+        <h2 id="pet-title">Der Stream-Dino</h2>
       </div>
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
@@ -980,7 +980,7 @@
             <label class="field"><span>Name</span><input type="text" name="name" maxlength="20" required></label>
             <label class="field"><span>Hunger nach (Minuten ohne Futter)</span><input type="number" name="hungry_after" min="5" max="720" step="5" required></label>
             <label class="field"><span>Chat-Befehl zum Füttern</span><input type="text" name="feed_command" maxlength="30" pattern="![^\s!]{1,29}" placeholder="!füttern" required></label>
-            <label class="field"><span>Sprüche – einer pro Zeile</span><textarea name="phrases" rows="9"></textarea></label>
+            <label class="field"><span>Sprüche – einer pro Zeile, {streamer} = Name des Kanals</span><textarea name="phrases" rows="9"></textarea></label>
             <p class="form-msg" role="alert"></p>
             <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
           </form>
@@ -1036,7 +1036,7 @@
   <dialog id="obs-dialog" class="dialog dialog--obs" aria-labelledby="obs-title">
     <div class="dialog-head obs-head">
       <div>
-        <p class="eyebrow">Für den Stream</p>
+        <p class="eyebrow" id="obs-eyebrow">Für den Stream</p>
         <h2 id="obs-title">OBS-Overlay</h2>
       </div>
       <button class="obs-pill" id="obs-pill" type="button" data-state="off">
@@ -1058,7 +1058,7 @@
           <video class="obs-bg" id="obs-video" muted playsinline hidden></video>
           <span class="obs-preview-label" id="obs-preview-label">Beispielbild</span>
         </div>
-        <p class="obs-hint obs-drag-hint">Karten ziehen: Sie rasten am Rand und in der Mitte ein. Klick auf eine Karte öffnet rechts ihre Einstellungen. Den <b class="obs-red">roten Rahmen</b> auf Daves Kamera legen – dort landen die Würfe.</p>
+        <p class="obs-hint obs-drag-hint">Karten ziehen: Sie rasten am Rand und in der Mitte ein. Klick auf eine Karte öffnet rechts ihre Einstellungen. Den <b class="obs-red">roten Rahmen</b> auf die Kamera des Streamers legen – dort landen die Würfe.</p>
         <div class="obs-url">
           <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
           <button id="obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
@@ -1069,7 +1069,7 @@
           <span class="obs-dot" aria-hidden="true"></span>
           <div>
             <b id="obs-ws-title">Mit OBS verbinden</b>
-            <small id="obs-ws-status">Dann siehst du unten dein echtes OBS-Bild, die Seite findet Daves Kamera und richtet das Overlay in OBS ein.</small>
+            <small id="obs-ws-status">Dann siehst du unten dein echtes OBS-Bild, die Seite findet deine Kamera und richtet das Overlay in OBS ein.</small>
           </div>
         </div>
         <form class="obs-connect-form" id="obs-ws-form" novalidate>
@@ -1080,7 +1080,7 @@
         </form>
         <p class="form-msg obs-ws-msg" id="obs-ws-msg" role="alert"></p>
         <div class="obs-connected" id="obs-connected" hidden>
-          <label class="field"><span>Daves Kamera in OBS</span>
+          <label class="field"><span>Kamera des Streamers in OBS</span>
             <select id="obs-cam-source"></select>
           </label>
           <button class="btn btn--primary" type="button" id="obs-apply">In OBS übernehmen</button>
@@ -1104,7 +1104,7 @@
           <li>Adresse oben <b>kopieren</b>.</li>
           <li>In OBS unter <b>Quellen</b> auf <b>+</b> klicken, <b>Browser</b> wählen, Adresse einfügen, <b>Breite 1920</b> und <b>Höhe 1080</b>.</li>
           <li><b>„Audio über OBS steuern“</b> anhaken – dann ist der Ton im Audio-Mixer regelbar.</li>
-          <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über Daves Kamera.</li>
+          <li>Die Browserquelle in der Liste <b>ganz nach oben</b> schieben, über die Kamera.</li>
           <li>Das war’s: Änderungen hier erscheinen sofort in OBS – die Adresse bleibt immer gleich.</li>
         </ol>
       </details>
@@ -1113,11 +1113,35 @@
       <!-- Rechts: Ebenen, Aussehen & Ton, Texte & Tests -->
       <div class="obs-right">
         <div class="obs-tabs" role="tablist" aria-label="OBS-Einstellungen">
+          <button class="obs-tab" type="button" role="tab" data-tab="content" aria-selected="false" hidden>Content</button>
           <button class="obs-tab" type="button" role="tab" data-tab="layers" aria-selected="true">Ebenen</button>
           <button class="obs-tab" type="button" role="tab" data-tab="look" aria-selected="false">Aussehen &amp; Ton</button>
           <button class="obs-tab" type="button" role="tab" data-tab="admin" aria-selected="false">Texte &amp; Tests</button>
         </div>
 
+        <!-- Streameransicht: Mods freigeben und alle Content-Ideen steuern (Streamer, Admins, freigegebene Mods) -->
+        <div class="obs-pane obs-content" data-pane="content" hidden>
+          <section class="obs-card-form obs-mods" id="obs-mods">
+            <b>👥 Mods</b>
+            <small id="obs-mods-intro">Freigegebene Mods steuern das OBS-Overlay und alle Content-Ideen mit – so wie du. Twitch trennen und Kanalpunkte-Kosten bleiben bei dir.</small>
+            <label class="toggle" id="obs-mods-wrap">
+              <input type="checkbox" id="obs-mods-toggle">
+              <span class="toggle-ui" aria-hidden="true"></span>
+              Für Mods freigeben
+            </label>
+            <p class="obs-mods-status" id="obs-mods-status"></p>
+            <ul class="obs-mods-list" id="obs-mods-list"></ul>
+            <div class="obs-pet-btns">
+              <button class="btn btn--outline btn--sm" type="button" id="obs-mods-sync">🔄 Mods von Twitch holen</button>
+            </div>
+            <p class="form-hint">Mods melden sich hier auf der Seite mit „Mit Twitch anmelden“ an – die Seite erkennt sie an ihrem Twitch-Konto.</p>
+          </section>
+          <section class="obs-content-box">
+            <b class="obs-content-head">🎬 Content-Ideen</b>
+            <p class="form-hint">Öffnen startet und steuert die Idee (Glücksrad drehen, Bingo-Tipprunde, Frage zeigen …). „Freischalten“ macht sie sofort für alle Zuschauer sichtbar.</p>
+            <ul class="obs-content-list" id="obs-content-list"></ul>
+          </section>
+        </div>
         <form class="obs-options" id="obs-options">
           <div class="obs-pane obs-layers" data-pane="layers">
             <section class="obs-group" data-group>
@@ -1155,14 +1179,14 @@
                   <label class="obs-row"><span>Ausblenden</span><select name="chfade"><option value="0" selected>nie – neue verdrängen alte</option><option value="15">nach 15 Sekunden</option><option value="30">nach 30 Sekunden</option><option value="60">nach 1 Minute</option><option value="120">nach 2 Minuten</option></select></label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chcmd"><span class="toggle-ui" aria-hidden="true"></span>Befehle (!füttern, !change …) auch zeigen</label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chbots"><span class="toggle-ui" aria-hidden="true"></span>Bots (StreamElements, Nightbot …) auch zeigen</label>
-                  <p class="obs-row-hint">Liest Daves Twitch-Chat und – mit YouTube-Kanal – den YouTube-Livechat mit, in einer Liste mit Logo vor jedem Namen. Ohne Login und API-Schlüssel, es wird nichts gespeichert. Gelöschte Nachrichten verschwinden auch hier. YouTube erscheint, sobald dort ein Livestream läuft.</p>
+                  <p class="obs-row-hint">Liest den Twitch-Chat des Kanals und – mit YouTube-Kanal – den YouTube-Livechat mit, in einer Liste mit Logo vor jedem Namen. Ohne Login und API-Schlüssel, es wird nichts gespeichert. Gelöschte Nachrichten verschwinden auch hier. YouTube erscheint, sobald dort ein Livestream läuft.</p>
                 </div>
               </div>
               <div class="obs-layer" data-layer="pet" style="--lc: #5cc36b">
                 <div class="obs-layer-head">
-                  <label class="toggle obs-switch"><input type="checkbox" name="pet"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Daves Dino zeigen</span></label>
+                  <label class="toggle obs-switch"><input type="checkbox" name="pet"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Dino zeigen</span></label>
                   <span class="obs-layer-dot" aria-hidden="true"></span>
-                  <button class="obs-layer-name" type="button" aria-expanded="false">Daves Dino</button>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Stream-Dino</button>
                   <span class="obs-layer-size" data-size-for="pet"></span>
                   <span class="obs-layer-chev" aria-hidden="true">▾</span>
                 </div>
@@ -1223,13 +1247,13 @@
                 <div class="obs-layer-head">
                   <label class="toggle obs-switch"><input type="checkbox" name="prank"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Würfe &amp; Sounds zeigen</span></label>
                   <span class="obs-layer-dot" aria-hidden="true"></span>
-                  <button class="obs-layer-name" type="button" aria-expanded="false">Würfe &amp; Sounds<small>auf Daves Kamera</small></button>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Würfe &amp; Sounds<small>auf die Kamera</small></button>
                   <span class="obs-layer-size" data-size-for="prank"></span>
                   <span class="obs-layer-chev" aria-hidden="true">▾</span>
                 </div>
                 <div class="obs-layer-body" hidden>
                   <label class="obs-row"><span>Größe</span><input type="range" name="psize" min="50" max="200" step="5" value="100"><output name="psize-out"></output></label>
-                  <p class="obs-row-hint">Den <b class="obs-red">roten Rahmen</b> in der Vorschau auf Daves Kamera legen – dort landen die Würfe.</p>
+                  <p class="obs-row-hint">Den <b class="obs-red">roten Rahmen</b> in der Vorschau auf die Kamera des Streamers legen – dort landen die Würfe.</p>
                 </div>
               </div>
               <div class="obs-layer" data-layer="quest" style="--lc: #ff5fa8">
@@ -1357,7 +1381,7 @@
             </div>
         <details class="obs-more obs-alert-sounds" open>
           <summary>🔔 Alert-Sounds</summary>
-          <p class="form-hint">Welcher Ton bei welchem Alert läuft – Standard, ein eigener Alert-Sound, ein Sound vom Soundboard, ein Sound aus „Ärgere den Dave“ oder gar keiner.</p>
+          <p class="form-hint">Welcher Ton bei welchem Alert läuft – Standard, ein eigener Alert-Sound, ein Sound vom Soundboard, ein Sound aus „Ärgere den Streamer“ oder gar keiner.</p>
           <div class="obs-sound-grid" id="obs-alert-sounds">
             <label class="field"><span>💜 Follower</span><select name="sfollow"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="follow" aria-label="Follower-Sound anhören">▶</button>
@@ -1444,7 +1468,7 @@
             <label class="toggle" id="obs-allow-wrap" hidden>
               <input type="checkbox" id="obs-allow-admins">
               <span class="toggle-ui" aria-hidden="true"></span>
-              Admins (Mods) dürfen das Overlay anpassen
+              Admins dürfen das Overlay anpassen
             </label>
           </div>
         </div>
@@ -1456,7 +1480,7 @@
   <dialog id="twitch-dialog" class="dialog dialog--small" aria-labelledby="twitch-dialog-title">
     <div class="dialog-head">
       <div>
-        <p class="eyebrow">Nur für Dave</p>
+        <p class="eyebrow">Nur für den Streamer</p>
         <h2 id="twitch-dialog-title">Twitch verbinden</h2>
       </div>
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>

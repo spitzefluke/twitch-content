@@ -1,4 +1,4 @@
-// „Ärgere den Dave“: Wurfgegenstände, eingebaute Sounds und die Wurf-Animation.
+// „Ärgere den Streamer“: Wurfgegenstände, eingebaute Sounds und die Wurf-Animation.
 // Benutzt von der Webseite (Bühne im Dialog) und vom OBS-Overlay.
 // Alle Töne entstehen im Browser (Web Audio) – es gibt keine Audiodateien.
 
@@ -86,7 +86,7 @@ export const boardById = (id) => BOARD.find((b) => b.id === id);
 export function prankText(p) {
   if (p.kind === 'throw') {
     const item = itemById(p.item);
-    return item?.nice ? `${p.requested_by} schenkt Dave ${item.acc}` : `${p.requested_by} wirft ${item?.acc ?? 'etwas'}`;
+    return item?.nice ? `${p.requested_by} schenkt dem Streamer ${item.acc}` : `${p.requested_by} wirft ${item?.acc ?? 'etwas'}`;
   }
   const name = p.item === 'custom' ? p.label : boardById(p.item)?.name ?? p.item;
   return `${p.requested_by} spielt „${name}“`;

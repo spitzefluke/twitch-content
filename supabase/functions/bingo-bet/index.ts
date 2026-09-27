@@ -1,5 +1,5 @@
 // Fortnite-Bingo: Tipprunde mit Kanalpunkten über eine Twitch-Vorhersage.
-// Zuschauer tippen im Twitch-Chat, welche Reihe auf Daves Karte zuerst voll
+// Zuschauer tippen im Twitch-Chat, welche Reihe auf der Karte des Streamers zuerst voll
 // wird. Wer richtig liegt, bekommt die Kanalpunkte der anderen dazu – so
 // verteilt Twitch die Punkte bei Vorhersagen.
 //   POST {action:"start", seconds} → Vorhersage starten (Tippzeit 30 s bis 30 min)
@@ -8,7 +8,7 @@
 //   POST {action:"cancel"}         → Abbrechen, alle bekommen ihre Punkte zurück
 // Nur für Admins. Die Runde steht in bingo_card.bet (Migration …_bingo_bet.sql).
 import {
-  CodedError, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, json, sendChat, type Connection,
+  CodedError, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, isAdminUser, json, sendChat, type Connection,
 } from "../_shared/twitch.ts";
 import { betLines, fullLines } from "../_shared/bingo.ts";
 
@@ -31,8 +31,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Nicht angemeldet" }, 401);
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen Tipprunden starten." }, 403);
+  if (!(await isAdminUser(user.id))) return json({ error: "Nur Admins und freigegebene Mods dürfen Tipprunden starten." }, 403);
 
   const { action, seconds } = await req.json().catch(() => ({}));
   try {
@@ -60,10 +59,10 @@ async function loadCard() {
 
 async function connection(): Promise<Connection & { scopes?: string[] }> {
   const conn = await getConnection();
-  if (!conn) throw new CodedError("not_connected", "Twitch ist nicht verbunden. Dave muss sich zuerst auf der Webseite mit Twitch verbinden.");
+  if (!conn) throw new CodedError("not_connected", "Twitch ist nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden.");
   const scopes = (conn as { scopes?: string[] }).scopes ?? [];
   if (!scopes.includes(SCOPE)) {
-    throw new CodedError("need_reconnect", "Für Tipprunden braucht die Seite eine neue Twitch-Berechtigung (Vorhersagen). Dave muss Twitch einmal neu verbinden: Twitch-Knopf oben → „Neu verbinden“.");
+    throw new CodedError("need_reconnect", "Für Tipprunden braucht die Seite eine neue Twitch-Berechtigung (Vorhersagen). Der Streamer muss Twitch einmal neu verbinden: Twitch-Knopf oben → „Neu verbinden“.");
   }
   return conn;
 }
@@ -100,9 +99,9 @@ async function start(seconds: number) {
   } catch (e) {
     if (e instanceof HelixError) {
       if (e.status === 403) throw new CodedError("not_affiliate", "Vorhersagen gibt es nur für Twitch-Affiliates und Partner.");
-      if (e.status === 401) throw new CodedError("need_reconnect", "Twitch lässt die Vorhersage nicht zu. Dave muss Twitch einmal neu verbinden.");
+      if (e.status === 401) throw new CodedError("need_reconnect", "Twitch lässt die Vorhersage nicht zu. Der Streamer muss Twitch einmal neu verbinden.");
       if (e.status === 400 && /active|already/i.test(e.data?.message ?? "")) {
-        throw new CodedError("other_prediction", "In Daves Kanal läuft schon eine andere Vorhersage. Die erst auf Twitch beenden.");
+        throw new CodedError("other_prediction", "Im Kanal läuft schon eine andere Vorhersage. Die erst auf Twitch beenden.");
       }
     }
     throw e;

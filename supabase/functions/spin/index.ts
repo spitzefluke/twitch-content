@@ -2,7 +2,7 @@
 // damit es für alle gleich ist und optional im Twitch-Chat landet.
 import {
   chatText, CodedError, corsHeaders, db, getConnection, getUserFromRequest, json, sendChat,
-  performSpin,
+  isAdminUser, performSpin,
 } from "../_shared/twitch.ts";
 
 const COOLDOWN_MS = 8000;
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     });
 
     let announced = false;
-    if (announce && profile?.is_admin) {
+    if (announce && (await isAdminUser(user.id))) {
       const conn = await getConnection();
       if (conn) {
         try {

@@ -30,6 +30,15 @@ export class CodedError extends Error {
   }
 }
 
+// Admin für die Inhalte: Admin-Häkchen oder vom Streamer freigegebener Mod
+// (is_admin_user, Migration …_streamer_mods.sql). Fehlt die Funktion noch, zählt nur das Häkchen.
+export async function isAdminUser(userId: string): Promise<boolean> {
+  const { data, error } = await db.rpc("is_admin_user", { p_user: userId });
+  if (!error) return data === true;
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  return !!profile?.is_admin;
+}
+
 // Angemeldeten Supabase-User aus dem Authorization-Header lesen
 export async function getUserFromRequest(req: Request) {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -39,12 +48,13 @@ export async function getUserFromRequest(req: Request) {
 }
 
 // ---------- Twitch API ----------
-// Dave: Kanalpunkte verwalten, Vorhersagen fürs Bingo starten und dem Bot erlauben,
+// Streamer: Kanalpunkte verwalten, Vorhersagen fürs Bingo starten und dem Bot erlauben,
 // in seinem Chat zu schreiben. Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
-// Dazu Follower, Abos und Bits lesen – für die Alerts im OBS-Overlay.
+// Dazu Follower, Abos und Bits lesen – für die Alerts im OBS-Overlay –, und die Mods
+// des Kanals, damit sie auf der Seite mitsteuern dürfen (wenn der Streamer es freigibt).
 export const BROADCASTER_SCOPES = [
   "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
-  "moderator:read:followers", "channel:read:subscriptions", "bits:read",
+  "moderator:read:followers", "channel:read:subscriptions", "bits:read", "moderation:read",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und Daves Chat lesen – für Befehle wie !füttern.

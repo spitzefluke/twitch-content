@@ -96,6 +96,6 @@ export function sampleAlert(kind, n = 0) {
     user_name: NAMES[n % NAMES.length],
     months: kind === 'resub' ? 7 : 0,
     amount: kind === 'gift' ? 5 : kind === 'bits' ? 500 : 0,
-    message: kind === 'resub' ? 'Weiter so, Dave!' : '',
+    message: kind === 'resub' ? 'Weiter so!' : '',
   };
 }

@@ -1,15 +1,16 @@
 // Twitch mit dem Stellwerk verbinden.
-//   POST {action:"start"}          → Twitch-Login-URL für Daves Kanal (angemeldeter User nötig)
+//   POST {action:"start"}          → Twitch-Login-URL für den Kanal des Streamers (angemeldeter User nötig)
 //   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
 //   POST {action:"sync_pranks"}    → Kanalpunkte-Belohnungen fürs Ärgern anlegen/abgleichen (nur Admin)
 //   POST {action:"wheel_cost", cost} → Kosten der Glücksrad-Belohnung ändern (nur Admin)
-//   POST {action:"alerts_check"}   → Twitch-Abos für die Alerts prüfen und reparieren (nur Admin)
-//   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für Daves Kanal und
+//   POST {action:"alerts_check"}   → Twitch-Abos für die Alerts prüfen und reparieren (Admins, freigegebene Mods)
+//   POST {action:"sync_mods"}      → die Mods des Kanals von Twitch holen (Streamer und Admins)
+//   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für den Streamer-Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
 import {
   CodedError, corsHeaders, db, env, getAppToken, getConnection, getUserFromRequest,
-  helix, HelixError, json, oauthRedirectUri, startTwitchLogin, twitchToken,
+  helix, HelixError, isAdminUser, json, oauthRedirectUri, startTwitchLogin, twitchToken,
 } from "../_shared/twitch.ts";
 import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
@@ -33,6 +34,7 @@ Deno.serve(async (req) => {
       if (action === "sync_pranks") return await syncPranks(user.id);
       if (action === "wheel_cost") return await setWheelCost(user.id, cost);
       if (action === "alerts_check") return await checkAlerts(user.id);
+      if (action === "sync_mods") return await syncModsAction(user.id);
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error(e);
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
   return json({ error: "Methode nicht erlaubt" }, 405);
 });
 
-// Daves Kanal kommt zurück auf die Webseite, der Chat-Bot in den Admin-Bereich.
+// Der Streamer-Kanal kommt zurück auf die Webseite, der Chat-Bot in den Admin-Bereich.
 function backToSite(params: Record<string, string>, page = "") {
   const site = Deno.env.get("SITE_URL");
   if (!site) {
@@ -85,7 +87,7 @@ async function handleCallback(url: URL) {
     const me = (await helix("users", tok.access_token)).data[0];
     if (st.kind === "bot") return await saveBot(me, st.user_id, tok.scope ?? []);
 
-    // Wer Daves Kanal verbindet, wird Admin – also streng prüfen, wer das darf:
+    // Wer den Streamer-Kanal verbindet, wird Admin – also streng prüfen, wer das darf:
     //   · Mit BROADCASTER_LOGIN nur genau dieser Twitch-Kanal.
     //   · Ohne das Secret nur, wer schon Admin ist (sonst könnte sich jeder
     //     Zuschauer mit seinem eigenen Kanal verbinden und Admin werden).
@@ -141,6 +143,8 @@ async function handleCallback(url: URL) {
     await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
     await chatSubscription(me.id);
     await alertSubscriptions(me.id, tok.scope ?? []);
+    // Mods des Kanals holen – scheitert es, geht der Rest trotzdem
+    await syncMods(me.id, tok.access_token, tok.scope ?? []).catch((e) => console.warn("Mods nicht geholt:", e));
 
     return backToSite({ twitch: "connected" });
   } catch (e) {
@@ -189,12 +193,59 @@ async function alertSubscriptions(broadcasterId: string, scopes: string[]) {
 // Admin: Stehen die Alert-Abos bei Twitch? Fehlende oder von Twitch abgeschaltete
 // werden neu angelegt. Antwort je Art (channel.follow …): ok, pending, missing_scope, error.
 async function checkAlerts(userId: string) {
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Alerts prüfen." }, 403);
+  if (!(await isAdminUser(userId))) return json({ error: "Nur Admins und freigegebene Mods dürfen die Alerts prüfen." }, 403);
   const conn = await getConnection();
   if (!conn) return json({ connected: false, types: {} });
   const types = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"), conn.scopes ?? []);
   return json({ connected: true, types });
+}
+
+// Die Mods des Kanals von Twitch holen (Recht moderation:read) und in channel_mods ablegen.
+// Wer sich mit einem dieser Twitch-Konten auf der Seite anmeldet, darf mitsteuern –
+// sobald der Streamer „Für Mods freigeben“ einschaltet (Migration …_streamer_mods.sql).
+async function syncMods(broadcasterId: string, token: string, scopes: string[]) {
+  if (!scopes.includes("moderation:read")) return { missing_scope: true, count: 0 };
+  const mods: { twitch_user_id: string; login: string; display_name: string; synced_at: string }[] = [];
+  let after = "";
+  for (let page = 0; page < 20; page++) {
+    const res = await helix("moderation/moderators", token, {
+      query: { broadcaster_id: broadcasterId, first: "100", ...(after ? { after } : {}) },
+    });
+    for (const m of res.data ?? []) {
+      mods.push({ twitch_user_id: String(m.user_id), login: String(m.user_login ?? ""), display_name: String(m.user_name ?? ""), synced_at: new Date().toISOString() });
+    }
+    after = res.pagination?.cursor ?? "";
+    if (!after) break;
+  }
+  const ids = mods.map((m) => m.twitch_user_id);
+  if (mods.length) {
+    const { error } = await db.from("channel_mods").upsert(mods);
+    if (error) throw error;
+  }
+  // Wer bei Twitch kein Mod mehr ist, fällt raus
+  const del = db.from("channel_mods").delete();
+  const { error: delErr } = ids.length ? await del.not("twitch_user_id", "in", `(${ids.join(",")})`) : await del.neq("twitch_user_id", "");
+  if (delErr) throw delErr;
+  return { missing_scope: false, count: mods.length, mods: mods.map((m) => m.display_name || m.login) };
+}
+
+async function syncModsAction(userId: string) {
+  const { data: owner } = await db.from("twitch_connection").select("connected_by").eq("id", 1).maybeSingle();
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  if (owner?.connected_by !== userId && !profile?.is_admin) {
+    return json({ error: "Die Mods holen dürfen nur der Streamer und Admins." }, 403);
+  }
+  const conn = await getConnection();
+  if (!conn) return json({ error: "Twitch ist noch nicht verbunden." }, 400);
+  try {
+    return json(await syncMods(conn.broadcaster_id, conn.access_token, conn.scopes ?? []));
+  } catch (e) {
+    console.error(e);
+    if (e instanceof HelixError && (e.status === 401 || e.status === 403)) {
+      return json({ missing_scope: true, count: 0 });
+    }
+    return json({ error: (e as Error).message }, 500);
+  }
 }
 
 // Chat lesen (für !füttern): klappt nur mit Bot, der user:read:chat freigegeben hat.
@@ -213,7 +264,7 @@ async function ensureReward(broadcasterId: string, token: string, knownId?: stri
   const settings = {
     title,
     cost,
-    prompt: "Dreht Daves Fortnite-Glücksrad mit einer zufälligen Variante – das Ergebnis erscheint im Chat!",
+    prompt: "Dreht das Fortnite-Glücksrad mit einer zufälligen Variante – das Ergebnis erscheint im Chat!",
     is_enabled: true,
     background_color: "#9146FF",
     is_user_input_required: false,
@@ -256,7 +307,7 @@ async function syncPranks(userId: string) {
   const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
   if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Belohnungen ändern." }, 403);
   const conn = await getConnection();
-  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Dave muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
+  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
   try {
     const result = await syncPrankRewards(conn);
     const subscriptionId = await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"));
@@ -279,7 +330,7 @@ async function setWheelCost(userId: string, raw: unknown) {
     return json({ error: "Die Kosten müssen zwischen 1 und 1.000.000 Kanalpunkten liegen." }, 400);
   }
   const conn = await getConnection();
-  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Dave muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
+  if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
   try {
     const reward = await ensureReward(conn.broadcaster_id, conn.access_token, conn.reward_id, cost);
     const { error } = await db.from("twitch_connection")
@@ -296,7 +347,7 @@ async function setWheelCost(userId: string, raw: unknown) {
 
 async function disconnect(userId: string) {
   const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur Dave darf Twitch trennen." }, 403);
+  if (!profile?.is_admin) return json({ error: "Nur der Streamer darf Twitch trennen." }, 403);
 
   const conn = await getConnection();
   if (conn) {

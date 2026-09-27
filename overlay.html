@@ -18,28 +18,28 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=188f6a9537",
-      "./js/alerts.js": "./js/alerts.js?v=fdc44d61a1",
-      "./js/api.js": "./js/api.js?v=f4df2ed493",
-      "./js/app.js": "./js/app.js?v=09eb49695c",
+      "./js/admin.js": "./js/admin.js?v=0c4713e52d",
+      "./js/alerts.js": "./js/alerts.js?v=d780620ee2",
+      "./js/api.js": "./js/api.js?v=3119cdafdd",
+      "./js/app.js": "./js/app.js?v=837445d87b",
       "./js/bingo.js": "./js/bingo.js?v=eb0fb757e8",
       "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
       "./js/config.js": "./js/config.js?v=4c6e85333d",
-      "./js/defaults.js": "./js/defaults.js?v=e7f5e33395",
+      "./js/defaults.js": "./js/defaults.js?v=bf258d1c86",
       "./js/intro-engine.js": "./js/intro-engine.js?v=2f3a626469",
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay.js": "./js/overlay.js?v=a3579474f4",
-      "./js/pet.js": "./js/pet.js?v=ca60c7b876",
-      "./js/prank-fx.js": "./js/prank-fx.js?v=8a69fa372f",
-      "./js/questions.js": "./js/questions.js?v=794f42e00a",
+      "./js/overlay.js": "./js/overlay.js?v=3a7afad9c4",
+      "./js/pet.js": "./js/pet.js?v=17f758b878",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
+      "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=66d3439a86",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
       "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=6fb58637c0",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=6f930d3b9f",
       "./js/weather.js": "./js/weather.js?v=b1e3736ff5",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
@@ -53,7 +53,7 @@
      die Adresse baut der OBS-Dialog im Dashboard. -->
 <body>
 
-  <!-- Ärgere den Dave: Würfe landen auf Daves Kamera (Bereich per ?cam=) -->
+  <!-- Ärgere den Streamer: Würfe landen auf seiner Kamera (Bereich per ?cam=) -->
   <div class="ov-pranks" id="ov-pranks" aria-hidden="true">
     <div class="ov-prank-feed" id="ov-prank-feed"></div>
   </div>
@@ -116,7 +116,7 @@
     </div>
   </section>
 
-  <!-- Unangenehme Fragen: die Frage, die Dave gerade beantworten muss -->
+  <!-- Unangenehme Fragen: die Frage, die der Streamer gerade beantworten muss -->
   <section class="ov-card ov-quest" id="ov-quest" hidden aria-live="polite">
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
@@ -130,7 +130,7 @@
     </div>
   </section>
 
-  <!-- Kisten-Shop: Daves Runde (Goldbarren, gekaufte Items, gefunden), im Koop-Duell das Tauziehen -->
+  <!-- Kisten-Shop: die Runde des Streamers (Goldbarren, gekaufte Items, gefunden), im Koop-Duell das Tauziehen -->
   <section class="ov-card ov-shop" id="ov-shop" hidden aria-live="polite">
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
@@ -200,7 +200,7 @@
     </div>
   </section>
 
-  <!-- Twitch-Chat: liest Daves Chat anonym mit (js/twitch-chat.js) -->
+  <!-- Twitch-Chat: liest den Chat des Kanals anonym mit (js/twitch-chat.js) -->
   <section class="ov-card ov-chat" id="ov-chat" aria-label="Twitch-Chat">
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
@@ -211,11 +211,11 @@
 
   <!-- Laufband: andere Seiten und Socials, immer an (verschiebbar im OBS-Dialog) -->
   <section class="ov-card ov-ticker" id="ov-ticker" aria-label="Laufband">
-    <span class="ticker-label">Mehr von Dave</span>
+    <span class="ticker-label" id="ov-ticker-label">Mehr vom Streamer</span>
     <div class="ticker-view"><div class="ticker-track" id="ov-ticker-track"></div></div>
   </section>
 
-  <!-- Daves Dino läuft unten durchs Bild -->
+  <!-- Der Stream-Dino läuft unten durchs Bild -->
   <div class="ov-pet" id="ov-pet" aria-hidden="true"></div>
 
 </body>

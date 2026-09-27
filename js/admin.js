@@ -401,7 +401,7 @@ function renderTwitch(t, data = {}) {
   const chip = (kind, label) => `<span class="chip chip--${kind}">${kind === 'ok' ? '✓' : kind === 'bad' ? '✕' : '!'} ${label}</span>`;
   const rows = [];
   if (!t) {
-    rows.push(['Kanal', `${chip('bad', 'Nicht verbunden')}<br><small class="muted">Dave muss sich auf der Webseite mit Twitch verbinden.</small>`]);
+    rows.push(['Kanal', `${chip('bad', 'Nicht verbunden')}<br><small class="muted">Der Streamer muss sich auf der Webseite mit Twitch verbinden.</small>`]);
   } else {
     const exp = Date.parse(t.expires_at);
     rows.push(['Kanal', `${chip('ok', 'Verbunden')} ${escapeHtml(t.display_name ?? t.broadcaster_login)}`]);
@@ -437,12 +437,12 @@ function renderBot(t, data) {
   if (bot) {
     const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
     text.innerHTML = `<b>Chat-Bot:</b> ${escapeHtml(bot.display_name ?? bot.login)} schreibt die Ergebnisse in den Chat.` +
-      (scopeOk ? '' : ' <br>Damit er in Daves Chat schreiben darf, muss Dave Twitch auf der Webseite einmal neu verbinden.');
+      (scopeOk ? '' : ' <br>Damit er im Chat des Streamers schreiben darf, muss der Streamer Twitch auf der Webseite einmal neu verbinden.');
     connect.textContent = 'Anderen Bot verbinden';
     disconnect.hidden = false;
   } else {
     text.innerHTML = '<b>Chat-Bot:</b> nicht verbunden – ohne ihn bleibt der Chat still. ' +
-      'Vorher auf twitch.tv mit dem <b>Bot-Account</b> anmelden (nicht mit Daves), dann hier verbinden.';
+      'Vorher auf twitch.tv mit dem <b>Bot-Account</b> anmelden (nicht mit dem des Streamers), dann hier verbinden.';
     connect.textContent = 'Bot verbinden';
     disconnect.hidden = true;
   }
@@ -509,7 +509,7 @@ function showBotReturn() {
     return;
   }
   const reasons = {
-    bot_is_broadcaster: 'Das war Daves Account. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
+    bot_is_broadcaster: 'Das war der Account des Streamers. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet, sondern zur Supabase-Anmeldung. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → „Verwalten“) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen (genau so, ohne / am Ende), speichern, ein paar Minuten warten und noch einmal verbinden.`,
@@ -528,7 +528,7 @@ async function checkTwitch() {
     out.textContent = r.found
       ? (r.status === 'enabled'
         ? '✓ Twitch meldet: Webhook aktiv. Einlösungen kommen an.'
-        : `! Twitch meldet Status „${r.status}“. Dave sollte Twitch neu verbinden.`)
+        : `! Twitch meldet Status „${r.status}“. Der Streamer sollte Twitch neu verbinden.`)
       : `✕ ${r.status}.`;
   } catch (err) {
     out.textContent = `Prüfung fehlgeschlagen: ${err.message}`;

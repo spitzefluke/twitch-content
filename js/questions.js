@@ -32,7 +32,7 @@ export const OUTCOME_LABEL = {
   skipped: '⏭ Übersprungen',
 };
 
-// Füllt die Karte „Frage an Dave“ (Webseite: Vorschau, Overlay: im Stream).
+// Füllt die Karte „Frage an den Streamer“ (Webseite: Vorschau, Overlay: im Stream).
 // Erwartet .qcard-author, .qcard-text, .qcard-result darin.
 export function paintQuestionCard(el, stage) {
   const state = stage?.state ?? 'hidden';
@@ -40,7 +40,7 @@ export function paintQuestionCard(el, stage) {
   el.querySelector('.qcard-author').textContent = stage?.author ? `Frage von ${stage.author}` : 'Frage aus dem Chat';
   el.querySelector('.qcard-text').textContent = stage?.text ?? '';
   const result = el.querySelector('.qcard-result');
-  result.textContent = state === 'answered' ? '✅ Dave hat geantwortet!'
+  result.textContent = state === 'answered' ? '✅ Beantwortet!'
     : state === 'punished' ? `😈 Bestrafung: ${stage.punishment ?? ''}`
       : state === 'skipped' ? '⏭ Übersprungen'
         : '';

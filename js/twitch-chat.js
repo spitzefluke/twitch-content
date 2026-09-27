@@ -232,12 +232,12 @@ export function connectTwitchChat(channel, on = {}) {
 
 // Probe-Nachrichten für die Vorschau im OBS-Dialog (test=1)
 const SAMPLES = [
-  ['Lokfuehrer_Lena', '#FF69B4', 'subscriber/6', 'Guten Abend, Dave! 🚂'],
+  ['Lokfuehrer_Lena', '#FF69B4', 'subscriber/6', 'Guten Abend! 🚂'],
   ['SchienenSeb', '', 'moderator/1', 'Denkt an !füttern, Rexi hat Hunger'],
   ['TTV_Weichensteller', '#1E90FF', '', 'Was für ein Kunstschuss 😂'],
   ['Bahnhofskater', '#9ACD32', 'vip/1', 'GG! Nächste Runde gleich?'],
   ['ICE_Irina', '#DAA520', 'subscriber/24', '!change lok'],
-  ['Gleis9dreiviertel', '', '', 'Ich wette, Dave landet wieder am Pleasant Park'],
+  ['Gleis9dreiviertel', '', '', 'Ich wette, er landet wieder am Pleasant Park'],
 ];
 const YT_SAMPLES = [
   ['Zugfan Sabine', 'member', 'Hallo aus dem YouTube-Chat! 👋', null],

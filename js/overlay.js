@@ -25,12 +25,12 @@
 //   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
 //   bstyle=classic|neon|paper  Design der Bingo-Karte: bunt (Standard), Neon oder Papier
-//   prank=1                    „Ärgere den Dave“ an (Würfe und Sounds)
-//   cam=35,25,30,40            Daves Kamera im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
+//   prank=1                    „Ärgere den Streamer“ an (Würfe und Sounds)
+//   cam=35,25,30,40            Kamera des Streamers im Bild: links,oben,Breite,Höhe in Prozent – dort landen die Würfe
 //   psize=100                  Größe der Wurfgeschosse in Prozent (50 – 200)
 //   quest=tc|…                 Karte „Unangenehme Frage“ an dieser Stelle; fehlt es, ist sie aus
 //   qsize=100                  Größe der Fragen-Karte in Prozent (50 – 200)
-//   pet=1                      Daves Dino an (läuft unten durchs Bild)
+//   pet=1                      der Stream-Dino an (läuft unten durchs Bild)
 //   dsize=100                  Größe des Dinos in Prozent (50 – 200)
 //   pground=edge               Dino läuft am Bildrand statt oben auf dem Laufband
 //   pclimb=0                   Dino klettert bei Heißhunger nicht an Karten hoch
@@ -45,7 +45,7 @@
 //   rsize=100                  Größe dieser Karte in Prozent (50 – 200)
 //   sfollow=… / ssub=… / sresub=… / sgift=… / sbits=…
 //                              Sound je Alert-Art: none, ein Soundboard-Sound (gong, whistle …),
-//                              a:<pfad> (eigener Alert-Sound) oder c:<pfad> (Sound aus „Ärgere den Dave“)
+//                              a:<pfad> (eigener Alert-Sound) oder c:<pfad> (Sound aus „Ärgere den Streamer“)
 //   chat=tl|… oder 76,22       Twitch-Chat an dieser Stelle; fehlt es, ist er aus
 //   chsize=100                 Größe des Chats in Prozent (50 – 200)
 //   chmax=8                    so viele Nachrichten stehen höchstens da (3 – 50)
@@ -90,6 +90,22 @@ let liveConfig = '';
 if (LIVE) liveConfig = await readOverlayConfig().catch((err) => { console.warn('Overlay: Live-Einstellungen nicht lesbar', err); return ''; });
 const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
 if (LIVE) for (const key of ['test', 'edit']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
+
+// Der Streamer: Name und Login des verbundenen Twitch-Kanals (streamer_info, ohne Anmeldung).
+// Fehlt die Migration …_streamer_mods.sql oder läuft die Demo: CHANNEL aus js/config.js.
+const STREAMER = await readStreamer().catch(() => null) ?? { name: CONFIG.CHANNEL, login: CONFIG.CHANNEL };
+async function readStreamer() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return null;
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/streamer_info`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: '{}',
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const info = await res.json();
+  return info?.connected ? { name: info.name || info.login, login: info.login } : null;
+}
 
 async function readOverlayConfig() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
@@ -224,6 +240,7 @@ else $('ov-recent').remove();
 if (opt.chat) place($('ov-chat'), opt.chat);
 else $('ov-chat').remove();
 place($('ov-ticker'), opt.ticker);
+$('ov-ticker-label').textContent = `Mehr von ${STREAMER.name}`;
 $('ov-ticker').classList.add(`ticker-style-${opt.tstyle}`);
 if (opt.edit) setupEdit();
 
@@ -704,7 +721,7 @@ function setupNext(source) {
 }
 
 // ============================================================
-// Ärgere den Dave
+// Ärgere den Streamer
 // ============================================================
 // Würfe fliegen sofort (auch mehrere gleichzeitig), Sounds laufen nacheinander.
 function setupPranks(source) {
@@ -940,7 +957,7 @@ async function setupQuestions(source) {
 }
 
 // ============================================================
-// Daves Dino
+// Stream-Dino
 // ============================================================
 async function setupPet(source) {
   const layer = $('ov-pet');
@@ -976,6 +993,7 @@ async function setupPet(source) {
     return cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5 && r.width > 80 && r.height > 60;
   });
   runDino(dino, {
+    streamer: () => STREAMER.name,
     getPet: () => pet,
     cards: opt.pclimb && !opt.edit ? cards : null,
     // In der Vorschau des OBS-Fensters (edit) frisst er den Bildschirm nur, wenn dort
@@ -1016,9 +1034,9 @@ async function setupPet(source) {
 }
 
 // ============================================================
-// Kisten-Shop: Daves Runde im Stream
+// Kisten-Shop: die Runde des Streamers im Stream
 // ============================================================
-// Zu sehen, solange Dave mit „Im Stream zeigen“ spielt; nach dem Ende noch 10 Minuten.
+// Zu sehen, solange der Streamer mit „Im Stream zeigen“ spielt; nach dem Ende noch 10 Minuten.
 const SHOP_SHOW_AFTER_MS = 10 * 60 * 1000;
 
 async function setupShop(source) {
@@ -1040,7 +1058,7 @@ async function setupShop(source) {
     const all = run.items.length > 0 && found === run.items.length;
     card.classList.toggle('is-allfound', all);
     const buying = ['opened', 'shopping'].includes(run.status);
-    // Koop: Dave wartet, bis alle eingekauft haben – dann läuft das Duell
+    // Koop: der Streamer wartet, bis alle eingekauft haben – dann läuft das Duell
     const duel = !!run.lobby_id && versusLive(board);
     const waitDuel = !!run.lobby_id && run.status === 'playing' && !duel;
     $('ov-shop-coins').innerHTML = buying
@@ -1117,7 +1135,7 @@ async function setupShop(source) {
   if (opt.test || opt.edit) {
     // Probe zum Einrichten
     const demo = {
-      id: 'test', player: 'Dave', status: 'playing', coins: 165, spent: 110, lobby_id: null, updated_at: new Date().toISOString(),
+      id: 'test', player: STREAMER.name, status: 'playing', coins: 165, spent: 110, lobby_id: null, updated_at: new Date().toISOString(),
       shop_until: new Date().toISOString(),
       items: [
         { name: 'SCAR', rarity: 'epic', price: 55, found: true },
@@ -1144,7 +1162,7 @@ async function setupShop(source) {
 }
 
 // ============================================================
-// Win-Challenge: Daves Stufen, Siege und Leben
+// Win-Challenge: Stufen, Siege und Leben
 // ============================================================
 // Zu sehen, sobald die Challenge läuft; nach dem Ende noch 10 Minuten.
 const CHALLENGE_SHOW_AFTER_MS = 10 * 60 * 1000;
@@ -1374,7 +1392,7 @@ function setupChat() {
       empty();
     },
   };
-  if (opt.chtw) connectTwitchChat(CONFIG.CHANNEL, handlers);
+  if (opt.chtw) connectTwitchChat(STREAMER.login || CONFIG.CHANNEL, handlers);
   if (opt.yt) connectYouTubeChat(opt.yt, handlers);
   // Vorschau und Probe: ein paar Beispiel-Nachrichten, damit man Platz und Größe sieht
   if (opt.test || opt.edit) {
@@ -1424,7 +1442,7 @@ function setupEdit() {
     cam.id = 'ov-cam';
     cam.className = 'ov-cam-frame';
     cam.dataset.drag = 'cam';
-    cam.innerHTML = '<span>Daves Kamera</span><i class="ov-cam-handle" data-resize title="Größe ändern"></i>';
+    cam.innerHTML = '<span>Kamera des Streamers</span><i class="ov-cam-handle" data-resize title="Größe ändern"></i>';
     document.body.append(cam);
     setCam(opt.cam);
   }
