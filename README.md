@@ -261,6 +261,10 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `dsize=130` | Größe des Dinos in Prozent |
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
 | `pclimb=0` | Dino klettert bei Heißhunger nicht an Karten hoch |
+| `chat=tl` / `x,y` | Twitch-Chat an dieser Stelle (Standard im OBS-Dialog: rechts oben, frei verschiebbar) |
+| `chsize=120` / `chmax=8` | Größe in Prozent / höchstens so viele Nachrichten (3 – 20) |
+| `chfade=30` | Nachrichten verschwinden nach so vielen Sekunden (Standard 0 = bleiben, bis neue sie verdrängen) |
+| `chcmd=1` / `chbots=1` | Befehle (`!füttern` …) bzw. Bots (StreamElements, Nightbot …) auch zeigen – Standard: ausgeblendet |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
 | `tstyle=bar` / `neon` / `board` | Design des Laufbands: Laufband, Neon oder Bahnhofs-Anzeige (gelbe LED-Schrift) |
 | `tsize=120` / `tspeed=70` | Größe in Prozent / Tempo in Pixeln pro Sekunde |
@@ -269,6 +273,10 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 **Daves Kamera:** Im OBS-Dialog unter „Ärgere den Dave“ eine Vorlage wählen oder in der Vorschau einen Rahmen um die Stelle ziehen, an der die Kamera im Stream sitzt. In OBS die Browserquelle **über** die Kamera-Quelle schieben, sonst fliegt alles hinter Dave vorbei. Läuft das Overlay in mehreren Browserquellen, bei allen außer einer `prank=0` setzen – sonst kommt jeder Sound doppelt.
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
+
+### Twitch-Chat im Overlay
+
+Im OBS-Dialog unter „Immer im Bild“ → **Twitch-Chat** einschalten: Daves Chat läuft als Karte im Bild mit – mit Emotes, Namensfarben und Abzeichen (Streamer, Mod, VIP, Abo). Das Overlay liest den Chat **anonym** über Twitchs Chat-Schnittstelle mit (wie ein ausgeloggter Zuschauer): kein Login, kein Bot, keine Migration, es wird nichts gespeichert. Löschen Mods eine Nachricht oder sperren jemanden, verschwindet sie auch im Overlay. Befehle und bekannte Bots sind standardmäßig ausgeblendet; Größe, Zeilenzahl und Ausblenden stehen beim Chat im OBS-Dialog. Ohne Nachrichten ist die Karte unsichtbar. Der Kanal kommt aus `CHANNEL` in `js/config.js`.
 
 ### Alerts für Follower, Abos und Bits
 
@@ -286,7 +294,7 @@ Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **Dav
 
 ### Laufband
 
-Unten im Overlay laufen langsam von rechts nach links weitere Seiten und Socials durch (z. B. Twitch, YouTube, TikTok, die Stellwerk-Seite). Das Laufband ist immer da und lässt sich nicht ausschalten, aber in der Vorschau des OBS-Dialogs verschieben; Design (Laufband, Neon, Bahnhofs-Anzeige), Größe und Tempo stehen im Dialog. Die Texte pflegen Admins im OBS-Dialog unter **📢 Laufband-Texte bearbeiten** (eine Zeile pro Eintrag, `{seite}` = Adresse dieser Webseite, Symbole für bekannte Seiten kommen von selbst). Änderungen laufen sofort in allen OBS-Quellen. Einmal nötig: Migration `20260929000000_ticker.sql` – ohne sie läuft das Band mit Twitch und der Stellwerk-Seite.
+Unten im Overlay laufen langsam von rechts nach links weitere Seiten und Socials durch (z. B. Twitch, YouTube, TikTok, die Stellwerk-Seite). Das Laufband ist immer da und lässt sich nicht ausschalten, aber in der Vorschau des OBS-Dialogs verschieben; Design (Laufband, Neon, Bahnhofs-Anzeige), Größe und Tempo stehen im Dialog. Die Texte pflegen Admins im OBS-Dialog unter **📢 Laufband-Texte bearbeiten** (eine Zeile pro Eintrag, `{seite}` = Adresse dieser Webseite). Für bekannte Plattformen – Twitch, YouTube, TikTok, Instagram, Discord, X, Kick, Spotify, Steam, Facebook, Threads, Bluesky, Reddit, Patreon, Ko-fi, PayPal, Streamlabs, Snapchat, WhatsApp, Telegram, GitHub – steht automatisch das echte Logo davor (Simple Icons, CC0); es reicht die Adresse, z. B. `youtube.com/@dave`. Änderungen laufen sofort in allen OBS-Quellen. Einmal nötig: Migration `20260929000000_ticker.sql` – ohne sie läuft das Band mit Twitch und der Stellwerk-Seite.
 
 ## Ärgere den Dave
 
