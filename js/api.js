@@ -3,7 +3,7 @@
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, cardCell, fullBetLines } from './bingo.js';
-import { DEFAULT_PET } from './pet.js';
+import { COSTUMES, DEFAULT_PET } from './pet.js';
 import { DEFAULT_STAGE } from './questions.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import { DEFAULT_SHOP } from './shop.js';
@@ -39,6 +39,7 @@ const ERRORS = [
   [/column .*bonus|'bonus' column/i, 'In der Datenbank fehlt das zweite Glücksrad: supabase/migrations/20261007000000_wheel_bonus.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.wheel_variants_save/i, 'In der Datenbank fehlt das Bearbeiten des Glücksrads: supabase/migrations/20261006000000_wheel_edit.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
+  [/could not find the '(costume|costume_command|costume_cooldown|costume_changed_at|frenzy_at)' column|column [\w.]*"?(costume|costume_command|costume_cooldown|frenzy_at)"? (of relation "pet" )?does not exist|could not find the function '?public\.(pet_frenzy|pet_costume)|pet_events_kind_check/i, 'In der Datenbank fehlen Rexis Kostüme und der Heißhunger-Knopf: supabase/migrations/20261011000000_pet_costume.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
@@ -451,6 +452,9 @@ async function createSupabaseApi() {
     },
     async petAction(kind) { return unwrap(await sb.rpc('pet_action', { p_kind: kind })); },
     async petSay(text) { return unwrap(await sb.rpc('pet_say', { p_text: text })); },
+    // Heißhunger per Knopf (on = false beendet ihn) und Kostüm wechseln – nur Admins
+    async petFrenzy(on = true) { return unwrap(await sb.rpc('pet_frenzy', { p_on: on })); },
+    async petCostume(costume) { return unwrap(await sb.rpc('pet_costume', { p_costume: costume })); },
     async updatePet(patch) {
       return unwrap(await sb.from('pet').update(patch).eq('id', 1).select('*').single());
     },
@@ -480,6 +484,8 @@ async function createSupabaseApi() {
     },
     async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
     async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
+    // Twitch-Abos für die Alerts prüfen und fehlende neu anlegen (nur Admins)
+    async checkAlertSubscriptions() { return invoke('twitch-oauth', { action: 'alerts_check' }); },
     // Eigene Alert-Sounds (nur Admins laden hoch), Bucket "alert-sounds"
     alertSoundUrl(path) {
       return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`;
@@ -1249,7 +1255,8 @@ function createLocalApi() {
       store.set(key, Date.now());
       if (kind === 'feed') {
         const pet = await this.getPet();
-        savePet({ ...pet, last_fed_at: new Date().toISOString(), last_fed_by: profile?.username ?? 'Zuschauer', fed_count: (pet.fed_count ?? 0) + 1 });
+        // Füttern beendet den Heißhunger (wie der Trigger in …_pet_costume.sql)
+        savePet({ ...pet, last_fed_at: new Date().toISOString(), last_fed_by: profile?.username ?? 'Zuschauer', fed_count: (pet.fed_count ?? 0) + 1, frenzy_at: null });
       }
       return addPetEvent({ kind, who: profile?.username ?? 'Zuschauer', text: '' });
     },
@@ -1265,7 +1272,19 @@ function createLocalApi() {
       if (patch.phrases) next.phrases = patch.phrases.map((p) => p.trim().slice(0, 80)).filter(Boolean).slice(0, 50);
       if (patch.name !== undefined) next.name = String(patch.name).trim().slice(0, 20) || 'Rexi';
       if (patch.feed_command !== undefined && !/^![^\s!]{1,29}$/.test(patch.feed_command)) throw new Error('Der Chat-Befehl beginnt mit ! und hat keine Leerzeichen.');
+      if (patch.costume_cooldown !== undefined && !(patch.costume_cooldown >= 0 && patch.costume_cooldown <= 300)) throw new Error('Abklingzeit 0 bis 300 Sekunden.');
       return savePet(next);
+    },
+    async petFrenzy(on = true) {
+      await requireAdmin();
+      return savePet({ ...(await this.getPet()), frenzy_at: on ? new Date().toISOString() : null });
+    },
+    async petCostume(costume) {
+      await requireAdmin();
+      if (!COSTUMES.some((c) => c.id === costume)) throw new Error('Dieses Kostüm gibt es nicht.');
+      const pet = savePet({ ...(await this.getPet()), costume, costume_changed_at: new Date().toISOString() });
+      addPetEvent({ kind: 'costume', who: store.get('users', {})[current.email]?.username ?? 'Admin', text: costume });
+      return pet;
     },
     onPet(cb) { (demoListeners.pet ??= []).push(cb); },
     onPetEvents(cb) { (demoListeners.pet_events ??= []).push(cb); },

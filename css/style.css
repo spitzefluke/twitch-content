@@ -1373,6 +1373,11 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .obs-alerts details > * + * { margin-top: 8px; }
 .obs-alerts-status { color: var(--muted); font-size: 14px; }
 .obs-alerts-status.is-warn { color: var(--amber-2); }
+.obs-alerts-subs { list-style: none; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.obs-alerts-subs li { color: var(--muted); }
+.obs-alerts-subs b { color: var(--text); font-weight: 600; }
+.obs-alerts-subs .is-ok { color: var(--green, #3fb950); }
+.obs-alerts-subs .is-bad { color: var(--amber-2); }
 .obs-alerts-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* OBS-Dialog: Live-Status */
@@ -1508,6 +1513,10 @@ body.obs-page .dialog--obs .dialog-head .icon-btn { font-size: 16px; width: auto
 .obs-mini-btn:disabled { opacity: .4; cursor: default; }
 .obs-row-toggle { font-size: 13px; }
 .obs-row-hint { font-size: 12px; color: var(--dim); }
+.obs-pet-admin { display: grid; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.obs-pet-admin[hidden] { display: none; }
+.obs-pet-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.pet-costume-box { display: grid; gap: 10px; }
 
 /* Aussehen & Ton */
 .obs-look { display: grid; gap: 14px; align-content: start; }

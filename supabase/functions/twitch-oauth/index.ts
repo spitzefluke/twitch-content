@@ -3,6 +3,7 @@
 //   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
 //   POST {action:"sync_pranks"}    → Kanalpunkte-Belohnungen fürs Ärgern anlegen/abgleichen (nur Admin)
 //   POST {action:"wheel_cost", cost} → Kosten der Glücksrad-Belohnung ändern (nur Admin)
+//   POST {action:"alerts_check"}   → Twitch-Abos für die Alerts prüfen und reparieren (nur Admin)
 //   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für Daves Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
@@ -31,6 +32,7 @@ Deno.serve(async (req) => {
       if (action === "disconnect") return await disconnect(user.id);
       if (action === "sync_pranks") return await syncPranks(user.id);
       if (action === "wheel_cost") return await setWheelCost(user.id, cost);
+      if (action === "alerts_check") return await checkAlerts(user.id);
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error(e);
@@ -182,6 +184,17 @@ async function alertSubscriptions(broadcasterId: string, scopes: string[]) {
     console.warn("Alert-Abos nicht angelegt:", e);
     return null;
   }
+}
+
+// Admin: Stehen die Alert-Abos bei Twitch? Fehlende oder von Twitch abgeschaltete
+// werden neu angelegt. Antwort je Art (channel.follow …): ok, pending, missing_scope, error.
+async function checkAlerts(userId: string) {
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Alerts prüfen." }, 403);
+  const conn = await getConnection();
+  if (!conn) return json({ connected: false, types: {} });
+  const types = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"), conn.scopes ?? []);
+  return json({ connected: true, types });
 }
 
 // Chat lesen (für !füttern): klappt nur mit Bot, der user:read:chat freigegeben hat.

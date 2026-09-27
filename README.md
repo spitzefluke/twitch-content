@@ -276,9 +276,11 @@ Zwei eigene Bausteine, im OBS-Dialog einzeln ein- und ausschaltbar, verschiebbar
 - **Alerts:** Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht), werden Abos verschenkt oder Bits gecheert (mit Anzahl und Nachricht), springt die Karte mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Dazwischen ist sie unsichtbar. Kommen mehrere gleichzeitig, laufen sie nacheinander.
 - **Letzter Follower & Abo:** kleine Karte, die immer den letzten Follower, das letzte Abo und die letzten Bits zeigt.
 
-Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Dave“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 4 MB und 20 Sekunden, bis zu 30 Stück). Der Alert bleibt stehen, solange sein Sound läuft. Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins schicken unter **🔔 Alerts testen** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
+Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Dave“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 4 MB und 20 Sekunden, bis zu 30 Stück). Der Alert bleibt stehen, solange sein Sound läuft. Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins schicken unter **🔔 Alerts prüfen & testen** (Reiter „Texte & Tests“) Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
 
 Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **Dave muss Twitch einmal neu verbinden** (oben rechts „Twitch“) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der OBS-Dialog zeigt, ob die Rechte schon da sind.
+
+**Kommen echte Alerts nicht an** (Follow oder Bits, Probe-Alerts gehen aber)? Im OBS-Dialog unter „Texte & Tests“ → **🔔 Alerts prüfen & testen** fragt die Seite bei jedem Öffnen (und mit **🔄 Bei Twitch prüfen**) nach, ob die EventSub-Abos wirklich stehen. Fehlende oder von Twitch abgeschaltete Abos (z. B. nach Zustellfehlern) legt sie dabei sofort neu an. Die Liste zeigt je Art: „✓ aktiv“, „Recht fehlt“ (dann Twitch neu verbinden) oder die genaue Meldung von Twitch.
 
 **Bits und eigene Alert-Sounds:** Einmal nötig: Migrationen `20261009000000_alert_bits_sounds.sql` und `20261010000000_alert_sound_length.sql` (20 Sekunden, 4 MB) ausführen und **Dave verbindet Twitch noch einmal neu** – für Bits braucht die Seite das Recht `bits:read`.
 
@@ -344,11 +346,17 @@ Ein kleiner Dino (Standardname „Rexi“, der Schaffner-Dino mit Mütze und Pfe
 
 Wird er eine Weile nicht gefüttert (Standard 45 Minuten), bekommt er **Hunger**: Er meckert und **knabbert an den Zuschauern** – ein Namensschild von jemandem, der zuletzt gefüttert, geworfen oder gedreht hat, fällt ins Bild, der Dino läuft hin und beißt hinein.
 
-**Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) klettert Rexi im Overlay an einer sichtbaren Karte hoch und beißt Stücke aus dem Rand – die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert, klettert er runter, frisst und der Rand wächst wieder zu. Abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`).
+Bei Hunger wird Rexi **rot** (auch die kleine Zeichnung auf der Kachel) und der Magen knurrt ab und zu hörbar.
+
+**Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) – oder sofort per Knopf **🔥 Heißhunger auslösen** (OBS-Fenster: beim Dino und unter „Texte & Tests“, außerdem im Dino-Dialog) – brüllt Rexi, wächst auf 1,3-fache Größe, klettert im Overlay an einer Karte hoch und frisst Stücke aus dem Rand: am liebsten von rechts an der Karte **„Als Nächstes“**, 9 Bissen von der Kante bis zur oberen Ecke, dann kaut er weiter und droht („Wenn ihr nicht füttert, ess ich die Karten!“). Die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert (Chat oder **🍖 Rexi füttern**), klettert er runter, rülpst, freut sich und der Rand wächst wieder zu. Derselbe Knopf beendet den Heißhunger auch ohne Füttern. Das Klettern ist abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`).
+
+**Kostüme:** Schaffner (Mütze + Pfeife), Lokführer (Streifenmütze + Halstuch) und Gleisbauer (Helm + Warnweste). Zuschauer wechseln es mit **`!change`** im Twitch-Chat (nimmt das nächste) oder gezielt mit `!change schaffner`, `!change lok` bzw. `!change bau` – über dem Dino erscheint dann „@name !change lok → LOKFÜHRER“, und jedes Kostüm hat seinen Sound (Pfeife, Brüllen, Stapfen). Im OBS-Fenster beim Dino stellen Admins das Kostüm direkt ein, schalten `!change` ab und legen die **Abklingzeit** fest (0–300 Sekunden, Standard 60, gilt für alle). Wie `!füttern` braucht `!change` den Chat-Bot.
+
+Rexis Sounds (Brüllen, Kauen, Kartenknuspern, Magenknurren, Rülpsen, Schnarchen, Pfeife …) entstehen im Browser (`js/rexi-sfx.js`), es werden keine Dateien geladen. Lautstärke wie alle Overlay-Sounds über `vol`.
 
 Admins stellen im Dialog Name, Hunger-Zeit und die Sprüche ein und können den Dino über **Dino sagt im Stream** sofort etwas sagen lassen.
 
-Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
+Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Für Kostüme, `!change` und den Heißhunger-Knopf zusätzlich `supabase/migrations/20261011000000_pet_costume.sql`. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
 
 ## Kisten-Shop
 
