@@ -19,7 +19,8 @@ export function createApi() {
 const ERRORS = [
   [/invalid login credentials/i, 'E-Mail oder Passwort ist falsch.'],
   [/already registered|already been registered/i, 'Diese E-Mail ist bereits registriert.'],
-  [/password should be at least/i, 'Das Passwort muss mindestens 6 Zeichen haben.'],
+  [/password should be at least (\d+)/i, 'Das Passwort ist zu kurz.'],
+  [/password is known to be weak|weak.?password|pwned/i, 'Dieses Passwort ist bekannt geworden oder zu leicht zu erraten – bitte ein anderes nehmen.'],
   [/email not confirmed/i, 'Bitte bestätige zuerst den Link in deiner E-Mail.'],
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
@@ -64,7 +65,7 @@ export function germanError(err) {
 // Supabase
 // ------------------------------------------------------------
 async function createSupabaseApi() {
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  const { createClient } = await import('./supabase-js.js');
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const unwrap = ({ data, error }) => { if (error) throw error; return data; };
 

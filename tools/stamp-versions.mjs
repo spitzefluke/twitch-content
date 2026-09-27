@@ -8,6 +8,10 @@
 //
 //   node tools/stamp-versions.mjs          Nummern aktualisieren (vor jedem Commit)
 //   node tools/stamp-versions.mjs --check  nur prüfen (für GitHub Actions)
+//
+// Dazu schreibt es die Content-Security-Policy jeder Seite (<meta http-equiv=…>): Skripte nur
+// von der eigenen Seite plus die beiden Inline-Skripte oben (per SHA-256-Hash freigegeben).
+// GitHub Pages kann keine eigenen HTTP-Header setzen – deshalb als Meta-Tag.
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -16,6 +20,23 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js' };
 const check = process.argv.includes('--check');
+
+// Wohin die Seiten Verbindungen aufbauen dürfen (Supabase, Wetter, Twitch-Chat, OBS auf dem eigenen PC)
+const CSP = (scriptHashes) => [
+  "default-src 'self'",
+  `script-src 'self' ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob: https://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
+  "frame-src 'self'",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+const sha = (text) => createHash('sha256').update(text).digest('base64');
 
 const hash = (path) => createHash('sha256').update(readFileSync(join(root, path))).digest('hex').slice(0, 10);
 
@@ -28,13 +49,20 @@ let stale = [];
 for (const [page, entry] of Object.entries(PAGES)) {
   const file = join(root, page);
   const before = readFileSync(file, 'utf8');
+  const importmap = JSON.stringify({ imports }, null, 2).replace(/\n/g, '\n  ');
+  const loader = `import './js/${entry}';`;
   const block = [
     '<!-- versions:start (node tools/stamp-versions.mjs) -->',
-    `  <script type="importmap">${JSON.stringify({ imports }, null, 2).replace(/\n/g, '\n  ')}</script>`,
-    `  <script type="module">import './js/${entry}';</script>`,
+    `  <script type="importmap">${importmap}</script>`,
+    `  <script type="module">${loader}</script>`,
     '  <!-- versions:end -->',
   ].join('\n');
   let after = before.replace(/<!-- versions:start[\s\S]*?<!-- versions:end -->/, block);
+  // Content-Security-Policy direkt nach <meta charset> (muss vor allen Skripten stehen)
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${CSP([sha(importmap), sha(loader)])}">`;
+  after = after.includes('http-equiv="Content-Security-Policy"')
+    ? after.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/, meta)
+    : after.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n  ${meta}\n  <meta name="referrer" content="same-origin">`);
   if (after === before && !before.includes('<!-- versions:start')) {
     throw new Error(`${page}: Markierung <!-- versions:start --> … <!-- versions:end --> fehlt`);
   }

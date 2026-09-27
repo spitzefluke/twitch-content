@@ -61,6 +61,9 @@ export async function handleChatMessage(event: ChatMessage) {
   if (!self || event.chatter_user_id !== self.user_id) {
     await handleExtraCommand(event).catch((e) => console.warn("Chat-Befehl:", e));
   }
+  // Raid-Schutz: Dino füttern und umziehen ruhen auch
+  const { data: paused } = await db.rpc("viewer_paused");
+  if (paused === true) return;
 
   if (normalize(command) === "change") return await changeCostume(event, arg);
 

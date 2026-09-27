@@ -164,6 +164,16 @@ function liveExtras({ sb, unwrap, invoke }) {
       imageUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${encodeURIComponent(path)}` : ''),
     },
 
+    // ---------- Raid-Schutz ----------
+    guard: {
+      get: () => one('site_guard'),
+      async set(on, minutes) {
+        const r = await rpc('site_guard_set', { p_on: on, p_minutes: minutes || null, p_reason: '' });
+        flush();
+        return r;
+      },
+    },
+
     // ---------- Kanalpunkte (Vorlesen, Karten-Pack) ----------
     rewards: {
       list: async () => unwrap(await sb.from('stream_rewards').select('*').order('key')),
@@ -204,6 +214,8 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
 
   const tileOpen = (kind) => {
     if (isAdmin()) return true;
+    const g = store.get('site_guard', {});
+    if (g.viewer_pause && (!g.until || Date.parse(g.until) > Date.now())) return false;
     const tile = (store.get('tiles', null) ?? []).find((t) => t.kind === kind);
     return !tile?.target_at || Date.parse(tile.target_at) <= Date.now();
   };
@@ -738,6 +750,14 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       async grant() {
         needUser();
         store.set('card_packs', [...store.get('card_packs', []), { id: `pk${nextId++}`, key: key(), source: 'twitch', created_at: now(), opened_at: null }]);
+      },
+    },
+
+    guard: {
+      get: async () => oneRow('site_guard', { id: 1, viewer_pause: false, until: null, reason: '', updated_by: '' }),
+      async set(on, minutes) {
+        await requireAdmin();
+        return put('site_guard', { id: 1 }, { viewer_pause: on, until: on && minutes > 0 ? new Date(Date.now() + minutes * 60000).toISOString() : null, updated_by: name() });
       },
     },
 

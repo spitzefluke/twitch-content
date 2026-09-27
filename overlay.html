@@ -2,6 +2,8 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-AeosarC/H3Rzfsfmt52ncY/k2o4vYXyRieuQPI8hq+k=' 'sha256-1dpdyh6JXtFZbzfkXFZ/xgAWfAwTqYsvf8/76+dJgcM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OBS-Overlay · Content-Stellwerk</title>
   <meta name="robots" content="noindex">
@@ -19,26 +21,28 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=0c4713e52d",
+      "./js/admin.js": "./js/admin.js?v=89031139a4",
       "./js/alerts.js": "./js/alerts.js?v=d780620ee2",
-      "./js/api.js": "./js/api.js?v=cc4d08f045",
-      "./js/app.js": "./js/app.js?v=39e3ce1083",
+      "./js/api.js": "./js/api.js?v=426d148e87",
+      "./js/app.js": "./js/app.js?v=96bb661624",
       "./js/bingo.js": "./js/bingo.js?v=ed6d67ecbf",
       "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
       "./js/config.js": "./js/config.js?v=4c6e85333d",
       "./js/defaults.js": "./js/defaults.js?v=54655d8b93",
-      "./js/extras-api.js": "./js/extras-api.js?v=bfeafbfa7c",
+      "./js/extras-api.js": "./js/extras-api.js?v=fb0b2f13a5",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-fun.js": "./js/extras-fun.js?v=51566dad40",
+      "./js/extras-guard.js": "./js/extras-guard.js?v=e82b33cda3",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
-      "./js/extras.js": "./js/extras.js?v=d276176694",
+      "./js/extras.js": "./js/extras.js?v=3b3718b606",
+      "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/intro-engine.js": "./js/intro-engine.js?v=2f3a626469",
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=3c94f6ed57",
-      "./js/overlay.js": "./js/overlay.js?v=86a5b7eaeb",
+      "./js/overlay.js": "./js/overlay.js?v=c2f1b8f951",
       "./js/pet.js": "./js/pet.js?v=17f758b878",
       "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
@@ -46,6 +50,7 @@
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
+      "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
       "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
       "./js/twitch-chat.js": "./js/twitch-chat.js?v=25a4461934",

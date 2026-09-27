@@ -226,3 +226,14 @@ button.xcard:hover { transform: translateY(-3px); }
   .cd-flip-inner { transition: none; }
   .fw-hero.is-hit, .cd-flip.is-open { animation: none; }
 }
+
+/* ---------- Raid-Schutz ---------- */
+.x-guard { border-color: rgba(255, 90, 78, .35); }
+.x-guard.is-active { border-color: #ff5a4e; background: rgba(255, 90, 78, .08); box-shadow: 0 0 0 1px rgba(255, 90, 78, .35); }
+.x-guard-state { margin: 0; font-weight: 700; }
+.x-guard.is-active .x-guard-state { color: #ff9a8f; }
+.x-guard-banner {
+  position: sticky; top: 0; z-index: 30; padding: 10px 16px; text-align: center; font-weight: 700;
+  background: linear-gradient(90deg, #5a1414, #7a1f1a); color: #ffe1dd; border-bottom: 1px solid #ff5a4e;
+}
+.x-guard-banner[hidden] { display: none; }

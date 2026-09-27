@@ -11,6 +11,8 @@ Webseite zum Verwalten von Content-Ideen für einen Twitch-Streamer (eingerichte
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
 - **Fortnite-Bingo**: Die Bilder kommen automatisch aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
+- **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown, und ein Alert-Feld zeigt neue Follower und Abos. Den Link gibt's im Dashboard unter **OBS**.
 - **Twitch-Integration**: Der Streamer verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
@@ -27,6 +29,7 @@ supabase/functions/
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
   youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
   bingo-loot/                    → Bingo-Bilder an den aktuellen Fortnite-Lootpool anpassen (fortniteapi.io)
+  stream-tools/                  → Bot-Nachrichten verschicken, Kanalpunkte für Vorlesen/Karten, Einlösungen abschließen
 ```
 
 GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne geöffnete Seite funktionieren, braucht Twitch einen Server, den es anrufen kann. Diese Rolle übernehmen die **Supabase Edge Functions** (der kostenlose Tarif reicht). Supabase kümmert sich außerdem um Accounts und die Datenbank.
@@ -270,6 +273,13 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `recent=tl` / … | Karte „Letzter Follower & letztes Abo“ an (eigene Karte, dauerhaft sichtbar) |
 | `rsize=120` | Größe dieser Karte in Prozent |
 | `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none`, `sbits=…` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `a:<pfad>` für einen eigenen Alert-Sound, `c:<pfad>` für einen Sound aus „Ärgere den Streamer“ oder `none`; ohne Angabe der Standardklang |
+| `forbid=tr` / … · `fwsize=120` | Verbotenes Wort (Karte) und ihre Größe |
+| `subathon=tc` / … · `sasize=120` | Subathon-Timer |
+| `pause=1` | Pausen-Bildschirm (ganzes Bild, nur während einer Pause) |
+| `quiz=bl` / … · `qzsize=120` | Quizfrage (nur solange eine läuft) |
+| `queue=tl` / … · `qusize=120` | Mitspielen: wer dran ist, wer wartet |
+| `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
+| `cards=br` / … · `cdsize=120` | Sammelkarten: epische und legendäre Ziehungen |
 | `pet=1` | Stream-Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
@@ -442,6 +452,45 @@ Jede Stufe hat ein Ziel (so viele Siege braucht sie). Optional hat die Challenge
 **Im Stream:** Sobald der erste Sieg eingetragen ist, zeigt das OBS-Overlay oben links eine Karte mit der aktuellen Stufe, den Siegen (●●○), den Leben (❤️) und einem Fortschrittsbalken. Ein Sieg lässt die Karte grün aufleuchten („SIEG!“), eine Niederlage rot wackeln und ein Herz zerbrechen. Eine geschaffte Stufe, die geschaffte Challenge (mit Konfetti) und das Scheitern kommen groß übers ganze Bild. Nach dem Ende bleibt die Karte noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und verschieben.
 
 **Für Zuschauer ab 10.10.2026** (vorher Countdown auf der Kachel; der Streamer und die Admins sehen sie schon vorher, der Termin steht im Challenge-Dialog). Einmal nötig: die Migrationen `supabase/migrations/20261003000000_win_challenge.sql` und `20261004000000_challenge_start.sql` ausführen.
+
+## Sieben weitere Content-Ideen
+
+Einmal nötig: `supabase/migrations/20261014000000_stream_extras.sql` im SQL Editor ausführen (legt alle sieben Kacheln an). Die Edge Function `stream-tools` kommt mit dem nächsten Merge automatisch zu Supabase. Chat-Befehle brauchen den verbundenen **Chat-Bot** (Abschnitt 6) – er liest den Chat und antwortet. Im OBS-Fenster gibt es für jede Idee eine Ebene unter **„Neue Content-Ideen“**. Alles lässt sich auch aus der **Streameransicht → Content** öffnen, von Streamer und freigegebenen Mods.
+
+| Idee | Zuschauer | Streamer / Mods |
+|---|---|---|
+| 🤐 **Verbotenes Wort** | melden mit `!erwischt` im Chat oder auf der Seite | Wort ziehen (zufällig oder eigenes), Meldungen bestätigen (+1) oder verwerfen, Strafe pro Verstoß einstellen (z. B. 10 Liegestütze) |
+| ⏱️ **Subathon** | Follows, Abos und Bits verlängern den Timer von selbst | starten, pausieren, Zeit von Hand dazu, Sekunden pro Follow/Abo/100 Bits, Höchstdauer; Rangliste „am meisten Zeit geschenkt“ |
+| ☕ **Kurze Pause** | Zahlenraten mit `!rate 42` (oder auf der Seite) | Pause mit Überschrift, Text und Countdown starten – das Overlay zeigt den Pausen-Bildschirm, Chat und Dino bleiben davor |
+| 🧠 **Quiz** | antworten mit `!a` `!b` `!c` `!d` oder auf der Seite; 10 Punkte + bis zu 5 fürs schnelle Antworten | Frage stellen (zufällig oder bestimmte), auflösen, eigene Fragen anlegen; 24 Fortnite-Fragen sind dabei |
+| 🎮 **Mitspielen** | `!join EpicName` (danach reicht `!join`), `!leave`; oder auf der Seite | öffnen, der Reihe nach oder per Zufall ziehen (Subs zuerst, wenn gewünscht) – der Bot sagt im Chat Bescheid; Epic-Namen sehen nur Streamer und Mods |
+| 🔊 **Vorlesen** | Kanalpunkte „🔊 Nachricht vorlesen“; Stimme mit `oma:`, `roboter:`, `monster:`, `schnell:`, `flüster:` am Anfang | freigeben oder ablehnen (Punkte zurück), gesperrte Wörter, selbst etwas vorlesen lassen, abbrechen, stumm |
+| 🃏 **Sammelkarten** | jeden Tag ein Gratis-Pack, Packs per Kanalpunkte „🃏 Sammelkarten-Pack“ (mit Twitch anmelden, damit sie ankommen), Sammlung, Rangliste, Tauschen | Karten anlegen (Emoji oder Bild, 5 Seltenheiten), Karten pro Pack, Wahrscheinlichkeiten |
+
+**Kanalpunkte für Vorlesen und Karten:** im jeweiligen Dialog unter „Kanalpunkte“ Kosten einstellen und **„Speichern & zu Twitch übernehmen“** (nur Admins der Seite, nicht Mods; Twitch-Affiliate/Partner nötig).
+
+**Vorlesen in OBS:** Das Overlay nutzt die Sprachausgabe von Windows/Chrome. Der Ton geht an das Standard-Audiogerät und wird mit **Desktop-Audio** aufgenommen (nicht über „Audio über OBS steuern“).
+
+## Sicherheit
+
+Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.
+
+- **🛡️ Raid-Schutz:** In der **Streameransicht → Content** ganz oben. Ein Klick pausiert alle Zuschauer-Aktionen – Chat-Befehle, Kanalpunkte (Glücksrad, Würfe, Vorlesen, Karten: die Punkte gehen automatisch zurück) und Aktionen auf der Seite – für 15 Minuten, 1 Stunde oder bis zum Ausschalten. Streamer und Mods können weiter alles. Der Bot sagt es im Chat an, auf der Seite erscheint ein Hinweis.
+- **Content-Security-Policy** auf allen Seiten: Nur eigene Skripte laufen; die beiden Inline-Skripte sind per Hash freigegeben (`node tools/stamp-versions.mjs` schreibt die Policy mit). Die Supabase-Bibliothek liegt lokal (`js/supabase-js.js`) statt vom CDN.
+- **Kein Einbetten in fremde Seiten** (Schutz gegen Clickjacking), Referrer nur innerhalb der Seite.
+- **OBS sieht weniger:** Das Overlay (ohne Anmeldung) bekommt keine Konto-IDs oder Twitch-Einlösungs-IDs mehr.
+- **Uploads:** höchstens 10 Sound-Dateien pro Person; neue Passwörter brauchen mindestens 10 Zeichen und dürfen nicht den Namen enthalten.
+- Siehe auch `SECURITY.md` (Lücken privat melden).
+
+### Checkliste im Supabase-Dashboard (geht nur dort)
+
+1. **Authentication → Providers → Email:** „Confirm email“ an, **Minimum password length 10**, **„Prevent use of leaked passwords“** an.
+2. **Authentication → Attack Protection:** **CAPTCHA** (hCaptcha oder Cloudflare Turnstile) einschalten – stoppt Bot-Registrierungen.
+3. **Authentication → URL Configuration:** als Site-URL und Redirect-URLs **nur** die eigene GitHub-Pages-Adresse eintragen.
+4. **Authentication → Rate Limits:** Standardwerte lassen oder senken (z. B. Anmeldeversuche pro Stunde).
+5. **Project Settings → API:** den **service_role**-Schlüssel nie weitergeben; wurde er je irgendwo geteilt: **„Roll“** (neu erzeugen) und in den Edge-Function-Secrets nachziehen.
+6. **Advisors → Security Advisor** ab und zu öffnen und Warnungen beheben.
+7. **GitHub:** Settings → Code security → **Secret scanning** und **Dependabot alerts** an (Dependabot hält die Actions aktuell, siehe `.github/dependabot.yml`).
 
 ## Startdatum für Zuschauer
 

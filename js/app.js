@@ -16,7 +16,8 @@ import {
 import {
   KINDS, challengeBurst, challengeSummary, currentStage, doneCount, heartsHtml, pipsHtml, stageDone, stageLabel,
 } from './challenge.js';
-import { EXTRA_KINDS, buildExtraTile, extraIcon, loadExtras, openExtra, setupExtras } from './extras.js';
+import { EXTRA_KINDS, buildExtraTile, extraIcon, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
+import { guardFrame } from './frame-guard.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -115,7 +116,7 @@ const state = {
   },
 };
 
-boot();
+if (guardFrame()) boot();
 
 // ============================================================
 // Start
@@ -269,6 +270,17 @@ function setupAuthForms() {
     });
   });
 
+  // Neue Passwörter: lang genug und nicht zu leicht zu erraten (Supabase prüft zusätzlich selbst)
+  const COMMON = ['passwort', 'password', 'hallo123', 'qwertz', 'qwerty', 'fortnite', 'twitch', 'geheim', 'letmein', 'iloveyou'];
+  function passwordProblem(pw, personal) {
+    if (pw.length < 10) return 'Das Passwort braucht mindestens 10 Zeichen.';
+    const low = pw.toLowerCase();
+    if (/^(.)\1+$/.test(pw) || /^\d+$/.test(pw)) return 'Dieses Passwort ist zu leicht zu erraten.';
+    if (COMMON.some((w) => low.includes(w) && low.replace(w, '').replace(/[\d!.?_-]/g, '').length < 4)) return 'Dieses Passwort ist zu leicht zu erraten.';
+    if (personal.some((p) => p && p.length >= 3 && low.includes(p.toLowerCase()))) return 'Das Passwort darf nicht deinen Namen oder deine E-Mail enthalten.';
+    return '';
+  }
+
   forms.register.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
@@ -277,7 +289,8 @@ function setupAuthForms() {
     const password = f.password.value;
     if (username.length < 3) return formMsg(f, 'Der Benutzername braucht mindestens 3 Zeichen.');
     if (!/^\S+@\S+\.\S+$/.test(email)) return formMsg(f, 'Bitte eine gültige E-Mail eingeben.');
-    if (password.length < 6) return formMsg(f, 'Das Passwort muss mindestens 6 Zeichen haben.');
+    const weak = passwordProblem(password, [username, email.split('@')[0]]);
+    if (weak) return formMsg(f, weak);
     await withLoading(f, async () => {
       const { needsConfirmation } = await state.api.signUp(username, email, password);
       if (needsConfirmation) {
@@ -4792,6 +4805,7 @@ function paintStreamerView({ firstOpen = false } = {}) {
   $('#obs-title').textContent = admin ? 'Streameransicht' : 'OBS-Overlay';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
+  renderGuard();
   if (!admin) return;
   if (firstOpen) showObsTab('content');
   renderObsContent();

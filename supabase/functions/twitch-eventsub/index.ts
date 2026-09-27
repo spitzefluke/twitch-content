@@ -95,6 +95,15 @@ type Redemption = {
 async function handleRedemption(event: Redemption) {
   const conn = await getConnection();
   if (!conn) return;
+  // Raid-Schutz: Glücksrad und Ärgern pausiert → Punkte zurück (Vorlesen/Karten prüft die Datenbank selbst)
+  if ([conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id].includes(event.reward.id)) {
+    const { data: paused } = await db.rpc("viewer_paused");
+    if (paused === true) {
+      await setStatus(conn, event, "CANCELED").catch(console.error);
+      await sendChat(conn, `@${event.user_login} Gerade ist alles kurz pausiert (Raid-Schutz). Deine Kanalpunkte sind zurück.`).catch((e) => console.warn(e));
+      return;
+    }
+  }
   if (event.reward.id === conn.prank_throw_reward_id) return handlePrank(conn, event, "throw");
   if (event.reward.id === conn.prank_sound_reward_id) return handlePrank(conn, event, "sound");
   // Vorlesen (Text-to-Speech) und Karten-Packs (Migration …_stream_extras.sql)
@@ -134,8 +143,9 @@ async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | 
     await sendChat(conn, `@${event.user_login} ${message} Deine Kanalpunkte sind zurück.`).catch((e) => console.warn(e));
   };
 
-  const { active, started, startsAt } = await prankState();
+  const { active, started, startsAt, paused } = await prankState();
   if (!active) {
+    if (paused) return refund("Gerade ist alles kurz pausiert (Raid-Schutz).");
     const when = startsAt && !started
       ? `startet erst am ${new Date(startsAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr.`
       : "ist gerade pausiert.";

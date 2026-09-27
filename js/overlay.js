@@ -335,9 +335,10 @@ function watchOverlayConfig(source) {
 // ============================================================
 // Live liest das Overlay ohne Anmeldung (anon) – freigegeben sind nur
 // Kacheln, Varianten und der Feed overlay_spins (Migration …_overlay.sql).
+const SHOP_RUN_COLS = 'id, player, lobby_id, stream, chest, coins, spent, items, status, shop_until, score, created_at, updated_at';
 async function connect() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return demoSource();
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  const { createClient } = await import('./supabase-js.js');
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -385,8 +386,9 @@ async function connect() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
     },
-    shopStreamRun: async () => (await rows(sb.from('shop_runs').select('*').eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
-    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select('*').eq('lobby_id', lobbyId)),
+    // Ohne user_id: die Konto-ID bekommt OBS nicht zu sehen (…_security_hardening.sql)
+    shopStreamRun: async () => (await rows(sb.from('shop_runs').select(SHOP_RUN_COLS).eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
+    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select(SHOP_RUN_COLS).eq('lobby_id', lobbyId)),
     onShopRuns(cb) {
       sb.channel('overlay-shop')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
