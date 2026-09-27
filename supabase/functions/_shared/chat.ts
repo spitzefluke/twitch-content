@@ -1,12 +1,20 @@
 // Chat-Befehle aus Daves Twitch-Chat (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, Dave channel:bot.
-// Bisher gibt es einen Befehl: Daves Dino füttern (Standard !füttern).
+// Befehle: Daves Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]).
 import { db, getAppToken, getBot, helix } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const FEED_COOLDOWN_MS = 10 * 60_000; // pro Zuschauer
 const FEED_GAP_MS = 15_000; // zwischen zwei Fütterungen insgesamt – sonst frisst er nur noch
+
+// Kostüme in fester Reihenfolge („!change“ allein nimmt das nächste) und was Zuschauer dafür tippen dürfen
+const COSTUMES = ["schaffner", "lok", "bau"] as const;
+const COSTUME_WORDS: Record<string, typeof COSTUMES[number]> = {
+  schaffner: "schaffner", schaffnerin: "schaffner", pfeife: "schaffner",
+  lok: "lok", lokfuhrer: "lok", lokfuehrer: "lok", lokfuhrerin: "lok", lokfuehrerin: "lok", dampflok: "lok",
+  bau: "bau", gleisbau: "bau", gleisbauer: "bau", gleisbauerin: "bau", helm: "bau", bauarbeiter: "bau",
+};
 
 // Ein Abo für Daves Chat, gelesen als Bot. Ohne Bot gibt es keins.
 export async function ensureChatSubscription(broadcasterId: string, callback: string, secret: string) {
@@ -44,7 +52,9 @@ type ChatMessage = {
 export async function handleChatMessage(event: ChatMessage) {
   const text = (event.message?.text ?? "").trim();
   if (!text.startsWith("!")) return;
-  const command = text.split(/\s+/)[0];
+  const [command, arg = ""] = text.split(/\s+/);
+
+  if (normalize(command) === "change") return await changeCostume(event, arg);
 
   const { data: pet } = await db.from("pet").select("feed_command, last_fed_at, fed_count").eq("id", 1).maybeSingle();
   if (!pet) return;
@@ -72,4 +82,32 @@ export async function handleChatMessage(event: ChatMessage) {
   if (error) throw error;
   await db.from("pet_events").insert({ kind: "feed", who });
   await db.from("pet_events").delete().lt("created_at", new Date(now - 2 * 86400_000).toISOString());
+}
+
+// !change [kostüm]: Rexi zieht sich um. Eine Pause für alle (Abklingzeit im OBS-Fenster).
+async function changeCostume(event: ChatMessage, arg: string) {
+  const bot = await getBot();
+  if (bot && event.chatter_user_id === bot.user_id) return;
+  // Spalten kommen mit …_pet_costume.sql – fehlt sie noch, passiert einfach nichts
+  const { data: pet, error } = await db.from("pet")
+    .select("costume, costume_command, costume_cooldown, costume_changed_at").eq("id", 1).maybeSingle();
+  if (error || !pet || !pet.costume_command) return;
+  const { data: tile } = await db.from("tiles").select("target_at").eq("kind", "pet").order("position").limit(1).maybeSingle();
+  if (!tile || (tile.target_at && Date.parse(tile.target_at) > Date.now())) return;
+
+  const now = Date.now();
+  const pause = (pet.costume_cooldown ?? 60) * 1000;
+  if (pet.costume_changed_at && now - Date.parse(pet.costume_changed_at) < pause) return;
+
+  const word = normalize(arg).replace(/[^a-z]/g, "");
+  let next = word ? COSTUME_WORDS[word] : undefined;
+  if (word && !next) return; // unbekanntes Kostüm: ignorieren
+  if (!next) next = COSTUMES[(COSTUMES.indexOf(pet.costume) + 1) % COSTUMES.length];
+  if (next === pet.costume) return;
+
+  const at = new Date(now).toISOString();
+  const who = event.chatter_user_name || event.chatter_user_login;
+  const { error: upErr } = await db.from("pet").update({ costume: next, costume_changed_at: at }).eq("id", 1);
+  if (upErr) throw upErr;
+  await db.from("pet_events").insert({ kind: "costume", who, text: next });
 }

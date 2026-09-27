@@ -1513,6 +1513,10 @@ body.obs-page .dialog--obs .dialog-head .icon-btn { font-size: 16px; width: auto
 .obs-mini-btn:disabled { opacity: .4; cursor: default; }
 .obs-row-toggle { font-size: 13px; }
 .obs-row-hint { font-size: 12px; color: var(--dim); }
+.obs-pet-admin { display: grid; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.obs-pet-admin[hidden] { display: none; }
+.obs-pet-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.pet-costume-box { display: grid; gap: 10px; }
 
 /* Aussehen & Ton */
 .obs-look { display: grid; gap: 14px; align-content: start; }

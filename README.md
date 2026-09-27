@@ -346,11 +346,17 @@ Ein kleiner Dino (Standardname „Rexi“, der Schaffner-Dino mit Mütze und Pfe
 
 Wird er eine Weile nicht gefüttert (Standard 45 Minuten), bekommt er **Hunger**: Er meckert und **knabbert an den Zuschauern** – ein Namensschild von jemandem, der zuletzt gefüttert, geworfen oder gedreht hat, fällt ins Bild, der Dino läuft hin und beißt hinein.
 
-**Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) klettert Rexi im Overlay an einer sichtbaren Karte hoch und beißt Stücke aus dem Rand – die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert, klettert er runter, frisst und der Rand wächst wieder zu. Abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`).
+Bei Hunger wird Rexi **rot** (auch die kleine Zeichnung auf der Kachel) und der Magen knurrt ab und zu hörbar.
+
+**Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) – oder sofort per Knopf **🔥 Heißhunger auslösen** (OBS-Fenster: beim Dino und unter „Texte & Tests“, außerdem im Dino-Dialog) – brüllt Rexi, wächst auf 1,3-fache Größe, klettert im Overlay an einer Karte hoch und frisst Stücke aus dem Rand: am liebsten von rechts an der Karte **„Als Nächstes“**, 9 Bissen von der Kante bis zur oberen Ecke, dann kaut er weiter und droht („Wenn ihr nicht füttert, ess ich die Karten!“). Die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert (Chat oder **🍖 Rexi füttern**), klettert er runter, rülpst, freut sich und der Rand wächst wieder zu. Derselbe Knopf beendet den Heißhunger auch ohne Füttern. Das Klettern ist abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`).
+
+**Kostüme:** Schaffner (Mütze + Pfeife), Lokführer (Streifenmütze + Halstuch) und Gleisbauer (Helm + Warnweste). Zuschauer wechseln es mit **`!change`** im Twitch-Chat (nimmt das nächste) oder gezielt mit `!change schaffner`, `!change lok` bzw. `!change bau` – über dem Dino erscheint dann „@name !change lok → LOKFÜHRER“, und jedes Kostüm hat seinen Sound (Pfeife, Brüllen, Stapfen). Im OBS-Fenster beim Dino stellen Admins das Kostüm direkt ein, schalten `!change` ab und legen die **Abklingzeit** fest (0–300 Sekunden, Standard 60, gilt für alle). Wie `!füttern` braucht `!change` den Chat-Bot.
+
+Rexis Sounds (Brüllen, Kauen, Kartenknuspern, Magenknurren, Rülpsen, Schnarchen, Pfeife …) entstehen im Browser (`js/rexi-sfx.js`), es werden keine Dateien geladen. Lautstärke wie alle Overlay-Sounds über `vol`.
 
 Admins stellen im Dialog Name, Hunger-Zeit und die Sprüche ein und können den Dino über **Dino sagt im Stream** sofort etwas sagen lassen.
 
-Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
+Einmal nötig für beides: Migration `supabase/migrations/20260928000000_questions_pet.sql` ausführen. Für Kostüme, `!change` und den Heißhunger-Knopf zusätzlich `supabase/migrations/20261011000000_pet_costume.sql`. Im OBS-Dialog lassen sich Fragen-Karte und Dino einzeln ausschalten und in der Größe ändern; die Fragen-Karte lässt sich in der Vorschau verschieben.
 
 ## Kisten-Shop
 

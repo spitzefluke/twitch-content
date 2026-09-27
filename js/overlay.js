@@ -934,13 +934,14 @@ async function setupPet(source) {
   ground();
   addEventListener('resize', ground);
   new ResizeObserver(ground).observe($('ov-ticker'));
-  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name });
+  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name, costume: pet.costume });
   if (opt.test) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
     pet = { ...pet, last_fed_at: new Date(Date.now() - 86400000).toISOString() };
   }
-  // Heißhunger: an diesen Karten darf er hochklettern – nur, was gerade zu sehen ist
-  const cards = () => [...document.querySelectorAll('.ov-card')].filter((el) => {
+  // Heißhunger: an diesen Karten darf er hochklettern – nur, was gerade zu sehen ist.
+  // „Als Nächstes“ zuerst: die frisst er am liebsten (von rechts).
+  const cards = () => [...document.querySelectorAll('.ov-card')].sort((a, b) => (b.id === 'ov-next') - (a.id === 'ov-next')).filter((el) => {
     if (el.id === 'ov-ticker' || el.hidden) return false;
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
@@ -962,8 +963,15 @@ async function setupPet(source) {
     if (row) {
       pet = row;
       dino.setName(row.name);
+      if (row.costume) dino.setCostume(row.costume);
     }
     if (!ev || Date.now() - Date.parse(ev.created_at) > STALE_MS) return;
+    if (ev.kind === 'costume') {
+      // !change im Chat (oder ein Admin auf der Webseite): Chat-Zeile, dann das neue Kostüm
+      dino.chatLine(ev.who, ev.text);
+      dino.setCostume(ev.text);
+      return;
+    }
     if (ev.kind === 'feed') {
       pet = { ...pet, last_fed_at: ev.created_at, last_fed_by: ev.who };
       dino.eat(ev.who);

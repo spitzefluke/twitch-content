@@ -10,9 +10,50 @@
 .dino-pose { width: 100%; height: 100%; transform-origin: 50% 86%; transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
 .dino.is-climb.climb-right .dino-pose { transform: rotate(-80deg); }
 .dino.is-climb.climb-left .dino-pose { transform: rotate(80deg); }
+/* Beim Fressen (Heißhunger) lehnt er sich mit dem Maul über die Kartenecke */
+.dino.is-starving.is-climb.climb-right .dino-pose { transform: rotate(-62deg); }
+.dino.is-starving.is-climb.climb-left .dino-pose { transform: rotate(62deg); }
 .dino-body { width: 100%; height: 100%; transition: transform .25s ease; transform-origin: 50% 50%; }
+/* Heißhunger: Rexi wächst auf 1,3 × (federnd), Füße bleiben am Boden */
+.dino-grow { width: 100%; height: 100%; transform-origin: 50% 86%; transition: transform .7s cubic-bezier(.34, 1.5, .64, 1); }
+.dino.is-starving .dino-grow { transform: scale(1.3); }
+.dino.is-starving .dino-bubble { bottom: calc(100% + var(--ds) * .3); }
 .dino-body.is-left { transform: scaleX(-1); }
 .dino-svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 calc(var(--ds) * .03) calc(var(--ds) * .04) rgba(0, 0, 0, .45)); }
+
+/* Farben (Klassen dn-… in js/pet.js): grün und satt – bei Hunger rot */
+.dino-svg {
+  --dn-s1: #72d680; --dn-s2: #52b862; --dn-s3: #3f9a4f; --dn-ln: #2c6e39; --dn-sp: #46a356;
+  --dn-lb: #419c51; --dn-lf: #5cc36b; --dn-jw: #4fb35f; --dn-bl: #c9f0a8; --dn-bs: #a6d88a;
+}
+.dino.is-hungry .dino-svg, .dino-svg.is-hungry {
+  --dn-s1: #ff8a7a; --dn-s2: #e8503f; --dn-s3: #c23a2c; --dn-ln: #7a1c14; --dn-sp: #cf4436;
+  --dn-lb: #c63f31; --dn-lf: #ef5a48; --dn-jw: #dc4a3b; --dn-bl: #ffd0b8; --dn-bs: #f5a98f;
+}
+.dino-svg .dn-ln { stroke: var(--dn-ln); }
+.dino-svg .dn-f-s3 { fill: var(--dn-s3); }
+.dino-svg .dn-f-lb { fill: var(--dn-lb); }
+.dino-svg .dn-f-lf { fill: var(--dn-lf); }
+.dino-svg .dn-f-bl { fill: var(--dn-bl); }
+.dino-svg .dn-f-sp { fill: var(--dn-sp); }
+.dino-svg .dn-f-jw { fill: var(--dn-jw); }
+.dino-svg .dn-f-ln { fill: var(--dn-ln); }
+.dino-svg .dn-st-bs { stroke: var(--dn-bs); }
+.dino-svg .dn-s1 { stop-color: var(--dn-s1); }
+.dino-svg .dn-s2 { stop-color: var(--dn-s2); }
+.dino-svg .dn-s3 { stop-color: var(--dn-s3); }
+.dino-svg [class*="dn-f-"], .dino-svg .dn-ln, .dino-svg .dn-st-bs, .dino-svg stop { transition: fill .9s, stroke .9s, stop-color .9s; }
+
+/* Kostüme (data-costume am SVG): Mützen fliegen federnd auf den Kopf */
+.dino-svg .dn-c { opacity: 0; transition: opacity .3s, transform .5s cubic-bezier(.34, 1.6, .64, 1); }
+.dino-svg .dn-hat { transform-origin: 124px 28px; transform: translateY(-26px) rotate(-18deg) scale(.6); }
+.dino-svg .dn-scarf { transform-origin: 104px 62px; transform: scale(.4); }
+.dino-svg[data-costume="schaffner"] .dn-c-schaffner,
+.dino-svg[data-costume="lok"] .dn-c-lok,
+.dino-svg[data-costume="bau"] .dn-c-bau { opacity: 1; transform: none; }
+/* Kostümwechsel: kurzer Hüpfer */
+.dino.is-change .dino-svg { animation: dino-change .6s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes dino-change { 0% { transform: none; } 30% { transform: translateY(-8%) scale(.94, 1.06); } 60% { transform: scale(1.06, .94); } 100% { transform: none; } }
 
 /* Teile und ihre Drehpunkte (SVG-Einheiten, viewBox 170 × 140) */
 .dino-svg g { transform-box: view-box; }
@@ -114,7 +155,29 @@
   transition: opacity .3s;
 }
 .dino-tag i { width: .45em; height: .45em; border-radius: 50%; background: #5cc36b; }
+.dino.is-hungry .dino-tag { color: #ffd0b8; }
 .dino.is-hungry .dino-tag i { background: #ff5a4e; }
+/* Magenknurren (runDino, bei Hunger ab und zu) */
+.dino.is-rumble:not(.is-climb) .dino-bodyg { animation: dino-rumble .9s linear; }
+@keyframes dino-rumble { 10%, 30%, 50%, 70% { transform: translateX(-2px) scale(1.01, .99); } 20%, 40%, 60%, 80% { transform: translateX(2px); } }
+
+/* Chat-Zeile bei !change: „@user !change lok → LOKFÜHRER“ */
+.dino-chat {
+  position: absolute; left: 50%; bottom: calc(100% + var(--ds) * .06); z-index: 1;
+  transform: translateX(calc(-50% + var(--bx, 0px)));
+  width: max-content; max-width: calc(var(--ds) * 3);
+  padding: .3em .8em; border-radius: 999px;
+  background: rgba(12, 16, 25, .92); border: 1px solid rgba(145, 70, 255, .5); color: #dfe4ec;
+  font: 700 calc(var(--ds) * .085)/1.3 "Barlow", system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 .2em .6em rgba(0, 0, 0, .4);
+}
+.dino-chat b { color: #bf94ff; font-weight: 800; }
+.dino-chat strong { color: #ffb81c; font-weight: 800; }
+.dino-chat.is-in { animation: dino-pop .35s cubic-bezier(.34, 1.56, .64, 1) both; }
+.dino.is-starving .dino-chat { bottom: calc(100% + var(--ds) * .3); }
+/* Mit Chat-Zeile rutscht die Sprechblase darüber */
+.dino.has-chat .dino-bubble { bottom: calc(100% + var(--ds) * .24); }
+.dino.has-chat.is-starving .dino-bubble { bottom: calc(100% + var(--ds) * .48); }
 .dino.is-hungry .dino-tag b::after { content: " · Hunger!"; color: #ffb3b3; }
 .dino-tag b { font-weight: inherit; }
 
@@ -217,7 +280,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dino-svg *, .dino-svg { animation: none !important; }
-  .dino-pose, .dino-body { transition: none; }
+  .dino-pose, .dino-body, .dino-grow { transition: none; }
 }
 
 /* Kachel auf der Webseite: kleiner Hüpfer beim Überfahren */

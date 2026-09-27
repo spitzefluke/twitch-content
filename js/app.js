@@ -7,7 +7,7 @@ import { ALERT_KINDS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } f
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
-import { DEFAULT_PET, Dino, dinoSvg, hungerOf, isHungry, runDino } from './pet.js';
+import { COSTUMES, DEFAULT_PET, Dino, costumeName, dinoSvg, hungerOf, isFrenzy, isHungry, isStarving, runDino } from './pet.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import {
   DEFAULT_SHOP, GOLD, PLAYER_COLORS, catalogFromText, pointsText, catalogToText, chestSvg, coinsLeft, colorOf, itemIcon, priceOf, renderLoadout, renderTug,
@@ -2501,7 +2501,7 @@ function buildPetTile(tile, i) {
   const el = buildActionTile(tile, i, { cls: 'tile--dino', cta: 'Zum Dino →', onClick: openPet });
   const mini = document.createElement('span');
   mini.className = 'pet-tile-dino';
-  mini.innerHTML = dinoSvg();
+  mini.innerHTML = dinoSvg(state.pet.data?.costume);
   el.querySelector('.tile-body').prepend(mini);
   paintPetTile(el);
   return el;
@@ -2512,8 +2512,16 @@ function paintPetTile(el = $('.tile--pet')) {
   if (!label) return;
   const pet = state.pet.data;
   const hungry = state.pet.on && isHungry(pet);
-  label.textContent = !state.pet.on ? '🦖 Wohnt im Stream' : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
+  label.textContent = !state.pet.on ? '🦖 Wohnt im Stream'
+    : isFrenzy(pet) ? `🔥 ${pet.name} hat Heißhunger!`
+      : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
   el.classList.toggle('is-hungry', hungry);
+  // Die kleine Zeichnung: Kostüm und rot bei Hunger
+  const svg = el.querySelector('.pet-tile-dino .dino-svg');
+  if (svg) {
+    if (pet?.costume) svg.dataset.costume = pet.costume;
+    svg.classList.toggle('is-hungry', hungry);
+  }
 }
 
 // ============================================================
@@ -3770,6 +3778,14 @@ function setupPet() {
   $('#pet-pet').addEventListener('click', (e) => petAction('pet', e.currentTarget));
   $('#pet-say-form').addEventListener('submit', petSay);
   $('#pet-settings').addEventListener('submit', savePetSettings);
+  $('#pet-costume').addEventListener('change', (e) => setPetCostume(e.currentTarget.value, $('.pet-costume-msg')));
+  // Heißhunger und Füttern: dieselben Knöpfe im Dino-Dialog und im OBS-Fenster
+  document.addEventListener('click', (e) => {
+    const frenzy = e.target.closest('[data-pet-frenzy]');
+    if (frenzy) toggleFrenzy(frenzy);
+    const feed = e.target.closest('[data-pet-feed]');
+    if (feed) obsFeedPet(feed);
+  });
   // Der Dino läuft nur, solange der Dialog offen ist
   $('#pet-dialog').addEventListener('close', () => {
     state.pet.stopBrain?.();
@@ -3796,7 +3812,9 @@ async function loadPet() {
     state.api.onPet((data) => {
       state.pet.data = data;
       paintPetTile();
+      if (data?.costume) state.pet.dino?.setCostume(data.costume);
       if ($('#pet-dialog').open) renderPetDialog();
+      if ($('#obs-dialog').open) paintObsPet();
     });
     state.api.onPetEvents((ev) => {
       if (state.pet.events.some((x) => x.id === ev.id)) return;
@@ -3825,7 +3843,7 @@ function startPetStage() {
   state.pet.sfx ??= new Sfx({ volume: 0.6 });
   const stage = $('#pet-stage');
   const size = Math.max(100, Math.min(160, stage.clientWidth * 0.26));
-  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, reducedMotion });
+  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, costume: state.pet.data?.costume, reducedMotion });
   // In der Vorschau knabbert er an den Namen, die zuletzt da waren
   state.pet.stopBrain = runDino(state.pet.dino, {
     getPet: () => state.pet.data,
@@ -3842,6 +3860,10 @@ function petReact(ev) {
   if (ev.kind === 'feed') dino.eat(ev.who);
   else if (ev.kind === 'pet') dino.cuddle(ev.who);
   else if (ev.kind === 'say') dino.say(ev.text, 5000);
+  else if (ev.kind === 'costume') {
+    dino.chatLine(ev.who, ev.text);
+    dino.setCostume(ev.text);
+  }
 }
 
 function renderPetDialog() {
@@ -3867,6 +3889,9 @@ function renderPetDialog() {
     startPetStage();
     state.pet.dino?.setName(data.name);
     paintPetMeter();
+    const costume = $('#pet-costume');
+    if (document.activeElement !== costume) costume.value = data.costume ?? 'schaffner';
+    paintFrenzyButtons();
   }
   renderPetLog();
   $('#pet-admin').hidden = !(admin && on);
@@ -3885,15 +3910,18 @@ function renderPetDialog() {
 function paintPetMeter() {
   const pet = state.pet.data;
   if (!pet) return;
-  const h = hungerOf(pet);
+  const h = isFrenzy(pet) ? 2 : hungerOf(pet);
   const fill = $('#pet-meter-fill');
   fill.style.width = `${Math.round(Math.min(1, h) * 100)}%`;
   fill.classList.toggle('is-hungry', h >= 1);
   const since = pet.last_fed_at ? Math.round((Date.now() - Date.parse(pet.last_fed_at)) / 60000) : null;
-  $('#pet-status').textContent = h >= 1
+  $('#pet-status').textContent = isStarving(pet)
+    ? `${pet.name} hat Heißhunger und frisst im Stream die Karten an! Schnell füttern.`
+    : h >= 1
     ? `${pet.name} hat Hunger und knabbert im Stream an den Zuschauern! Schnell füttern.`
     : `${pet.name} ist satt${pet.last_fed_by ? ` – zuletzt gefüttert von ${pet.last_fed_by}` : ''}${since !== null ? (since < 1 ? ' gerade eben' : ` vor ${since} Min`) : ''}. Hunger in etwa ${Math.max(1, Math.round((1 - h) * pet.hungry_after))} Min.`;
-  state.pet.dino?.setHungry(h >= 1);
+  state.pet.dino?.setHungry(isHungry(pet));
+  state.pet.dino?.setStarving(isStarving(pet));
 }
 
 function renderPetLog() {
@@ -3910,11 +3938,12 @@ function renderPetLog() {
     const li = document.createElement('li');
     const icon = document.createElement('span');
     icon.className = 'prank-log-icon';
-    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : '💬';
+    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : ev.kind === 'costume' ? '👕' : '💬';
     const main = document.createElement('span');
     main.className = 'h-main';
     main.textContent = (ev.kind === 'feed' ? `${ev.who} hat gefüttert`
       : ev.kind === 'pet' ? `${ev.who} hat gestreichelt`
+        : ev.kind === 'costume' ? `${ev.who} hat das Kostüm gewechselt: ${costumeName(ev.text)}`
         : `„${ev.text}“`) + (ev.local ? ' (nur hier)' : '');
     const time = document.createElement('time');
     time.dateTime = ev.created_at;
@@ -3970,6 +3999,127 @@ async function petSay(e) {
   } catch (err) {
     toast(germanError(err), 'error');
   }
+}
+
+// ---------- Rexi: Kostüm und Heißhunger (Dino-Dialog und OBS-Fenster, nur Admins) ----------
+const petMsgBox = (el) => el?.closest('.obs-pet-admin, .obs-card-form, .pet-costume-box');
+function petMsg(box, text, ok = false) {
+  const el = box?.querySelector('.form-msg');
+  if (!el) { if (text) toast(text, ok ? 'ok' : 'error'); return; }
+  el.textContent = text;
+  el.classList.toggle('is-ok', ok);
+}
+
+// Neuer Stand aus der Datenbank: überall nachziehen
+function applyPetRow(row) {
+  if (!row) return;
+  state.pet.data = { ...state.pet.data, ...row };
+  if (row.costume) state.pet.dino?.setCostume(row.costume);
+  paintPetTile();
+  if ($('#pet-dialog').open) renderPetDialog();
+  if ($('#obs-dialog').open) paintObsPet();
+}
+
+async function setPetCostume(costume, msgEl) {
+  const box = petMsgBox(msgEl);
+  petMsg(box, '');
+  if (costume === state.pet.data?.costume) return;
+  try {
+    applyPetRow(await state.api.petCostume(costume));
+    petMsg(box, `✓ Rexi trägt jetzt: ${costumeName(costume)}.`, true);
+  } catch (err) {
+    petMsg(box, germanError(err));
+    paintObsPet();
+    if ($('#pet-dialog').open) renderPetDialog();
+  }
+}
+
+// Heißhunger auslösen – läuft er schon, beendet derselbe Knopf ihn wieder (ohne Füttern)
+async function toggleFrenzy(btn) {
+  const box = petMsgBox(btn);
+  petMsg(box, '');
+  const on = !isFrenzy(state.pet.data);
+  btn.disabled = true;
+  try {
+    applyPetRow(await state.api.petFrenzy(on));
+    petMsg(box, on ? '🔥 Rexi hat Heißhunger – er frisst die Karten an, bis ihn jemand füttert.' : '✓ Heißhunger beendet.', true);
+  } catch (err) {
+    petMsg(box, germanError(err));
+  } finally {
+    btn.disabled = false;
+    paintFrenzyButtons();
+  }
+}
+
+async function obsFeedPet(btn) {
+  const box = petMsgBox(btn);
+  petMsg(box, '');
+  btn.disabled = true;
+  try {
+    const ev = await state.api.petAction('feed');
+    if (ev && !state.pet.events.some((x) => x.id === ev.id)) {
+      state.pet.events = [ev, ...state.pet.events].slice(0, 20);
+      petReact(ev);
+    }
+    applyPetRow(await state.api.getPet());
+    petMsg(box, '✓ Rexi ist satt – die Karten wachsen wieder zu.', true);
+  } catch (err) {
+    petMsg(box, germanError(err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function paintFrenzyButtons() {
+  const on = isFrenzy(state.pet.data);
+  document.querySelectorAll('[data-pet-frenzy]').forEach((b) => {
+    b.textContent = on ? '✋ Heißhunger beenden' : '🔥 Heißhunger auslösen';
+    b.classList.toggle('is-active', on);
+  });
+}
+
+// OBS-Fenster, Ebene „Daves Dino“: Kostüm, !change, Abklingzeit
+function paintObsPet() {
+  const admin = !!state.profile?.is_admin && !!state.pet?.on;
+  $('#obs-pet-admin').hidden = !admin;
+  $('#obs-pet-frenzy').hidden = !admin;
+  if (!admin) return;
+  const pet = { ...DEFAULT_PET, ...state.pet.data };
+  const costume = $('#obs-pet-costume');
+  if (document.activeElement !== costume) costume.value = pet.costume;
+  $('#obs-pet-change').checked = pet.costume_command !== false;
+  const cd = $('#obs-pet-cooldown');
+  if (document.activeElement !== cd) cd.value = pet.costume_cooldown ?? 60;
+  $('#obs-pet-cooldown-out').textContent = `${cd.value} s`;
+  cd.disabled = !$('#obs-pet-change').checked;
+  paintFrenzyButtons();
+}
+
+function setupObsPet() {
+  const box = $('#obs-pet-admin');
+  // Diese Felder gehören nicht zu den OBS-Einstellungen (Adresse), sondern zu Rexi
+  for (const type of ['input', 'change']) box.addEventListener(type, (e) => e.stopPropagation());
+  $('#obs-pet-costume').addEventListener('change', (e) => setPetCostume(e.currentTarget.value, e.currentTarget));
+  const save = async (patch, okText) => {
+    petMsg(box, '');
+    try {
+      applyPetRow(await state.api.updatePet(patch));
+      petMsg(box, okText, true);
+    } catch (err) {
+      petMsg(box, germanError(err));
+      paintObsPet();
+    }
+  };
+  $('#obs-pet-change').addEventListener('change', (e) => {
+    const on = e.currentTarget.checked;
+    save({ costume_command: on }, on ? '✓ Zuschauer können mit !change das Kostüm wechseln.' : '✓ !change ist aus.');
+  });
+  const cd = $('#obs-pet-cooldown');
+  cd.addEventListener('input', () => { $('#obs-pet-cooldown-out').textContent = `${cd.value} s`; });
+  cd.addEventListener('change', () => {
+    const sec = Math.round(Number(cd.value));
+    save({ costume_cooldown: sec }, sec ? `✓ !change geht höchstens alle ${sec} Sekunden.` : '✓ !change geht jetzt ohne Pause.');
+  });
 }
 
 async function savePetSettings(e) {
@@ -4199,6 +4349,7 @@ function setupObsLayers() {
   });
   $('#obs-head-apply').addEventListener('click', applyObs);
   $('#obs-pet-say').addEventListener('submit', obsPetSay);
+  setupObsPet();
 }
 
 function showObsTab(name) {
@@ -4257,6 +4408,7 @@ function paintObsLayers() {
   // Texte & Tests: nur Admins sehen dort etwas
   const admin = !!state.profile?.is_admin;
   $('#obs-pet-say').hidden = !admin || !state.pet?.on;
+  paintObsPet();
   $('#obs-admin-empty').hidden = admin || !$('#obs-allow-wrap').hidden;
 }
 
