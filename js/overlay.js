@@ -978,7 +978,10 @@ async function setupPet(source) {
   runDino(dino, {
     getPet: () => pet,
     cards: opt.pclimb && !opt.edit ? cards : null,
-    screen: opt.pscreen && !opt.edit ? new ScreenHoles(document.body) : null,
+    // In der Vorschau des OBS-Fensters (edit) frisst er den Bildschirm nur, wenn dort
+    // „Heißhunger auslösen“ gedrückt wird – sonst wäre die Vorschau (test=1) ständig angefressen
+    screen: opt.pscreen ? new ScreenHoles(document.body) : null,
+    screenOnFrenzy: opt.edit,
     names: async () => {
       const list = await source.recentNames().catch(() => []);
       return list.length ? list : opt.test ? ['Lokfuehrer_Lena', 'SchienenSeb', 'Bahnhofskater'] : [];
