@@ -2014,6 +2014,8 @@ function setupBingo() {
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
   $('#bingo-bet-btn').addEventListener('click', startBingoBet);
   $('#bingo-bet-cancel').addEventListener('click', () => cancelBingoBet());
+  $('#bingo-loot-sync').addEventListener('click', () => syncLootpool(true));
+  $('#bingo-loot-unhide').addEventListener('click', showHiddenLoot);
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
   form.files.addEventListener('change', () => {
@@ -2030,11 +2032,11 @@ async function openBingo() {
   if (!state.bingo.on) return;
   // Frisch laden: Bilder und Haken können sich geändert haben.
   try {
-    const [{ items, card }, mine] = await Promise.all([
+    const [{ items, card, hidden, loot }, mine] = await Promise.all([
       state.api.getBingo(),
       state.api.getMyBingo().catch((err) => { console.warn('Eigene Karte:', err); return undefined; }),
     ]);
-    state.bingo.items = items;
+    Object.assign(state.bingo, { items, hidden, loot });
     state.bingo.card = card;
     state.bingo.lines = bingoState(card).count;
     state.bingo.mine = mine ?? null;
@@ -2046,6 +2048,73 @@ async function openBingo() {
   } catch (err) {
     console.warn(err);
   }
+  // Bilder an den aktuellen Lootpool anpassen – die Edge Function gleicht höchstens alle 6 Stunden ab
+  if (Date.now() - (state.bingo.lootCheckedAt ?? 0) > 10 * 60 * 1000) syncLootpool(false);
+}
+
+// ---------- Lootpool: Bingo-Bilder aus dem aktuellen Fortnite-Lootpool (Edge Function bingo-loot) ----------
+async function reloadBingoItems() {
+  const { items, hidden, loot } = await state.api.getBingo();
+  Object.assign(state.bingo, { items, hidden, loot });
+  if ($('#bingo-dialog').open) renderBingoDialog();
+}
+
+async function syncLootpool(force) {
+  if (!state.bingo.on || state.bingo.lootBusy) return;
+  state.bingo.lootCheckedAt = Date.now();
+  state.bingo.lootBusy = true;
+  paintLootpool();
+  try {
+    const res = await state.api.syncLootpool(force);
+    if (res?.state) state.bingo.loot = res.state;
+    if (res?.synced) await reloadBingoItems();
+    if (force) {
+      if (res?.synced) toast(`Lootpool abgeglichen: ${res.state?.items ?? 0} Items.`);
+      else if (res?.demo) toast('Im Demo-Modus gibt es keinen Lootpool-Abgleich.');
+      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret FORTNITEAPI_IO_KEY in Supabase.', 'error', 7000);
+      else if (res?.error) toast(`Lootpool: ${res.error}`, 'error');
+    }
+  } catch (err) {
+    if (force) toast(`Lootpool nicht abgeglichen: ${germanError(err)}`, 'error');
+    else console.warn('Lootpool:', err);
+  } finally {
+    state.bingo.lootBusy = false;
+    paintLootpool();
+  }
+}
+
+async function showHiddenLoot() {
+  try {
+    await state.api.showHiddenLoot();
+    await reloadBingoItems();
+  } catch (err) {
+    toast(`Nicht geklappt: ${germanError(err)}`, 'error');
+  }
+}
+
+function paintLootpool() {
+  const { loot, hidden = 0, items = [], lootBusy } = state.bingo;
+  const box = $('#bingo-loot');
+  if (!box) return;
+  const text = $('#bingo-loot-state');
+  const active = items.filter((i) => i.source === 'lootpool' && i.active !== false).length;
+  box.classList.toggle('is-error', !!loot?.error && loot.error !== 'demo');
+  if (lootBusy) text.textContent = 'Lootpool wird abgeglichen …';
+  else if (!loot) text.textContent = 'Einmal nötig: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen – dann kommen die Bilder automatisch aus dem aktuellen Fortnite-Lootpool.';
+  else if (loot.error === 'demo') text.textContent = 'Im Demo-Modus gibt es keinen Abgleich mit dem Fortnite-Lootpool.';
+  else if (loot.error === 'missing_key') text.textContent = 'Secret FORTNITEAPI_IO_KEY in Supabase eintragen (kostenloser Schlüssel von fortniteapi.io) – dann passen sich die Bilder von selbst an den aktuellen Lootpool an.';
+  else {
+    const when = loot.synced_at
+      ? new Date(loot.synced_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : 'noch nie';
+    text.textContent = `Lootpool: ${active} Items, zuletzt abgeglichen ${when}.${loot.error ? ` Letzter Versuch: ${loot.error}` : ''}`;
+  }
+  const sync = $('#bingo-loot-sync');
+  sync.disabled = !!lootBusy || !loot;
+  sync.hidden = loot?.error === 'demo';
+  const unhide = $('#bingo-loot-unhide');
+  unhide.hidden = !hidden;
+  unhide.textContent = `${hidden} ausgeblendete wieder zeigen`;
 }
 
 function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
@@ -2099,8 +2168,10 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
     $('#bingo-clear-btn').disabled = !card || !st.done;
     const size = Number($('#bingo-size').value);
     const need = size * size - ($('#bingo-free').checked && size % 2 ? 1 : 0);
-    $('#bingo-count').textContent = `· ${items.length} hochgeladen${items.length < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
+    const usable = items.filter((i) => i.active !== false).length;
+    $('#bingo-count').textContent = `· ${usable} verfügbar${usable < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
     renderBingoItems();
+    paintLootpool();
   }
   paintBingoTile();
 }
@@ -2115,15 +2186,33 @@ function renderBingoItems() {
     list.replaceChildren(li);
     return;
   }
-  list.replaceChildren(...items.map((item) => {
+  const order = (i) => (i.source !== 'lootpool' ? 0 : i.active !== false ? 1 : 2);
+  const sorted = [...items].sort((a, b) => order(a) - order(b));
+  list.replaceChildren(...sorted.map((item) => {
     const li = document.createElement('li');
+    // Lootpool-Items: Name und Seltenheit kommen von Fortnite (der Abgleich überschreibt sie)
+    const loot = item.source === 'lootpool';
+    const gone = loot && item.active === false;
+    li.classList.toggle('is-loot', loot);
+    li.classList.toggle('is-gone', gone);
     const img = document.createElement('img');
     img.src = item.url;
     img.alt = '';
     img.loading = 'lazy';
+    let thumb = img;
+    if (loot) {
+      thumb = document.createElement('span');
+      thumb.className = 'bingo-thumb';
+      const badge = document.createElement('b');
+      badge.textContent = 'Loot';
+      thumb.title = gone ? 'Nicht mehr im Lootpool – kommt auf keine neue Karte' : 'Aus dem aktuellen Fortnite-Lootpool';
+      thumb.append(img, badge);
+    }
     const name = document.createElement('input');
     name.value = item.name;
     name.maxLength = 40;
+    name.readOnly = loot;
+    if (loot) name.title = 'Name kommt aus dem Lootpool';
     name.setAttribute('aria-label', 'Name des Items');
     name.addEventListener('change', async () => {
       const value = name.value.trim();
@@ -2141,6 +2230,7 @@ function renderBingoItems() {
     rarity.setAttribute('aria-label', `Seltenheit von „${item.name}“`);
     rarity.append(new Option('– keine –', ''), ...RARITIES.map((r) => new Option(r.name, r.id)));
     rarity.value = item.rarity ?? '';
+    rarity.disabled = loot;
     rarity.addEventListener('change', async () => {
       const value = rarity.value || null;
       try {
@@ -2209,21 +2299,31 @@ function renderBingoItems() {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
-    del.textContent = '🗑';
-    del.setAttribute('aria-label', `„${item.name}“ löschen`);
+    del.textContent = loot ? '🙈' : '🗑';
+    del.title = loot ? 'Ausblenden – kommt nicht mehr auf neue Karten' : 'Löschen';
+    del.setAttribute('aria-label', `„${item.name}“ ${loot ? 'ausblenden' : 'löschen'}`);
     del.addEventListener('click', async () => {
-      if (!confirm(`„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`)) return;
+      const question = loot
+        ? `„${item.name}“ ausblenden? Der Lootpool-Abgleich holt es nicht zurück. Auf der aktuellen Karte bleibt es stehen.`
+        : `„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`;
+      if (!confirm(question)) return;
       del.disabled = true;
       try {
         await state.api.deleteBingoItem(item);
         state.bingo.items = state.bingo.items.filter((x) => x.id !== item.id);
+        if (loot) state.bingo.hidden = (state.bingo.hidden ?? 0) + 1;
         renderBingoDialog();
       } catch (err) {
         del.disabled = false;
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    li.append(img, name, copy, del, rarity, amount);
+    if (gone) {
+      const note = document.createElement('span');
+      note.className = 'bingo-loot-note';
+      note.textContent = 'nicht mehr im Lootpool';
+      li.append(thumb, name, copy, del, note, amount);
+    } else li.append(thumb, name, copy, del, rarity, amount);
     return li;
   }));
 }

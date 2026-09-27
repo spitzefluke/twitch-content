@@ -360,7 +360,9 @@ async function connect() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
     },
-    bingoUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`,
+    // Lootpool-Bilder sind schon eine volle Adresse, eigene liegen im Storage
+    bingoUrl: (path) => (path.startsWith('https://') ? path
+      : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`),
     questionStage: async () => (await rows(sb.from('question_stage').select('*').eq('id', 1).maybeSingle())) ?? null,
     onQuestionStage(cb) {
       sb.channel('overlay-question')
@@ -385,9 +387,9 @@ async function connect() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Kisten-Shop fehlgeschlagen'); });
     },
-    shopImages: async () => rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({
-      name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
-    }))),
+    async shopImages() {
+      return rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({ name: i.name, url: this.bingoUrl(i.path) })));
+    },
     challenge: () => rows(sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()),
     alerts: () => rows(sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(20)),
     onAlert(cb) {
@@ -463,7 +465,7 @@ function demoSource() {
     onBingo(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
     },
-    bingoUrl: (path) => read('bingo_items', []).find((i) => i.path === path)?.url ?? '',
+    bingoUrl: (path) => (path.startsWith('https://') ? path : read('bingo_items', []).find((i) => i.path === path)?.url ?? ''),
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
