@@ -366,6 +366,31 @@ p { margin: 0; }
 /* YouTube Super Chat: Betrag als Marke */
 .chat-paid { display: inline-block; padding: .05em .45em; border-radius: .35em; background: #ffca28; color: #1a1204; font-weight: 800; font-size: .9em; }
 .chat-msg.is-highlight:has(.chat-paid) { background: rgba(255, 202, 40, .16); }
+/* Stil „Sprechblasen“: kein Kasten, jede Nachricht eine eigene Blase mit Namensfarbe als Akzent */
+.ov-chat.chat-style-bubble, .ov-chat.chat-style-clean { background: none; border: 0; box-shadow: none; overflow: visible; }
+.ov-chat.chat-style-bubble .ov-head, .ov-chat.chat-style-clean .ov-head { display: none; }
+.chat-style-bubble .chat-list { gap: .45em; padding: 0; }
+.chat-style-bubble .chat-msg {
+  width: fit-content; max-width: 100%; padding: .45em .8em .5em;
+  border-radius: .35em 1em 1em 1em; border-left: .28em solid var(--nc);
+  background: rgba(14, 18, 28, calc(.1 + .82 * var(--bga)));
+  box-shadow: 0 .35em .9em rgba(0, 0, 0, .4);
+  animation-name: chat-pop;
+}
+.chat-style-bubble .chat-sep { display: none; }
+.chat-style-bubble .chat-name { font-size: .88em; }
+.chat-style-bubble .chat-text { display: block; margin-top: .1em; }
+.chat-style-bubble .chat-msg.is-highlight { background: rgba(145, 70, 255, .45); }
+.chat-style-bubble .chat-msg.is-highlight:has(.chat-paid) { background: rgba(120, 90, 10, .75); }
+@keyframes chat-pop { from { opacity: 0; transform: translateX(-.6em) scale(.9); } 60% { opacity: 1; transform: scale(1.02); } to { transform: none; } }
+/* Stil „Schlicht“: nur Text mit kräftigem Schatten, direkt im Bild */
+.chat-style-clean .chat-list { gap: .2em; padding: 0; }
+.chat-style-clean .chat-msg {
+  font-weight: 700; color: #fff;
+  text-shadow: 0 0 .12em #000, 0 .06em .2em #000, 0 0 .6em rgba(0, 0, 0, .85);
+}
+.chat-style-clean .chat-emote, .chat-style-clean .chat-badge, .chat-style-clean .chat-platform { filter: drop-shadow(0 .05em .15em rgba(0, 0, 0, .9)); }
+.chat-style-clean .chat-msg.is-highlight { background: rgba(145, 70, 255, .35); }
 @keyframes chat-in { from { opacity: 0; transform: translateY(.6em); } to { opacity: 1; transform: none; } }
 @keyframes chat-out { to { opacity: 0; transform: translateX(-.8em); } }
 

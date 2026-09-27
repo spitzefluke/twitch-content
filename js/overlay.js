@@ -54,6 +54,7 @@
 //   chfade=0                   Sekunden, bis eine Nachricht verschwindet (0 = bleibt, bis neue sie verdrängen)
 //   chcmd=1                    Befehle (!füttern, !change …) auch zeigen – sonst ausgeblendet
 //   chbots=1                   Bots (StreamElements, Nightbot …) auch zeigen – sonst ausgeblendet
+//   chstyle=card|bubble|clean  Stil des Chats: Karte (Standard), Sprechblasen, Schlicht (nur Text mit Schatten)
 //   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
 //   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
@@ -176,6 +177,7 @@ const opt = {
   chfadeMs: number('chfade', 0, 0, 600) * 1000,
   chcmd: flag('chcmd', false),
   chbots: flag('chbots', false),
+  chstyle: ['bubble', 'clean'].includes(params.get('chstyle')) ? params.get('chstyle') : 'card',
   yt: youtubeChannel(params.get('yt')),
   chtw: flag('chtw', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
@@ -1351,6 +1353,7 @@ function burst(host, kind) {
 function setupChat() {
   const card = $('ov-chat');
   const list = $('ov-chat-list');
+  card.classList.add(`chat-style-${opt.chstyle}`);
   // Feste Höhe: neue Nachrichten unten, alte rutschen oben aus dem Bild – dann
   // entscheidet die Höhe, wie viele Nachrichten zu sehen sind (chmax gilt nicht)
   const max = opt.chh >= 20 ? 50 : opt.chmax;

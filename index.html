@@ -31,7 +31,7 @@
       "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
       "./js/intro.js": "./js/intro.js?v=b67e9663cf",
       "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay.js": "./js/overlay.js?v=3a7afad9c4",
+      "./js/overlay.js": "./js/overlay.js?v=29778a2958",
       "./js/pet.js": "./js/pet.js?v=17f758b878",
       "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
@@ -40,7 +40,7 @@
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
       "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=6f930d3b9f",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=25a4461934",
       "./js/weather.js": "./js/weather.js?v=b1e3736ff5",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
@@ -1174,6 +1174,7 @@
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="chat"></span><button class="obs-mini-btn" type="button" data-reset-pos="chat">Zurück an den Standardplatz</button></span></div>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chtw" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch-Chat</label>
                   <label class="obs-row"><span>YouTube</span><input type="text" name="yt" maxlength="80" placeholder="@Kanalname – leer = ohne YouTube" autocomplete="off" spellcheck="false"></label>
+                  <label class="obs-row"><span>Stil</span><select name="chstyle"><option value="card" selected>Karte</option><option value="bubble">Sprechblasen</option><option value="clean">Schlicht – nur Text</option></select></label>
                   <label class="obs-row" title="Ganz links: wächst mit den Nachrichten"><span>Höhe</span><input type="range" name="chh" min="15" max="95" step="5" value="15"><output name="chh-out"></output></label>
                   <label class="obs-row"><span>Zeilen</span><input type="range" name="chmax" min="3" max="50" step="1" value="8"><output name="chmax-out"></output></label>
                   <label class="obs-row"><span>Ausblenden</span><select name="chfade"><option value="0" selected>nie – neue verdrängen alte</option><option value="15">nach 15 Sekunden</option><option value="30">nach 30 Sekunden</option><option value="60">nach 1 Minute</option><option value="120">nach 2 Minuten</option></select></label>

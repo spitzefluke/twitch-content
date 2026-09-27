@@ -124,7 +124,11 @@ export function renderMessage(msg, { showPlatform = false, doc = document } = {}
   const name = doc.createElement('b');
   name.className = 'chat-name';
   name.textContent = msg.name;
-  row.append(name, doc.createTextNode(msg.action ? ' ' : ': '));
+  // Trenner als eigenes Element: Im Stil „Sprechblasen“ steht der Text unter dem Namen
+  const sep = doc.createElement('span');
+  sep.className = 'chat-sep';
+  sep.textContent = msg.action ? ' ' : ': ';
+  row.append(name, sep);
   const body = doc.createElement('span');
   body.className = 'chat-text';
   if (msg.paid) {
