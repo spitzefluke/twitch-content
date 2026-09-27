@@ -354,6 +354,12 @@ p { margin: 0; }
 .chat-badge-vip { background: #e005b9; }
 .chat-badge-subscriber, .chat-badge-founder { background: #9146ff; }
 .chat-badge-partner { background: #9146ff; border-radius: 50%; }
+.chat-badge-member { background: #2ba640; }
+/* Plattform vor dem Namen, wenn Twitch und YouTube zusammen laufen */
+.chat-platform { width: 1.2em; height: 1.2em; margin-right: .35em; border-radius: .3em; vertical-align: -.2em; box-shadow: none; }
+/* YouTube Super Chat: Betrag als Marke */
+.chat-paid { display: inline-block; padding: .05em .45em; border-radius: .35em; background: #ffca28; color: #1a1204; font-weight: 800; font-size: .9em; }
+.chat-msg.is-highlight:has(.chat-paid) { background: rgba(255, 202, 40, .16); }
 @keyframes chat-in { from { opacity: 0; transform: translateY(.6em); } to { opacity: 1; transform: none; } }
 @keyframes chat-out { to { opacity: 0; transform: translateX(-.8em); } }
 

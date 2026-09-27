@@ -2,7 +2,9 @@
 // (IRC über WebSocket, Gast-Login „justinfan…“). Kein Login, kein Bot, keine Datenbank –
 // das Overlay schreibt nie etwas, es liest nur mit. Emotes, Namensfarben und Abzeichen
 // kommen direkt von Twitch mit. Löschen Mods eine Nachricht oder sperren jemanden,
-// verschwindet sie auch im Overlay.
+// verschwindet sie auch im Overlay. Die Anzeige (renderMessage) nutzt auch der
+// YouTube-Chat (js/youtube-chat.js) – im Overlay laufen beide in einer Liste.
+import { SOCIAL_ICONS, socialBadge } from './social-icons.js';
 
 const IRC_URL = 'wss://irc-ws.chat.twitch.tv:443';
 const EMOTE_URL = (id) => `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
@@ -21,7 +23,9 @@ const BADGES = {
   subscriber: { label: 'Abonnent', text: '★' },
   founder: { label: 'Gründer', text: '★' },
   partner: { label: 'Partner', text: '✓' },
+  member: { label: 'Mitglied', text: '★' },
 };
+const PLATFORMS = Object.fromEntries(SOCIAL_ICONS.filter((s) => ['twitch', 'youtube'].includes(s.id)).map((s) => [s.id, s]));
 
 // „@badge-info=;badges=moderator/1;color=#FF0000 :name!name@name.tmi.twitch.tv PRIVMSG #kanal :Hallo“
 export function parseIrc(line) {
@@ -88,19 +92,29 @@ export function nameColor(color, login) {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
+// Twitch schickt „moderator/1,subscriber/12“, YouTube eine Liste von Namen
 export function badgeList(tag = '') {
+  if (Array.isArray(tag)) return tag.filter((b) => BADGES[b]).map((b) => ({ id: b, ...BADGES[b] }));
   return tag.split(',').map((b) => b.split('/')[0]).filter((b) => BADGES[b]).map((b) => ({ id: b, ...BADGES[b] }));
 }
 
-// Chat-Nachricht als Element
-export function renderMessage(msg, doc = document) {
+// Chat-Nachricht als Element. showPlatform: kleines Twitch-/YouTube-Logo vor dem Namen
+export function renderMessage(msg, { showPlatform = false, doc = document } = {}) {
   const row = doc.createElement('div');
   row.className = `chat-msg${msg.action ? ' is-action' : ''}${msg.highlight ? ' is-highlight' : ''}`;
   row.dataset.id = msg.id ?? '';
   row.dataset.user = msg.login ?? '';
+  row.dataset.platform = msg.platform ?? 'twitch';
   const color = nameColor(msg.color, msg.login);
   row.style.setProperty('--nc', color);
-  for (const b of msg.badges ?? []) {
+  const platform = PLATFORMS[msg.platform ?? 'twitch'];
+  if (showPlatform && platform) {
+    const logo = socialBadge(platform, doc);
+    logo.classList.add('chat-platform');
+    row.append(logo);
+  }
+  const badges = Array.isArray(msg.badges) && typeof msg.badges[0] === 'string' ? badgeList(msg.badges) : msg.badges ?? [];
+  for (const b of badges) {
     const badge = doc.createElement('span');
     badge.className = `chat-badge chat-badge-${b.id}`;
     badge.title = b.label;
@@ -113,8 +127,21 @@ export function renderMessage(msg, doc = document) {
   row.append(name, doc.createTextNode(msg.action ? ' ' : ': '));
   const body = doc.createElement('span');
   body.className = 'chat-text';
+  if (msg.paid) {
+    const paid = doc.createElement('span');
+    paid.className = 'chat-paid';
+    paid.textContent = msg.paid;
+    body.append(paid, ' ');
+  }
   for (const part of msg.parts) {
-    if (part.emote) {
+    if (part.image && /^https:\/\/[a-z0-9.-]+\.(ggpht|googleusercontent|ytimg|youtube)\.com\//.test(part.image)) {
+      const img = doc.createElement('img');
+      img.className = 'chat-emote';
+      img.src = part.image;
+      img.alt = part.name ?? '';
+      img.title = part.name ?? '';
+      body.append(img);
+    } else if (part.emote) {
       const img = doc.createElement('img');
       img.className = 'chat-emote';
       img.src = EMOTE_URL(part.emote);
@@ -183,6 +210,7 @@ export function connectTwitchChat(channel, on = {}) {
     const me = /^\u0001ACTION (.*)\u0001$/.exec(text);
     if (me) { text = me[1]; action = true; }
     on.message?.({
+      platform: 'twitch',
       id: m.tags.id,
       login: m.login,
       name: m.tags['display-name'] || m.login,
@@ -211,7 +239,16 @@ const SAMPLES = [
   ['ICE_Irina', '#DAA520', 'subscriber/24', '!change lok'],
   ['Gleis9dreiviertel', '', '', 'Ich wette, Dave landet wieder am Pleasant Park'],
 ];
-export function sampleMessage(n = 0) {
+const YT_SAMPLES = [
+  ['Zugfan Sabine', 'member', 'Hallo aus dem YouTube-Chat! 👋', null],
+  ['Max Gleisbett', '', 'Stark gespielt!', '5,00 €'],
+];
+// youtube = true: jede dritte Probe-Nachricht kommt von YouTube
+export function sampleMessage(n = 0, { youtube = false } = {}) {
+  if (youtube && n % 3 === 2) {
+    const [name, badge, text, paid] = YT_SAMPLES[Math.floor(n / 3) % YT_SAMPLES.length];
+    return { platform: 'youtube', id: `test-yt-${Date.now()}-${n}`, login: `yt:${name}`, name, color: null, badges: badgeList(badge ? [badge] : []), text, parts: [{ text }], paid, highlight: !!paid };
+  }
   const [name, color, badges, text] = SAMPLES[n % SAMPLES.length];
-  return { id: `test-${Date.now()}-${n}`, login: name.toLowerCase(), name, color, badges: badgeList(badges), text, parts: [{ text }] };
+  return { platform: 'twitch', id: `test-${Date.now()}-${n}`, login: name.toLowerCase(), name, color, badges: badgeList(badges), text, parts: [{ text }] };
 }

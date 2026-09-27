@@ -51,6 +51,8 @@
 //   chfade=0                   Sekunden, bis eine Nachricht verschwindet (0 = bleibt, bis neue sie verdrängen)
 //   chcmd=1                    Befehle (!füttern, !change …) auch zeigen – sonst ausgeblendet
 //   chbots=1                   Bots (StreamElements, Nightbot …) auch zeigen – sonst ausgeblendet
+//   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
+//   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -68,6 +70,7 @@ import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
+import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 
@@ -151,6 +154,8 @@ const opt = {
   chfadeMs: number('chfade', 0, 0, 600) * 1000,
   chcmd: flag('chcmd', false),
   chbots: flag('chbots', false),
+  yt: youtubeChannel(params.get('yt')),
+  chtw: flag('chtw', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -1319,11 +1324,13 @@ function setupChat() {
   const card = $('ov-chat');
   const list = $('ov-chat-list');
   const empty = () => card.classList.toggle('is-empty', !list.childElementCount && !opt.edit);
+  // Mehrere Plattformen: vor jedem Namen das Logo (Twitch oder YouTube)
+  const showPlatform = !!opt.yt && opt.chtw;
   const add = (msg) => {
     const text = msg.text.trim();
     if (!opt.chcmd && text.startsWith('!')) return;
     if (!opt.chbots && CHAT_BOTS.includes(msg.login)) return;
-    const row = renderMessage(msg);
+    const row = renderMessage(msg, { showPlatform });
     list.append(row);
     while (list.childElementCount > opt.chmax) list.firstElementChild.remove();
     if (opt.chfadeMs && !opt.edit) {
@@ -1335,19 +1342,25 @@ function setupChat() {
     empty();
   };
   empty();
-  connectTwitchChat(CONFIG.CHANNEL, {
+  const handlers = {
     message: add,
     remove: (id) => { list.querySelector(`[data-id="${CSS.escape(id ?? '')}"]`)?.remove(); empty(); },
-    clear: (login) => {
-      for (const row of [...list.children]) if (!login || row.dataset.user === login) row.remove();
+    // login = null: ganzer Chat geleert – aber nur die Nachrichten dieser Plattform
+    clear: (login, platform = 'twitch') => {
+      for (const row of [...list.children]) {
+        if (login ? row.dataset.user === login : row.dataset.platform === platform) row.remove();
+      }
       empty();
     },
-  });
+  };
+  if (opt.chtw) connectTwitchChat(CONFIG.CHANNEL, handlers);
+  if (opt.yt) connectYouTubeChat(opt.yt, handlers);
   // Vorschau und Probe: ein paar Beispiel-Nachrichten, damit man Platz und Größe sieht
   if (opt.test || opt.edit) {
+    const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
     let n = 0;
-    for (; n < Math.min(4, opt.chmax); n++) add(sampleMessage(n));
-    if (!opt.edit) setInterval(() => add(sampleMessage(n++)), 4000);
+    for (; n < Math.min(4, opt.chmax); n++) add(sample(n));
+    if (!opt.edit) setInterval(() => add(sample(n++)), 4000);
   }
 }
 

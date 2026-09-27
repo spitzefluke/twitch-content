@@ -25,6 +25,7 @@ supabase/functions/
   twitch-eventsub/               → empfängt Kanalpunkte-Einlösungen von Twitch, dreht, postet im Chat
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
+  youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
 ```
 
 GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne geöffnete Seite funktionieren, braucht Twitch einen Server, den es anrufen kann. Diese Rolle übernehmen die **Supabase Edge Functions** (der kostenlose Tarif reicht). Supabase kümmert sich außerdem um Accounts und die Datenbank.
@@ -264,6 +265,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `chat=tl` / `x,y` | Twitch-Chat an dieser Stelle (Standard im OBS-Dialog: rechts oben, frei verschiebbar) |
 | `chsize=120` / `chmax=8` | Größe in Prozent / höchstens so viele Nachrichten (3 – 20) |
 | `chfade=30` | Nachrichten verschwinden nach so vielen Sekunden (Standard 0 = bleiben, bis neue sie verdrängen) |
+| `yt=@kanal` | YouTube-Livechat dazumischen (Kanal als `@name` oder Kanal-ID `UC…`) – jede Nachricht bekommt dann das Twitch- bzw. YouTube-Logo |
+| `chtw=0` | Twitch-Chat weglassen (nur YouTube) |
 | `chcmd=1` / `chbots=1` | Befehle (`!füttern` …) bzw. Bots (StreamElements, Nightbot …) auch zeigen – Standard: ausgeblendet |
 | `ticker=bc` / `x,y` | Position des Laufbands (Standard unten Mitte) – das Laufband ist immer an, `ticker=0` blendet es nicht aus |
 | `tstyle=bar` / `neon` / `board` | Design des Laufbands: Laufband, Neon oder Bahnhofs-Anzeige (gelbe LED-Schrift) |
@@ -274,9 +277,14 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 **Einmal nötig:** die Migration `supabase/migrations/20260923000000_overlay.sql` im SQL Editor ausführen. OBS hat keine Anmeldung, das Overlay liest deshalb ohne Login. Die Migration gibt dafür genau das frei, was ohnehin im Stream zu sehen ist: Kacheln, Glücksrad-Varianten und einen Feed der Drehungen (`overlay_spins`, ohne Nutzer-IDs). Fehlt sie, weist der OBS-Dialog darauf hin.
 
-### Twitch-Chat im Overlay
+### Chat im Overlay (Twitch + YouTube)
 
-Im OBS-Dialog unter „Immer im Bild“ → **Twitch-Chat** einschalten: Daves Chat läuft als Karte im Bild mit – mit Emotes, Namensfarben und Abzeichen (Streamer, Mod, VIP, Abo). Das Overlay liest den Chat **anonym** über Twitchs Chat-Schnittstelle mit (wie ein ausgeloggter Zuschauer): kein Login, kein Bot, keine Migration, es wird nichts gespeichert. Löschen Mods eine Nachricht oder sperren jemanden, verschwindet sie auch im Overlay. Befehle und bekannte Bots sind standardmäßig ausgeblendet; Größe, Zeilenzahl und Ausblenden stehen beim Chat im OBS-Dialog. Ohne Nachrichten ist die Karte unsichtbar. Der Kanal kommt aus `CHANNEL` in `js/config.js`.
+Im OBS-Dialog unter „Immer im Bild“ → **Chat (Twitch + YouTube)** einschalten: Daves Chat läuft als Karte im Bild mit – mit Emotes, Namensfarben und Abzeichen (Streamer, Mod, VIP, Abo bzw. YouTube-Mitglied). Löschen Mods eine Nachricht oder sperren jemanden, verschwindet sie auch im Overlay. Befehle und bekannte Bots sind standardmäßig ausgeblendet; Größe, Zeilenzahl und Ausblenden stehen beim Chat im OBS-Dialog. Ohne Nachrichten ist die Karte unsichtbar.
+
+- **Twitch:** Das Overlay liest den Chat **anonym** über Twitchs Chat-Schnittstelle mit (wie ein ausgeloggter Zuschauer) – kein Login, kein Bot. Der Kanal kommt aus `CHANNEL` in `js/config.js`.
+- **YouTube:** Im Feld **YouTube** den Kanal eintragen (`@Kanalname`). Sobald dort ein Livestream läuft, kommen die Nachrichten dazu – gemischt mit Twitch, vor jedem Namen das Logo der Plattform; Super Chats mit Betrag, neue Mitglieder hervorgehoben. Läuft kein Stream, schaut das Overlay jede Minute wieder nach. Weil der Browser YouTube nicht direkt abfragen darf, holt die Edge Function `youtube-chat` die Nachrichten (wird mit den anderen Functions automatisch deployt). **Kein API-Schlüssel nötig** – sie liest den Chat so, wie ihn das Chat-Fenster auf youtube.com lädt. Das ist inoffiziell: Ändert YouTube etwas daran, muss die Funktion angepasst werden.
+
+Es wird nichts gespeichert, keine Migration nötig.
 
 ### Alerts für Follower, Abos und Bits
 
