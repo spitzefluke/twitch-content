@@ -25,7 +25,7 @@ const ERRORS = [
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
   [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
-  [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Dave“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
+  [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Streamer“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
   [/relation "public\.(questions|question_stage)"|could not find the (table|function) '?public\.(questions|question_stage|question_show|question_resolve|question_hide)/i, 'In der Datenbank fehlen „Unangenehme Fragen“: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/feed_command|pet_feed_command/i, 'In der Datenbank fehlt der Chat-Befehl für den Dino: supabase/migrations/20260930000000_live_overlay.sql im SQL Editor ausführen.'],
@@ -40,7 +40,8 @@ const ERRORS = [
   [/could not find the function '?public\.wheel_variants_save/i, 'In der Datenbank fehlt das Bearbeiten des Glücksrads: supabase/migrations/20261006000000_wheel_edit.sql im SQL Editor ausführen.'],
   [/relation "public\.ticker"|could not find the table '?public\.ticker/i, 'In der Datenbank fehlt das Laufband: supabase/migrations/20260929000000_ticker.sql im SQL Editor ausführen.'],
   [/could not find the '(costume|costume_command|costume_cooldown|costume_changed_at|frenzy_at)' column|column [\w.]*"?(costume|costume_command|costume_cooldown|frenzy_at)"? (of relation "pet" )?does not exist|could not find the function '?public\.(pet_frenzy|pet_costume)|pet_events_kind_check/i, 'In der Datenbank fehlen Rexis Kostüme und der Heißhunger-Knopf: supabase/migrations/20261011000000_pet_costume.sql im SQL Editor ausführen.'],
-  [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt Daves Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
+  [/could not find the function '?public\.(streamer_info|my_access|overlay_allow_mods)|relation "public\.channel_mods"|could not find the table '?public\.channel_mods|column [\w.]*"?mods_enabled/i, 'In der Datenbank fehlen Streameransicht und Mods-Freigabe: supabase/migrations/20261012000000_streamer_mods.sql im SQL Editor ausführen.'],
+  [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt der Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
   [/column .*rarity|'rarity' column/i, 'In der Datenbank fehlt die Seltenheit fürs Bingo: supabase/migrations/20260925120000_bingo_rarity.sql im SQL Editor ausführen.'],
@@ -179,11 +180,19 @@ async function createSupabaseApi() {
     async overlayAccess() { return unwrap(await sb.rpc('overlay_access')); },
     async saveOverlayConfig(params) { return unwrap(await sb.rpc('overlay_save', { p_params: params })); },
     async allowAdminsOverlay(on) { return unwrap(await sb.rpc('overlay_allow_admins', { p_on: on })); },
+    // ---------- Streamer und Mods ----------
+    // Name des verbundenen Kanals – auch ohne Anmeldung (Anmeldeseite, Overlay)
+    async streamerInfo() { return unwrap(await sb.rpc('streamer_info')); },
+    // Meine Rechte: Admin (auch als freigegebener Mod), Mod, Streamer, Freigabe an?
+    async myAccess() { return unwrap(await sb.rpc('my_access')); },
+    async getMods() { return unwrap(await sb.from('channel_mods').select('*').order('display_name')); },
+    async syncMods() { return invoke('twitch-oauth', { action: 'sync_mods' }); },
+    async allowModsOverlay(on) { return unwrap(await sb.rpc('overlay_allow_mods', { p_on: on })); },
     async spin(variantId, announce) {
       return invoke('spin', { variant_id: variantId, announce });
     },
 
-    // ---------- Ärgere den Dave ----------
+    // ---------- Ärgere den Streamer ----------
     // Fehlt die Migration …_pranks.sql, schlägt getPrankSettings fehl und
     // app.js zeigt statt der Aktionen einen Hinweis.
     async getPrankSettings() {
@@ -443,7 +452,7 @@ async function createSupabaseApi() {
     async saveTicker(items) {
       return unwrap(await sb.from('ticker').update({ items }).eq('id', 1).select('items').single()).items;
     },
-    // ---------- Daves Dino ----------
+    // ---------- Stream-Dino ----------
     async getPet() {
       return unwrap(await sb.from('pet').select('*').eq('id', 1).maybeSingle());
     },
@@ -502,7 +511,7 @@ async function createSupabaseApi() {
         cacheControl: '31536000',
         upsert: false,
       });
-      // „Bucket not found“ hieße sonst „Ärgere den Dave fehlt“
+      // „Bucket not found“ hieße sonst „Ärgern fehlt“
       if (up.error && /bucket not found/i.test(up.error.message)) throw new Error('relation "public.alert_sounds" does not exist');
       unwrap(up);
       const { data, error } = await sb.from('alert_sounds')
@@ -830,12 +839,27 @@ function createLocalApi() {
     },
     async getSpins(limit = 15) { return store.get('spins', []).slice(0, limit); },
     async overlayReady() { return true; },
-    // Demo: Admins gelten als Dave
+    // Demo: Admins gelten als Streamer
     async getOverlayConfig() { return { params: '', admins_can_edit: false, updated_by: '', ...store.get('overlay_config', {}) }; },
     async overlayAccess() {
       const admin = isAdminNow();
       const cfg = store.get('overlay_config', {});
-      return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit };
+      return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit, mods_enabled: !!cfg.mods_enabled, is_mod: false };
+    },
+    // Demo: kein Twitch – der Streamer heißt wie der Kanal in js/config.js
+    async streamerInfo() { return { connected: false, login: CONFIG.CHANNEL, name: CONFIG.CHANNEL }; },
+    async myAccess() {
+      const admin = isAdminNow();
+      const cfg = store.get('overlay_config', {});
+      return { is_admin: admin, is_site_admin: admin, is_owner: admin, is_mod: false, is_twitch_mod: false, mods_enabled: !!cfg.mods_enabled, mods_scope: false, mods_count: 0 };
+    },
+    async getMods() { return []; },
+    async syncMods() { await requireAdmin(); return { missing_scope: true, count: 0 }; },
+    async allowModsOverlay(on) {
+      await requireAdmin();
+      const next = { ...store.get('overlay_config', {}), mods_enabled: !!on };
+      store.set('overlay_config', next);
+      return next;
     },
     async saveOverlayConfig(params) {
       await requireAdmin();
@@ -851,7 +875,7 @@ function createLocalApi() {
       return next;
     },
 
-    // ---------- Ärgere den Dave (Demo) ----------
+    // ---------- Ärgere den Streamer (Demo) ----------
     // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
     async getPrankSettings() {
       return { enabled: true, cooldown_seconds: 20, allow_uploads: true, throw_cost: 500, sound_cost: 300, ...store.get('prank_settings', {}) };
@@ -868,7 +892,7 @@ function createLocalApi() {
     async sendPrank(kind, item, soundId = null) {
       const profile = await this.getProfile(current);
       // wie send_prank: Zuschauer lösen über Kanalpunkte aus, hier nur Admins
-      if (!profile.is_admin) throw new Error('„Ärgere den Dave“ geht über Kanalpunkte im Twitch-Chat von Dave.');
+      if (!profile.is_admin) throw new Error('„Ärgere den Streamer“ geht über Kanalpunkte im Twitch-Chat.');
       let sound = null;
       if (soundId) {
         sound = store.get('sounds', []).find((x) => x.id === soundId);
@@ -1216,7 +1240,7 @@ function createLocalApi() {
     async getShopLobbyById(id) { return pubLobby(demoLobbies().find((x) => x.id === id)); },
     async getLobbyRuns(lobbyId) { return store.get('shop_runs', []).filter((r) => r.lobby_id === lobbyId).sort((a, b) => b.score - a.score); },
     onShopRuns(cb) { (demoListeners.shop_runs ??= []).push(cb); },
-    // ---------- Win-Challenge (Demo: Admins gelten als Dave) ----------
+    // ---------- Win-Challenge (Demo: Admins gelten als Streamer) ----------
     async getChallenge() { return { ...DEFAULT_CHALLENGE, ...store.get('win_challenge', {}) }; },
     async challengeAccess() {
       const admin = isAdminNow();
@@ -1239,7 +1263,7 @@ function createLocalApi() {
       store.set('ticker', { items: list, updated_at: new Date().toISOString() });
       return list;
     },
-    // ---------- Daves Dino (Demo) ----------
+    // ---------- Stream-Dino (Demo) ----------
     async getPet() { return { ...DEFAULT_PET, last_fed_at: new Date().toISOString(), ...store.get('pet', {}) }; },
     async getPetEvents(limit = 20) { return store.get('pet_events', []).slice(0, limit); },
     async petAction(kind) {
@@ -1321,7 +1345,7 @@ function createLocalApi() {
         id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: '1000',
         months: kind === 'resub' ? 3 + randomInt(20) : 0,
         amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : 0,
-        message: kind === 'resub' ? 'Test-Nachricht: Weiter so, Dave!' : kind === 'bits' ? 'Test-Cheer: Volle Fahrt voraus!' : '', test: true,
+        message: kind === 'resub' ? 'Test-Nachricht: Weiter so!' : kind === 'bits' ? 'Test-Cheer: Volle Fahrt voraus!' : '', test: true,
       };
       store.set('stream_alerts', [row, ...store.get('stream_alerts', [])].slice(0, 30));
       emitDemo('stream_alerts', row);

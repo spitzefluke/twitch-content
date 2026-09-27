@@ -30,18 +30,24 @@ export const BOARD_SOUNDS: { id: string; name: string; alias: string[] }[] = [
   { id: "gong", name: "Bahnhofsgong", alias: ["gong", "🔔"] },
 ];
 
-const REWARDS = {
-  throw: {
-    title: "🍅 Wirf was auf Dave",
-    prompt: `Was soll fliegen? ${THROW_ITEMS.map((i) => i.name).join(", ")}`,
-    background_color: "#E0301E",
-  },
-  sound: {
-    title: "🔊 Sound für Dave",
-    prompt: `Welcher Sound? ${BOARD_SOUNDS.map((s) => s.name).join(", ")} – oder der Name eines eigenen Sounds von der Webseite`,
-    background_color: "#9146FF",
-  },
-} as const;
+// Die Belohnungen tragen den Namen des Kanals („Wirf was auf Zugfahrer_DaveTV“).
+// Früher hießen sie fest „… auf Dave“ – unter dem alten Titel werden sie auch noch gefunden.
+const OLD_TITLES = { throw: "🍅 Wirf was auf Dave", sound: "🔊 Sound für Dave" } as const;
+function rewards(name: string) {
+  const who = (name || "den Streamer").slice(0, 25);
+  return {
+    throw: {
+      title: `🍅 Wirf was auf ${who}`,
+      prompt: `Was soll fliegen? ${THROW_ITEMS.map((i) => i.name).join(", ")}`,
+      background_color: "#E0301E",
+    },
+    sound: {
+      title: `🔊 Sound für ${who}`,
+      prompt: `Welcher Sound? ${BOARD_SOUNDS.map((s) => s.name).join(", ")} – oder der Name eines eigenen Sounds von der Webseite`,
+      background_color: "#9146FF",
+    },
+  } as const;
+}
 
 // "Schnee-Ball!!" → "schneeball"; Umlaute auch als ae/oe/ue/ss
 export function normalize(text: string) {
@@ -93,7 +99,8 @@ export async function prankState() {
 // (Kosten, Abklingzeit, an/aus). Merkt sich die IDs in twitch_connection.
 export async function syncPrankRewards(conn: Connection) {
   const { cfg, active, started, startsAt } = await prankState();
-  if (!cfg) throw new Error("In der Datenbank fehlt „Ärgere den Dave“ (Migration …_pranks.sql).");
+  if (!cfg) throw new Error("In der Datenbank fehlt das Ärgern (Migration …_pranks.sql).");
+  const REWARDS = rewards(conn.display_name);
   const cooldown = Math.max(0, Number(cfg.cooldown_seconds) || 0);
   const settingsFor = (kind: "throw" | "sound") => ({
     ...REWARDS[kind],
@@ -113,7 +120,7 @@ export async function syncPrankRewards(conn: Connection) {
     for (const kind of ["throw", "sound"] as const) {
       const knownId = kind === "throw" ? conn.prank_throw_reward_id : conn.prank_sound_reward_id;
       const existing = list.data.find((r: { id: string }) => r.id === knownId)
-        ?? list.data.find((r: { title: string }) => r.title === REWARDS[kind].title);
+        ?? list.data.find((r: { title: string }) => r.title === REWARDS[kind].title || r.title === OLD_TITLES[kind]);
       if (existing) {
         await helix("channel_points/custom_rewards", conn.access_token, {
           method: "PATCH",
@@ -147,7 +154,7 @@ export async function syncPrankRewards(conn: Connection) {
   }
 }
 
-// Eine EventSub-Abo für alle Einlösungen in Daves Kanal (Glücksrad und Ärgern);
+// Eine EventSub-Abo für alle Einlösungen im Kanal (Glücksrad und Ärgern);
 // welche Belohnung es war, entscheidet twitch-eventsub. Ein älteres Abo, das nur
 // aufs Glücksrad gefiltert war, wird ersetzt.
 const EVENT_TYPE = "channel.channel_points_custom_reward_redemption.add";

@@ -32,6 +32,11 @@ const state = {
   variants: [],
   variantId: null,
   twitch: { connected: false },
+  // Der Streamer dieser Seite: der verbundene Twitch-Kanal (sonst CHANNEL aus js/config.js)
+  streamer: { connected: false, name: CONFIG.CHANNEL, login: CONFIG.CHANNEL },
+  // Meine Rechte (my_access): Admin – auch als freigegebener Mod –, Mod, Streamer
+  access: null,
+  mods: [],
   spins: [],
   ideas: [],
   ideasOn: false,
@@ -42,7 +47,7 @@ const state = {
   wheel: null,
   activeTile: null,
   spinSubscribed: false,
-  // Ärgere den Dave
+  // Ärgere den Streamer
   prank: {
     on: false,          // Migration …_pranks.sql eingespielt?
     settings: { enabled: true, cooldown_seconds: 20, allow_uploads: true },
@@ -73,7 +78,7 @@ const state = {
     stage: null,        // was gerade im Stream steht
     subscribed: false,
   },
-  // Win-Challenge (nur Dave trägt ein)
+  // Win-Challenge (nur der Streamer trägt ein)
   challenge: {
     on: false,
     error: '',
@@ -97,7 +102,7 @@ const state = {
     timer: 0,
     subscribed: false,
   },
-  // Daves Dino
+  // Stream-Dino
   pet: {
     on: false,
     data: null,
@@ -168,6 +173,7 @@ async function boot() {
     return;
   }
   if (state.api.demo) $('#demo-banner').hidden = false;
+  loadStreamer();
 
   const twitchReturn = params.get('twitch');
   if (twitchReturn) {
@@ -198,12 +204,13 @@ async function boot() {
 
 function showTwitchReturn(status, reason, detail) {
   if (status === 'connected') {
-    toast('Twitch ist verbunden. Die Kanalpunkte-Belohnung „Glücksrad“ ist jetzt aktiv.', 'ok', 7000);
+    // Wer Twitch verbindet, ist der Streamer: weiter in die Streameransicht
+    location.replace(`${location.pathname}?obs=1&welcome=1`);
     return;
   }
   const reasons = {
     wrong_account: `Nur der Kanal ${CONFIG.CHANNEL} kann verbunden werden.`,
-    no_broadcaster_login: 'In Supabase fehlt das Secret BROADCASTER_LOGIN (Daves Twitch-Name). Ohne es darf sich aus Sicherheitsgründen nur ein Admin verbinden. Secret unter Edge Functions → Secrets eintragen und erneut verbinden.',
+    no_broadcaster_login: 'In Supabase fehlt das Secret BROADCASTER_LOGIN (Twitch-Name des Streamers). Ohne es darf sich aus Sicherheitsgründen nur ein Admin verbinden. Secret unter Edge Functions → Secrets eintragen und erneut verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → Verwalten) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen, speichern und noch einmal verbinden.`,
     not_affiliate: 'Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.',
     reward_exists: 'Es gibt schon eine manuell erstellte Belohnung „Glücksrad“. Bitte im Twitch-Dashboard löschen und erneut verbinden.',
@@ -349,7 +356,7 @@ async function enterApp(user) {
   $('#app').hidden = false;
 
   const api = state.api;
-  const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog, bingo] = await Promise.all([
+  const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog, bingo, access] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
@@ -358,13 +365,17 @@ async function enterApp(user) {
     // Die Vorschläge-Tabellen kamen später dazu: fehlen sie in der Datenbank,
     // bleibt der Bereich einfach aus, statt einen Fehler zu zeigen.
     api.getIdeas().catch((err) => { console.warn('Vorschläge nicht verfügbar:', err); return null; }),
-    // Genauso „Ärgere den Dave“ (Migration …_pranks.sql)
-    api.getPrankSettings().catch((err) => { console.warn('Ärgere den Dave nicht verfügbar:', err); return null; }),
+    // Genauso „Ärgere den Streamer“ (Migration …_pranks.sql)
+    api.getPrankSettings().catch((err) => { console.warn('Ärgern nicht verfügbar:', err); return null; }),
     api.getPranks().catch(() => []),
     api.getBingo().catch((err) => { console.warn('Bingo nicht verfügbar:', err); return null; }),
+    // Freigegebene Mods zählen als Admins (Migration …_streamer_mods.sql)
+    api.myAccess().catch((err) => { console.warn('Rechte nicht verfügbar:', err); return null; }),
   ]);
   if (!state.user) return; // zwischenzeitlich abgemeldet
-  Object.assign(state, { profile, tiles, variants, twitch, spins });
+  if (access) profile.is_admin = !!access.is_admin;
+  Object.assign(state, { profile, tiles, variants, twitch, spins, access });
+  if (twitch.connected) applyStreamer({ connected: true, login: twitch.login, name: twitch.display_name });
   state.ideas = ideas ?? [];
   state.ideasOn = ideas !== null;
   state.variantId ??= variants[0]?.id;
@@ -422,7 +433,10 @@ function renderHeader() {
   $('#user-name').textContent = profile.username;
   $('#user-avatar').textContent = profile.username.slice(0, 1).toUpperCase();
   $('#user-role').hidden = !profile.is_admin;
-  $('#admin-btn').hidden = !profile.is_admin;
+  $('#user-role').textContent = state.access?.is_owner ? 'Streamer' : state.access?.is_mod ? 'Mod' : 'Admin';
+  // Der Admin-Bereich ist nur für echte Admins, nicht für Mods
+  $('#admin-btn').hidden = !(state.access ? state.access.is_site_admin : profile.is_admin);
+  $('#obs-btn').textContent = profile.is_admin ? '🎛️ Streameransicht' : 'OBS';
 
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
@@ -439,7 +453,7 @@ function renderHeader() {
   btn.classList.toggle('btn--ghost', twitch.connected);
   btn.classList.toggle('btn--connected', twitch.connected);
   btn.textContent = twitch.connected ? `Twitch: ${twitch.display_name ?? twitch.login}` : 'Mit Twitch verbinden';
-  btn.title = twitch.connected ? 'Kanalpunkte & Chat sind verbunden' : 'Für Dave: Kanalpunkte und Chat freigeben';
+  btn.title = twitch.connected ? 'Kanalpunkte & Chat sind verbunden' : 'Für den Streamer: Kanalpunkte und Chat freigeben';
 }
 
 // ---------- Nächste Abfahrt & Glücksrad ----------
@@ -448,11 +462,30 @@ function renderHeader() {
 const LIVE_WINDOW = 6 * 60 * 60 * 1000;
 const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
-// "Ärgere den Dave", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
+// "Ärgere den Streamer", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
 const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
+const streamerName = () => state.streamer.name || 'Streamer';
+const streamerLogin = () => state.streamer.login || CONFIG.CHANNEL;
+
+// Name des Streamers überall eintragen (Kopfzeile, Anmeldeseite, Titel)
+function applyStreamer(info) {
+  if (info?.name) state.streamer.name = info.name;
+  if (info?.login) state.streamer.login = info.login;
+  if (info) state.streamer.connected = !!info.connected;
+  document.querySelectorAll('[data-streamer]').forEach((el) => { el.textContent = streamerName(); });
+  if (!OBS_PAGE) document.title = `${streamerName()} · Content-Stellwerk`;
+}
+async function loadStreamer() {
+  try {
+    applyStreamer(await state.api.streamerInfo());
+  } catch (err) {
+    console.warn('Streamer-Name nicht verfügbar (Migration …_streamer_mods.sql?):', err);
+    applyStreamer(null);
+  }
+}
 
 function startLabel(iso) {
   const d = new Date(iso);
@@ -640,17 +673,18 @@ async function submitIdea(e) {
 // ---------- Kacheln ----------
 function renderGrid() {
   const grid = $('#grid');
-  // „Ärgere den Dave“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
+  // „Ärgere den Streamer“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
   const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
   state.unlockAt = Math.min(...shown.filter(isLocked).map((t) => Date.parse(t.target_at)), Infinity);
-  updateCountdowns();
+  updateCountdowns();  // Streameransicht offen? Dann die Content-Liste mitziehen
+  if ($('#obs-dialog')?.open && state.profile?.is_admin) renderObsContent();
 }
 
-// „Ärgere den Dave“: kein Termin, geht jederzeit – statt Countdown die Wurfgeschosse.
+// „Ärgere den Streamer“: kein Termin, geht jederzeit – statt Countdown die Wurfgeschosse.
 function buildPrankTile(tile, i) {
   const el = document.createElement('button');
   el.type = 'button';
@@ -681,7 +715,7 @@ function buildPrankTile(tile, i) {
   ammo.textContent = '🍌🍅🥧🔊';
   const cta = document.createElement('span');
   cta.className = 'prank-cta';
-  cta.textContent = 'Dave ärgern →';
+  cta.textContent = 'Streamer ärgern →';
   row.append(ammo, cta);
   body.append(tag, title, desc, ...[startNote(tile)].filter(Boolean), row);
   el.append(body);
@@ -965,7 +999,7 @@ function renderWheelPanel() {
   }));
 
   const { twitch, profile } = state;
-  // Gepostet wird nur über den Chat-Bot – nie in Daves Namen.
+  // Gepostet wird nur über den Chat-Bot – nie im Namen des Streamers.
   $('#announce-wrap').hidden = !(profile?.is_admin && twitch.connected && twitch.bot_connected);
   $('#announce-text').textContent = `Ergebnis als ${twitch.bot_name ?? 'Chat-Bot'} im Chat posten`;
   $('#simulate-btn').hidden = !state.api.demo;
@@ -977,7 +1011,7 @@ function renderWheelPanel() {
   } else if (state.api.demo) {
     info.innerHTML = '<span class="ri-icon">✦</span><span>Demo: Mit dem Button unten kannst du testen, wie eine Kanalpunkte-Einlösung aus dem Twitch-Chat aussieht.</span>';
   } else {
-    info.innerHTML = '<span class="ri-icon">✦</span><span>Sobald Dave Twitch verbindet, lässt sich das Rad auch per Kanalpunkte drehen.</span>';
+    info.innerHTML = '<span class="ri-icon">✦</span><span>Sobald der Streamer Twitch verbindet, lässt sich das Rad auch per Kanalpunkte drehen.</span>';
   }
 
   renderHistory();
@@ -1301,7 +1335,7 @@ function renderWheelCost() {
     ? 'Demo: Die Kosten werden nur hier im Browser gespeichert.'
     : twitch.connected
       ? `So viele Kanalpunkte kostet „${twitch.reward_title ?? 'Glücksrad'}“ auf Twitch. Die Änderung gilt sofort.`
-      : 'Sobald Dave Twitch verbindet, lassen sich hier die Kosten der Kanalpunkte-Belohnung ändern.';
+      : 'Sobald der Streamer Twitch verbindet, lassen sich hier die Kosten der Kanalpunkte-Belohnung ändern.';
 }
 
 async function saveWheelCost(e) {
@@ -1508,7 +1542,7 @@ function renderHistory(newId) {
 }
 
 // ============================================================
-// Ärgere den Dave
+// Ärgere den Streamer
 // ============================================================
 const LISTEN_KEY = 'zd_prank_listen';
 
@@ -1613,9 +1647,9 @@ function renderPrankDialog() {
   if (!on) {
     text = admin
       ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260924000000_pranks.sql ausführen. Bis dahin geht hier nichts raus.'
-      : '„Ärgere den Dave“ ist noch nicht eingerichtet. Schau später noch mal vorbei.';
+      : '„Ärgere den Streamer“ ist noch nicht eingerichtet. Schau später noch mal vorbei.';
   } else if (!settings.enabled && !admin) {
-    text = 'Dave hat das Ärgern gerade pausiert. Schau später noch mal vorbei.';
+    text = 'Der Streamer hat das Ärgern gerade pausiert. Schau später noch mal vorbei.';
   }
   note.textContent = text;
   note.hidden = !text;
@@ -1712,7 +1746,7 @@ function prankClick(kind, entry) {
     else sendPrank(kind, entry.id);
     return;
   }
-  const reward = kind === 'throw' ? '🍅 Wirf was auf Dave' : '🔊 Sound für Dave';
+  const reward = kind === 'throw' ? `🍅 Wirf was auf ${streamerName()}` : `🔊 Sound für ${streamerName()}`;
   navigator.clipboard?.writeText(entry.name).catch(() => {});
   toast(`„${entry.name}“ kopiert – auf Twitch bei „${reward}“ einfügen.`, 'ok', 4500);
   const preview = { id: `preview-${Date.now()}`, created_at: new Date().toISOString(), requested_by: 'Du' };
@@ -1745,17 +1779,17 @@ function renderPrankHowTo() {
   const { twitch } = state;
   const cost = (n) => `${Number(n ?? 0).toLocaleString('de-DE')} Punkte`;
   const status = !twitch.connected
-    ? 'Die Belohnungen gibt es, sobald Dave Twitch verbunden hat.'
+    ? 'Die Belohnungen gibt es, sobald der Streamer Twitch verbunden hat.'
     : twitch.prank_rewards === false || twitch.prank_rewards === undefined
       ? 'Die Belohnungen sind auf Twitch noch nicht angelegt.'
       : twitch.prank_rewards_active ? '' : 'Die Belohnungen sind auf Twitch gerade ausgeschaltet.';
   box.innerHTML = state.profile?.is_admin
     ? `<b>Du bist Admin:</b> Ein Klick löst direkt im Stream aus – ohne Kanalpunkte, z. B. zum Testen.
-       Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf Dave“ (${cost(settings.throw_cost)}) und „🔊 Sound für Dave“ (${cost(settings.sound_cost)}).`
-    : `<b>So ärgerst du Dave:</b> Im Twitch-Chat von Dave auf das Kanalpunkte-Symbol klicken und
-       <b>„🍅 Wirf was auf Dave“</b> (${cost(settings.throw_cost)}) oder <b>„🔊 Sound für Dave“</b> (${cost(settings.sound_cost)}) einlösen –
+       Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf ${escapeHtml(streamerName())}“ (${cost(settings.throw_cost)}) und „🔊 Sound für ${escapeHtml(streamerName())}“ (${cost(settings.sound_cost)}).`
+    : `<b>So ärgerst du den Streamer:</b> Im Twitch-Chat von ${escapeHtml(streamerName())} auf das Kanalpunkte-Symbol klicken und
+       <b>„🍅 Wirf was auf ${escapeHtml(streamerName())}“</b> (${cost(settings.throw_cost)}) oder <b>„🔊 Sound für ${escapeHtml(streamerName())}“</b> (${cost(settings.sound_cost)}) einlösen –
        dann eintippen, was fliegen bzw. welcher Sound laufen soll. Ein Klick hier kopiert den Namen und zeigt eine Vorschau.
-       <a class="prank-twitch-link" target="_blank" rel="noopener" href="https://www.twitch.tv/${encodeURIComponent(CONFIG.CHANNEL)}">Zu Daves Twitch-Kanal ↗</a>`;
+       <a class="prank-twitch-link" target="_blank" rel="noopener" href="https://www.twitch.tv/${encodeURIComponent(streamerLogin())}">Zum Twitch-Kanal ↗</a>`;
   if (status) {
     const p = document.createElement('small');
     p.textContent = status;
@@ -1763,7 +1797,7 @@ function renderPrankHowTo() {
   }
 }
 
-// Andere Zuschauer ärgern Dave: steht im Verlauf und fliegt über die Bühne (ohne Ton).
+// Andere Zuschauer ärgern den Streamer: steht im Verlauf und fliegt über die Bühne (ohne Ton).
 function handleIncomingPrank(row) {
   if (state.prank.seen.has(row.id)) return;
   state.prank.seen.add(row.id);
@@ -1777,7 +1811,7 @@ function showPrank(row, own) {
   const dave = $('#prank-dave');
   const sfx = own ? prankSfx() : null;
   if (row.kind === 'throw') {
-    // Ziel: Daves Gesicht in der Zeichnung
+    // Ziel: das Gesicht in der Zeichnung
     const s = stage.getBoundingClientRect();
     const d = dave.getBoundingClientRect();
     throwItem(stage, {
@@ -1821,7 +1855,7 @@ function renderPrankLog(newId = null) {
   if (!state.prank.log.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = 'Noch ist Dave unbehelligt …';
+    li.textContent = 'Noch ist der Streamer unbehelligt …';
     list.replaceChildren(li);
     return;
   }
@@ -1847,8 +1881,8 @@ function paintPrankButtons() {
   document.querySelectorAll('#prank-dialog [data-prank-action]').forEach((btn) => { btn.disabled = off; });
   const admin = !!state.profile?.is_admin;
   $('#prank-lead-throw').textContent = admin
-    ? 'Klick wirft sofort – es fliegt Dave im Stream vor die Kamera.'
-    : 'Das kannst du auf Dave werfen. Klick = Name kopieren und Vorschau.';
+    ? 'Klick wirft sofort – es fliegt dem Streamer im Stream vor die Kamera.'
+    : 'Das kannst du auf den Streamer werfen. Klick = Name kopieren und Vorschau.';
   $('#prank-lead-sound').textContent = admin
     ? 'Klick spielt den Sound im Stream. 🎧 hört nur hier probe.'
     : 'Diese Sounds gibt es. Klick = Name kopieren, 🎧 = probehören.';
@@ -1932,7 +1966,7 @@ async function syncPrankRewards({ loud = false } = {}) {
 function paintPrankSync() {
   const { twitch } = state;
   $('#prank-sync-status').textContent = !twitch.connected
-    ? 'Twitch ist nicht verbunden – erst wenn Dave verbunden hat, gibt es die Belohnungen.'
+    ? 'Twitch ist nicht verbunden – erst wenn der Streamer verbunden hat, gibt es die Belohnungen.'
     : twitch.prank_rewards === undefined
       ? 'Für die Belohnungen fehlt noch die Migration …_channel_points.sql.'
       : !twitch.prank_rewards
@@ -2005,7 +2039,7 @@ async function openBingo() {
     state.bingo.lines = bingoState(card).count;
     state.bingo.mine = mine ?? null;
     state.bingo.mineOn = mine !== undefined;
-    // Admins landen bei Daves Karte (dort richten sie alles ein), Zuschauer ohne
+    // Admins landen bei der Stream-Karte (dort richten sie alles ein), Zuschauer ohne
     // laufende Stream-Karte gleich bei ihrer eigenen.
     state.bingo.tab ??= card || state.profile?.is_admin ? 'dave' : 'mine';
     renderBingoDialog();
@@ -2024,7 +2058,7 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
   tabs.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   $('#bingo-pane-dave').hidden = tab !== 'dave';
   $('#bingo-pane-mine').hidden = tab !== 'mine';
-  // Die Admin-Spalte gehört zu Daves Karte
+  // Die Admin-Spalte gehört zur Stream-Karte
   dlg.classList.toggle('is-admin', admin && on && tab === 'dave');
   renderMyBingo(myStamped);
 
@@ -2207,7 +2241,7 @@ function paintBingoBet(bet, admin) {
   let text = '';
   if (bet?.status === 'active') {
     text = open
-      ? `🎯 Tipprunde läuft! Tippe bis ${clock(bet.lock_at)} Uhr in Daves Twitch-Chat mit deinen Kanalpunkten, welche Reihe zuerst voll wird – die Vorhersage steht oben im Chat. Wer richtig liegt, bekommt Punkte dazu.`
+      ? `🎯 Tipprunde läuft! Tippe bis ${clock(bet.lock_at)} Uhr im Twitch-Chat mit deinen Kanalpunkten, welche Reihe zuerst voll wird – die Vorhersage steht oben im Chat. Wer richtig liegt, bekommt Punkte dazu.`
       : '🎯 Die Tipps sind abgegeben. Jetzt zählt, welche Reihe zuerst voll wird!';
   } else if (bet?.status === 'resolved') {
     text = `🎯 ${bet.winner_title ?? 'Eine Reihe'} war zuerst voll – wer darauf getippt hat, hat Kanalpunkte gewonnen.`;
@@ -2220,7 +2254,7 @@ function paintBingoBet(bet, admin) {
   const twitch = state.twitch ?? {};
   const running = bet?.status === 'active';
   let hint = '';
-  if (!state.api.demo && !twitch.connected) hint = 'Dave muss zuerst Twitch verbinden (Twitch-Knopf oben).';
+  if (!state.api.demo && !twitch.connected) hint = 'Der Streamer muss zuerst Twitch verbinden (Twitch-Knopf oben).';
   else if (!state.api.demo && twitch.predictions_scope === false) hint = 'Für Tipprunden braucht die Seite eine neue Twitch-Berechtigung: Twitch-Knopf oben → „Neu verbinden“.';
   else if (!state.bingo.card) hint = 'Erst eine Karte ziehen.';
   $('#bingo-bet-start').hidden = running;
@@ -2242,7 +2276,7 @@ async function startBingoBet() {
   try {
     const { bet } = await state.api.bingoBet('start', Number($('#bingo-bet-seconds').value));
     if (state.bingo.card) state.bingo.card = { ...state.bingo.card, bet };
-    toast('Tipprunde gestartet – die Vorhersage steht jetzt in Daves Twitch-Chat.', 'ok');
+    toast('Tipprunde gestartet – die Vorhersage steht jetzt im Twitch-Chat.', 'ok');
   } catch (err) {
     toast(germanError(err), 'error', 8000);
   } finally {
@@ -2317,7 +2351,7 @@ function renderMyBingo(stamped = null) {
   let text = '';
   if (!on) text = 'Das Bingo ist noch nicht eingerichtet.';
   else if (state.bingo.mineOn === false) text = 'Eigene Karten sind noch nicht eingerichtet (Migration …_channel_points.sql).';
-  else if (!mine) text = items.length ? 'Zieh dir deine eigene Karte aus Daves Item-Bildern.' : 'Dave hat noch keine Item-Bilder hochgeladen.';
+  else if (!mine) text = items.length ? 'Zieh dir deine eigene Karte aus den Item-Bildern des Streamers.' : 'Der Streamer hat noch keine Item-Bilder hochgeladen.';
   empty.textContent = text;
   empty.hidden = !text;
   $('#my-bingo-new').disabled = !on || state.bingo.mineOn === false || !items.length;
@@ -2491,10 +2525,10 @@ function paintQuestionsTile(el = $('.tile--questions')) {
   if (!label) return;
   const { stage, list, on } = state.questions;
   const pending = state.profile?.is_admin ? list.filter((q) => q.status === 'pending').length : 0;
-  label.textContent = !on ? '❓ Frag Dave was'
+  label.textContent = !on ? '❓ Frag den Streamer was'
     : stage?.state === 'ask' ? '🔴 Gerade im Stream'
       : pending ? `📝 ${pending} zu prüfen`
-        : '❓ Frag Dave was';
+        : '❓ Frag den Streamer was';
 }
 
 function buildPetTile(tile, i) {
@@ -3643,7 +3677,7 @@ function renderQuestionsDialog() {
   document.querySelectorAll('[data-q-resolve]').forEach((b) => { b.disabled = !live; });
   $('#q-hide').disabled = !stage || stage.state === 'hidden';
   $('#q-controls-hint').textContent = live
-    ? 'Die Frage steht im Stream. Antwortet Dave nicht, zieht „Bestrafung“ eine zufällige Strafe aus der Liste.'
+    ? 'Die Frage steht im Stream. Antwortet der Streamer nicht, zieht „Bestrafung“ eine zufällige Strafe aus der Liste.'
     : stage?.state && stage.state !== 'hidden' ? 'Das Ergebnis steht im Stream. „Ausblenden“ nimmt die Karte raus.' : 'Eine freigegebene Frage mit „Im Stream zeigen“ starten.';
   const punish = $('#q-punish-form');
   if (document.activeElement !== punish.list) punish.list.value = (stage?.punishments ?? DEFAULT_STAGE.punishments).join('\n');
@@ -3771,7 +3805,7 @@ async function savePunishments(e) {
 }
 
 // ============================================================
-// Daves Dino
+// Stream-Dino
 // ============================================================
 function setupPet() {
   $('#pet-feed').addEventListener('click', (e) => petAction('feed', e.currentTarget));
@@ -3800,10 +3834,10 @@ function setupPet() {
 async function loadPet() {
   try {
     const [data, events] = await Promise.all([state.api.getPet(), state.api.getPetEvents(20)]);
-    if (!data) throw new Error('Daves Dino fehlt in der Datenbank.');
+    if (!data) throw new Error('Der Dino fehlt in der Datenbank.');
     Object.assign(state.pet, { data, events, on: true });
   } catch (err) {
-    console.warn('Daves Dino nicht verfügbar:', err);
+    console.warn('Dino nicht verfügbar:', err);
     state.pet.on = false;
     state.pet.error = germanError(err);
   }
@@ -3846,6 +3880,7 @@ function startPetStage() {
   state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, costume: state.pet.data?.costume, reducedMotion });
   // In der Vorschau knabbert er an den Namen, die zuletzt da waren
   state.pet.stopBrain = runDino(state.pet.dino, {
+    streamer: streamerName,
     getPet: () => state.pet.data,
     names: () => [...new Set(state.pet.events.map((e) => e.who).filter(Boolean))],
     idleEvery: [14, 28],
@@ -3874,7 +3909,7 @@ function renderPetDialog() {
     ? (state.pet.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260928000000_questions_pet.sql ausführen.')
     : 'Der Dino ist noch nicht eingezogen. Schau später noch mal vorbei.';
   note.hidden = on;
-  $('#pet-title').textContent = on ? `Daves Dino: ${data.name}` : 'Daves Dino';
+  $('#pet-title').textContent = on ? `Stream-Dino: ${data.name}` : 'Stream-Dino';
   $('#pet-feed').disabled = !on;
   $('#pet-pet').disabled = !on;
   // Zuschauer füttern hier nur für sich – im Stream über den Twitch-Chat. Admins können beides.
@@ -3884,7 +3919,7 @@ function renderPetDialog() {
   $('#pet-hint').textContent = !on ? ''
     : admin
       ? `„Auch im Stream“ an: Füttern und Streicheln sieht man in OBS. Zuschauer füttern im Stream mit ${command} im Twitch-Chat (alle 10 Minuten pro Person).${twitch.connected && twitch.bot_connected && twitch.bot_chat === false ? ' Dafür den Chat-Bot im Admin-Bereich einmal neu verbinden (Chat lesen).' : ''}${twitch.connected && !twitch.bot_connected ? ' Dafür braucht es den Chat-Bot (Admin-Bereich).' : ''}`
-      : `Hier fütterst und streichelst du ${data.name} nur auf der Seite. Im Stream fütterst du ${data.name} mit ${command} in Daves Twitch-Chat – alle 10 Minuten.`;
+      : `Hier fütterst und streichelst du ${data.name} nur auf der Seite. Im Stream fütterst du ${data.name} mit ${command} im Twitch-Chat von ${streamerName()} – alle 10 Minuten.`;
   if (on) {
     startPetStage();
     state.pet.dino?.setName(data.name);
@@ -4078,7 +4113,7 @@ function paintFrenzyButtons() {
   });
 }
 
-// OBS-Fenster, Ebene „Daves Dino“: Kostüm, !change, Abklingzeit
+// OBS-Fenster, Ebene „Stream-Dino“: Kostüm, !change, Abklingzeit
 function paintObsPet() {
   const admin = !!state.profile?.is_admin && !!state.pet?.on;
   $('#obs-pet-admin').hidden = !admin;
@@ -4140,7 +4175,7 @@ async function savePetSettings(e) {
   });
 }
 
-// ---------- Startdatum für Zuschauer (Ärgere den Dave, Bingo, Fragen, Dino) ----------
+// ---------- Startdatum für Zuschauer (Ärgern, Bingo, Fragen, Dino) ----------
 function paintTileStart(kind) {
   const input = document.querySelector(`[data-tile-start="${kind}"]`);
   const tile = tileByKind(kind);
@@ -4288,6 +4323,15 @@ function setupObs() {
   });
   $('#obs-alerts-check').addEventListener('click', checkAlertSubscriptions);
   $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
+  $('#obs-mods-toggle').addEventListener('change', toggleMods);
+  $('#obs-mods-sync').addEventListener('click', syncMods);
+  $('#obs-content-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-content-open], [data-content-unlock]');
+    const tile = btn && state.tiles.find((t) => t.id === (btn.dataset.contentOpen ?? btn.dataset.contentUnlock));
+    if (!tile) return;
+    if (btn.dataset.contentOpen) TILE_OPEN[tile.kind]?.(tile);
+    else unlockTile(tile, btn);
+  });
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
   $('#obs-apply').addEventListener('click', applyObs);
@@ -4489,7 +4533,11 @@ function openObsWindow() {
 
 function startObsPage() {
   document.body.classList.add('obs-page');
-  document.title = 'OBS-Overlay · Content-Stellwerk';
+  document.title = `${state.profile?.is_admin ? 'Streameransicht' : 'OBS-Overlay'} · Content-Stellwerk`;
+  if (new URLSearchParams(location.search).has('welcome')) {
+    history.replaceState(null, '', `${location.pathname}?obs=1`);
+    toast(`Twitch ist verbunden. Das ist deine Streameransicht, ${streamerName()}: OBS einrichten, Mods freigeben und deine Content-Ideen starten.`, 'ok', 10000);
+  }
   const back = $('#obs-dialog .dialog-head [data-close]');
   back.textContent = '← Zur Webseite';
   back.setAttribute('aria-label', 'Zur Webseite');
@@ -4512,6 +4560,7 @@ async function openObsDialog({ page = false } = {}) {
   fillAlertSounds();
   loadObsLive();
   paintObsConnection();
+  paintStreamerView({ firstOpen: true });
   // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
   const saved = readObsLogin();
   if (saved && !obs.ws?.connected) {
@@ -4529,7 +4578,7 @@ async function openObsDialog({ page = false } = {}) {
     const ready = await state.api.overlayReady().catch(() => false);
     note.textContent = state.profile.is_admin
       ? 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260923000000_overlay.sql ausführen. Vorher bleibt das Overlay in OBS leer.'
-      : 'Das Overlay ist noch nicht freigeschaltet und bleibt in OBS vorerst leer. Ein Admin muss dafür einmal die Datenbank einrichten – sag Dave Bescheid.';
+      : 'Das Overlay ist noch nicht freigeschaltet und bleibt in OBS vorerst leer. Ein Admin muss dafür einmal die Datenbank einrichten – sag dem Streamer Bescheid.';
     note.hidden = ready;
   }
 }
@@ -4580,8 +4629,8 @@ function paintObsLive() {
     : access.can_edit
       ? `✓ Live: Jede Änderung hier erscheint sofort in OBS.${obsLive.savedAt ? ` Zuletzt gespeichert um ${obsLive.savedAt} Uhr.` : ''}`
       : access.admins_can_edit || !state.profile?.is_admin
-        ? '🔒 Das Overlay passen Dave und von ihm freigeschaltete Admins an. Du siehst hier die aktuellen Einstellungen.'
-        : '🔒 Dave hat Admins das Anpassen noch nicht erlaubt. Du siehst hier die aktuellen Einstellungen.';
+        ? '🔒 Das Overlay passen der Streamer, freigegebene Mods und freigeschaltete Admins an. Du siehst hier die aktuellen Einstellungen.'
+        : '🔒 Der Streamer hat das Anpassen noch nicht freigegeben. Du siehst hier die aktuellen Einstellungen.';
   const saved = $('#obs-saved');
   saved.dataset.state = !ready ? 'off' : access.can_edit ? 'on' : 'locked';
   saved.textContent = !ready ? 'Adresse enthält alles' : access.can_edit ? 'Live gespeichert' : 'Nur ansehen';
@@ -4622,6 +4671,173 @@ async function allowAdminsObs(e) {
   paintObsLive();
 }
 
+// ---------- Streameransicht: Content-Ideen und Mods ----------
+// Streamer, Admins und freigegebene Mods sehen im OBS-Fenster den Reiter „Content“.
+function paintStreamerView({ firstOpen = false } = {}) {
+  const admin = !!state.profile?.is_admin;
+  $('#obs-dialog .obs-tab[data-tab="content"]').hidden = !admin;
+  $('#obs-title').textContent = admin ? 'Streameransicht' : 'OBS-Overlay';
+  $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
+    : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
+  if (!admin) return;
+  if (firstOpen) showObsTab('content');
+  renderObsContent();
+  loadMods();
+}
+
+const TILE_ICON = { wheel: '🎡', countdown: '📅', prank: '🍅', bingo: '🎯', questions: '❓', pet: '🦖', shop: '🛒', challenge: '🏆' };
+const TILE_OPEN = {
+  wheel: () => openWheel(),
+  countdown: (t) => openTile(t.id),
+  prank: () => openPrank(),
+  bingo: () => openBingo(),
+  questions: () => openQuestions(),
+  pet: () => openPet(),
+  shop: () => openShop(),
+  challenge: () => openChallenge(),
+};
+const hasStart = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind);
+
+function renderObsContent() {
+  const list = $('#obs-content-list');
+  const tiles = state.tiles.filter((t) => TILE_OPEN[t.kind] && !isArchived(t));
+  if (!tiles.length) {
+    const li = document.createElement('li');
+    li.className = 'obs-content-empty';
+    li.textContent = 'Noch keine Content-Ideen im Fahrplan.';
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...tiles.map((tile) => {
+    const li = document.createElement('li');
+    li.className = 'obs-content-row';
+    const icon = document.createElement('span');
+    icon.className = 'obs-content-icon';
+    icon.textContent = TILE_ICON[tile.kind] ?? '✨';
+    const main = document.createElement('span');
+    main.className = 'obs-content-main';
+    const title = document.createElement('b');
+    title.textContent = tile.title;
+    const status = document.createElement('small');
+    const locked = hasStart(tile) && tile.target_at && Date.parse(tile.target_at) > Date.now();
+    status.textContent = locked ? `🔒 Zuschauer ab ${startLabel(tile.target_at)}`
+      : hasStart(tile) ? '🟢 Für alle offen'
+        : tile.kind === 'countdown' ? (tile.target_at ? `📅 ${startLabel(tile.target_at)}` : 'Ohne Termin')
+          : '🟢 Jederzeit';
+    main.append(title, status);
+    const actions = document.createElement('span');
+    actions.className = 'obs-content-actions';
+    if (locked) {
+      const unlock = document.createElement('button');
+      unlock.type = 'button';
+      unlock.className = 'obs-mini-btn';
+      unlock.dataset.contentUnlock = tile.id;
+      unlock.textContent = 'Jetzt freischalten';
+      actions.append(unlock);
+    }
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'btn btn--outline btn--sm';
+    open.dataset.contentOpen = tile.id;
+    open.textContent = 'Öffnen ›';
+    actions.append(open);
+    li.append(icon, main, actions);
+    return li;
+  }));
+}
+
+async function unlockTile(tile, btn) {
+  btn.disabled = true;
+  try {
+    const updated = await state.api.updateTile(tile.id, { target_at: null });
+    state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
+    renderGrid();
+    if (tile.kind === 'prank' && state.twitch.connected) syncPrankRewards();
+    toast(`„${tile.title}“ ist jetzt für alle Zuschauer freigeschaltet.`, 'ok');
+  } catch (err) {
+    toast(`Freischalten fehlgeschlagen: ${germanError(err)}`, 'error');
+  } finally {
+    renderObsContent();
+  }
+}
+
+async function loadMods() {
+  try {
+    state.mods = await state.api.getMods();
+  } catch (err) {
+    console.warn('Mods nicht verfügbar:', err);
+    state.mods = [];
+  }
+  paintMods();
+}
+
+function paintMods() {
+  const a = state.access;
+  const box = $('#obs-mods');
+  const status = $('#obs-mods-status');
+  const toggle = $('#obs-mods-toggle');
+  const list = $('#obs-mods-list');
+  if (!a) {
+    status.textContent = 'Einmal nötig: supabase/migrations/20261012000000_streamer_mods.sql im SQL Editor ausführen – dann lassen sich hier Mods freigeben.';
+    toggle.disabled = true;
+    $('#obs-mods-sync').hidden = true;
+    list.replaceChildren();
+    return;
+  }
+  box.classList.toggle('is-on', !!a.mods_enabled);
+  toggle.checked = !!a.mods_enabled;
+  toggle.disabled = !a.is_owner;
+  $('#obs-mods-wrap').title = a.is_owner ? '' : 'Das schaltet nur der Streamer.';
+  $('#obs-mods-sync').hidden = !(a.is_owner || a.is_site_admin);
+  const names = state.mods.map((m) => m.display_name || m.login).filter(Boolean);
+  status.textContent = a.is_mod ? `Du steuerst als Mod von ${streamerName()} mit.`
+    : !a.mods_scope && !state.api.demo && !names.length
+      ? 'Für die Mod-Liste braucht die Seite ein neues Twitch-Recht: Twitch einmal neu verbinden (oben „Twitch“ → „Neu verbinden“).'
+      : names.length ? `${names.length} ${names.length === 1 ? 'Mod' : 'Mods'} von Twitch${a.mods_enabled ? ' – dürfen mitsteuern:' : ' – noch nicht freigegeben:'}`
+        : 'Noch keine Mods von Twitch geholt.';
+  list.replaceChildren(...names.map((n) => {
+    const li = document.createElement('li');
+    li.textContent = n;
+    return li;
+  }));
+}
+
+async function toggleMods(e) {
+  const box = e.currentTarget;
+  const on = box.checked;
+  box.disabled = true;
+  try {
+    await state.api.allowModsOverlay(on);
+    state.access = { ...state.access, mods_enabled: on };
+    toast(on ? 'Deine Mods dürfen jetzt OBS und die Content-Ideen mitsteuern.' : 'Mods steuern nicht mehr mit.', 'ok');
+  } catch (err) {
+    box.checked = !on;
+    toast(germanError(err), 'error');
+  } finally {
+    paintMods();
+  }
+}
+
+async function syncMods(e) {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    const r = await state.api.syncMods();
+    if (r?.missing_scope) {
+      state.access = { ...state.access, mods_scope: false };
+      toast('Für die Mod-Liste Twitch einmal neu verbinden – die Seite braucht dafür ein neues Recht.', 'error', 9000);
+    } else {
+      state.access = { ...state.access, mods_scope: true };
+      toast(`${r?.count ?? 0} Mods von Twitch geholt.`, 'ok');
+    }
+    await loadMods();
+  } catch (err) {
+    toast(`Mods holen fehlgeschlagen: ${germanError(err)}`, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // Laufband-Texte: nur Admins sehen und ändern sie hier
 async function loadTickerTexts() {
   const form = $('#obs-ticker-form');
@@ -4656,7 +4872,7 @@ async function fillAlertSounds() {
   renderAlertSoundList();
 }
 
-// Auswahl je Alert-Art: Standard, kein Ton, eigene Alert-Sounds, Soundboard, Sounds aus „Ärgere den Dave“
+// Auswahl je Alert-Art: Standard, kein Ton, eigene Alert-Sounds, Soundboard, Sounds aus „Ärgere den Streamer“
 function paintAlertSoundOptions() {
   const group = (label, options) => {
     const g = document.createElement('optgroup');
@@ -4670,7 +4886,7 @@ function paintAlertSoundOptions() {
     const groups = [
       obs.alertSounds?.length && group('Eigene Alert-Sounds', obs.alertSounds.map((x) => new Option(`🔔 ${x.name}`, `a:${x.path}`))),
       group('Soundboard', BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id))),
-      obs.sounds?.length && group('Aus „Ärgere den Dave“', obs.sounds.map((x) => new Option(x.name, `c:${x.path}`))),
+      obs.sounds?.length && group('Aus „Ärgere den Streamer“', obs.sounds.map((x) => new Option(x.name, `c:${x.path}`))),
     ].filter(Boolean);
     el.replaceChildren(new Option('Standard', ''), new Option('Kein Ton', 'none'), ...groups);
     el.options[0].defaultSelected = true;
@@ -4793,9 +5009,9 @@ async function loadAlertsStatus() {
     const missing = [!s.follows && 'Follower', !s.subs && 'Abos', s.bits === false && 'Bits'].filter(Boolean);
     status.classList.toggle('is-warn', !s.connected || missing.length > 0);
     status.textContent = !s.connected
-      ? 'Twitch ist noch nicht verbunden. Probe-Alerts gehen trotzdem – echte kommen, sobald Dave Twitch verbindet.'
+      ? 'Twitch ist noch nicht verbunden. Probe-Alerts gehen trotzdem – echte kommen, sobald der Streamer Twitch verbindet.'
       : missing.length
-        ? `Für echte Alerts (${missing.join(', ').replace(/, ([^,]*)$/, ' und $1')}) muss Dave Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
+        ? `Für echte Alerts (${missing.join(', ').replace(/, ([^,]*)$/, ' und $1')}) muss der Streamer Twitch einmal neu verbinden (oben rechts „Twitch“) und die neuen Rechte erlauben. Probe-Alerts gehen schon.`
         : 'Twitch hat die Rechte für Follower, Abos und Bits freigegeben.';
     if (s.connected) await checkAlertSubscriptions();
   } catch (err) {
@@ -4830,7 +5046,7 @@ async function checkAlertSubscriptions() {
       const t = r.types?.[type] ?? { state: 'error', message: 'keine Antwort' };
       const text = t.state === 'ok' ? '<span class="is-ok">✓ aktiv</span>'
         : t.state === 'pending' ? '<span class="is-ok">✓ neu angelegt – Twitch schaltet es in ein paar Sekunden frei</span>'
-          : t.state === 'missing_scope' ? '<span class="is-bad">✕ Recht fehlt – Dave muss Twitch neu verbinden</span>'
+          : t.state === 'missing_scope' ? '<span class="is-bad">✕ Recht fehlt – der Streamer muss Twitch neu verbinden</span>'
             : `<span class="is-bad">✕ Twitch lehnt ab: ${escapeHtml(t.message ?? 'unbekannter Fehler')}</span>`;
       return `<li><b>${label}:</b> ${text}</li>`;
     }).join('');
@@ -4994,7 +5210,7 @@ function paintObsConnection() {
   $('#obs-ws-title').textContent = on ? 'Mit OBS verbunden' : 'Mit OBS verbinden';
   $('#obs-ws-status').textContent = on
     ? `Vorschau zeigt die Szene „${obs.scene ?? '…'}“. „In OBS übernehmen“ legt die Browserquelle „Stellwerk-Overlay“ an bzw. aktualisiert sie.`
-    : 'Dann siehst du unten dein echtes OBS-Bild, die Seite findet Daves Kamera und richtet das Overlay in OBS ein.';
+    : 'Dann siehst du unten dein echtes OBS-Bild, die Seite findet deine Kamera und richtet das Overlay in OBS ein.';
   $('#obs-preview-label').textContent = on ? `Live aus OBS · ${obs.scene ?? ''}` : obs.stream ? 'Geteiltes Fenster' : 'Beispielbild';
   $('#obs-preview').classList.toggle('has-shot', on || !!obs.stream);
   const pill = $('#obs-pill');
@@ -5125,11 +5341,11 @@ function renderTwitchDialog() {
     body.querySelector('[data-fill="channel"]').textContent = twitch.display_name ?? twitch.login;
   } else {
     body.innerHTML = `
-      <p>Dave meldet sich mit dem Twitch-Account <b data-fill="channel"></b> an und erlaubt dieser Seite:</p>
+      <p>Der Streamer meldet sich mit dem Twitch-Account <b data-fill="channel"></b> an und erlaubt dieser Seite:</p>
       <ul class="perm-list">
         <li><span>Kanalpunkte-Belohnungen verwalten<small>Legt die Belohnung „Glücksrad“ an und markiert Einlösungen als erledigt.</small></span></li>
         <li><span>Kanalpunkte-Einlösungen lesen<small>Damit das Rad sich dreht, auch wenn diese Seite geschlossen ist.</small></span></li>
-        <li><span>Chat-Bot zulassen<small>Der Stellwerk-Bot darf das Ergebnis jeder Drehung in den Chat schreiben. In Daves Namen schreibt die Seite nie.</small></span></li>
+        <li><span>Chat-Bot zulassen<small>Der Stellwerk-Bot darf das Ergebnis jeder Drehung in den Chat schreiben. Im Namen des Streamers schreibt die Seite nie.</small></span></li>
         <li><span>Follower, Abos und Bits lesen<small>Für die Alerts im OBS-Overlay: neue Follower, Abos, verschenkte Abos und Bits.</small></span></li>
       </ul>
       <p class="form-msg" role="alert"></p>
@@ -5144,7 +5360,7 @@ function renderTwitchDialog() {
   const botNote = body.querySelector('[data-fill="bot"]');
   if (botNote) {
     botNote.textContent = twitch.bot_connected
-      ? `🤖 Chat-Bot ${twitch.bot_name ?? twitch.bot_login} schreibt die Ergebnisse in den Chat.${twitch.bot_scope ? '' : ' Damit er in Daves Chat schreiben darf, einmal „Neu verbinden“.'}`
+      ? `🤖 Chat-Bot ${twitch.bot_name ?? twitch.bot_login} schreibt die Ergebnisse in den Chat.${twitch.bot_scope ? '' : ' Damit er im Chat des Streamers schreiben darf, einmal „Neu verbinden“.'}`
       : '🤖 Noch kein Chat-Bot verbunden – ohne ihn bleibt der Chat still. Verbunden wird er im Admin-Bereich.';
   }
   body.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => twitchAction(b)));
@@ -5170,7 +5386,7 @@ async function twitchAction(btn) {
       closeDialog($('#twitch-dialog'));
       toast('Twitch wurde getrennt. Die Belohnung ist deaktiviert.', 'ok');
     } else {
-      // Merken, dass Dave gerade verbindet – für eine verständliche Meldung,
+      // Merken, dass der Streamer gerade verbindet – für eine verständliche Meldung,
       // falls Twitch falsch zurückleitet (siehe boot).
       try { sessionStorage.setItem('zd_twitch_flow', '1'); } catch { /* egal */ }
       await state.api.twitchConnect(); // leitet zu Twitch weiter

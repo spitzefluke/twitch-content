@@ -1,10 +1,10 @@
 // Webhook für Twitch EventSub.
-// Wird von Twitch aufgerufen, wenn ein Zuschauer in Daves Kanal Kanalpunkte einlöst
-// (bei Chat-Nachrichten, siehe _shared/chat.ts – z. B. !füttern für Daves Dino –
+// Wird von Twitch aufgerufen, wenn ein Zuschauer im Kanal des Streamers Kanalpunkte einlöst
+// (bei Chat-Nachrichten, siehe _shared/chat.ts – z. B. !füttern für den Dino –
 // und bei Follows und Abos für das Alert-Feld, siehe _shared/alerts.ts):
 //   „Glücksrad“            → Rad drehen, Ergebnis in den Chat
-//   „🍅 Wirf was auf Dave“  → Wurf im OBS-Overlay (eingetippt: was fliegt)
-//   „🔊 Sound für Dave“     → Sound im OBS-Overlay (eingetippt: welcher)
+//   „🍅 Wirf was auf ‹Kanal›“ → Wurf im OBS-Overlay (eingetippt: was fliegt)
+//   „🔊 Sound für ‹Kanal›“ → Sound im OBS-Overlay (eingetippt: welcher)
 // Funktioniert also auch, wenn niemand die Website offen hat.
 import {
   chatText, CodedError, db, env, getConnection, helix, performSpin, sendChat, type Connection,
@@ -122,7 +122,7 @@ function setStatus(conn: Connection, event: Redemption, status: "FULFILLED" | "C
   });
 }
 
-// ---------- Ärgere den Dave ----------
+// ---------- Ärgern (Würfe und Sounds im Stream) ----------
 async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | "sound") {
   const input = (event.user_input ?? "").slice(0, 100);
   const refund = async (message: string) => {
@@ -135,7 +135,7 @@ async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | 
     const when = startsAt && !started
       ? `startet erst am ${new Date(startsAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr.`
       : "ist gerade pausiert.";
-    return refund(`„Ärgere den Dave“ ${when}`);
+    return refund(`Das Ärgern ${when}`);
   }
 
   let row: Record<string, unknown> | null = null;
@@ -146,7 +146,7 @@ async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | 
     // zurückerstatteten Punkten, also kostenlos) beliebigen Text schreiben lassen.
     if (!item) return refund(`Das kenne ich nicht. Werfen kannst du: ${THROW_ITEMS.map((i) => i.name).join(", ")}.`);
     row = { kind: "throw", item: item.id };
-    text = item.id === "flowers" ? `💐 ${event.user_name} schenkt Dave Blumen!` : `🎯 ${event.user_name} wirft: ${item.name}!`;
+    text = item.id === "flowers" ? `💐 ${event.user_name} schenkt ${conn.display_name} Blumen!` : `🎯 ${event.user_name} wirft: ${item.name}!`;
   } else {
     const board = matchBoardSound(input);
     const custom = board ? null : await matchCustomSound(input);
