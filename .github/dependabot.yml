@@ -1,0 +1,7 @@
+# Hält die GitHub Actions (checkout, setup-node, setup-cli) aktuell – Sicherheits-Updates kommen als PR.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

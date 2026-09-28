@@ -184,10 +184,12 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
 export function drawCard(items, size, free = true) {
   const withFree = free && size % 2 === 1;
   const need = size * size - (withFree ? 1 : 0);
-  if (items.length < need) {
-    throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – hochgeladen sind erst ${items.length}.`);
+  // Nur was gerade im Lootpool ist (und eigene Bilder)
+  const usable = items.filter((i) => i.active !== false && !i.hidden);
+  if (usable.length < need) {
+    throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – verfügbar sind erst ${usable.length}.`);
   }
-  const pool = items.map(cardCell);
+  const pool = usable.map(cardCell);
   for (let i = pool.length - 1; i > 0; i--) {
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [pool[i], pool[j]] = [pool[j], pool[i]];

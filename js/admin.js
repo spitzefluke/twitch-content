@@ -2,6 +2,7 @@
 import { CONFIG } from './config.js';
 import { isDemo } from './api.js';
 import { DEFAULT_VARIANTS } from './defaults.js';
+import { guardFrame } from './frame-guard.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const TOKEN_KEY = 'zd_admin_token';
@@ -95,7 +96,7 @@ function demoCall(action, extra) {
 // ============================================================
 // Start / Login
 // ============================================================
-init();
+if (guardFrame()) init();
 
 function init() {
   if (isDemo) $('#demo-banner').hidden = false;

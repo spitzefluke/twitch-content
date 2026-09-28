@@ -10,7 +10,9 @@ Webseite zum Verwalten von Content-Ideen für einen Twitch-Streamer (eingerichte
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
-- **Fortnite-Bingo**: Admins laden Bilder von Fortnite-Items hoch, daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Fortnite-Bingo**: Die Bilder kommen automatisch aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
+- **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown, und ein Alert-Feld zeigt neue Follower und Abos. Den Link gibt's im Dashboard unter **OBS**.
 - **Twitch-Integration**: Der Streamer verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
 
@@ -26,6 +28,8 @@ supabase/functions/
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
   youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
+  bingo-loot/                    → Bingo-Bilder an den aktuellen Fortnite-Lootpool anpassen (fortniteapi.io)
+  stream-tools/                  → Bot-Nachrichten verschicken, Kanalpunkte für Vorlesen/Karten, Einlösungen abschließen
 ```
 
 GitHub Pages kann nur statische Dateien ausliefern. Damit Einlösungen auch ohne geöffnete Seite funktionieren, braucht Twitch einen Server, den es anrufen kann. Diese Rolle übernehmen die **Supabase Edge Functions** (der kostenlose Tarif reicht). Supabase kümmert sich außerdem um Accounts und die Datenbank.
@@ -140,6 +144,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `BROADCASTER_LOGIN` | **Pflicht:** nur dieser Twitch-Kanal darf sich verbinden (und wird dabei Admin). Fehlt es, dürfen sich aus Sicherheitsgründen nur Admins verbinden. |
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
+| `FORTNITEAPI_IO_KEY` *(fürs Bingo)* | Schlüssel von [fortniteapi.io](https://fortniteapi.io) (kostenlos, mit Discord anmelden) – damit holt `bingo-loot` den aktuellen Lootpool |
 
 ### 5. Der Streamer verbindet Twitch
 
@@ -268,6 +273,13 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `recent=tl` / … | Karte „Letzter Follower & letztes Abo“ an (eigene Karte, dauerhaft sichtbar) |
 | `rsize=120` | Größe dieser Karte in Prozent |
 | `sfollow=gong`, `ssub=…`, `sresub=…`, `sgift=none`, `sbits=…` | Sound je Alert-Art: Soundboard-Sound (`whistle`, `horn`, `gong` …), `a:<pfad>` für einen eigenen Alert-Sound, `c:<pfad>` für einen Sound aus „Ärgere den Streamer“ oder `none`; ohne Angabe der Standardklang |
+| `forbid=tr` / … · `fwsize=120` | Verbotenes Wort (Karte) und ihre Größe |
+| `subathon=tc` / … · `sasize=120` | Subathon-Timer |
+| `pause=1` | Pausen-Bildschirm (ganzes Bild, nur während einer Pause) |
+| `quiz=bl` / … · `qzsize=120` | Quizfrage (nur solange eine läuft) |
+| `queue=tl` / … · `qusize=120` | Mitspielen: wer dran ist, wer wartet |
+| `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
+| `cards=br` / … · `cdsize=120` | Sammelkarten: epische und legendäre Ziehungen |
 | `pet=1` | Stream-Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
@@ -275,6 +287,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `pscreen=0` | Dino frisst bei Heißhunger keine Löcher in den Bildschirm |
 | `chat=tl` / `x,y` | Twitch-Chat an dieser Stelle (Standard im OBS-Dialog: rechts oben, frei verschiebbar) |
 | `chsize=120` / `chmax=8` | Größe in Prozent / höchstens so viele Nachrichten (3 – 50) |
+| `chstyle=card` / `bubble` / `clean` | Stil des Chats: Karte (Standard), Sprechblasen (jede Nachricht eine Blase mit der Namensfarbe als Akzent) oder Schlicht (nur Text mit Schatten, direkt im Bild) |
 | `chh=60` | feste Höhe des Chats in Prozent der Bildhöhe (20 – 95) – neue Nachrichten unten, alte rutschen oben raus, `chmax` gilt dann nicht; ohne Angabe wächst er mit den Nachrichten |
 | `chfade=30` | Nachrichten verschwinden nach so vielen Sekunden (Standard 0 = bleiben, bis neue sie verdrängen) |
 | `yt=@kanal` | YouTube-Livechat dazumischen (Kanal als `@name` oder Kanal-ID `UC…`) – jede Nachricht bekommt dann das Twitch- bzw. YouTube-Logo |
@@ -335,12 +348,30 @@ Kachel im Fahrplan. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql
 2. Rechts unter **Bilder** Bilder der Items wählen – mehrere auf einmal gehen. Der Name kommt aus dem Dateinamen (`chug-jug.png` → „Chug Jug“) und lässt sich danach ändern. Die Bilder werden vor dem Hochladen verkleinert.
    Jedes Bild kann eine **Seltenheit** wie in Fortnite haben – Gewöhnlich (grau), Ungewöhnlich (grün), Selten (blau), Episch (lila), Legendär (gold), **Mythisch** (gold mit Glanz) oder Exotisch. Steht sie im Dateinamen (`scar_legendary.png`, `pump-episch.png`, `mythic_goldfish.png`), wird sie gleich erkannt; sonst in der Liste neben dem Bild wählen. Items ohne Seltenheit (z. B. Heilung) bekommen eine bunte Farbe, die es bei Waffen nicht gibt. Migration `20260925120000_bingo_rarity.sql` nötig.
    Außerdem kann im Icon eine **Zahl** stehen – z. B. das Kill-Symbol mit „5“ für 5 Kills. Aus dem Dateinamen erkannt (`kill_5.png`, `elim x10.png`) oder im Feld „Zahl“ neben dem Bild eintragen. **⧉** kopiert ein Bild mit anderer Zahl, so gibt es das Kill-Symbol für 3, 5 und 10 Kills. Migration `20260926000000_bingo_amount.sql` nötig.
+   **Lootpool:** Die Fortnite-Items kommen von selbst – siehe [Bilder aus dem aktuellen Lootpool](#bilder-aus-dem-aktuellen-lootpool). Hochladen braucht es nur für Eigenes wie Kills oder Siege.
 3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 Bilder, für 4×4 16, für 3×3 8.
 4. Im Stream die gefundenen Items auf der Karte anklicken. Eine volle Reihe, Spalte oder Diagonale zeigt „Bingo!“ – auf der Seite und im Overlay, mit Applaus.
 
 Zuschauer sehen die Stream-Karte nur an. Unter **Meine Karte** zieht sich jeder seine eigene Karte aus denselben Bildern und kreuzt selbst ab (gespeichert in `bingo_player_cards`, nur für einen selbst sichtbar). **Im Stream zeigen** blendet die Stream-Karte im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im Overlay: **Klassisch**, **Neon** und **Papier**.
+
+### Bilder aus dem aktuellen Lootpool
+
+Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. Die Edge Function `bingo-loot` holt ihn von [fortniteapi.io](https://fortniteapi.io) (Name auf Deutsch, Seltenheit, Bild) und gleicht ab:
+
+- **Neu im Lootpool** → kommt als Bild dazu (mit Abzeichen „Loot“ in der Liste).
+- **Aus dem Lootpool geflogen** → bleibt blass in der Liste („nicht mehr im Lootpool“) und kommt auf **keine neue Karte** mehr – weder auf die Stream-Karte noch auf die eigenen Karten. Karten, die schon gezogen sind, behalten ihre Bilder. Kommt das Item zurück, ist es wieder dabei.
+- Abgeglichen wird, sobald jemand den Bingo-Dialog öffnet – aber höchstens alle 6 Stunden. Admins können unter **Bilder** mit **🔄 Lootpool jetzt abgleichen** sofort abgleichen (nach einem Update oder Season-Start).
+- Ein Lootpool-Item, das nicht aufs Bingo soll, blendet ein Admin mit **🙈** aus – der Abgleich holt es nicht zurück. **… ausgeblendete wieder zeigen** holt alle zurück. Name und Seltenheit kommen von Fortnite; die **Zahl** und **⧉** (Kopie mit Zahl) gehen auch bei Lootpool-Items.
+- Eigene hochgeladene Bilder bleiben immer dabei.
+
+Einmal nötig:
+1. Migration `supabase/migrations/20261013000000_bingo_lootpool.sql` im SQL Editor ausführen.
+2. Bei [fortniteapi.io](https://fortniteapi.io) (kostenlos, Anmeldung mit Discord) einen API-Schlüssel holen und in Supabase unter **Edge Functions → Secrets** als `FORTNITEAPI_IO_KEY` eintragen.
+3. Die Function `bingo-loot` wird mit dem nächsten Merge automatisch hochgeladen (GitHub Action). Dann im Bingo-Dialog **🔄 Lootpool jetzt abgleichen** klicken.
+
+Fehlt der Schlüssel, steht das im Bingo-Dialog; das Bingo funktioniert weiter mit den vorhandenen Bildern.
 
 ### Tipprunde mit Kanalpunkten
 
@@ -421,6 +452,45 @@ Jede Stufe hat ein Ziel (so viele Siege braucht sie). Optional hat die Challenge
 **Im Stream:** Sobald der erste Sieg eingetragen ist, zeigt das OBS-Overlay oben links eine Karte mit der aktuellen Stufe, den Siegen (●●○), den Leben (❤️) und einem Fortschrittsbalken. Ein Sieg lässt die Karte grün aufleuchten („SIEG!“), eine Niederlage rot wackeln und ein Herz zerbrechen. Eine geschaffte Stufe, die geschaffte Challenge (mit Konfetti) und das Scheitern kommen groß übers ganze Bild. Nach dem Ende bleibt die Karte noch 10 Minuten stehen. Im OBS-Dialog lässt sie sich ausschalten, vergrößern und verschieben.
 
 **Für Zuschauer ab 10.10.2026** (vorher Countdown auf der Kachel; der Streamer und die Admins sehen sie schon vorher, der Termin steht im Challenge-Dialog). Einmal nötig: die Migrationen `supabase/migrations/20261003000000_win_challenge.sql` und `20261004000000_challenge_start.sql` ausführen.
+
+## Sieben weitere Content-Ideen
+
+Einmal nötig: `supabase/migrations/20261014000000_stream_extras.sql` im SQL Editor ausführen (legt alle sieben Kacheln an). Die Edge Function `stream-tools` kommt mit dem nächsten Merge automatisch zu Supabase. Chat-Befehle brauchen den verbundenen **Chat-Bot** (Abschnitt 6) – er liest den Chat und antwortet. Im OBS-Fenster gibt es für jede Idee eine Ebene unter **„Neue Content-Ideen“**. Alles lässt sich auch aus der **Streameransicht → Content** öffnen, von Streamer und freigegebenen Mods.
+
+| Idee | Zuschauer | Streamer / Mods |
+|---|---|---|
+| 🤐 **Verbotenes Wort** | melden mit `!erwischt` im Chat oder auf der Seite | Wort ziehen (zufällig oder eigenes), Meldungen bestätigen (+1) oder verwerfen, Strafe pro Verstoß einstellen (z. B. 10 Liegestütze) |
+| ⏱️ **Subathon** | Follows, Abos und Bits verlängern den Timer von selbst | starten, pausieren, Zeit von Hand dazu, Sekunden pro Follow/Abo/100 Bits, Höchstdauer; Rangliste „am meisten Zeit geschenkt“ |
+| ☕ **Kurze Pause** | Zahlenraten mit `!rate 42` (oder auf der Seite) | Pause mit Überschrift, Text und Countdown starten – das Overlay zeigt den Pausen-Bildschirm, Chat und Dino bleiben davor |
+| 🧠 **Quiz** | antworten mit `!a` `!b` `!c` `!d` oder auf der Seite; 10 Punkte + bis zu 5 fürs schnelle Antworten | Frage stellen (zufällig oder bestimmte), auflösen, eigene Fragen anlegen; 24 Fortnite-Fragen sind dabei |
+| 🎮 **Mitspielen** | `!join EpicName` (danach reicht `!join`), `!leave`; oder auf der Seite | öffnen, der Reihe nach oder per Zufall ziehen (Subs zuerst, wenn gewünscht) – der Bot sagt im Chat Bescheid; Epic-Namen sehen nur Streamer und Mods |
+| 🔊 **Vorlesen** | Kanalpunkte „🔊 Nachricht vorlesen“; Stimme mit `oma:`, `roboter:`, `monster:`, `schnell:`, `flüster:` am Anfang | freigeben oder ablehnen (Punkte zurück), gesperrte Wörter, selbst etwas vorlesen lassen, abbrechen, stumm |
+| 🃏 **Sammelkarten** | jeden Tag ein Gratis-Pack, Packs per Kanalpunkte „🃏 Sammelkarten-Pack“ (mit Twitch anmelden, damit sie ankommen), Sammlung, Rangliste, Tauschen | Karten anlegen (Emoji oder Bild, 5 Seltenheiten), Karten pro Pack, Wahrscheinlichkeiten |
+
+**Kanalpunkte für Vorlesen und Karten:** im jeweiligen Dialog unter „Kanalpunkte“ Kosten einstellen und **„Speichern & zu Twitch übernehmen“** (nur Admins der Seite, nicht Mods; Twitch-Affiliate/Partner nötig).
+
+**Vorlesen in OBS:** Das Overlay nutzt die Sprachausgabe von Windows/Chrome. Der Ton geht an das Standard-Audiogerät und wird mit **Desktop-Audio** aufgenommen (nicht über „Audio über OBS steuern“).
+
+## Sicherheit
+
+Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.
+
+- **🛡️ Raid-Schutz:** In der **Streameransicht → Content** ganz oben. Ein Klick pausiert alle Zuschauer-Aktionen – Chat-Befehle, Kanalpunkte (Glücksrad, Würfe, Vorlesen, Karten: die Punkte gehen automatisch zurück) und Aktionen auf der Seite – für 15 Minuten, 1 Stunde oder bis zum Ausschalten. Streamer und Mods können weiter alles. Der Bot sagt es im Chat an, auf der Seite erscheint ein Hinweis.
+- **Content-Security-Policy** auf allen Seiten: Nur eigene Skripte laufen; die beiden Inline-Skripte sind per Hash freigegeben (`node tools/stamp-versions.mjs` schreibt die Policy mit). Die Supabase-Bibliothek liegt lokal (`js/supabase-js.js`) statt vom CDN.
+- **Kein Einbetten in fremde Seiten** (Schutz gegen Clickjacking), Referrer nur innerhalb der Seite.
+- **OBS sieht weniger:** Das Overlay (ohne Anmeldung) bekommt keine Konto-IDs oder Twitch-Einlösungs-IDs mehr.
+- **Uploads:** höchstens 10 Sound-Dateien pro Person; neue Passwörter brauchen mindestens 10 Zeichen und dürfen nicht den Namen enthalten.
+- Siehe auch `SECURITY.md` (Lücken privat melden).
+
+### Checkliste im Supabase-Dashboard (geht nur dort)
+
+1. **Authentication → Providers → Email:** „Confirm email“ an, **Minimum password length 10**, **„Prevent use of leaked passwords“** an.
+2. **Authentication → Attack Protection:** **CAPTCHA** (hCaptcha oder Cloudflare Turnstile) einschalten – stoppt Bot-Registrierungen.
+3. **Authentication → URL Configuration:** als Site-URL und Redirect-URLs **nur** die eigene GitHub-Pages-Adresse eintragen.
+4. **Authentication → Rate Limits:** Standardwerte lassen oder senken (z. B. Anmeldeversuche pro Stunde).
+5. **Project Settings → API:** den **service_role**-Schlüssel nie weitergeben; wurde er je irgendwo geteilt: **„Roll“** (neu erzeugen) und in den Edge-Function-Secrets nachziehen.
+6. **Advisors → Security Advisor** ab und zu öffnen und Warnungen beheben.
+7. **GitHub:** Settings → Code security → **Secret scanning** und **Dependabot alerts** an (Dependabot hält die Actions aktuell, siehe `.github/dependabot.yml`).
 
 ## Startdatum für Zuschauer
 

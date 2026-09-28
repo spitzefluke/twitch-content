@@ -86,13 +86,15 @@ export async function matchCustomSound(input: string) {
 
 // Sollen die Belohnungen gerade einlösbar sein? Aus (Admin) oder vor dem Startdatum: nein.
 export async function prankState() {
-  const [{ data: cfg }, { data: tile }] = await Promise.all([
+  const [{ data: cfg }, { data: tile }, { data: paused }] = await Promise.all([
     db.from("prank_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("tiles").select("target_at").eq("kind", "prank").order("position").limit(1).maybeSingle(),
+    // Raid-Schutz (…_security_hardening.sql); fehlt die Funktion noch, gilt: nicht pausiert
+    db.rpc("viewer_paused"),
   ]);
   const startsAt = tile?.target_at ? Date.parse(tile.target_at) : null;
   const started = startsAt === null || startsAt <= Date.now();
-  return { cfg, tile, startsAt, started, active: !!cfg?.enabled && !!tile && started };
+  return { cfg, tile, startsAt, started, paused: paused === true, active: !!cfg?.enabled && !!tile && started && paused !== true };
 }
 
 // Legt die beiden Belohnungen an oder bringt sie auf den Stand der Einstellungen

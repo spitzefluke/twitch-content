@@ -1221,6 +1221,21 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-rarity-pick.r-mythic { border-left-color: #ffd84a; box-shadow: 0 0 8px rgba(255, 214, 90, .45); }
 .bingo-rarity-pick.r-exotic { border-left-color: #7fe8f5; }
 .bingo-items li.empty { display: block; color: var(--dim); font-size: 14px; }
+/* Lootpool: Items von Fortnite (Abzeichen), rausgeflogene blass */
+.bingo-items li > .bingo-thumb { grid-area: img; position: relative; display: block; width: 40px; height: 40px; }
+.bingo-thumb b {
+  position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%); padding: 0 4px; border-radius: 4px;
+  background: var(--amber); color: #14110a; font: 700 8px/12px var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+}
+.bingo-items li.is-gone { opacity: .5; }
+.bingo-items li.is-gone .bingo-thumb b { background: var(--line-2); color: var(--dim); }
+.bingo-items li > .bingo-loot-note { grid-area: rarity; font-size: 12px; color: var(--dim); }
+.bingo-items input[readonly] { color: var(--dim); }
+.bingo-rarity-pick:disabled { opacity: 1; color: var(--dim); }
+.bingo-loot { display: grid; gap: 8px; margin-bottom: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-2); }
+.bingo-loot.is-error { border-color: rgba(255, 120, 90, .55); }
+.bingo-loot-state { margin: 0; font-size: 13px; }
+.bingo-loot-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .bingo-items img { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: var(--bg); }
 .bingo-items input {
   min-width: 0; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg);

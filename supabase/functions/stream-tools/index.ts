@@ -1,0 +1,45 @@
+// Werkzeuge für die Content-Ideen aus …_stream_extras.sql.
+//   POST {action:"flush"}               → offene Bot-Nachrichten in den Chat (jeder Angemeldete –
+//                                          verschickt werden nur Texte, die die Datenbank selbst geschrieben hat)
+//   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
+//   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (nur Admins der Seite)
+import { corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
+import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
+import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
+  const user = await getUserFromRequest(req);
+  if (!user) return json({ error: "Bitte anmelden." }, 401);
+  const { action, key } = await req.json().catch(() => ({}));
+  try {
+    if (action === "flush") return json({ sent: await flushOutbox() });
+
+    if (action === "settle") {
+      if (!(await isAdminUser(user.id))) return json({ error: "Nur der Streamer und die Mods." }, 403);
+      const conn = await getConnection();
+      return json({ settled: conn ? await settleTts(conn) : 0 });
+    }
+
+    if (action === "sync_reward") {
+      // Kanalpunkte-Kosten bleiben beim Streamer und den Admins der Seite (keine Mods)
+      const { data: profile } = await db.from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+      if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Belohnungen ändern." }, 403);
+      if (key !== "tts" && key !== "cards") return json({ error: "Unbekannte Belohnung" }, 400);
+      const conn = await getConnection();
+      if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);
+      const result = await syncExtraReward(conn, key as RewardKey);
+      // Ohne Abo kämen die Einlösungen nie an (legt es an, falls es fehlt)
+      const subscriptionId = await ensureRedemptionSubscription(
+        conn.broadcaster_id, `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`, env("EVENTSUB_SECRET"),
+      );
+      await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+      return json(result);
+    }
+    return json({ error: "Unbekannte Aktion" }, 400);
+  } catch (e) {
+    console.error("stream-tools:", e);
+    return json({ error: String((e as Error)?.message ?? e).slice(0, 300) }, 500);
+  }
+});

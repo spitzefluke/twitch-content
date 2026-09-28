@@ -54,12 +54,15 @@
 //   chfade=0                   Sekunden, bis eine Nachricht verschwindet (0 = bleibt, bis neue sie verdrängen)
 //   chcmd=1                    Befehle (!füttern, !change …) auch zeigen – sonst ausgeblendet
 //   chbots=1                   Bots (StreamElements, Nightbot …) auch zeigen – sonst ausgeblendet
+//   chstyle=card|bubble|clean  Stil des Chats: Karte (Standard), Sprechblasen, Schlicht (nur Text mit Schatten)
 //   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
 //   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
+//   forbid, subathon, pause, quiz, queue, tts, cards (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize)
+//                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -77,6 +80,7 @@ import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './tw
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
+import { setupOverlayExtras } from './overlay-extras.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -176,6 +180,7 @@ const opt = {
   chfadeMs: number('chfade', 0, 0, 600) * 1000,
   chcmd: flag('chcmd', false),
   chbots: flag('chbots', false),
+  chstyle: ['bubble', 'clean'].includes(params.get('chstyle')) ? params.get('chstyle') : 'card',
   yt: youtubeChannel(params.get('yt')),
   chtw: flag('chtw', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
@@ -293,6 +298,7 @@ async function start() {
   if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
   if (opt.chat) setupChat();
+  setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
   if (LIVE) watchOverlayConfig(source);
   if (!opt.edit) watchForUpdate();
 }
@@ -329,14 +335,16 @@ function watchOverlayConfig(source) {
 // ============================================================
 // Live liest das Overlay ohne Anmeldung (anon) – freigegeben sind nur
 // Kacheln, Varianten und der Feed overlay_spins (Migration …_overlay.sql).
+const SHOP_RUN_COLS = 'id, player, lobby_id, stream, chest, coins, spent, items, status, shop_until, score, created_at, updated_at';
 async function connect() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return demoSource();
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+  const { createClient } = await import('./supabase-js.js');
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const rows = async (query) => { const { data, error } = await query; if (error) throw error; return data; };
   return {
+    client: sb,
     variants: () => rows(sb.from('wheel_variants').select('*').order('position')),
     tiles: () => rows(sb.from('tiles').select('*').order('position')),
     onSpin(cb) {
@@ -358,7 +366,9 @@ async function connect() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
     },
-    bingoUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`,
+    // Lootpool-Bilder sind schon eine volle Adresse, eigene liegen im Storage
+    bingoUrl: (path) => (path.startsWith('https://') ? path
+      : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`),
     questionStage: async () => (await rows(sb.from('question_stage').select('*').eq('id', 1).maybeSingle())) ?? null,
     onQuestionStage(cb) {
       sb.channel('overlay-question')
@@ -376,16 +386,17 @@ async function connect() {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
     },
-    shopStreamRun: async () => (await rows(sb.from('shop_runs').select('*').eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
-    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select('*').eq('lobby_id', lobbyId)),
+    // Ohne user_id: die Konto-ID bekommt OBS nicht zu sehen (…_security_hardening.sql)
+    shopStreamRun: async () => (await rows(sb.from('shop_runs').select(SHOP_RUN_COLS).eq('stream', true).order('created_at', { ascending: false }).limit(1).maybeSingle())) ?? null,
+    shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select(SHOP_RUN_COLS).eq('lobby_id', lobbyId)),
     onShopRuns(cb) {
       sb.channel('overlay-shop')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Kisten-Shop fehlgeschlagen'); });
     },
-    shopImages: async () => rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({
-      name: i.name, url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${i.path.split('/').map(encodeURIComponent).join('/')}`,
-    }))),
+    async shopImages() {
+      return rows(sb.from('bingo_items').select('name, path')).then((list) => list.map((i) => ({ name: i.name, url: this.bingoUrl(i.path) })));
+    },
     challenge: () => rows(sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()),
     alerts: () => rows(sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(20)),
     onAlert(cb) {
@@ -461,7 +472,7 @@ function demoSource() {
     onBingo(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
     },
-    bingoUrl: (path) => read('bingo_items', []).find((i) => i.path === path)?.url ?? '',
+    bingoUrl: (path) => (path.startsWith('https://') ? path : read('bingo_items', []).find((i) => i.path === path)?.url ?? ''),
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
@@ -1351,6 +1362,7 @@ function burst(host, kind) {
 function setupChat() {
   const card = $('ov-chat');
   const list = $('ov-chat-list');
+  card.classList.add(`chat-style-${opt.chstyle}`);
   // Feste Höhe: neue Nachrichten unten, alte rutschen oben aus dem Bild – dann
   // entscheidet die Höhe, wie viele Nachrichten zu sehen sind (chmax gilt nicht)
   const max = opt.chh >= 20 ? 50 : opt.chmax;

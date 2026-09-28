@@ -16,6 +16,8 @@ import {
 import {
   KINDS, challengeBurst, challengeSummary, currentStage, doneCount, heartsHtml, pipsHtml, stageDone, stageLabel,
 } from './challenge.js';
+import { EXTRA_KINDS, buildExtraTile, extraIcon, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
+import { guardFrame } from './frame-guard.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -114,7 +116,7 @@ const state = {
   },
 };
 
-boot();
+if (guardFrame()) boot();
 
 // ============================================================
 // Start
@@ -268,6 +270,17 @@ function setupAuthForms() {
     });
   });
 
+  // Neue Passwörter: lang genug und nicht zu leicht zu erraten (Supabase prüft zusätzlich selbst)
+  const COMMON = ['passwort', 'password', 'hallo123', 'qwertz', 'qwerty', 'fortnite', 'twitch', 'geheim', 'letmein', 'iloveyou'];
+  function passwordProblem(pw, personal) {
+    if (pw.length < 10) return 'Das Passwort braucht mindestens 10 Zeichen.';
+    const low = pw.toLowerCase();
+    if (/^(.)\1+$/.test(pw) || /^\d+$/.test(pw)) return 'Dieses Passwort ist zu leicht zu erraten.';
+    if (COMMON.some((w) => low.includes(w) && low.replace(w, '').replace(/[\d!.?_-]/g, '').length < 4)) return 'Dieses Passwort ist zu leicht zu erraten.';
+    if (personal.some((p) => p && p.length >= 3 && low.includes(p.toLowerCase()))) return 'Das Passwort darf nicht deinen Namen oder deine E-Mail enthalten.';
+    return '';
+  }
+
   forms.register.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
@@ -276,7 +289,8 @@ function setupAuthForms() {
     const password = f.password.value;
     if (username.length < 3) return formMsg(f, 'Der Benutzername braucht mindestens 3 Zeichen.');
     if (!/^\S+@\S+\.\S+$/.test(email)) return formMsg(f, 'Bitte eine gültige E-Mail eingeben.');
-    if (password.length < 6) return formMsg(f, 'Das Passwort muss mindestens 6 Zeichen haben.');
+    const weak = passwordProblem(password, [username, email.split('@')[0]]);
+    if (weak) return formMsg(f, weak);
     await withLoading(f, async () => {
       const { needsConfirmation } = await state.api.signUp(username, email, password);
       if (needsConfirmation) {
@@ -409,6 +423,7 @@ async function enterApp(user) {
   loadPet();
   loadShop();
   loadChallenge();
+  loadExtras().then(() => { if ($('#obs-dialog')?.open && state.profile?.is_admin) renderObsContent(); });
   if (OBS_PAGE) startObsPage();
 }
 
@@ -464,7 +479,7 @@ const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - 
 const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
 // "Ärgere den Streamer", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
-const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind)
+const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge', ...EXTRA_KINDS].includes(t.kind)
   && !state.profile?.is_admin && !!t.target_at && Date.parse(t.target_at) > Date.now();
 const tileByKind = (kind) => state.tiles.find((t) => t.kind === kind);
 const streamerName = () => state.streamer.name || 'Streamer';
@@ -675,7 +690,10 @@ function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Streamer“ und das Bingo haben keinen Termin und stehen immer im Fahrplan.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
-  const build = { prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile };
+  const build = {
+    prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
+    ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
+  };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
   grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -909,6 +927,8 @@ setInterval(() => {
 // Dialoge allgemein
 // ============================================================
 function setupDialogs() {
+  // Die neueren Content-Ideen legen ihre Dialoge selbst an (js/extras.js) – vor dem Verdrahten unten
+  setupExtras({ state, toast, germanError, buildActionTile, tileByKind, isLocked, openTile });
   document.querySelectorAll('dialog').forEach((dlg) => {
     dlg.addEventListener('click', (e) => {
       // Klick daneben schließt nur Pop-ups – das OBS-Fenster ist eine eigene Seite
@@ -2014,6 +2034,8 @@ function setupBingo() {
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
   $('#bingo-bet-btn').addEventListener('click', startBingoBet);
   $('#bingo-bet-cancel').addEventListener('click', () => cancelBingoBet());
+  $('#bingo-loot-sync').addEventListener('click', () => syncLootpool(true));
+  $('#bingo-loot-unhide').addEventListener('click', showHiddenLoot);
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
   form.files.addEventListener('change', () => {
@@ -2030,11 +2052,11 @@ async function openBingo() {
   if (!state.bingo.on) return;
   // Frisch laden: Bilder und Haken können sich geändert haben.
   try {
-    const [{ items, card }, mine] = await Promise.all([
+    const [{ items, card, hidden, loot }, mine] = await Promise.all([
       state.api.getBingo(),
       state.api.getMyBingo().catch((err) => { console.warn('Eigene Karte:', err); return undefined; }),
     ]);
-    state.bingo.items = items;
+    Object.assign(state.bingo, { items, hidden, loot });
     state.bingo.card = card;
     state.bingo.lines = bingoState(card).count;
     state.bingo.mine = mine ?? null;
@@ -2046,6 +2068,73 @@ async function openBingo() {
   } catch (err) {
     console.warn(err);
   }
+  // Bilder an den aktuellen Lootpool anpassen – die Edge Function gleicht höchstens alle 6 Stunden ab
+  if (Date.now() - (state.bingo.lootCheckedAt ?? 0) > 10 * 60 * 1000) syncLootpool(false);
+}
+
+// ---------- Lootpool: Bingo-Bilder aus dem aktuellen Fortnite-Lootpool (Edge Function bingo-loot) ----------
+async function reloadBingoItems() {
+  const { items, hidden, loot } = await state.api.getBingo();
+  Object.assign(state.bingo, { items, hidden, loot });
+  if ($('#bingo-dialog').open) renderBingoDialog();
+}
+
+async function syncLootpool(force) {
+  if (!state.bingo.on || state.bingo.lootBusy) return;
+  state.bingo.lootCheckedAt = Date.now();
+  state.bingo.lootBusy = true;
+  paintLootpool();
+  try {
+    const res = await state.api.syncLootpool(force);
+    if (res?.state) state.bingo.loot = res.state;
+    if (res?.synced) await reloadBingoItems();
+    if (force) {
+      if (res?.synced) toast(`Lootpool abgeglichen: ${res.state?.items ?? 0} Items.`);
+      else if (res?.demo) toast('Im Demo-Modus gibt es keinen Lootpool-Abgleich.');
+      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret FORTNITEAPI_IO_KEY in Supabase.', 'error', 7000);
+      else if (res?.error) toast(`Lootpool: ${res.error}`, 'error');
+    }
+  } catch (err) {
+    if (force) toast(`Lootpool nicht abgeglichen: ${germanError(err)}`, 'error');
+    else console.warn('Lootpool:', err);
+  } finally {
+    state.bingo.lootBusy = false;
+    paintLootpool();
+  }
+}
+
+async function showHiddenLoot() {
+  try {
+    await state.api.showHiddenLoot();
+    await reloadBingoItems();
+  } catch (err) {
+    toast(`Nicht geklappt: ${germanError(err)}`, 'error');
+  }
+}
+
+function paintLootpool() {
+  const { loot, hidden = 0, items = [], lootBusy } = state.bingo;
+  const box = $('#bingo-loot');
+  if (!box) return;
+  const text = $('#bingo-loot-state');
+  const active = items.filter((i) => i.source === 'lootpool' && i.active !== false).length;
+  box.classList.toggle('is-error', !!loot?.error && loot.error !== 'demo');
+  if (lootBusy) text.textContent = 'Lootpool wird abgeglichen …';
+  else if (!loot) text.textContent = 'Einmal nötig: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen – dann kommen die Bilder automatisch aus dem aktuellen Fortnite-Lootpool.';
+  else if (loot.error === 'demo') text.textContent = 'Im Demo-Modus gibt es keinen Abgleich mit dem Fortnite-Lootpool.';
+  else if (loot.error === 'missing_key') text.textContent = 'Secret FORTNITEAPI_IO_KEY in Supabase eintragen (kostenloser Schlüssel von fortniteapi.io) – dann passen sich die Bilder von selbst an den aktuellen Lootpool an.';
+  else {
+    const when = loot.synced_at
+      ? new Date(loot.synced_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : 'noch nie';
+    text.textContent = `Lootpool: ${active} Items, zuletzt abgeglichen ${when}.${loot.error ? ` Letzter Versuch: ${loot.error}` : ''}`;
+  }
+  const sync = $('#bingo-loot-sync');
+  sync.disabled = !!lootBusy || !loot;
+  sync.hidden = loot?.error === 'demo';
+  const unhide = $('#bingo-loot-unhide');
+  unhide.hidden = !hidden;
+  unhide.textContent = `${hidden} ausgeblendete wieder zeigen`;
 }
 
 function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
@@ -2099,8 +2188,10 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
     $('#bingo-clear-btn').disabled = !card || !st.done;
     const size = Number($('#bingo-size').value);
     const need = size * size - ($('#bingo-free').checked && size % 2 ? 1 : 0);
-    $('#bingo-count').textContent = `· ${items.length} hochgeladen${items.length < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
+    const usable = items.filter((i) => i.active !== false).length;
+    $('#bingo-count').textContent = `· ${usable} verfügbar${usable < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
     renderBingoItems();
+    paintLootpool();
   }
   paintBingoTile();
 }
@@ -2115,15 +2206,33 @@ function renderBingoItems() {
     list.replaceChildren(li);
     return;
   }
-  list.replaceChildren(...items.map((item) => {
+  const order = (i) => (i.source !== 'lootpool' ? 0 : i.active !== false ? 1 : 2);
+  const sorted = [...items].sort((a, b) => order(a) - order(b));
+  list.replaceChildren(...sorted.map((item) => {
     const li = document.createElement('li');
+    // Lootpool-Items: Name und Seltenheit kommen von Fortnite (der Abgleich überschreibt sie)
+    const loot = item.source === 'lootpool';
+    const gone = loot && item.active === false;
+    li.classList.toggle('is-loot', loot);
+    li.classList.toggle('is-gone', gone);
     const img = document.createElement('img');
     img.src = item.url;
     img.alt = '';
     img.loading = 'lazy';
+    let thumb = img;
+    if (loot) {
+      thumb = document.createElement('span');
+      thumb.className = 'bingo-thumb';
+      const badge = document.createElement('b');
+      badge.textContent = 'Loot';
+      thumb.title = gone ? 'Nicht mehr im Lootpool – kommt auf keine neue Karte' : 'Aus dem aktuellen Fortnite-Lootpool';
+      thumb.append(img, badge);
+    }
     const name = document.createElement('input');
     name.value = item.name;
     name.maxLength = 40;
+    name.readOnly = loot;
+    if (loot) name.title = 'Name kommt aus dem Lootpool';
     name.setAttribute('aria-label', 'Name des Items');
     name.addEventListener('change', async () => {
       const value = name.value.trim();
@@ -2141,6 +2250,7 @@ function renderBingoItems() {
     rarity.setAttribute('aria-label', `Seltenheit von „${item.name}“`);
     rarity.append(new Option('– keine –', ''), ...RARITIES.map((r) => new Option(r.name, r.id)));
     rarity.value = item.rarity ?? '';
+    rarity.disabled = loot;
     rarity.addEventListener('change', async () => {
       const value = rarity.value || null;
       try {
@@ -2209,21 +2319,31 @@ function renderBingoItems() {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
-    del.textContent = '🗑';
-    del.setAttribute('aria-label', `„${item.name}“ löschen`);
+    del.textContent = loot ? '🙈' : '🗑';
+    del.title = loot ? 'Ausblenden – kommt nicht mehr auf neue Karten' : 'Löschen';
+    del.setAttribute('aria-label', `„${item.name}“ ${loot ? 'ausblenden' : 'löschen'}`);
     del.addEventListener('click', async () => {
-      if (!confirm(`„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`)) return;
+      const question = loot
+        ? `„${item.name}“ ausblenden? Der Lootpool-Abgleich holt es nicht zurück. Auf der aktuellen Karte bleibt es stehen.`
+        : `„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`;
+      if (!confirm(question)) return;
       del.disabled = true;
       try {
         await state.api.deleteBingoItem(item);
         state.bingo.items = state.bingo.items.filter((x) => x.id !== item.id);
+        if (loot) state.bingo.hidden = (state.bingo.hidden ?? 0) + 1;
         renderBingoDialog();
       } catch (err) {
         del.disabled = false;
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    li.append(img, name, copy, del, rarity, amount);
+    if (gone) {
+      const note = document.createElement('span');
+      note.className = 'bingo-loot-note';
+      note.textContent = 'nicht mehr im Lootpool';
+      li.append(thumb, name, copy, del, note, amount);
+    } else li.append(thumb, name, copy, del, rarity, amount);
     return li;
   }));
 }
@@ -4211,6 +4331,7 @@ const THEME_BG = {
   tracks: 'assets/bg-tracks.svg', storm: 'assets/bg-storm.svg', ghost: 'assets/bg-ghost.svg', city: 'assets/bg-city.svg',
   prank: 'assets/bg-prank.svg', bingo: 'assets/bg-bingo.svg', questions: 'assets/bg-questions.svg', pet: 'assets/bg-pet.svg', shop: 'assets/bg-shop.svg',
   challenge: 'assets/bg-challenge.svg',
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, `assets/bg-${k}.svg`])),
 };
 
 function openTile(id) {
@@ -4293,9 +4414,12 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat'];
-const OBS_SIZE = { wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize' };
+const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards'];
+const OBS_SIZE = {
+  wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize',
+};
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
@@ -4364,7 +4488,9 @@ function setupObs() {
 // ---------- OBS-Fenster v2: Reiter und Ebenen ----------
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
-const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null };
+const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null,
+  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', pause: 'pause',
+};
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
 const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
 let obsSelected = null;
@@ -4679,13 +4805,17 @@ function paintStreamerView({ firstOpen = false } = {}) {
   $('#obs-title').textContent = admin ? 'Streameransicht' : 'OBS-Overlay';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
+  renderGuard();
   if (!admin) return;
   if (firstOpen) showObsTab('content');
   renderObsContent();
   loadMods();
 }
 
-const TILE_ICON = { wheel: '🎡', countdown: '📅', prank: '🍅', bingo: '🎯', questions: '❓', pet: '🦖', shop: '🛒', challenge: '🏆' };
+const TILE_ICON = {
+  wheel: '🎡', countdown: '📅', prank: '🍅', bingo: '🎯', questions: '❓', pet: '🦖', shop: '🛒', challenge: '🏆',
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, extraIcon(k)])),
+};
 const TILE_OPEN = {
   wheel: () => openWheel(),
   countdown: (t) => openTile(t.id),
@@ -4695,8 +4825,9 @@ const TILE_OPEN = {
   pet: () => openPet(),
   shop: () => openShop(),
   challenge: () => openChallenge(),
+  ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, () => openExtra(k)])),
 };
-const hasStart = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge'].includes(t.kind);
+const hasStart = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge', ...EXTRA_KINDS].includes(t.kind);
 
 function renderObsContent() {
   const list = $('#obs-content-list');
