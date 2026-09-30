@@ -13,7 +13,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Stream ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
-- **Fortnite-Bingo**: Die Bilder kommen automatisch aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Fortnite-Bingo**: Die Bilder kommen automatisch aus einer eingebauten Item-Liste oder – mit Schlüssel – aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
 - **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft „Als Nächstes“ mit Countdown, und ein Alert-Feld zeigt neue Follower, Abos, Bits und Kanalpunkte-Einlösungen. Den Link gibt's im Dashboard unter **OBS** (oben rechts) und **Overlay & OBS**.
@@ -31,7 +31,7 @@ supabase/functions/
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
   youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
-  bingo-loot/                    → Bingo-Bilder an den aktuellen Fortnite-Lootpool anpassen (api-fortnite.com)
+  bingo-loot/                    → Bingo-Bilder: eingebaute Item-Liste oder aktueller Lootpool (api-fortnite.com)
   stream-tools/                  → Bot-Nachrichten verschicken, Kanalpunkte für Vorlesen/Karten, Einlösungen abschließen
 ```
 
@@ -148,7 +148,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
 | `HEALTH_CHECK_KEY` *(empfohlen)* | beliebige zufällige Zeichenkette (mindestens 20 Zeichen). Damit prüft die GitHub Action „Twitch-Gesundheitscheck“ alle 30 Minuten die Twitch-Verbindung – denselben Wert als GitHub-Secret `HEALTH_CHECK_KEY` eintragen (siehe „Twitch-Gesundheitscheck“). |
-| `API_FORTNITE_KEY` *(fürs Bingo)* | Schlüssel von [api-fortnite.com](https://api-fortnite.com) (kostenloses Konto) – damit holt `bingo-loot` den aktuellen Lootpool |
+| `API_FORTNITE_KEY` *(fürs Bingo, optional)* | Schlüssel von [api-fortnite.com](https://api-fortnite.com) (der Lootpool braucht dort einen bezahlten Tarif) – damit holt `bingo-loot` den aktuellen Lootpool statt der eingebauten Item-Liste |
 
 ### 5. Der Streamer verbindet Twitch
 
@@ -432,7 +432,9 @@ Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im O
 
 ### Bilder aus dem aktuellen Lootpool
 
-Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. Die Edge Function `bingo-loot` holt ihn von [api-fortnite.com](https://api-fortnite.com) (`/api/v2/weapons`, Name auf Deutsch, Seltenheit, Bild, „im aktuellen Lootpool“) und gleicht ab. Vorher kam er von fortniteapi.io, das am 31.03.2026 eingestellt wurde.
+**Eingebaute Item-Liste (Standard):** Ohne Schlüssel füllt `bingo-loot` das Bingo mit einer eingebauten Liste – 17 klassische Fortnite-Items mit eigenen Icons (`assets/bingo/*.svg`): Sturmgewehr, Pump- und Taktische Schrotflinte, MP, Scharfschützen- und Jagdgewehr, Pistole, Revolver, Raketen- und Granatwerfer, Minigun, Granate, Verband, Medikit, kleiner Schildtrank, Schildtrank und Lagerfeuer – Waffen in mehreren Seltenheiten, zusammen 37 Bilder (Abzeichen „Liste“). Die Liste springt auch ein, wenn der Lootpool mit Schlüssel nicht zu holen ist und es noch keine Items von dort gibt; der Grund steht dann im Bingo-Dialog. Klappt der Lootpool später, löst er die Liste ab (und umgekehrt). Liste in `supabase/functions/_shared/lootpool.ts` (`LOOT_CATALOG`).
+
+**Mit Schlüssel:** Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. Die Edge Function `bingo-loot` holt ihn von [api-fortnite.com](https://api-fortnite.com) (`/api/v2/weapons`, Name auf Deutsch, Seltenheit, Bild, „im aktuellen Lootpool“) und gleicht ab. Vorher kam er von fortniteapi.io, das am 31.03.2026 eingestellt wurde.
 
 - **Neu im Lootpool** → kommt als Bild dazu (mit Abzeichen „Loot“ in der Liste).
 - **Aus dem Lootpool geflogen** → bleibt blass in der Liste („nicht mehr im Lootpool“) und kommt auf **keine neue Karte** mehr – weder auf die Stream-Karte noch auf die eigenen Karten. Karten, die schon gezogen sind, behalten ihre Bilder. Kommt das Item zurück, ist es wieder dabei.
@@ -442,10 +444,10 @@ Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. D
 
 Einmal nötig:
 1. Migration `supabase/migrations/20261013000000_bingo_lootpool.sql` im SQL Editor ausführen.
-2. Bei [api-fortnite.com](https://api-fortnite.com) ein kostenloses Konto anlegen, den API-Schlüssel aus dem Dashboard kopieren und in Supabase unter **Edge Functions → Secrets** als `API_FORTNITE_KEY` eintragen. Das alte Secret `FORTNITEAPI_IO_KEY` kann weg.
+2. *(Optional, nur für den echten Lootpool)* Bei [api-fortnite.com](https://api-fortnite.com) ein Konto mit einem Tarif anlegen, der den Waffen-Endpunkt enthält (im kostenlosen Tarif antwortet er mit „403: Insufficient plan“), den API-Schlüssel kopieren und in Supabase unter **Edge Functions → Secrets** als `API_FORTNITE_KEY` eintragen. Das alte Secret `FORTNITEAPI_IO_KEY` kann weg.
 3. Die Function `bingo-loot` wird mit dem nächsten Merge automatisch hochgeladen (GitHub Action). Dann im Bingo-Dialog **🔄 Lootpool jetzt abgleichen** klicken.
 
-Fehlt der Schlüssel, steht das im Bingo-Dialog; das Bingo funktioniert weiter mit den vorhandenen Bildern.
+Ohne Schlüssel läuft das Bingo mit der eingebauten Item-Liste; im Bingo-Dialog steht, welche Quelle gerade aktiv ist.
 
 ### Tipprunde mit Kanalpunkten
 

@@ -1,11 +1,15 @@
 // Fortnite-Bingo: Bilder an den aktuellen Lootpool anpassen.
-//   POST {force?: boolean} → {synced, state, missing_key?}
+//   POST {force?: boolean} → {synced, builtin?, state}
 // Jeder angemeldete Besuch des Bingo-Dialogs stößt den Abgleich an – er läuft aber höchstens
 // alle 6 Stunden. Admins können ihn sofort auslösen (höchstens einmal pro Minute).
-// Braucht das Secret API_FORTNITE_KEY (kostenloser Schlüssel von api-fortnite.com) und
-// die Migration …_bingo_lootpool.sql. (fortniteapi.io wurde am 31.03.2026 eingestellt.)
+// Mit dem Secret API_FORTNITE_KEY kommt der Lootpool von api-fortnite.com (der braucht dort
+// einen bezahlten Tarif). Ohne Schlüssel – oder wenn der Lootpool nicht zu holen ist und es
+// noch keine Items von dort gibt – nimmt es die eingebaute Item-Liste (LOOT_CATALOG).
+// state.error: '' (Lootpool), 'builtin' (eingebaute Liste, kein Schlüssel),
+// 'builtin:<Grund>' (eingebaute Liste, weil der Lootpool fehlschlug) oder ein Fehlertext.
+// Braucht die Migration …_bingo_lootpool.sql. (fortniteapi.io wurde am 31.03.2026 eingestellt.)
 import { db, corsHeaders, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
-import { LOOT_SOURCE, LOOT_URL, parseLootpool } from "../_shared/lootpool.ts";
+import { BUILTIN_PREFIX, LOOT_CATALOG, LOOT_SOURCE, LOOT_URL, type LootItem, parseLootpool } from "../_shared/lootpool.ts";
 
 const AUTO_EVERY = 6 * 60 * 60 * 1000;
 const MIN_GAP = 60 * 1000;
@@ -48,8 +52,9 @@ async function fetchLootpool(key: string) {
   return items;
 }
 
-async function sync(key: string) {
-  const items = await fetchLootpool(key);
+// Items speichern; was nicht (mehr) dabei ist, wird inaktiv – so löst die eingebaute Liste
+// den Lootpool ab und umgekehrt
+async function sync(items: LootItem[]) {
   const { error } = await db.from("bingo_items").upsert(
     items.map((i) => ({ ...i, source: "lootpool", active: true })),
     { onConflict: "loot_id" },
@@ -82,14 +87,11 @@ Deno.serve(async (req) => {
   const unquote = (v: string) => v.trim().replace(/^["']+|["']+$/g, "").trim();
   const key = unquote(unquote(Deno.env.get("API_FORTNITE_KEY") ?? "")
     .replace(/^x-api-key\s*:\s*/i, "").replace(/^bearer\s+/i, ""));
-  if (!key) {
-    const next = state.error === "missing_key" ? state : await setState({ error: "missing_key" });
-    return json({ synced: false, missing_key: true, state: next ?? state });
-  }
-
   const force = body.force === true && (await isAdminUser(user.id));
   if (body.force === true && !force) return json({ error: "Nur Admins können den Lootpool sofort abgleichen." }, 403);
-  const due = age(state.updated_at) >= MIN_GAP && (force || age(state.synced_at) >= AUTO_EVERY || state.error === "missing_key");
+  // Sofort abgleichen, wenn sich am Schlüssel etwas geändert hat
+  const keyChanged = key ? state.error === "builtin" || state.error === "missing_key" : !String(state.error).startsWith("builtin");
+  const due = age(state.updated_at) >= MIN_GAP && (force || keyChanged || age(state.synced_at) >= AUTO_EVERY);
   if (!due) {
     if (force) return json({ error: "Gerade erst abgeglichen – bitte eine Minute warten." }, 429);
     return json({ synced: false, state });
@@ -101,8 +103,28 @@ Deno.serve(async (req) => {
     .eq("id", 1).eq("updated_at", state.updated_at).select("id");
   if (!claimed?.length) return json({ synced: false, state });
 
+  const builtin = async (error: string) => {
+    const count = await sync(LOOT_CATALOG);
+    const next = await setState({ synced_at: new Date().toISOString(), items: count, error });
+    return json({ synced: true, builtin: true, state: next });
+  };
+
   try {
-    const count = await sync(key);
+    if (!key) return await builtin("builtin");
+    let items: LootItem[];
+    try {
+      items = await fetchLootpool(key);
+    } catch (e) {
+      const message = String((e as Error)?.message ?? e).slice(0, 180);
+      console.warn("Lootpool:", message);
+      // Gibt es schon Items vom Lootpool, bleiben die – sonst die eingebaute Liste
+      const { count } = await db.from("bingo_items").select("id", { count: "exact", head: true })
+        .eq("source", "lootpool").eq("active", true).not("loot_id", "like", `${BUILTIN_PREFIX}%`);
+      if (!count) return await builtin(`builtin:${message}`);
+      const next = await setState({ error: message });
+      return json({ synced: false, error: message, state: next }, force ? 502 : 200);
+    }
+    const count = await sync(items);
     const next = await setState({ synced_at: new Date().toISOString(), items: count, error: "" });
     return json({ synced: true, state: next });
   } catch (e) {
