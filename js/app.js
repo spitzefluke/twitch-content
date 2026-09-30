@@ -17,7 +17,8 @@ import {
 } from './challenge.js';
 import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
 import { guardFrame } from './frame-guard.js';
-import { openAlertDesigner, setupAlertDesigner } from './alert-designer.js';
+import { openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
+import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -285,7 +286,7 @@ const SB_KEY = 'sh_sidebar';
 const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
-  overlay: 'Overlay & OBS', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
+  overlay: 'Overlay & OBS', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
 };
 
 function setupShell() {
@@ -427,6 +428,7 @@ const PAGE_ENTER = {
   points: () => renderPoints(),
   alerts: () => { renderHealth(); if (!state.health.data) runHealth(); $('#health-banner').hidden = true; openAlertDesigner(); },
   overlay: () => { $('#dash-obs-url').value = obsLiveUrl(); },
+  library: () => openLibrary(),
   guard: () => renderGuard(),
   mods: () => loadMods(),
   twitch: () => renderTwitchPanel(),
@@ -1149,6 +1151,11 @@ function setupDialogs() {
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
+  setupLibrary({
+    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset,
+    // Overlay-Einstellungen aus diesem Browser (für alle, die noch nicht zentral gespeichert haben)
+    localObsQuery: () => { loadObs(); return new URL(obsUrl()).search.slice(1); },
+  });
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   setupWheelEdit();
@@ -4726,7 +4733,8 @@ function setupObs() {
 
   // Verschieben in der Vorschau meldet das Overlay per postMessage.
   addEventListener('message', (e) => {
-    if (e.origin !== location.origin) return;
+    // Nur die OBS-Vorschau – nicht die Vorschauen im Alert-Designer oder in der Design-Bibliothek
+    if (e.origin !== location.origin || e.source !== $('#obs-preview iframe')?.contentWindow) return;
     if (e.data?.type === 'stellwerk-obs-select') {
       const cam = form.elements.prank.checked || !form.elements.camframe.checked ? 'prank' : 'camframe';
       openObsLayer(e.data.key === 'cam' ? cam : e.data.key, { scroll: true });
