@@ -4583,7 +4583,7 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
@@ -4738,6 +4738,13 @@ function paintObsLayers() {
       pos.textContent = describeObsPos(el.value);
       row.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
     }
+  });
+  // Mischpult: Regler von ausgeschalteten Ebenen abblenden, 0 % heißt stumm
+  dlg.querySelectorAll('.obs-mix').forEach((row) => {
+    const sw = OBS_LAYER_SWITCH[row.dataset.mix];
+    row.classList.toggle('is-off', !!sw && !f.elements[sw].checked);
+    const input = row.querySelector('input');
+    row.classList.toggle('is-muted', Number(input.value) === 0 || Number(f.elements.vol.value) === 0);
   });
   dlg.querySelectorAll('[data-group]').forEach((g) => {
     const rows = [...g.querySelectorAll('.obs-layer')];

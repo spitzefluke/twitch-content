@@ -1402,3 +1402,15 @@ body.obs-page .dialog--obs .dialog-head .icon-btn { font-size: 16px; width: auto
   .obs-row { grid-template-columns: 76px minmax(0, 1fr) 44px; }
   .obs-look-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Mischpult: eigener Lautstärkeregler je Ebene (OBS-Fenster → Aussehen & Ton) */
+.obs-mixer { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(11, 7, 20, .45); }
+.obs-mixer-head { display: grid; gap: 2px; margin-bottom: 6px; }
+.obs-mixer-head small { color: var(--muted); font-size: 12px; }
+.obs-mix { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 2fr) 48px; align-items: center; gap: 10px; min-height: 34px; font-size: 14px; transition: opacity .2s; }
+.obs-mix input[type="range"] { width: 100%; accent-color: var(--twitch); }
+.obs-mix output { font-family: var(--font-mono); font-size: 12px; text-align: right; }
+.obs-mix.is-off { opacity: .4; }
+.obs-mix.is-off > span::after { content: " · aus"; color: var(--dim); font-size: 12px; }
+.obs-mix.is-muted output { color: #ff9d95; }
+.obs-mix.is-muted output::after { content: " 🔇"; }
