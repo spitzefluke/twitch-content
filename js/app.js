@@ -156,6 +156,13 @@ async function boot() {
     params.set('twitch', 'error');
     params.set('reason', 'redirect_uri');
   }
+  // Rückweg vom Anbieter-Login (Twitch & Co.): Klappt die Anmeldung dort nicht,
+  // soll das sichtbar sein statt einfach wieder die Startseite zu zeigen.
+  let oauthLogin = '';
+  try { oauthLogin = sessionStorage.getItem('zd_oauth_login') ?? ''; sessionStorage.removeItem('zd_oauth_login'); } catch { /* ignorieren */ }
+  const oauthTokens = /(^|[#&])(access_token|refresh_token)=/.test(location.hash) || params.has('code');
+  // Mit „Zurück“ von der Anbieter-Seite gekommen: kein Fehler
+  if (!oauthTokens && performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward') oauthLogin = '';
   const apiPromise = Promise.resolve(createApi());
 
   // Einmal-Code vom Admin-Bereich ("Webseite als Admin öffnen")
@@ -198,8 +205,26 @@ async function boot() {
   });
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
+  else if ((oauthLogin || oauthTokens) && !oauthError && !params.has('error')) showLoginReturnError(oauthLogin, oauthTokens);
   else if (location.hash === '#login' || oauthError || params.has('error') || OBS_PAGE) showAuth();
   else showLanding();
+}
+
+// Vom Anbieter zurück, aber keine Sitzung: Grund und Abhilfe anzeigen
+function showLoginReturnError(provider, hadTokens) {
+  const name = { twitch: 'Twitch', discord: 'Discord', google: 'Google', spotify: 'Spotify', github: 'GitHub' }[provider] ?? 'dem Anbieter';
+  const reason = state.api.authError;
+  const page = location.origin + location.pathname;
+  // Zugangsdaten nicht in der Adresszeile stehen lassen
+  history.replaceState(null, '', location.pathname);
+  showAuth();
+  const text = hadTokens
+    ? `Die Anmeldung mit ${name} kam zurück, aber Supabase hat daraus keine Sitzung gemacht${reason ? ` (${germanError(new Error(reason))})` : ''}. Versuch es noch einmal. Klappt es wieder nicht: Uhrzeit des Geräts prüfen und in Supabase unter Authentication → Providers → ${name} Client-ID und Secret der App kontrollieren.`
+    : `Die Anmeldung mit ${name} wurde nicht abgeschlossen – Supabase hat keine Anmeldedaten zurückgeschickt${reason ? ` (${germanError(new Error(reason))})` : ''}. In Supabase unter Authentication → URL Configuration muss ${page} bei „Redirect URLs“ stehen (die „Site URL“ allein reicht nicht, wenn sie anders lautet).`;
+  const msg = $('#social .social-msg');
+  if (msg) { msg.textContent = text; $('#social').hidden = false; }
+  else toast(text, 'error', 15000);
+  console.warn('Anmeldung ohne Sitzung zurück:', { provider, hadTokens, reason });
 }
 
 function showTwitchReturn(status, reason, detail, bot) {
@@ -562,7 +587,7 @@ async function enterApp(user, { animate = false } = {}) {
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
     api.getVariants().catch(fail('Glücksrad', [])),
-    api.twitchStatus().catch(() => ({ connected: false })),
+    api.twitchStatus().then((t) => t ?? { connected: false }).catch(() => ({ connected: false })),
     api.getSpins().catch(() => []),
     // Die Vorschläge-Tabellen kamen später dazu: fehlen sie in der Datenbank,
     // bleibt der Bereich einfach aus, statt einen Fehler zu zeigen.
@@ -5766,7 +5791,7 @@ function renderTwitchPanel() {
 }
 
 async function refreshTwitch() {
-  state.twitch = await state.api.twitchStatus().catch(() => ({ connected: false }));
+  state.twitch = await state.api.twitchStatus().then((t) => t ?? { connected: false }).catch(() => ({ connected: false }));
   renderHeader();
   renderHero();
   renderWheelPanel();
