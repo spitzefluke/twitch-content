@@ -361,7 +361,7 @@ p { margin: 0; }
 .chat-badge-subscriber, .chat-badge-founder { background: #9146ff; }
 .chat-badge-partner { background: #9146ff; border-radius: 50%; }
 .chat-badge-member { background: #2ba640; }
-/* Plattform vor dem Namen, wenn Twitch und YouTube zusammen laufen */
+/* Plattform vor dem Namen: Twitch- oder YouTube-Logo */
 .chat-platform { width: 1.2em; height: 1.2em; margin-right: .35em; border-radius: .3em; vertical-align: -.2em; box-shadow: none; }
 /* YouTube Super Chat: Betrag als Marke */
 .chat-paid { display: inline-block; padding: .05em .45em; border-radius: .35em; background: #ffca28; color: #1a1204; font-weight: 800; font-size: .9em; }
@@ -771,3 +771,19 @@ p { margin: 0; }
 body.is-apreview { display: grid; place-items: center; }
 body.is-apreview .ov-ticker { display: none; }
 body.is-apreview .ov-alert { position: relative; margin: 0; }
+
+/* Verbindungsanzeige im Chat: je Plattform Logo, Punkt und Zustand */
+.chat-status { display: flex; flex-wrap: wrap; gap: .4em; padding: .55em .9em 0; }
+.chat-status[hidden] { display: none; }
+.chat-pill {
+  display: inline-flex; align-items: center; gap: .35em; padding: .2em .6em .2em .25em; border-radius: 99px;
+  background: rgba(8, 10, 18, calc(.35 + .5 * var(--bga))); font-size: .72em; font-weight: 700; color: #d6dbe8; white-space: nowrap;
+}
+.chat-pill .chat-platform { margin: 0; }
+.chat-pill i { width: .55em; height: .55em; border-radius: 50%; background: #8f99ae; }
+.chat-pill[data-state="ok"] i { background: #3ddc84; box-shadow: 0 0 .5em #3ddc84; }
+.chat-pill[data-state="wait"] i { background: #ffb81c; animation: blink 1s steps(1) infinite; }
+.chat-pill[data-state="idle"] i { background: #8f99ae; }
+.chat-pill[data-state="bad"] i { background: #ff5a4e; box-shadow: 0 0 .5em #ff5a4e; }
+.chat-style-bubble .chat-status, .chat-style-clean .chat-status { padding: 0 0 .45em; }
+.chat-style-clean .chat-pill { background: rgba(0, 0, 0, .45); text-shadow: 0 .05em .2em #000; }

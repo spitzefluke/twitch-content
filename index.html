@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5xx+B/Yn3LEcVwHMvwQsEiJcqJaCiUzpk7XXAt3FwFU=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rn+SN6agSvBPuKw5Lq4AiU5LOXpaHtKsnTXZmgJyoD4=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -47,7 +47,7 @@
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=fedf6df0ca",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=d2021cde65",
-      "./js/overlay.js": "./js/overlay.js?v=7a16f380f4",
+      "./js/overlay.js": "./js/overlay.js?v=37f5001abb",
       "./js/pet.js": "./js/pet.js?v=3bca368d37",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
@@ -58,9 +58,9 @@
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
       "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=0bb1cb5113",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=bc5184bc16",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
-      "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
+      "./js/youtube-chat.js": "./js/youtube-chat.js?v=794cbfe644"
     }
   }</script>
   <script type="module">import './js/app.js';</script>
@@ -1564,6 +1564,8 @@
                   <label class="obs-row"><span>Größe</span><input type="range" name="chsize" min="50" max="200" step="5" value="100"><output name="chsize-out"></output></label>
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="chat"></span><button class="obs-mini-btn" type="button" data-reset-pos="chat">Zurück an den Standardplatz</button></span></div>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chtw" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch-Chat</label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="chplat" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch- bzw. YouTube-Logo vor jedem Namen</label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="chstat" checked><span class="toggle-ui" aria-hidden="true"></span>Verbindung anzeigen (Twitch verbunden, YouTube live)</label>
                   <label class="obs-row"><span>YouTube</span><input type="text" name="yt" maxlength="80" placeholder="@Kanalname – leer = ohne YouTube" autocomplete="off" spellcheck="false"></label>
                   <label class="obs-row"><span>Stil</span><select name="chstyle"><option value="card" selected>Karte</option><option value="bubble">Sprechblasen</option><option value="clean">Schlicht – nur Text</option></select></label>
                   <label class="obs-row" title="Ganz links: wächst mit den Nachrichten"><span>Höhe</span><input type="range" name="chh" min="15" max="95" step="5" value="15"><output name="chh-out"></output></label>

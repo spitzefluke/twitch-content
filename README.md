@@ -353,6 +353,12 @@ Im OBS-Dialog unter „Immer im Bild“ → **Chat (Twitch + YouTube)** einschal
 - **Twitch:** Das Overlay liest den Chat **anonym** über Twitchs Chat-Schnittstelle mit (wie ein ausgeloggter Zuschauer) – kein Login, kein Bot. Der Kanal kommt aus `CHANNEL` in `js/config.js`.
 - **YouTube:** Im Feld **YouTube** den Kanal eintragen (`@Kanalname`). Sobald dort ein Livestream läuft, kommen die Nachrichten dazu – gemischt mit Twitch, vor jedem Namen das Logo der Plattform; Super Chats mit Betrag, neue Mitglieder hervorgehoben. Läuft kein Stream, schaut das Overlay jede Minute wieder nach. Weil der Browser YouTube nicht direkt abfragen darf, holt die Edge Function `youtube-chat` die Nachrichten (wird mit den anderen Functions automatisch deployt). **Kein API-Schlüssel nötig** – sie liest den Chat so, wie ihn das Chat-Fenster auf youtube.com lädt. Das ist inoffiziell: Ändert YouTube etwas daran, muss die Funktion angepasst werden.
 
+**Logo und Verbindung im Bild:** Vor jedem Namen steht das Logo der Plattform, bei Twitch-Nachrichten das Twitch-Logo, bei YouTube-Nachrichten das YouTube-Logo. Oben in der Chat-Karte zeigt je ein kleines Schild, ob die Verbindung steht:
+- **Twitch:** 🟢 verbunden, 🟡 verbindet … oder 🔴 getrennt (es wird automatisch neu verbunden).
+- **YouTube:** 🟢 live, ⚪ wartet auf Stream oder 🔴 keine Verbindung.
+
+Beides lässt sich im OBS-Dialog beim Chat abschalten (Parameter `chplat=0` bzw. `chstat=0`). Mit Verbindungsanzeige bleibt die Karte auch ohne Nachrichten sichtbar.
+
 Es wird nichts gespeichert, keine Migration nötig.
 
 ### Alerts für Follower, Abos und Bits

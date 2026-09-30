@@ -25,7 +25,7 @@ const BADGES = {
   partner: { label: 'Partner', text: '✓' },
   member: { label: 'Mitglied', text: '★' },
 };
-const PLATFORMS = Object.fromEntries(SOCIAL_ICONS.filter((s) => ['twitch', 'youtube'].includes(s.id)).map((s) => [s.id, s]));
+export const PLATFORMS = Object.fromEntries(SOCIAL_ICONS.filter((s) => ['twitch', 'youtube'].includes(s.id)).map((s) => [s.id, s]));
 
 // „@badge-info=;badges=moderator/1;color=#FF0000 :name!name@name.tmi.twitch.tv PRIVMSG #kanal :Hallo“
 export function parseIrc(line) {

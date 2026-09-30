@@ -61,6 +61,8 @@
 //   chstyle=card|bubble|clean  Stil des Chats: Karte (Standard), Sprechblasen, Schlicht (nur Text mit Schatten)
 //   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
 //   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
+//   chplat=0                   kein Twitch-/YouTube-Logo vor den Namen
+//   chstat=0                   keine Verbindungsanzeige (Twitch verbunden, YouTube live / wartet auf Stream)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
@@ -83,7 +85,8 @@ import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { ScreenHoles } from './screen-holes.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
 import { TICKER_STYLES, fillTicker, setTickerChannel } from './ticker.js';
-import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
+import { CHAT_BOTS, PLATFORMS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
+import { socialBadge } from './social-icons.js';
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import {
   ALERT_KINDS, alertLines, alertLook, alertVars, builtinMediaUrl, fillTemplate, normalizeAlertConfig, playAlertSound,
@@ -202,6 +205,8 @@ const opt = {
   chstyle: ['bubble', 'clean'].includes(params.get('chstyle')) ? params.get('chstyle') : 'card',
   yt: youtubeChannel(params.get('yt')),
   chtw: flag('chtw', true),
+  chplat: flag('chplat', true),
+  chstat: flag('chstat', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
@@ -1539,9 +1544,36 @@ function setupChat() {
     card.classList.add('has-height');
     card.style.height = `calc(${opt.chh}vh - 2 * var(--m))`;
   }
-  const empty = () => card.classList.toggle('is-empty', !list.childElementCount && !opt.edit);
-  // Mehrere Plattformen: vor jedem Namen das Logo (Twitch oder YouTube)
-  const showPlatform = !!opt.yt && opt.chtw;
+  // Mit Verbindungsanzeige bleibt die Karte auch ohne Nachrichten sichtbar
+  const empty = () => card.classList.toggle('is-empty', !list.childElementCount && !opt.edit && !opt.chstat);
+  // Vor jedem Namen das Logo der Plattform: Twitch oder YouTube
+  const showPlatform = opt.chplat;
+  // Verbindungsanzeige: je Plattform ein Schild mit Logo und Zustand
+  const STATUS_TEXT = {
+    twitch: { connecting: 'verbindet …', verbunden: 'verbunden', getrennt: 'getrennt – neuer Versuch' },
+    youtube: { connecting: 'verbindet …', live: 'live', offline: 'wartet auf Stream', error: 'keine Verbindung' },
+  };
+  const STATUS_STATE = { connecting: 'wait', verbunden: 'ok', live: 'ok', offline: 'idle', getrennt: 'bad', error: 'bad' };
+  const statusBox = $('ov-chat-status');
+  const pills = {};
+  const setStatus = (platform, state) => {
+    if (!opt.chstat) return;
+    let pill = pills[platform];
+    if (!pill) {
+      pill = document.createElement('span');
+      pill.className = 'chat-pill';
+      const logo = socialBadge(PLATFORMS[platform], document);
+      logo.classList.add('chat-platform');
+      const dot = document.createElement('i');
+      const label = document.createElement('span');
+      pill.append(logo, dot, label);
+      statusBox.append(pill);
+      statusBox.hidden = false;
+      pills[platform] = pill;
+    }
+    pill.dataset.state = STATUS_STATE[state] ?? 'wait';
+    pill.lastChild.textContent = STATUS_TEXT[platform][state] ?? state;
+  };
   const add = (msg) => {
     const text = msg.text.trim();
     if (!opt.chcmd && text.startsWith('!')) return;
@@ -1564,6 +1596,7 @@ function setupChat() {
   empty();
   const handlers = {
     message: add,
+    status: (s) => setStatus('twitch', s),
     remove: (id) => { list.querySelector(`[data-id="${CSS.escape(id ?? '')}"]`)?.remove(); empty(); },
     // login = null: ganzer Chat geleert – aber nur die Nachrichten dieser Plattform
     clear: (login, platform = 'twitch') => {
@@ -1573,8 +1606,14 @@ function setupChat() {
       empty();
     },
   };
-  if (opt.chtw && (STREAMER.login || CONFIG.CHANNEL)) connectTwitchChat(STREAMER.login || CONFIG.CHANNEL, handlers);
-  if (opt.yt) connectYouTubeChat(opt.yt, handlers);
+  const twitchLogin = STREAMER.login || CONFIG.CHANNEL;
+  if (opt.chtw && twitchLogin) { setStatus('twitch', 'connecting'); connectTwitchChat(twitchLogin, handlers); }
+  if (opt.yt) connectYouTubeChat(opt.yt, { ...handlers, status: (s) => setStatus('youtube', s) });
+  // Vorschau: so sieht die Anzeige aus, wenn alles läuft
+  if (opt.edit || opt.test) {
+    if (opt.chtw) setStatus('twitch', 'verbunden');
+    if (opt.yt) setStatus('youtube', 'live');
+  }
   // Vorschau und Probe: ein paar Beispiel-Nachrichten, damit man Platz und Größe sieht
   if (opt.test || opt.edit) {
     const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
