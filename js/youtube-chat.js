@@ -65,6 +65,7 @@ export function connectYouTubeChat(channel, on = {}) {
       poll({ continuation: s.continuation, clientVersion: s.clientVersion, apiKey: s.apiKey }, true);
     } catch (err) {
       console.warn('YouTube-Chat:', err);
+      on.status?.('error');
       next(start, ERROR_RETRY_MS);
     }
   };
@@ -81,10 +82,12 @@ export function connectYouTubeChat(channel, on = {}) {
       next(() => poll({ ...state, continuation: r.continuation }), r.timeoutMs ?? 4000);
     } catch (err) {
       console.warn('YouTube-Chat:', err);
+      on.status?.('error');
       next(start, ERROR_RETRY_MS);
     }
   };
 
+  on.status?.('connecting');
   start();
   return () => { stopped = true; clearTimeout(timer); };
 }

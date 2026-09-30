@@ -84,8 +84,13 @@ async function createSupabaseApi() {
     demo: false,
     // Für die neueren Content-Ideen (js/extras-api.js)
     raw: { sb, unwrap, invoke },
+    // authError: warum aus dem Rückweg vom Anbieter-Login keine Sitzung wurde
+    // (sonst landet man ohne Hinweis wieder auf der Startseite)
+    authError: '',
     async getUser() {
-      const { data } = await sb.auth.getSession();
+      const { error: initError } = await sb.auth.initialize();
+      const { data, error } = await sb.auth.getSession();
+      this.authError = (initError ?? error)?.message ?? '';
       return data.session?.user ?? null;
     },
     onAuthChange(cb) {
@@ -114,6 +119,7 @@ async function createSupabaseApi() {
         options: { redirectTo: location.origin + location.pathname, skipBrowserRedirect: true },
       });
       if (error) throw error;
+      try { sessionStorage.setItem('zd_oauth_login', provider); } catch { /* egal */ }
       location.href = data.url;
     },
     // Einmal-Code aus admin.html einlösen → echte Sitzung als StreamHelp-Admin
