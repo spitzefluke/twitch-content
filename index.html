@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-7OM3ZlsXeoEpLiF/yENxEtxIQlUGK9MPhMesXS6fVV8=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NQa/mv/2HhhwTjhBxs1Y/Q9bg1a8euAB0GKdLfQFmfk=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=2698b0b569">
-  <link rel="stylesheet" href="css/shell.css?v=511bc8d209">
+  <link rel="stylesheet" href="css/shell.css?v=7ad7d8aabf">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=acbd04dbd4">
@@ -25,8 +25,8 @@
     "imports": {
       "./js/admin.js": "./js/admin.js?v=ca05db518e",
       "./js/alerts.js": "./js/alerts.js?v=951c5e8239",
-      "./js/api.js": "./js/api.js?v=eb0bd14c67",
-      "./js/app.js": "./js/app.js?v=85691aafe9",
+      "./js/api.js": "./js/api.js?v=6345fd673d",
+      "./js/app.js": "./js/app.js?v=15914d99f8",
       "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -41,7 +41,7 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=fedf6df0ca",
-      "./js/overlay.js": "./js/overlay.js?v=a189851983",
+      "./js/overlay.js": "./js/overlay.js?v=d065928c15",
       "./js/pet.js": "./js/pet.js?v=3bca368d37",
       "./js/prank-fx.js": "./js/prank-fx.js?v=c278b34900",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
@@ -376,6 +376,24 @@
             <article class="dash-card">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
               <ul class="cmd-list" id="cmd-list"></ul>
+            </article>
+            <article class="dash-card dash-card--wide" id="cmd-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">✍️</span><div><h2>Eigene Befehle</h2><p class="dash-status">Befehl im Chat → feste Antwort vom Bot. Platzhalter: <code>{user}</code> Name, <code>{count}</code> wie oft benutzt, <code>{watchtime}</code> eigene Watchtime, <code>{streamer}</code></p></div></header>
+              <form class="cmd-form" id="cmd-form" novalidate>
+                <label class="field cmd-f-cmd"><span>Befehl</span><input name="command" maxlength="26" placeholder="!discord" autocomplete="off" required></label>
+                <label class="field cmd-f-resp"><span>Antwort</span><input name="response" maxlength="400" placeholder="Unser Discord: discord.gg/… – {user}, komm vorbei!" autocomplete="off" required></label>
+                <label class="field cmd-f-cd"><span>Pause (Sek.)</span><input name="cooldown" type="number" min="0" max="3600" value="10"></label>
+                <label class="toggle cmd-f-mod"><input type="checkbox" name="mod_only"><span class="toggle-ui" aria-hidden="true"></span>Nur Mods</label>
+                <button class="btn btn--primary" type="submit">＋ Anlegen</button>
+                <p class="form-msg" role="alert"></p>
+              </form>
+              <ul class="cmd-custom" id="cmd-custom"></ul>
+              <p class="form-hint">Eingebaute Befehle wie <code>!join</code> oder <code>!watchtime</code> lassen sich nicht überschreiben. <code>!befehle</code> listet alle aktiven Befehle im Chat.</p>
+            </article>
+            <article class="dash-card" id="watch-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
+              <ol class="watch-top" id="watch-top"></ol>
+              <p class="form-hint">Zählt, solange der Stream live ist und das OBS-Overlay läuft – für alle im Chat (Twitch-Recht „Watchtime“, sonst alle, die in den letzten 10 Minuten geschrieben haben). Im Chat: <code>!watchtime</code> oder <code>!watchtime @name</code>.</p>
             </article>
             <article class="dash-card">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>

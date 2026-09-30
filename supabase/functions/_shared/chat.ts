@@ -1,9 +1,11 @@
 // Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
-// Befehle: den Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]).
+// Befehle: den Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]);
+// alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command in der Datenbank.
 import { db, getAppToken, getBot, helix } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
+import { noteChatter } from "./watchtime.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const FEED_COOLDOWN_MS = 10 * 60_000; // pro Zuschauer
@@ -55,11 +57,16 @@ type ChatMessage = {
 
 export async function handleChatMessage(event: ChatMessage) {
   const text = (event.message?.text ?? "").trim();
+  const self = await getBot();
+  // Watchtime: wer schreibt, ist da (zählt, falls Twitch die Chatters-Liste nicht herausgibt)
+  if (!self || event.chatter_user_id !== self.user_id) {
+    await noteChatter(event.chatter_user_id, event.chatter_user_login, event.chatter_user_name).catch(() => {});
+  }
   if (!text.startsWith("!")) return;
   const [command, arg = ""] = text.split(/\s+/);
 
-  // Befehle der neueren Content-Ideen (Quiz, Mitspielen, Verbotenes Wort, Zahlenraten)
-  const self = await getBot();
+  // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
+  // Zahlenraten, !watchtime, !befehle, eigene Befehle)
   if (!self || event.chatter_user_id !== self.user_id) {
     await handleExtraCommand(event).catch((e) => console.warn("Chat-Befehl:", e));
   }

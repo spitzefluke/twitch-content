@@ -22,6 +22,7 @@ const SCOPE_FEATURE: Record<string, string> = {
   "channel:read:subscriptions": "Abo-Alerts",
   "bits:read": "Bits-Alerts",
   "moderation:read": "Mods erkennen",
+  "moderator:read:chatters": "Watchtime (wer im Chat ist)",
 };
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;

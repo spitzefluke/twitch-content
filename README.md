@@ -86,7 +86,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_bingo_lootpool.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_bingo_lootpool.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -160,6 +160,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
    - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
    - `moderator:read:followers`, `channel:read:subscriptions` und `bits:read` (neue Follower, Abos und Bits für die Alerts im Overlay)
    - `moderation:read`, `channel:manage:predictions` (Mods erkennen, Bingo-Tipprunde)
+   - `moderator:read:chatters` (wer im Chat ist – für die Watchtime)
 4. Danach passiert automatisch Folgendes:
    - Die Belohnung „Glücksrad“ für 10.000 Kanalpunkte wird angelegt.
    - Der EventSub-Webhook wird registriert.
@@ -197,6 +198,14 @@ Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht der Stream
 4. Twitch fragt jetzt den Bot-Account nach `user:write:chat`, `user:read:chat` und `user:bot`. Erlauben. Danach geht es zurück ins Dashboard, dort steht „Chat-Bot … ist verbunden“.
 
 Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es das Recht des Streamers `channel:bot` aus Schritt 5. Hat der Streamer schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StreamHelpBot`).
+
+### 7. Eigene Befehle und !watchtime
+
+Im Dashboard unter **🤖 Bot & Chat** legen Streamer, Admins und freigegebene Mods **eigene Befehle** an: Befehl (z. B. `!discord`) und feste Antwort, dazu Pause in Sekunden, „Nur Mods“ und an/aus. Platzhalter in der Antwort: `{user}` (Name des Schreibers), `{count}` (wie oft der Befehl benutzt wurde), `{watchtime}` (Watchtime des Schreibers), `{streamer}`. Eingebaute Befehle (`!join`, `!watchtime` …) lassen sich nicht überschreiben; `!befehle` listet alle aktiven im Chat. Beispiele `!lurk`, `!hydrate` und `!socials` sind vorbereitet.
+
+**`!watchtime`** antwortet mit der eigenen Zuschauzeit, `!watchtime @name` mit der eines anderen (nur, wenn der Name bekannt ist – der Bot wiederholt nie eingetippten Text). Gezählt wird, solange der Stream live ist: Das OBS-Overlay stößt alle 5 Minuten die Edge Function `stream-tools` an, die bei Twitch nachsieht, ob der Kanal live ist, und allen im Chat die Zeit gutschreibt (höchstens alle 4,5 Minuten, Streamer und Bot zählen nicht). Dafür braucht die Seite das neue Twitch-Recht `moderator:read:chatters` – der Gesundheitscheck meldet es, dann **Twitch einmal neu verbinden**. Bis dahin zählen alle, die in den letzten 10 Minuten geschrieben haben. Die Rangliste steht im Dashboard unter Bot & Chat.
+
+Einmal nötig: Migration `20261017000000_chat_bot_commands.sql`.
 
 ## Social-Logins für Zuschauer
 

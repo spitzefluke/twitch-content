@@ -311,6 +311,7 @@ async function start() {
   if (opt.chat) setupChat();
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
   if (LIVE) watchOverlayConfig(source);
+  startWatchtime();
   if (!opt.edit) watchForUpdate();
 }
 
@@ -333,6 +334,21 @@ function watchForUpdate() {
 
 // Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
 // Realtime meldet es direkt; zur Sicherheit wird zusätzlich alle 30 Sekunden nachgesehen.
+// Watchtime für den Chat-Bot (!watchtime): Das Overlay läuft genau während des Streams und
+// stößt deshalb alle 5 Minuten die Zählung an. Die Edge Function prüft selbst, ob der Stream
+// live ist, und zählt höchstens alle 4,5 Minuten – mehrere OBS-Quellen stören also nicht.
+const WATCH_TICK_MS = 5 * 60_000;
+function startWatchtime() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test) return;
+  const tick = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'watch_tick' }),
+  }).catch(() => {});
+  setTimeout(tick, 60_000);
+  setInterval(tick, WATCH_TICK_MS);
+}
+
 function watchOverlayConfig(source) {
   const changed = (next) => {
     if (typeof next === 'string' && next !== liveConfig) location.reload();
