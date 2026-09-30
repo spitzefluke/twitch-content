@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-GBqP+WffRjAleLE8Bldr1ngB0+s307GaFfe26+L4Fko=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-7OM3ZlsXeoEpLiF/yENxEtxIQlUGK9MPhMesXS6fVV8=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=58b880214d">
+  <link rel="stylesheet" href="css/style.css?v=2698b0b569">
   <link rel="stylesheet" href="css/shell.css?v=511bc8d209">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
@@ -26,7 +26,7 @@
       "./js/admin.js": "./js/admin.js?v=ca05db518e",
       "./js/alerts.js": "./js/alerts.js?v=951c5e8239",
       "./js/api.js": "./js/api.js?v=eb0bd14c67",
-      "./js/app.js": "./js/app.js?v=6ce54fc466",
+      "./js/app.js": "./js/app.js?v=85691aafe9",
       "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -1337,10 +1337,10 @@
       <!-- Rechts: Ebenen, Aussehen & Ton, Texte & Tests -->
       <div class="obs-right">
         <div class="obs-tabs" role="tablist" aria-label="OBS-Einstellungen">
-          <button class="obs-tab" type="button" role="tab" data-tab="content" aria-selected="false" hidden>Content</button>
-          <button class="obs-tab" type="button" role="tab" data-tab="layers" aria-selected="true">Ebenen</button>
+          <button class="obs-tab" type="button" role="tab" data-tab="props" aria-selected="true">Ebene</button>
           <button class="obs-tab" type="button" role="tab" data-tab="look" aria-selected="false">Aussehen &amp; Ton</button>
-          <button class="obs-tab" type="button" role="tab" data-tab="admin" aria-selected="false">Texte &amp; Tests</button>
+          <button class="obs-tab" type="button" role="tab" data-tab="content" aria-selected="false" hidden>Content</button>
+          <button class="obs-tab" type="button" role="tab" data-tab="admin" aria-selected="false">Texte</button>
         </div>
 
         <!-- Streameransicht: Mods freigeben und alle Content-Ideen steuern (Streamer, Admins, freigegebene Mods) -->
@@ -1352,7 +1352,9 @@
           </section>
         </div>
         <form class="obs-options" id="obs-options">
-          <div class="obs-pane obs-layers" data-pane="layers">
+          <!-- Ebenen: im Editor immer links sichtbar -->
+          <div class="obs-layers" id="obs-layers">
+            <p class="obs-panel-title">Ebenen <small>Schalter = im Stream zeigen</small></p>
             <section class="obs-group" data-group>
               <p class="obs-group-head"><span>Immer im Bild</span><span class="obs-group-count"></span></p>
               <div class="obs-layer" data-layer="ticker" style="--lc: #ffb81c">
@@ -1450,7 +1452,7 @@
                 <div class="obs-layer-body" hidden>
                   <label class="obs-row"><span>Größe</span><input type="range" name="asize" min="50" max="200" step="5" value="100"><output name="asize-out"></output></label>
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="alerts"></span><button class="obs-mini-btn" type="button" data-reset-pos="alerts">Zurück an den Standardplatz</button></span></div>
-                  <p class="obs-row-hint">Sounds unter „Aussehen &amp; Ton“, Probe-Alerts unter „Texte &amp; Tests“.</p>
+                  <p class="obs-row-hint">Sounds und Lautstärke unter „Aussehen &amp; Ton“, Probe-Alerts im Dashboard unter „🔔 Alerts“.</p>
                 </div>
               </div>
               <div class="obs-layer" data-layer="prank" style="--lc: #ff5a4e">
@@ -1674,6 +1676,20 @@
           <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
 
+          <!-- Inspektor: Einstellungen der gewählten Ebene (der Inhalt wird aus der Ebenenliste hierher geholt) -->
+          <div class="obs-pane obs-inspector" data-pane="props" id="obs-inspector">
+            <header class="obs-insp-head" id="obs-insp-head" hidden>
+              <span class="obs-layer-dot" aria-hidden="true"></span>
+              <b id="obs-insp-name"></b>
+              <small id="obs-insp-state"></small>
+              <button class="obs-mini-btn" type="button" id="obs-insp-close" aria-label="Auswahl aufheben">✕</button>
+            </header>
+            <div class="obs-insp-empty" id="obs-insp-empty">
+              <span aria-hidden="true">👆</span>
+              <b>Keine Ebene ausgewählt</b>
+              <p>Wähle links eine Ebene – oder klicke in der Vorschau auf eine Karte. Hier erscheinen dann Größe, Platz und alle Einstellungen.</p>
+            </div>
+          </div>
           <div class="obs-pane obs-look" data-pane="look" hidden>
             <div class="obs-look-grid">
               <label class="field obs-color"><span>Akzentfarbe</span>

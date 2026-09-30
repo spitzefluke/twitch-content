@@ -4662,9 +4662,16 @@ const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on'
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
 const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
 let obsSelected = null;
+// Einstellungen je Ebene: stehen im Markup in der Ebenenliste, der Editor zeigt die gewählte im Inspektor
+const obsBodies = new Map();
 
 function setupObsLayers() {
   const dlg = $('#obs-dialog');
+  dlg.querySelectorAll('.obs-layer').forEach((row) => obsBodies.set(row.dataset.layer, row.querySelector('.obs-layer-body')));
+  $('#obs-insp-close').addEventListener('click', () => openObsLayer(null));
+  dlg.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && obsSelected && !e.target.closest('input, select, textarea')) { e.preventDefault(); e.stopPropagation(); openObsLayer(null); }
+  });
   dlg.querySelectorAll('.obs-tab').forEach((tab) => tab.addEventListener('click', () => showObsTab(tab.dataset.tab)));
   dlg.querySelectorAll('.obs-layer').forEach((row) => {
     row.querySelector('.obs-layer-name').addEventListener('click', () => {
@@ -4696,20 +4703,40 @@ function showObsTab(name) {
   dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
 }
 
-// Ebene auf- oder zuklappen und in der Vorschau markieren
+// Ebene auswählen: ihre Einstellungen erscheinen rechts im Inspektor, die Vorschau markiert sie
 function openObsLayer(key, { scroll = false } = {}) {
   obsSelected = key;
+  const inspector = $('#obs-inspector');
   $('#obs-dialog').querySelectorAll('.obs-layer').forEach((row) => {
     const open = row.dataset.layer === key;
+    const body = obsBodies.get(row.dataset.layer);
     row.classList.toggle('is-open', open);
-    row.querySelector('.obs-layer-body').hidden = !open;
     row.querySelector('.obs-layer-name').setAttribute('aria-expanded', String(open));
-    if (open && scroll) {
-      showObsTab('layers');
-      row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+    if (open) {
+      inspector.append(body);
+      body.hidden = false;
+      $('#obs-insp-name').textContent = row.querySelector('.obs-layer-name').firstChild.textContent.trim();
+      $('#obs-insp-head').style.setProperty('--lc', row.style.getPropertyValue('--lc'));
+      if (scroll) row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+    } else if (body.parentElement !== row) {
+      body.hidden = true;
+      row.append(body);
     }
   });
+  $('#obs-insp-head').hidden = !key;
+  $('#obs-insp-empty').hidden = !!key;
+  if (key) showObsTab('props');
+  paintObsInspector();
   highlightObsLayer();
+}
+
+// Kopf des Inspektors: Farbe und an/aus der gewählten Ebene
+function paintObsInspector() {
+  const row = obsSelected && $(`#obs-dialog .obs-layer[data-layer="${obsSelected}"]`);
+  if (!row) return;
+  const on = row.classList.contains('is-on');
+  $('#obs-insp-head').classList.toggle('is-on', on);
+  $('#obs-insp-state').textContent = on ? 'im Stream sichtbar' : 'aus – links einschalten';
 }
 
 function highlightObsLayer() {
@@ -4732,13 +4759,15 @@ function paintObsLayers() {
     row.classList.toggle('is-on', on);
     const size = f.elements[OBS_LAYER_SIZE[key]];
     row.querySelector('.obs-layer-size').textContent = size ? `${size.value} %` : '';
-    const pos = row.querySelector('[data-pos-for]');
+    const body = obsBodies.get(key);
+    const pos = body?.querySelector('[data-pos-for]');
     if (pos) {
       const el = f.elements[key];
       pos.textContent = describeObsPos(el.value);
-      row.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
+      body.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
     }
   });
+  paintObsInspector();
   // Mischpult: Regler von ausgeschalteten Ebenen abblenden, 0 % heißt stumm
   dlg.querySelectorAll('.obs-mix').forEach((row) => {
     const sw = OBS_LAYER_SWITCH[row.dataset.mix];
@@ -4976,12 +5005,12 @@ async function allowAdminsObs(e) {
 function paintStreamerView({ firstOpen = false } = {}) {
   const admin = !!state.profile?.is_admin;
   $('#obs-dialog .obs-tab[data-tab="content"]').hidden = !admin;
-  $('#obs-title').textContent = admin ? 'OBS-Fenster' : 'OBS-Overlay';
+  $('#obs-title').textContent = 'OBS-Editor';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
   renderGuard();
   if (!admin) return;
-  if (firstOpen) showObsTab('content');
+  if (firstOpen) showObsTab('props');
   renderObsContent();
   loadMods();
 }
