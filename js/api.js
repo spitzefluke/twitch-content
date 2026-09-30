@@ -1092,7 +1092,7 @@ function createLocalApi() {
         loot: store.get('bingo_loot_state', { synced_at: null, items: 0, error: 'demo' }),
       };
     },
-    // Im Demo-Modus gibt es keinen Abgleich mit fortniteapi.io
+    // Im Demo-Modus gibt es keinen Abgleich mit api-fortnite.com
     async syncLootpool(force = false) {
       if (force) await requireAdmin();
       return { synced: false, demo: true, state: store.get('bingo_loot_state', { synced_at: null, items: 0, error: 'demo' }) };

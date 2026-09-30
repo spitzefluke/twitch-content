@@ -2312,7 +2312,7 @@ async function syncLootpool(force) {
     if (force) {
       if (res?.synced) toast(`Lootpool abgeglichen: ${res.state?.items ?? 0} Items.`);
       else if (res?.demo) toast('Im Demo-Modus gibt es keinen Lootpool-Abgleich.');
-      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret FORTNITEAPI_IO_KEY in Supabase.', 'error', 7000);
+      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret API_FORTNITE_KEY in Supabase.', 'error', 7000);
       else if (res?.error) toast(`Lootpool: ${res.error}`, 'error');
     }
   } catch (err) {
@@ -2343,7 +2343,7 @@ function paintLootpool() {
   if (lootBusy) text.textContent = 'Lootpool wird abgeglichen …';
   else if (!loot) text.textContent = 'Einmal nötig: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen – dann kommen die Bilder automatisch aus dem aktuellen Fortnite-Lootpool.';
   else if (loot.error === 'demo') text.textContent = 'Im Demo-Modus gibt es keinen Abgleich mit dem Fortnite-Lootpool.';
-  else if (loot.error === 'missing_key') text.textContent = 'Secret FORTNITEAPI_IO_KEY in Supabase eintragen (kostenloser Schlüssel von fortniteapi.io) – dann passen sich die Bilder von selbst an den aktuellen Lootpool an.';
+  else if (loot.error === 'missing_key') text.textContent = 'Secret API_FORTNITE_KEY in Supabase eintragen (kostenloser Schlüssel von api-fortnite.com) – dann passen sich die Bilder von selbst an den aktuellen Lootpool an.';
   else {
     const when = loot.synced_at
       ? new Date(loot.synced_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })

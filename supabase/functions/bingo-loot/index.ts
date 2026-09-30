@@ -2,10 +2,10 @@
 //   POST {force?: boolean} → {synced, state, missing_key?}
 // Jeder angemeldete Besuch des Bingo-Dialogs stößt den Abgleich an – er läuft aber höchstens
 // alle 6 Stunden. Admins können ihn sofort auslösen (höchstens einmal pro Minute).
-// Braucht das Secret FORTNITEAPI_IO_KEY (kostenloser Schlüssel von fortniteapi.io) und
-// die Migration …_bingo_lootpool.sql.
+// Braucht das Secret API_FORTNITE_KEY (kostenloser Schlüssel von api-fortnite.com) und
+// die Migration …_bingo_lootpool.sql. (fortniteapi.io wurde am 31.03.2026 eingestellt.)
 import { db, corsHeaders, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
-import { LOOT_URLS, parseLootpool } from "../_shared/lootpool.ts";
+import { LOOT_SOURCE, LOOT_URL, parseLootpool } from "../_shared/lootpool.ts";
 
 const AUTO_EVERY = 6 * 60 * 60 * 1000;
 const MIN_GAP = 60 * 1000;
@@ -22,26 +22,20 @@ async function setState(patch: Partial<State>) {
   return data as State | null;
 }
 
-// Erste Adresse, die antwortet; Netzwerkfehler (z. B. DNS) → nächste Adresse
-async function requestLootpool(key: string) {
-  let lastError: unknown = null;
-  for (const url of LOOT_URLS) {
-    try {
-      return await fetch(url, { headers: { Authorization: key, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
-    } catch (e) {
-      lastError = e;
-      console.warn(`bingo-loot: ${new URL(url).host} nicht erreichbar:`, (e as Error)?.message ?? e);
-    }
-  }
-  throw new Error(`fortniteapi.io ist gerade nicht erreichbar (${String((lastError as Error)?.message ?? lastError).slice(0, 120)}).`);
-}
-
 async function fetchLootpool(key: string) {
-  const res = await requestLootpool(key);
-  if (res.status === 401 || res.status === 403) throw new Error("Schlüssel FORTNITEAPI_IO_KEY wird nicht angenommen.");
-  if (!res.ok) throw new Error(`fortniteapi.io antwortet mit ${res.status}.`);
-  const items = parseLootpool(await res.json());
-  if (items.length < MIN_ITEMS) throw new Error("fortniteapi.io liefert gerade keinen brauchbaren Lootpool.");
+  let res: Response;
+  try {
+    res = await fetch(LOOT_URL, { headers: { "x-api-key": key, Accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+  } catch (e) {
+    throw new Error(`${LOOT_SOURCE} ist gerade nicht erreichbar (${String((e as Error)?.message ?? e).slice(0, 120)}).`);
+  }
+  if (res.status === 401 || res.status === 403) throw new Error("Schlüssel API_FORTNITE_KEY wird nicht angenommen.");
+  if (res.status === 429) throw new Error(`${LOOT_SOURCE}: zu viele Anfragen – später noch einmal.`);
+  if (!res.ok) throw new Error(`${LOOT_SOURCE} antwortet mit ${res.status}.`);
+  const body = await res.json().catch(() => null);
+  if (body?.success === false) throw new Error(`${LOOT_SOURCE}: ${String(body.error ?? body.message ?? "Fehler").slice(0, 120)}`);
+  const items = parseLootpool(body);
+  if (items.length < MIN_ITEMS) throw new Error(`${LOOT_SOURCE} liefert gerade keinen brauchbaren Lootpool (${items.length} Items).`);
   return items;
 }
 
@@ -75,7 +69,7 @@ Deno.serve(async (req) => {
     return json({ error: "In der Datenbank fehlt der Lootpool fürs Bingo: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen." }, 500);
   }
 
-  const key = Deno.env.get("FORTNITEAPI_IO_KEY")?.trim();
+  const key = Deno.env.get("API_FORTNITE_KEY")?.trim();
   if (!key) {
     const next = state.error === "missing_key" ? state : await setState({ error: "missing_key" });
     return json({ synced: false, missing_key: true, state: next ?? state });
