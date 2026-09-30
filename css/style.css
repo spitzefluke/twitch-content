@@ -1573,7 +1573,7 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .ad-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .ad-stage { position: sticky; top: 76px; display: grid; gap: 10px; }
 .ad-preview {
-  position: relative; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--line); aspect-ratio: 820 / 440;
+  position: relative; width: 100%; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--line); aspect-ratio: 820 / 440;
   background: linear-gradient(135deg, rgba(11, 7, 20, .35), rgba(11, 7, 20, .65)), url("../assets/bg-city.svg") center / cover;
 }
 .ad-preview iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; color-scheme: normal; background: transparent; pointer-events: none; }

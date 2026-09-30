@@ -378,9 +378,9 @@ function fitPreview() {
   const box = $('#ad-preview');
   const frame = box.querySelector('iframe');
   if (!frame || !box.clientWidth) return;
-  const scale = box.clientWidth / PREVIEW_W;
-  frame.style.transform = `scale(${scale})`;
-  box.style.height = `${Math.round(PREVIEW_H * scale)}px`;
+  // Die Höhe kommt aus aspect-ratio (css/style.css). Nicht selbst setzen: Mit fester Höhe
+  // rechnet aspect-ratio die Breite daraus zurück, und die Vorschau schrumpfte Runde um Runde.
+  frame.style.transform = `scale(${box.clientWidth / PREVIEW_W})`;
 }
 
 function sendPreview({ play = false } = {}) {
