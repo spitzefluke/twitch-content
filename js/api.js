@@ -584,6 +584,18 @@ async function createSupabaseApi() {
     async twitchDisconnect() {
       await invoke('twitch-oauth', { action: 'disconnect' });
     },
+    // Eigene Chat-Befehle und Watchtime (Migration …_chat_bot_commands.sql)
+    botCommands: {
+      list: async () => unwrap(await sb.from('bot_commands').select('*').order('command')),
+      async save(c) {
+        const row = { command: c.command, response: c.response, enabled: c.enabled, mod_only: c.mod_only, cooldown_seconds: c.cooldown_seconds };
+        if (c.id) return unwrap(await sb.from('bot_commands').update({ ...row, updated_at: new Date().toISOString() }).eq('id', c.id).select('*').single());
+        return unwrap(await sb.from('bot_commands').insert(row).select('*').single());
+      },
+      remove: async (id) => unwrap(await sb.from('bot_commands').delete().eq('id', id)),
+    },
+    async watchTop(limit = 10) { return unwrap(await sb.rpc('watch_top', { p_limit: limit })); },
+    async watchState() { return unwrap(await sb.from('watch_state').select('*').eq('id', 1).maybeSingle()); },
     // Chat-Bot-Konto (Streamer, Admins, freigegebene Mods)
     async botConnect() {
       const { url } = await invoke('twitch-oauth', { action: 'bot_start' });
@@ -1475,6 +1487,33 @@ function createLocalApi() {
     async botConnect() {
       throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
     },
+    botCommands: {
+      async list() {
+        return store.get('bot_commands', [
+          { id: 1, command: '!lurk', response: '{user} macht es sich gemütlich und lurkt mit. Danke fürs Dabeibleiben! 💜', enabled: true, mod_only: false, cooldown_seconds: 10, uses: 3 },
+          { id: 2, command: '!hydrate', response: 'Trinkpause! {streamer} und alle im Chat: einmal Wasser trinken 💧', enabled: true, mod_only: false, cooldown_seconds: 10, uses: 0 },
+        ]);
+      },
+      async save(c) {
+        await requireAdmin();
+        if (!/^![a-z0-9äöüß_]{2,25}$/.test(c.command)) throw new Error('Der Befehl braucht ein ! und 2–25 Kleinbuchstaben, Ziffern oder _.');
+        if (['!join', '!leave', '!a', '!b', '!c', '!d', '!change', '!watchtime', '!befehle', '!commands', '!füttern', '!fuettern', '!erwischt', '!rate'].includes(c.command)) throw new Error('Diesen Befehl gibt es schon eingebaut.');
+        const all = await this.list();
+        if (all.some((x) => x.command === c.command && x.id !== c.id)) throw new Error('Diesen Befehl gibt es schon.');
+        const row = { uses: 0, ...all.find((x) => x.id === c.id), ...c, id: c.id ?? Date.now() };
+        store.set('bot_commands', c.id ? all.map((x) => (x.id === c.id ? row : x)) : [...all, row]);
+        return row;
+      },
+      async remove(id) { await requireAdmin(); store.set('bot_commands', (await this.list()).filter((x) => x.id !== id)); },
+    },
+    async watchTop() {
+      return [
+        { display_name: 'NightOwl_Mia', seconds: 184320, pretty: '2 Tage 3 Std 12 Min' },
+        { display_name: 'PixelPaul', seconds: 96000, pretty: '1 Tag 2 Std 40 Min' },
+        { display_name: 'GG_Gina', seconds: 30600, pretty: '8 Std 30 Min' },
+      ];
+    },
+    async watchState() { return { live: false, last_tick_at: null, source: '', viewers: 0 }; },
     async botDisconnect() {},
     // Demo: zeigt, wie ein Problem aussieht
     async twitchHealth() {

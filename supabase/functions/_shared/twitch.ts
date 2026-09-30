@@ -55,6 +55,7 @@ export async function getUserFromRequest(req: Request) {
 export const BROADCASTER_SCOPES = [
   "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
   "moderator:read:followers", "channel:read:subscriptions", "bits:read", "moderation:read",
+  "moderator:read:chatters",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und den Chat des Streamers lesen – für Befehle wie !füttern.

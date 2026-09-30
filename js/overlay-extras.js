@@ -155,14 +155,14 @@ async function setupForbidden({ src, opt }, el) {
       flash.hidden = false;
       restart(el, 'is-hit');
       restart(flash, 'is-show');
-      beep(opt.volume, [[880, 0, 0.12, 'square'], [660, 0.14, 0.12, 'square'], [880, 0.28, 0.25, 'square']]);
+      beep(opt.vols.forbid, [[880, 0, 0.12, 'square'], [660, 0.14, 0.12, 'square'], [880, 0.28, 0.25, 'square']]);
     } else if (ev.type === 'report') {
       flash.textContent = '👀 Gemeldet! Ein Mod prüft …';
       flash.hidden = false;
       restart(flash, 'is-show');
     } else if (ev.type === 'draw') {
       restart(el, 'is-new');
-      beep(opt.volume, [[523, 0, 0.15], [659, 0.12, 0.15], [784, 0.24, 0.3]]);
+      beep(opt.vols.forbid, [[523, 0, 0.15], [659, 0.12, 0.15], [784, 0.24, 0.3]]);
     }
   };
   if (opt.test || opt.edit) {
@@ -207,7 +207,7 @@ async function setupSubathon({ src, opt }, el) {
     el.querySelector('[data-float]').append(f);
     setTimeout(() => f.remove(), 3200);
     restart(el, 'is-bump');
-    if (ev.seconds > 0) beep(opt.volume, [[784, 0, 0.12], [1047, 0.1, 0.25]]);
+    if (ev.seconds > 0) beep(opt.vols.subathon, [[784, 0, 0.12], [1047, 0.1, 0.25]]);
   };
   setInterval(tick, 1000);
   if (opt.test || opt.edit) {
@@ -275,7 +275,7 @@ async function setupPause({ src, opt }) {
     tick();
     if (effects && before && last?.n && last.n !== before.game_last?.n && last.hint === 'hit') {
       restart(el.querySelector('[data-win]'), 'is-show');
-      beep(opt.volume, [[523, 0, 0.15], [659, 0.12, 0.15], [784, 0.24, 0.15], [1047, 0.36, 0.4]]);
+      beep(opt.vols.pause, [[523, 0, 0.15], [659, 0.12, 0.15], [784, 0.24, 0.15], [1047, 0.36, 0.4]]);
     }
   };
   setInterval(tick, 1000);
@@ -332,8 +332,8 @@ async function setupQuiz({ src, opt }, el) {
       if (!opt.edit && !opt.test) hideTimer = setTimeout(() => { el.hidden = true; }, 20000);
     } else tick();
     if (!effects || !before) return;
-    if (before.n !== r.n && r.status === 'open') { restart(el, 'is-new'); beep(opt.volume, [[440, 0, 0.12], [660, 0.12, 0.2]]); }
-    if (before.status === 'open' && revealed) beep(opt.volume, [[523, 0, 0.12], [784, 0.12, 0.3]]);
+    if (before.n !== r.n && r.status === 'open') { restart(el, 'is-new'); beep(opt.vols.quiz, [[440, 0, 0.12], [660, 0.12, 0.2]]); }
+    if (before.status === 'open' && revealed) beep(opt.vols.quiz, [[523, 0, 0.12], [784, 0.12, 0.3]]);
   };
   setInterval(tick, 500);
   if (opt.test || opt.edit) {
@@ -434,7 +434,7 @@ async function setupTts({ src, opt }, el) {
     if (!muted) {
       show(m);
       await new Promise((r) => setTimeout(r, 500));
-      await speak(m.text, m.voice, { volume: opt.volume || 0 });
+      await speak(m.text, m.voice, { volume: opt.vols.tts || 0 });
       await new Promise((r) => setTimeout(r, 800));
       if (!opt.edit) el.hidden = true;
     }
@@ -496,7 +496,7 @@ async function setupCards({ src, opt }, el) {
     el.classList.add(`r-${p.rarity}`);
     el.hidden = false;
     restart(el, 'is-in');
-    beep(opt.volume, p.rarity === 'legendary'
+    beep(opt.vols.cards, p.rarity === 'legendary'
       ? [[523, 0, 0.15], [659, 0.1, 0.15], [784, 0.2, 0.15], [1047, 0.3, 0.2], [1319, 0.45, 0.5]]
       : [[659, 0, 0.15], [880, 0.12, 0.35]]);
   };

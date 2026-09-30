@@ -22,6 +22,8 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
+//   alook=classic|neon|…      Design der Alerts (Bibliothek: ALERT_LOOKS in js/alerts.js)
+//   vwheel=100, vprank=100 …   Lautstärke je Ebene in Prozent (0–200, mal vol), siehe MIX
 //   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
 //   bstyle=classic|neon|paper  Design der Bingo-Karte: bunt (Standard), Neon oder Papier
@@ -78,7 +80,7 @@ import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pip
 import { TICKER_STYLES, fillTicker, setTickerChannel } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
-import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
+import { ALERT_KINDS, alertLook, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 import { setupOverlayExtras } from './overlay-extras.js';
 
@@ -153,6 +155,8 @@ const opt = {
   bg: number('bg', 94, 0, 100) / 100,
   accent: /^[0-9a-f]{6}$/i.test(accent) ? `#${accent}` : null,
   volume: params.get('sound') === '0' ? 0 : number('vol', 100, 0, 100) / 100,
+  // Eigener Regler je Ebene mit Ton (Parameter aus MIX), mal Gesamtlautstärke
+  vols: {},
   bingo: position(params.get('bingo'), null),
   bsize: number('bsize', 100, 50, 200) / 100,
   bstyle: ['neon', 'paper'].includes(params.get('bstyle')) ? params.get('bstyle') : 'classic',
@@ -193,6 +197,12 @@ const opt = {
   test: flag('test', false),
   edit: flag('edit', false),
 };
+// Lautstärke je Ebene: Parameter → Schlüssel in opt.vols
+const MIX = {
+  vwheel: 'wheel', vprank: 'prank', valert: 'alerts', vbingo: 'bingo', vquest: 'quest', vpet: 'pet', vshop: 'shop',
+  vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards',
+};
+for (const [param, key] of Object.entries(MIX)) opt.vols[key] = opt.volume * number(param, 100, 0, 200) / 100;
 
 // Kamera-Bereich "links,oben,Breite,Höhe" in Prozent des Bildes
 function camera(value) {
@@ -240,7 +250,7 @@ if (opt.shop) place($('ov-shop'), opt.shop);
 else $('ov-shop').remove();
 if (opt.challenge) place($('ov-challenge'), opt.challenge);
 else $('ov-challenge').remove();
-if (opt.alerts) place($('ov-alert'), opt.alerts);
+if (opt.alerts) { place($('ov-alert'), opt.alerts); $('ov-alert').dataset.look = alertLook(params.get('alook')); }
 else $('ov-alert').remove();
 if (opt.recent) place($('ov-recent'), opt.recent);
 else $('ov-recent').remove();
@@ -302,6 +312,7 @@ async function start() {
   if (opt.chat) setupChat();
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
   if (LIVE) watchOverlayConfig(source);
+  startWatchtime();
   if (!opt.edit) watchForUpdate();
 }
 
@@ -324,6 +335,21 @@ function watchForUpdate() {
 
 // Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
 // Realtime meldet es direkt; zur Sicherheit wird zusätzlich alle 30 Sekunden nachgesehen.
+// Watchtime für den Chat-Bot (!watchtime): Das Overlay läuft genau während des Streams und
+// stößt deshalb alle 5 Minuten die Zählung an. Die Edge Function prüft selbst, ob der Stream
+// live ist, und zählt höchstens alle 4,5 Minuten – mehrere OBS-Quellen stören also nicht.
+const WATCH_TICK_MS = 5 * 60_000;
+function startWatchtime() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test) return;
+  const tick = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'watch_tick' }),
+  }).catch(() => {});
+  setTimeout(tick, 60_000);
+  setInterval(tick, WATCH_TICK_MS);
+}
+
 function watchOverlayConfig(source) {
   const changed = (next) => {
     if (typeof next === 'string' && next !== liveConfig) location.reload();
@@ -743,7 +769,7 @@ function setupNext(source) {
 function setupPranks(source) {
   const layer = $('ov-pranks');
   const feed = $('ov-prank-feed');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.prank });
   const box = () => ({
     x: (opt.cam.x / 100) * layer.clientWidth,
     y: (opt.cam.y / 100) * layer.clientHeight,
@@ -835,7 +861,7 @@ async function setupBingo(source) {
   const card$ = $('ov-bingo');
   const grid = $('ov-bingo-grid');
   const win = $('ov-bingo-win');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.bingo });
   const urlFor = (path) => (path.startsWith('data:') ? path : source.bingoUrl(path));
   let card = await source.bingoCard().catch((err) => { console.warn('Overlay: Bingo nicht verfügbar', err); return null; });
   if (!card && opt.test) card = testCard();
@@ -926,7 +952,7 @@ async function setupBingo(source) {
 // dann das Ergebnis – beantwortet (Applaus) oder Bestrafung (Buzzer).
 async function setupQuestions(source) {
   const card = $('ov-quest');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.quest });
   let last = null;
   const show = (stage, { sound = true } = {}) => {
     const state = stage?.state ?? 'hidden';
@@ -985,7 +1011,7 @@ async function setupPet(source) {
     layer.remove();
     return;
   }
-  const sfx = new Sfx({ volume: opt.volume * 0.8 });
+  const sfx = new Sfx({ volume: opt.vols.pet * 0.8 });
   // Steht das Laufband unten, läuft der Dino oben darauf statt davor (außer pground=edge)
   const ground = () => {
     const band = $('ov-ticker')?.getBoundingClientRect();
@@ -1057,7 +1083,7 @@ const SHOP_SHOW_AFTER_MS = 10 * 60 * 1000;
 
 async function setupShop(source) {
   const card = $('ov-shop');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.shop });
   const images = new Map((await source.shopImages?.().catch(() => []) ?? []).map((i) => [i.name.toLowerCase(), i.url]));
   let run = null;
   let board = [];
@@ -1186,7 +1212,7 @@ const CHALLENGE_SHOW_AFTER_MS = 10 * 60 * 1000;
 async function setupChallenge(source) {
   const card = $('ov-challenge');
   const fx = $('ov-ch-fx');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.challenge });
   let ch = null;
   let hideTimer = 0;
 
@@ -1263,7 +1289,7 @@ const ALERT_HOLD_MS = 7000;
 async function setupAlerts(source) {
   const card = $('ov-alert');
   const fx = $('ov-al-fx');
-  const sfx = new Sfx({ volume: opt.volume });
+  const sfx = new Sfx({ volume: opt.vols.alerts });
   const queue = [];
   const seen = new Set();
   let playing = false;
@@ -1559,7 +1585,7 @@ function startDrag(e) {
 const sound = {
   ctx: null,
   get() {
-    if (!opt.volume) return null;
+    if (!opt.vols.wheel) return null;
     try {
       this.ctx ??= new (window.AudioContext ?? window.webkitAudioContext)();
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
@@ -1575,7 +1601,7 @@ const sound = {
     osc.type = type;
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * opt.volume), t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * opt.vols.wheel), t0 + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t0);

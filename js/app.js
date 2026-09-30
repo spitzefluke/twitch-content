@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
-import { ALERT_KINDS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
+import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -330,6 +330,10 @@ function setupShell() {
   $('#health-btn').addEventListener('click', () => setPage('alerts'));
   $('#health-check').addEventListener('click', () => runHealth({ force: true, loud: true }));
   $('#bot-connect').addEventListener('click', connectBot);
+  $('#cmd-form').addEventListener('submit', addBotCommand);
+  $('#cmd-custom').addEventListener('click', botCommandClick);
+  $('#cmd-custom').addEventListener('input', (e) => e.target.closest('.cmd-row')?.classList.add('is-dirty'));
+  $('#cmd-custom').addEventListener('change', (e) => { if (e.target.name === 'enabled') saveBotCommand(e.target.closest('.cmd-row')); });
   $('#bot-disconnect').addEventListener('click', disconnectBot);
   $('#dash-obs-copy').addEventListener('click', async () => {
     const input = $('#dash-obs-url');
@@ -4583,7 +4587,7 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
@@ -4662,9 +4666,16 @@ const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on'
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
 const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
 let obsSelected = null;
+// Einstellungen je Ebene: stehen im Markup in der Ebenenliste, der Editor zeigt die gewählte im Inspektor
+const obsBodies = new Map();
 
 function setupObsLayers() {
   const dlg = $('#obs-dialog');
+  dlg.querySelectorAll('.obs-layer').forEach((row) => obsBodies.set(row.dataset.layer, row.querySelector('.obs-layer-body')));
+  $('#obs-insp-close').addEventListener('click', () => openObsLayer(null));
+  dlg.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && obsSelected && !e.target.closest('input, select, textarea')) { e.preventDefault(); e.stopPropagation(); openObsLayer(null); }
+  });
   dlg.querySelectorAll('.obs-tab').forEach((tab) => tab.addEventListener('click', () => showObsTab(tab.dataset.tab)));
   dlg.querySelectorAll('.obs-layer').forEach((row) => {
     row.querySelector('.obs-layer-name').addEventListener('click', () => {
@@ -4686,6 +4697,7 @@ function setupObsLayers() {
     if (!obs.ws?.connected) $('#obs-ws-form').password.focus({ preventScroll: true });
   });
   $('#obs-head-apply').addEventListener('click', applyObs);
+  setupAlertLooks();
   $('#obs-pet-say').addEventListener('submit', obsPetSay);
   setupObsPet();
 }
@@ -4696,20 +4708,74 @@ function showObsTab(name) {
   dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
 }
 
-// Ebene auf- oder zuklappen und in der Vorschau markieren
+// Alert-Design-Bibliothek: Kacheln mit Mini-Vorschau, Auswahl landet im Feld alook
+function setupAlertLooks() {
+  const gallery = $('#al-gallery');
+  const input = $('#obs-options').elements.alook;
+  gallery.replaceChildren(...ALERT_LOOKS.map((look) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'al-look';
+    btn.dataset.look = look.id;
+    btn.setAttribute('role', 'radio');
+    btn.title = look.desc;
+    btn.innerHTML = '<span class="al-thumb" aria-hidden="true"><i>⭐</i><b>Name</b><s></s></span><span class="al-look-name"></span>';
+    btn.querySelector('.al-thumb').dataset.look = look.id;
+    btn.querySelector('.al-look-name').textContent = look.name;
+    return btn;
+  }));
+  gallery.addEventListener('click', (e) => {
+    const btn = e.target.closest('.al-look');
+    if (!btn || obsLocked()) return;
+    input.value = btn.dataset.look;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    // Vorschau: Alerts-Ebene auswählen, damit man das Design gleich sieht
+    if (!$('#obs-options').elements.alerts_on.checked) toast('Tipp: Die Ebene „Alerts“ ist noch aus – links einschalten, dann erscheint das Design im Stream.', 'info', 5000);
+  });
+}
+
+function paintAlertLooks() {
+  const value = $('#obs-options').elements.alook.value || 'classic';
+  document.querySelectorAll('#al-gallery .al-look').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.look === value));
+    b.disabled = obsLocked();
+  });
+}
+
+// Ebene auswählen: ihre Einstellungen erscheinen rechts im Inspektor, die Vorschau markiert sie
 function openObsLayer(key, { scroll = false } = {}) {
   obsSelected = key;
+  const inspector = $('#obs-inspector');
   $('#obs-dialog').querySelectorAll('.obs-layer').forEach((row) => {
     const open = row.dataset.layer === key;
+    const body = obsBodies.get(row.dataset.layer);
     row.classList.toggle('is-open', open);
-    row.querySelector('.obs-layer-body').hidden = !open;
     row.querySelector('.obs-layer-name').setAttribute('aria-expanded', String(open));
-    if (open && scroll) {
-      showObsTab('layers');
-      row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+    if (open) {
+      inspector.append(body);
+      body.hidden = false;
+      $('#obs-insp-name').textContent = row.querySelector('.obs-layer-name').firstChild.textContent.trim();
+      $('#obs-insp-head').style.setProperty('--lc', row.style.getPropertyValue('--lc'));
+      if (scroll) row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+    } else if (body.parentElement !== row) {
+      body.hidden = true;
+      row.append(body);
     }
   });
+  $('#obs-insp-head').hidden = !key;
+  $('#obs-insp-empty').hidden = !!key;
+  if (key) showObsTab('props');
+  paintObsInspector();
   highlightObsLayer();
+}
+
+// Kopf des Inspektors: Farbe und an/aus der gewählten Ebene
+function paintObsInspector() {
+  const row = obsSelected && $(`#obs-dialog .obs-layer[data-layer="${obsSelected}"]`);
+  if (!row) return;
+  const on = row.classList.contains('is-on');
+  $('#obs-insp-head').classList.toggle('is-on', on);
+  $('#obs-insp-state').textContent = on ? 'im Stream sichtbar' : 'aus – links einschalten';
 }
 
 function highlightObsLayer() {
@@ -4732,12 +4798,22 @@ function paintObsLayers() {
     row.classList.toggle('is-on', on);
     const size = f.elements[OBS_LAYER_SIZE[key]];
     row.querySelector('.obs-layer-size').textContent = size ? `${size.value} %` : '';
-    const pos = row.querySelector('[data-pos-for]');
+    const body = obsBodies.get(key);
+    const pos = body?.querySelector('[data-pos-for]');
     if (pos) {
       const el = f.elements[key];
       pos.textContent = describeObsPos(el.value);
-      row.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
+      body.querySelector('[data-reset-pos]').disabled = el.value === obsDefault(el) || obsLocked();
     }
+  });
+  paintObsInspector();
+  paintAlertLooks();
+  // Mischpult: Regler von ausgeschalteten Ebenen abblenden, 0 % heißt stumm
+  dlg.querySelectorAll('.obs-mix').forEach((row) => {
+    const sw = OBS_LAYER_SWITCH[row.dataset.mix];
+    row.classList.toggle('is-off', !!sw && !f.elements[sw].checked);
+    const input = row.querySelector('input');
+    row.classList.toggle('is-muted', Number(input.value) === 0 || Number(f.elements.vol.value) === 0);
   });
   dlg.querySelectorAll('[data-group]').forEach((g) => {
     const rows = [...g.querySelectorAll('.obs-layer')];
@@ -4969,12 +5045,12 @@ async function allowAdminsObs(e) {
 function paintStreamerView({ firstOpen = false } = {}) {
   const admin = !!state.profile?.is_admin;
   $('#obs-dialog .obs-tab[data-tab="content"]').hidden = !admin;
-  $('#obs-title').textContent = admin ? 'OBS-Fenster' : 'OBS-Overlay';
+  $('#obs-title').textContent = 'OBS-Editor';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
   renderGuard();
   if (!admin) return;
-  if (firstOpen) showObsTab('content');
+  if (firstOpen) showObsTab('props');
   renderObsContent();
   loadMods();
 }
@@ -5643,11 +5719,15 @@ function renderBotPanel() {
   $('#bot-connect').textContent = connected ? '🔄 Anderen Bot verbinden' : '🤖 Bot verbinden';
   $('#bot-disconnect').hidden = !connected;
   renderCommands();
+  loadBotCommands();
+  loadWatchtime();
 }
 
 function renderCommands() {
   const feed = state.pet.data?.feed_command || '!füttern';
   const cmds = [
+    ['!watchtime [@name]', 'Wie lange man schon zuschaut'],
+    ['!befehle', 'Listet alle aktiven Befehle'],
     ['!join [Name]', 'Mitspieler-Warteschlange: anstellen (Name im Spiel optional)'],
     ['!leave', 'Aus der Warteschlange raus'],
     ['!a !b !c !d', 'Antwort im Fortnite-Quiz'],
@@ -5694,6 +5774,159 @@ async function disconnectBot() {
     msg.textContent = `Trennen fehlgeschlagen: ${germanError(err)}`;
   } finally {
     btn.disabled = false;
+  }
+}
+
+// ---------- Eigene Befehle ----------
+const cmdError = (err) => (/duplicate key|bot_commands_command_key/i.test(err.message) ? 'Diesen Befehl gibt es schon.'
+  : /check constraint|violates check/i.test(err.message) ? 'Ungültig: Befehl mit ! und 2–25 Kleinbuchstaben, Ziffern oder _ (eingebaute wie !join gehen nicht), Antwort 1–400 Zeichen.'
+    : /bot_commands|relation .* does not exist|schema cache/i.test(err.message) ? 'Einmal nötig: supabase/migrations/20261017000000_chat_bot_commands.sql im SQL Editor ausführen.'
+      : germanError(err));
+const cleanCommand = (v) => `!${String(v ?? '').trim().toLowerCase().replace(/^!+/, '').replace(/\s+/g, '_')}`;
+
+async function loadBotCommands() {
+  const list = $('#cmd-custom');
+  try {
+    state.botCommands = await state.api.botCommands.list();
+  } catch (err) {
+    list.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'cmd-empty';
+    li.textContent = cmdError(err);
+    list.append(li);
+    return;
+  }
+  renderBotCommands();
+}
+
+function renderBotCommands() {
+  const list = $('#cmd-custom');
+  const cmds = state.botCommands ?? [];
+  if (!cmds.length) {
+    list.innerHTML = '<li class="cmd-empty">Noch keine eigenen Befehle – oben den ersten anlegen.</li>';
+    return;
+  }
+  list.replaceChildren(...cmds.map((c) => {
+    const li = document.createElement('li');
+    li.className = 'cmd-row';
+    li.dataset.id = c.id;
+    li.innerHTML = `
+      <label class="toggle cmd-on" title="An/aus"><input type="checkbox" name="enabled"><span class="toggle-ui" aria-hidden="true"></span></label>
+      <input class="cmd-name" name="command" maxlength="26" aria-label="Befehl">
+      <input class="cmd-resp" name="response" maxlength="400" aria-label="Antwort">
+      <label class="cmd-cd" title="Pause zwischen zwei Antworten"><input type="number" name="cooldown" min="0" max="3600" aria-label="Pause in Sekunden"><span>s</span></label>
+      <label class="toggle cmd-modonly" title="Nur Mods und Streamer"><input type="checkbox" name="mod_only"><span class="toggle-ui" aria-hidden="true"></span><span>Mods</span></label>
+      <span class="cmd-uses" title="So oft benutzt"></span>
+      <button class="btn btn--primary btn--sm cmd-save" type="button" data-cmd-save>Speichern</button>
+      <button class="icon-btn cmd-del" type="button" data-cmd-del aria-label="Befehl löschen">🗑</button>`;
+    li.querySelector('[name="enabled"]').checked = !!c.enabled;
+    li.querySelector('[name="command"]').value = c.command;
+    li.querySelector('[name="response"]').value = c.response;
+    li.querySelector('[name="cooldown"]').value = c.cooldown_seconds ?? 10;
+    li.querySelector('[name="mod_only"]').checked = !!c.mod_only;
+    li.querySelector('.cmd-uses').textContent = `${Number(c.uses ?? 0).toLocaleString('de-DE')}×`;
+    li.classList.toggle('is-off', !c.enabled);
+    return li;
+  }));
+}
+
+function readCommandRow(li) {
+  const val = (name) => li.querySelector(`[name="${name}"]`);
+  return {
+    id: Number(li.dataset.id),
+    command: cleanCommand(val('command').value),
+    response: val('response').value.trim(),
+    enabled: val('enabled').checked,
+    mod_only: val('mod_only').checked,
+    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(val('cooldown').value) || 0))),
+  };
+}
+
+async function addBotCommand(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const c = {
+    command: cleanCommand(form.command.value),
+    response: form.response.value.trim(),
+    enabled: true,
+    mod_only: form.mod_only.checked,
+    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(form.cooldown.value) || 0))),
+  };
+  if (c.command.length < 3 || !c.response) return formMsg(form, 'Bitte Befehl und Antwort eintragen.');
+  const btn = form.querySelector('button[type="submit"]');
+  formMsg(form, '');
+  btn.disabled = true;
+  try {
+    const row = await state.api.botCommands.save(c);
+    state.botCommands = [...(state.botCommands ?? []), row].sort((a, b) => a.command.localeCompare(b.command));
+    form.reset();
+    form.cooldown.value = 10;
+    renderBotCommands();
+    formMsg(form, `✓ ${row.command} ist angelegt – gleich im Chat ausprobieren.`, true);
+  } catch (err) {
+    formMsg(form, cmdError(err));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function saveBotCommand(li) {
+  const c = readCommandRow(li);
+  const btn = li.querySelector('[data-cmd-save]');
+  btn.disabled = true;
+  try {
+    const row = await state.api.botCommands.save(c);
+    state.botCommands = state.botCommands.map((x) => (x.id === row.id ? row : x));
+    li.classList.remove('is-dirty');
+    li.classList.toggle('is-off', !row.enabled);
+    toast(`✓ ${row.command} gespeichert.`, 'ok', 2500);
+  } catch (err) {
+    toast(cmdError(err), 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function botCommandClick(e) {
+  const li = e.target.closest('.cmd-row');
+  if (!li) return;
+  if (e.target.closest('[data-cmd-save]')) return saveBotCommand(li);
+  if (e.target.closest('[data-cmd-del]')) {
+    const c = readCommandRow(li);
+    if (!confirm(`${c.command} wirklich löschen?`)) return;
+    try {
+      await state.api.botCommands.remove(c.id);
+      state.botCommands = state.botCommands.filter((x) => x.id !== c.id);
+      renderBotCommands();
+    } catch (err) {
+      toast(cmdError(err), 'error');
+    }
+  }
+}
+
+// ---------- Watchtime ----------
+async function loadWatchtime() {
+  const status = $('#watch-status');
+  const list = $('#watch-top');
+  try {
+    const [top, ws] = await Promise.all([state.api.watchTop(10), state.api.watchState()]);
+    const ago = ws?.last_tick_at ? Math.round((Date.now() - Date.parse(ws.last_tick_at)) / 60000) : null;
+    status.textContent = ws?.live
+      ? `🔴 Live – zählt gerade ${ws.viewers ?? 0} ${ws.viewers === 1 ? 'Zuschauer' : 'Zuschauer'}${ws.source === 'chat' ? ' (nur Schreibende – Twitch neu verbinden für alle)' : ''}`
+      : ago !== null ? `Offline – zuletzt geprüft vor ${ago < 1 ? 'weniger als 1' : ago} Min` : 'Zählt ab dem nächsten Stream (OBS-Overlay muss laufen).';
+    list.replaceChildren(...(top ?? []).map((w) => {
+      const li = document.createElement('li');
+      const b = document.createElement('b');
+      b.textContent = w.display_name || w.login;
+      const span = document.createElement('span');
+      span.textContent = w.pretty;
+      li.append(b, span);
+      return li;
+    }));
+    if (!top?.length) list.innerHTML = '<li class="cmd-empty">Noch keine Watchtime erfasst.</li>';
+  } catch (err) {
+    status.textContent = cmdError(err);
+    list.replaceChildren();
   }
 }
 

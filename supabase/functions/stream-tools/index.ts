@@ -3,16 +3,28 @@
 //                                          verschickt werden nur Texte, die die Datenbank selbst geschrieben hat)
 //   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
 //   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
+//   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
 import { corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
+import { watchTick } from "../_shared/watchtime.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
+  const { action, key } = await req.json().catch(() => ({}));
+  // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt nur alle
+  // 4,5 Minuten einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
+  if (action === "watch_tick") {
+    try {
+      return json(await watchTick());
+    } catch (e) {
+      console.error("watch_tick:", e);
+      return json({ error: "Watchtime gerade nicht möglich" }, 500);
+    }
+  }
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Bitte anmelden." }, 401);
-  const { action, key } = await req.json().catch(() => ({}));
   try {
     if (action === "flush") return json({ sent: await flushOutbox() });
 
