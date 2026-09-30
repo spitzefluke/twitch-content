@@ -3,7 +3,12 @@
 // enabled = gerade im Lootpool. Jede Seltenheit einer Waffe ist ein eigener Eintrag mit eigener ID.
 // Das Format ist nicht offiziell festgeschrieben – deshalb wird hier vorsichtig gelesen.
 
-export const LOOT_URL = "https://fortniteapi.io/v1/loot/list?lang=de";
+// Die API läuft inzwischen unter api.fortniteapi.io – die alte Adresse ohne „api.“ hat keinen
+// DNS-Eintrag mehr. Sie bleibt als Ersatz in der Liste, falls sie zurückkommt.
+export const LOOT_URLS = [
+  "https://api.fortniteapi.io/v1/loot/list?lang=de",
+  "https://fortniteapi.io/v1/loot/list?lang=de",
+];
 
 export type LootItem = { loot_id: string; name: string; path: string; rarity: string | null };
 

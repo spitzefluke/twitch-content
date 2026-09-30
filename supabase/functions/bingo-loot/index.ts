@@ -5,7 +5,7 @@
 // Braucht das Secret FORTNITEAPI_IO_KEY (kostenloser Schlüssel von fortniteapi.io) und
 // die Migration …_bingo_lootpool.sql.
 import { db, corsHeaders, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
-import { LOOT_URL, parseLootpool } from "../_shared/lootpool.ts";
+import { LOOT_URLS, parseLootpool } from "../_shared/lootpool.ts";
 
 const AUTO_EVERY = 6 * 60 * 60 * 1000;
 const MIN_GAP = 60 * 1000;
@@ -22,8 +22,22 @@ async function setState(patch: Partial<State>) {
   return data as State | null;
 }
 
+// Erste Adresse, die antwortet; Netzwerkfehler (z. B. DNS) → nächste Adresse
+async function requestLootpool(key: string) {
+  let lastError: unknown = null;
+  for (const url of LOOT_URLS) {
+    try {
+      return await fetch(url, { headers: { Authorization: key, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+    } catch (e) {
+      lastError = e;
+      console.warn(`bingo-loot: ${new URL(url).host} nicht erreichbar:`, (e as Error)?.message ?? e);
+    }
+  }
+  throw new Error(`fortniteapi.io ist gerade nicht erreichbar (${String((lastError as Error)?.message ?? lastError).slice(0, 120)}).`);
+}
+
 async function fetchLootpool(key: string) {
-  const res = await fetch(LOOT_URL, { headers: { Authorization: key, Accept: "application/json" } });
+  const res = await requestLootpool(key);
   if (res.status === 401 || res.status === 403) throw new Error("Schlüssel FORTNITEAPI_IO_KEY wird nicht angenommen.");
   if (!res.ok) throw new Error(`fortniteapi.io antwortet mit ${res.status}.`);
   const items = parseLootpool(await res.json());
