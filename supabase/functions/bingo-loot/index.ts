@@ -22,6 +22,11 @@ async function setState(patch: Partial<State>) {
   return data as State | null;
 }
 
+function serverReason(body: any): string {
+  const pick = (v: unknown) => (typeof v === "string" ? v : v && typeof v === "object" ? (v as any).message ?? (v as any).code : "");
+  return String(pick(body?.error) || body?.title || body?.detail || body?.message || "").replace(/\s+/g, " ").trim().slice(0, 110);
+}
+
 async function fetchLootpool(key: string) {
   let res: Response;
   try {
@@ -29,11 +34,15 @@ async function fetchLootpool(key: string) {
   } catch (e) {
     throw new Error(`${LOOT_SOURCE} ist gerade nicht erreichbar (${String((e as Error)?.message ?? e).slice(0, 120)}).`);
   }
-  if (res.status === 401 || res.status === 403) throw new Error("Schlüssel API_FORTNITE_KEY wird nicht angenommen.");
-  if (res.status === 429) throw new Error(`${LOOT_SOURCE}: zu viele Anfragen – später noch einmal.`);
-  if (!res.ok) throw new Error(`${LOOT_SOURCE} antwortet mit ${res.status}.`);
   const body = await res.json().catch(() => null);
-  if (body?.success === false) throw new Error(`${LOOT_SOURCE}: ${String(body.error ?? body.message ?? "Fehler").slice(0, 120)}`);
+  // Was der Server als Grund mitschickt (wie im SDK des Anbieters: error / title / detail / message)
+  const reason = serverReason(body);
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Schlüssel API_FORTNITE_KEY wird nicht angenommen (${res.status}${reason ? `: ${reason}` : ""}).`);
+  }
+  if (res.status === 429) throw new Error(`${LOOT_SOURCE}: zu viele Anfragen – später noch einmal.${reason ? ` (${reason})` : ""}`);
+  if (!res.ok) throw new Error(`${LOOT_SOURCE} antwortet mit ${res.status}${reason ? `: ${reason}` : ""}.`);
+  if (body?.success === false) throw new Error(`${LOOT_SOURCE}: ${reason || "Fehler"}`);
   const items = parseLootpool(body);
   if (items.length < MIN_ITEMS) throw new Error(`${LOOT_SOURCE} liefert gerade keinen brauchbaren Lootpool (${items.length} Items).`);
   return items;
@@ -69,7 +78,10 @@ Deno.serve(async (req) => {
     return json({ error: "In der Datenbank fehlt der Lootpool fürs Bingo: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen." }, 500);
   }
 
-  const key = Deno.env.get("API_FORTNITE_KEY")?.trim();
+  // Beim Einfügen rutschen leicht Anführungszeichen, "Bearer " oder "x-api-key:" mit hinein
+  const unquote = (v: string) => v.trim().replace(/^["']+|["']+$/g, "").trim();
+  const key = unquote(unquote(Deno.env.get("API_FORTNITE_KEY") ?? "")
+    .replace(/^x-api-key\s*:\s*/i, "").replace(/^bearer\s+/i, ""));
   if (!key) {
     const next = state.error === "missing_key" ? state : await setState({ error: "missing_key" });
     return json({ synced: false, missing_key: true, state: next ?? state });
