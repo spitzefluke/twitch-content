@@ -65,3 +65,41 @@ export function parseLootpool(data: any): LootItem[] {
   }
   return out;
 }
+
+// ------------------------------------------------------------
+// Eingebaute Item-Liste: klassische Fortnite-Waffen und Heilung mit eigenen Icons
+// (assets/bingo/*.svg). Springt ein, wenn es keinen Schlüssel gibt oder der Lootpool
+// nicht zu holen ist – das Bingo hat so immer genug Bilder.
+// Der Pfad zeigt auf BUILTIN_URL; Webseite und Overlay machen daraus assets/bingo/…
+// (die Spalte path verlangt für Lootpool-Items eine https-Adresse).
+// ------------------------------------------------------------
+export const BUILTIN_URL = "https://builtin.streamhelp.invalid/bingo/";
+export const BUILTIN_PREFIX = "builtin:";
+
+const CATALOG: [icon: string, name: string, rarities: string[]][] = [
+  ["ar", "Sturmgewehr", ["uncommon", "rare", "epic", "legendary"]],
+  ["shotgun", "Pump-Schrotflinte", ["uncommon", "rare", "epic", "legendary"]],
+  ["tactical", "Taktische Schrotflinte", ["common", "uncommon", "rare"]],
+  ["smg", "Maschinenpistole", ["common", "uncommon", "rare", "epic"]],
+  ["sniper", "Scharfschützengewehr", ["rare", "epic", "legendary"]],
+  ["hunting", "Jagdgewehr", ["uncommon", "rare"]],
+  ["pistol", "Pistole", ["common", "uncommon", "rare"]],
+  ["revolver", "Revolver", ["rare", "epic"]],
+  ["rocket", "Raketenwerfer", ["epic", "legendary"]],
+  ["grenadelauncher", "Granatwerfer", ["rare", "epic"]],
+  ["minigun", "Minigun", ["epic", "legendary"]],
+  ["grenade", "Granate", ["common"]],
+  ["bandage", "Verband", ["common"]],
+  ["medkit", "Medikit", ["uncommon"]],
+  ["smallshield", "Kleiner Schildtrank", ["uncommon"]],
+  ["shield", "Schildtrank", ["rare"]],
+  ["campfire", "Lagerfeuer", ["uncommon"]],
+];
+
+export const LOOT_CATALOG: LootItem[] = CATALOG.flatMap(([icon, name, rarities]) =>
+  rarities.map((rarity) => ({
+    loot_id: `${BUILTIN_PREFIX}${icon}:${rarity}`,
+    name,
+    path: `${BUILTIN_URL}${icon}.svg#${icon}-${rarity}`,
+    rarity,
+  })));

@@ -12,6 +12,15 @@ export const RARITIES = [
 ];
 export const rarityName = (id) => RARITIES.find((r) => r.id === id)?.name ?? '';
 
+// Eingebaute Item-Liste (Edge Function bingo-loot, LOOT_CATALOG): Der Pfad zeigt auf eine
+// Platzhalter-Adresse, die Icons liegen hier in assets/bingo/.
+const BUILTIN_URL = 'https://builtin.streamhelp.invalid/bingo/';
+export function lootImageUrl(path) {
+  if (!path.startsWith(BUILTIN_URL)) return path;
+  const file = path.slice(BUILTIN_URL.length).split('#')[0];
+  return /^[a-z0-9-]+\.svg$/.test(file) ? new URL(`../assets/bingo/${file}`, import.meta.url).href : '';
+}
+
 // Seltenheit aus dem Dateinamen: "scar_legendary.png", "Pump Episch.png" …
 // "uncommon" vor "common" prüfen, sonst wird Grün zu Grau.
 export function rarityFromFile(fileName) {

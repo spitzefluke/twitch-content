@@ -2,7 +2,7 @@
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
-import { betLines, cardCell, fullBetLines } from './bingo.js';
+import { betLines, cardCell, fullBetLines, lootImageUrl } from './bingo.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
 import { DEFAULT_STAGE } from './questions.js';
 import { DEFAULT_TICKER } from './ticker.js';
@@ -287,7 +287,7 @@ async function createSupabaseApi() {
     // ---------- Fortnite-Bingo ----------
     // Lootpool-Bilder (bingo-loot) sind schon eine volle Adresse, eigene liegen im Storage
     bingoUrl(path) {
-      if (path.startsWith('https://')) return path;
+      if (path.startsWith('https://')) return lootImageUrl(path);
       return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`;
     },
     // items: ohne ausgeblendete Lootpool-Items; loot: Stand des Lootpool-Abgleichs (null ohne Migration)
@@ -1086,13 +1086,13 @@ function createLocalApi() {
     // ---------- Fortnite-Bingo (Demo) ----------
     // Bilder liegen als data:-URL in zd_bingo_items, die Karte in zd_bingo_card.
     bingoUrl(path) {
-      if (path.startsWith('https://')) return path;
+      if (path.startsWith('https://')) return lootImageUrl(path);
       return store.get('bingo_items', []).find((i) => i.path === path)?.url ?? '';
     },
     async getBingo() {
       const all = store.get('bingo_items', []);
       return {
-        items: all.filter((i) => !i.hidden),
+        items: all.filter((i) => !i.hidden).map((i) => (i.path?.startsWith('https://') ? { ...i, url: lootImageUrl(i.path) } : i)),
         hidden: all.filter((i) => i.hidden).length,
         card: store.get('bingo_card', null),
         loot: store.get('bingo_loot_state', { synced_at: null, items: 0, error: 'demo' }),
