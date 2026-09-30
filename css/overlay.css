@@ -703,3 +703,71 @@ p { margin: 0; }
 .ov-alert[data-look="gold"].is-alert { box-shadow: 0 0 0 .3em rgba(232, 196, 106, .15), 0 0 2.6em rgba(232, 196, 106, .35); animation: ov-glass-in .9s var(--ease-out) both; }
 .ov-alert[data-look="gold"]::after { background: linear-gradient(105deg, transparent 35%, rgba(255, 236, 170, .35) 50%, transparent 65%); }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* ==========================================================
+   Alert-Designer (alert_config): Bild/Video, Layout, Einblenden, Textanimation
+   ========================================================== */
+.ov-al-media { display: none; }
+.ov-alert.has-media .ov-al-media { display: grid; place-items: center; width: calc(7em * var(--ams, 1)); height: calc(7em * var(--ams, 1)); margin-bottom: .2em; }
+.ov-al-media img, .ov-al-media video { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 .3em .6em rgba(0, 0, 0, .45)); }
+.ov-alert.no-icon .ov-al-icon { display: none; }
+.ov-alert.is-alert.has-media .ov-al-media { animation: ov-al-bounce .9s var(--ease-spring) .05s both; }
+.ov-al-var { font-style: normal; color: var(--c); }
+.ov-al-name .ov-al-var { color: inherit; }
+.ov-alert[data-look="minimal"] .ov-al-title .ov-al-var, .ov-alert[data-look="bubble"] .ov-al-var { color: #fff; }
+
+/* Layout: Bild links */
+.ov-alert[data-layout="side"] { width: 32em; }
+.ov-alert[data-layout="side"] .ov-al-show { grid-template-columns: auto minmax(0, 1fr); justify-items: start; text-align: left; column-gap: 1em; align-items: center; }
+.ov-alert[data-layout="side"] .ov-al-show > :not(.ov-al-media):not(.ov-al-icon) { grid-column: 2; }
+.ov-alert[data-layout="side"] .ov-al-media, .ov-alert[data-layout="side"] .ov-al-icon { grid-column: 1; grid-row: 1 / span 3; margin: 0; }
+.ov-alert[data-layout="side"].has-media .ov-al-media { width: calc(6em * var(--ams, 1)); height: calc(6em * var(--ams, 1)); }
+/* Layout: Bild als Hintergrund */
+.ov-alert[data-layout="bg"] { width: 30em; }
+.ov-alert[data-layout="bg"] .ov-al-show { position: relative; min-height: calc(12em * var(--ams, 1)); align-content: center; }
+.ov-alert[data-layout="bg"].has-media .ov-al-media { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: .55; z-index: 0; }
+.ov-alert[data-layout="bg"] .ov-al-media img, .ov-alert[data-layout="bg"] .ov-al-media video { object-fit: cover; filter: none; }
+.ov-alert[data-layout="bg"] .ov-al-show > :not(.ov-al-media) { position: relative; z-index: 1; text-shadow: 0 .08em .4em rgba(0, 0, 0, .9); }
+
+/* Einblenden – überschreibt das Einblenden des Designs */
+.ov-alert.ov-alert.is-alert[data-enter="pop"] { animation: ov-en-pop .7s cubic-bezier(.3, 1.6, .5, 1) both; }
+.ov-alert.ov-alert.is-alert[data-enter="slide"] { animation: ov-en-slide .7s cubic-bezier(.2, .9, .25, 1.1) both; }
+.ov-alert.ov-alert.is-alert[data-enter="drop"] { animation: ov-en-drop .9s cubic-bezier(.3, 1.4, .5, 1) both; }
+.ov-alert.ov-alert.is-alert[data-enter="zoom"] { animation: ov-en-zoom .7s var(--ease-out) both; }
+.ov-alert.ov-alert.is-alert[data-enter="fade"] { animation: ov-en-fade .9s ease-out both; }
+.ov-alert.ov-alert.is-alert[data-enter="flip"] { animation: ov-en-flip .9s var(--ease-out) both; }
+.ov-alert.ov-alert.is-alert[data-enter="spin"] { animation: ov-en-spin .9s var(--ease-spring) both; }
+@keyframes ov-en-pop { 0% { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: none; } }
+@keyframes ov-en-slide { from { transform: translateX(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ov-en-drop { 0% { transform: translateY(-120vh); } 70% { transform: translateY(.6em); } 100% { transform: none; } }
+@keyframes ov-en-zoom { from { transform: scale(3); opacity: 0; filter: blur(.3em); } to { transform: none; opacity: 1; filter: none; } }
+@keyframes ov-en-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ov-en-flip { from { transform: perspective(60em) rotateY(90deg); opacity: 0; } to { transform: perspective(60em); opacity: 1; } }
+@keyframes ov-en-spin { from { transform: rotate(-540deg) scale(0); } to { transform: none; } }
+
+/* Textanimation der großen Zeile */
+.ov-ch { display: inline-block; white-space: pre; }
+.ov-alert.is-alert[data-anim="wave"] .ov-ch { animation: ov-tx-wave 1.4s ease-in-out calc(.4s + var(--i) * .06s) infinite; }
+.ov-alert.is-alert[data-anim="type"] .ov-ch { animation: ov-tx-type .01s steps(1) calc(.3s + var(--i) * .07s) both; }
+.ov-alert.ov-alert.is-alert[data-anim="bounce"] .ov-al-name { animation: ov-tx-bounce 1s ease-in-out .5s infinite; }
+.ov-alert.ov-alert.is-alert[data-anim="shake"] .ov-al-name { animation: ov-tx-shake .5s ease-in-out .5s infinite; }
+.ov-alert.ov-alert.is-alert[data-anim="glow"] .ov-al-name { animation: ov-tx-glow 1.6s ease-in-out .3s infinite; }
+.ov-alert.ov-alert.is-alert[data-anim="rubber"] .ov-al-name { animation: ov-tx-rubber 1.2s ease-in-out .4s infinite; }
+.ov-alert.ov-alert[data-anim="rainbow"] .ov-al-name {
+  background: linear-gradient(90deg, #ff2a6d, #ffd36b, #3ddc84, #35c7ff, #9146ff, #ff2a6d) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; -webkit-text-stroke: 0;
+}
+.ov-alert.is-alert[data-anim="rainbow"] .ov-al-name { animation: ov-tx-rainbow 2s linear infinite; }
+@keyframes ov-tx-wave { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-.25em); } }
+@keyframes ov-tx-type { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ov-tx-bounce { 0%, 100% { transform: none; } 50% { transform: translateY(-.15em) scale(1.05); } }
+@keyframes ov-tx-shake { 0%, 100% { transform: none; } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes ov-tx-glow { 50% { text-shadow: 0 0 .2em #fff, 0 0 .6em var(--c), 0 0 1.4em var(--c); } }
+@keyframes ov-tx-rubber { 0%, 100% { transform: none; } 30% { transform: scale(1.2, .8); } 45% { transform: scale(.85, 1.15); } 60% { transform: scale(1.05, .95); } }
+@keyframes ov-tx-rainbow { to { background-position: -200% 0; } }
+.ov-alert.is-still .ov-ch { animation: none !important; opacity: 1; }
+
+/* Vorschau im Alert-Designer: nur der Alert, mittig */
+body.is-apreview { display: grid; place-items: center; }
+body.is-apreview .ov-ticker { display: none; }
+body.is-apreview .ov-alert { position: relative; margin: 0; }

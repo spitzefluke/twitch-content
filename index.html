@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-BiVVw3gf05oEMRyQEXvnXrghisMjsykVgelYGouENG8=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-M0F9NgxYxsCr5fOf4rSecA5iD0j7a7Hj+d60GipPENA=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=60f482a83f">
+  <link rel="stylesheet" href="css/style.css?v=bd2e8c3ae4">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=932e3a091c">
   <link rel="stylesheet" href="css/shell.css?v=78e49bacd0">
@@ -26,9 +26,10 @@
   <script type="importmap">{
     "imports": {
       "./js/admin.js": "./js/admin.js?v=ca05db518e",
-      "./js/alerts.js": "./js/alerts.js?v=b87426fab1",
-      "./js/api.js": "./js/api.js?v=6345fd673d",
-      "./js/app.js": "./js/app.js?v=b12e803479",
+      "./js/alert-designer.js": "./js/alert-designer.js?v=c282416e12",
+      "./js/alerts.js": "./js/alerts.js?v=2ad0e2e362",
+      "./js/api.js": "./js/api.js?v=41c25a8318",
+      "./js/app.js": "./js/app.js?v=4eadd07177",
       "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -43,7 +44,8 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=fedf6df0ca",
-      "./js/overlay.js": "./js/overlay.js?v=e960199a3b",
+      "./js/overlay-stage.js": "./js/overlay-stage.js?v=d2021cde65",
+      "./js/overlay.js": "./js/overlay.js?v=e8e677dbfd",
       "./js/pet.js": "./js/pet.js?v=3bca368d37",
       "./js/prank-fx.js": "./js/prank-fx.js?v=c278b34900",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
@@ -500,6 +502,73 @@
               <ul class="health-problems" id="health-problems"></ul>
               <ul class="health-subs" id="health-subs"></ul>
             </article>
+            <!-- Alert-Designer (js/alert-designer.js): wie bei StreamElements, Designs liegen in alert_config -->
+            <section class="dash-card dash-card--wide ad" id="ad" aria-labelledby="ad-title">
+              <header class="dash-card-head">
+                <span class="dash-ico" aria-hidden="true">🎨</span>
+                <div><h2 id="ad-title">Alert-Designer</h2><p class="dash-status" id="ad-status">Design, Bild oder Video, Texte und Animationen – für jede Alert-Art einzeln.</p></div>
+                <button class="btn btn--primary btn--sm" type="button" id="ad-save" disabled>Speichern</button>
+              </header>
+              <div class="ad-kinds" id="ad-kinds" role="tablist" aria-label="Alert-Art"></div>
+              <div class="ad-vars" id="ad-vars" aria-label="Varianten nach Menge"></div>
+              <div class="ad-grid">
+                <div class="ad-stage">
+                  <div class="ad-preview" id="ad-preview"><p class="ad-preview-note">Vorschau lädt …</p></div>
+                  <div class="ad-stage-bar">
+                    <button class="btn btn--primary btn--sm" type="button" id="ad-play">▶ Abspielen</button>
+                    <label class="ad-amount" id="ad-amount-wrap" hidden><span id="ad-amount-label">Menge</span><input type="number" id="ad-amount" min="1" max="1000000" value="100"></label>
+                    <span class="ad-hint">Vergrößerte Vorschau – im Stream ist der Alert so groß wie im OBS-Fenster eingestellt.</span>
+                  </div>
+                  <div class="ad-var-edit" id="ad-var-edit" hidden>
+                    <label>Gilt ab <input type="number" id="ad-var-min" min="1" max="10000000" value="100"> <span id="ad-var-unit">Bits</span></label>
+                    <button class="btn btn--ghost btn--sm" type="button" id="ad-var-del">🗑️ Variante löschen</button>
+                  </div>
+                </div>
+                <form class="ad-form" id="ad-form" autocomplete="off">
+                  <fieldset class="ad-sec">
+                    <legend>✨ Fertige Designs</legend>
+                    <div class="ad-presets" id="ad-presets" role="list"></div>
+                    <label class="toggle ad-all"><input type="checkbox" id="ad-preset-all"><span class="toggle-ui" aria-hidden="true"></span>Beim Klick für alle Alert-Arten übernehmen</label>
+                  </fieldset>
+                  <fieldset class="ad-sec">
+                    <legend>🖼️ Bild, GIF oder Video</legend>
+                    <div class="ad-media" id="ad-media" role="radiogroup" aria-label="Bild oder Video"></div>
+                    <div class="ad-upload" id="ad-upload">
+                      <input type="file" id="ad-file" accept="image/png,image/jpeg,image/gif,image/webp,video/webm,video/mp4" aria-label="Datei">
+                      <input type="text" id="ad-file-name" maxlength="40" placeholder="Name, z. B. Katzen-GIF" aria-label="Name der Datei">
+                      <button class="btn btn--outline btn--sm" type="button" id="ad-upload-btn">⬆️ Hochladen</button>
+                      <p class="form-hint">PNG, JPG, GIF, WebP oder ein kurzes Video (WebM/MP4), höchstens 10 MB.</p>
+                      <p class="form-msg" id="ad-upload-msg" role="alert"></p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" name="vsound" checked><span class="toggle-ui" aria-hidden="true"></span>Ton von Videos abspielen</label>
+                  </fieldset>
+                  <fieldset class="ad-sec">
+                    <legend>✏️ Texte</legend>
+                    <label class="ad-row"><span>Kleine Zeile</span><input type="text" name="label" maxlength="120"></label>
+                    <label class="ad-row"><span>Große Zeile</span><input type="text" name="title" maxlength="120"></label>
+                    <label class="ad-row"><span>Darunter</span><input type="text" name="text" maxlength="120"></label>
+                    <p class="ad-chips" id="ad-chips"><span>Einfügen:</span></p>
+                    <label class="ad-row"><span>Textanimation</span><select name="anim"></select></label>
+                    <div class="ad-row"><span>Farbe</span><span class="ad-color"><input type="color" name="color" value="#9146ff"><label class="toggle"><input type="checkbox" name="color_on"><span class="toggle-ui" aria-hidden="true"></span>eigene Farbe</label></span></div>
+                  </fieldset>
+                  <fieldset class="ad-sec">
+                    <legend>📐 Layout &amp; Dauer</legend>
+                    <label class="ad-row"><span>Grund-Design</span><select name="look"></select></label>
+                    <label class="ad-row"><span>Layout</span><select name="layout"></select></label>
+                    <label class="ad-row"><span>Einblenden</span><select name="enter"></select></label>
+                    <label class="ad-row"><span>Dauer</span><input type="range" name="duration" min="3" max="30" step="1" value="7"><output id="ad-duration-out">7 s</output></label>
+                    <label class="ad-row"><span>Bildgröße</span><input type="range" name="msize" min="50" max="200" step="10" value="100"><output id="ad-msize-out">100 %</output></label>
+                    <label class="toggle"><input type="checkbox" name="confetti" checked><span class="toggle-ui" aria-hidden="true"></span>Konfetti</label>
+                  </fieldset>
+                  <fieldset class="ad-sec">
+                    <legend>🔊 Sound</legend>
+                    <label class="ad-row"><span>Sound</span><select name="sound"></select></label>
+                    <button class="btn btn--ghost btn--sm" type="button" id="ad-sound-test">▶ Anhören</button>
+                    <p class="form-hint">„Wie im OBS-Fenster“ nimmt den Sound, der dort für diese Alert-Art eingestellt ist. Eigene Sounds lädst du im OBS-Fenster unter „Aussehen &amp; Ton“ hoch.</p>
+                  </fieldset>
+                </form>
+              </div>
+            </section>
             <section class="dash-card obs-alerts" id="obs-alerts">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🧪</span><div><h2>Probe-Alerts</h2><p class="dash-status" id="obs-alerts-status">Erscheinen sofort im Overlay – echte kommen von Twitch.</p></div></header>
               <div class="obs-alerts-btns">
@@ -511,7 +580,7 @@
                 <button class="btn btn--outline btn--sm" type="button" data-alert="redeem">🎟️ Kanalpunkte</button>
               </div>
               <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
-              <p class="form-hint">Aussehen, Töne und Position der Alerts stellst du im OBS-Fenster unter „Alerts“ ein.</p>
+              <p class="form-hint">Das Aussehen gestaltest du oben im Alert-Designer, Position und Größe im OBS-Fenster unter „Alerts“.</p>
             </section>
           </div>
         </section>
@@ -1548,7 +1617,7 @@
                     <div class="al-gallery" id="al-gallery" role="radiogroup" aria-label="Alert-Design"></div>
                     <input type="text" name="alook" value="classic" hidden aria-hidden="true" tabindex="-1">
                   </div>
-                  <p class="obs-row-hint">Sounds und Lautstärke unter „Aussehen &amp; Ton“, Probe-Alerts im Dashboard unter „🔔 Alerts“.</p>
+                  <p class="obs-row-hint">Das ist das Grund-Design. Bild oder Video, Texte, Animationen und Varianten nach Menge gestaltest du im Dashboard unter „🔔 Alerts“ im Alert-Designer. Sounds und Lautstärke unter „Aussehen &amp; Ton“.</p>
                 </div>
               </div>
               <div class="obs-layer" data-layer="prank" style="--lc: #ff5a4e">
@@ -1751,6 +1820,84 @@
                 </div>
               </div>
             </section>
+            <section class="obs-group" data-group>
+              <p class="obs-group-head"><span>Stream-Grafiken</span><span class="obs-group-count"></span></p>
+              <div class="obs-layer" data-layer="scene" style="--lc: #ff4fd8">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="scene_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Szenen-Bildschirm zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Szenen-Bildschirm<small>Start, Pause, Ende</small></button>
+                  <span class="obs-layer-size" data-size-for="scene"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Szene</span><select name="scene"><option value="start" selected>🚀 Gleich geht's los</option><option value="brb">☕ Bin gleich zurück</option><option value="end">💜 Danke fürs Zuschauen</option></select></label>
+                  <label class="obs-row"><span>Überschrift</span><input type="text" name="sctitle" maxlength="60" placeholder="Standard der Szene"></label>
+                  <label class="obs-row"><span>Darunter</span><input type="text" name="scsub" maxlength="90" placeholder="Standard der Szene"></label>
+                  <label class="obs-row"><span>Countdown bis</span><input type="time" name="sctime" value=""></label>
+                  <p class="obs-row-hint">Füllt das ganze Bild, Chat, Alerts und Karten bleiben davor. Tipp: Für jede Szene eine eigene Browserquelle in OBS – dann schaltest du einfach die OBS-Szene um:</p>
+                  <div class="obs-scene-links" id="obs-scene-links">
+                    <button class="obs-mini-btn" type="button" data-scene-copy="start">📋 Start-Quelle</button>
+                    <button class="obs-mini-btn" type="button" data-scene-copy="brb">📋 Pause-Quelle</button>
+                    <button class="obs-mini-btn" type="button" data-scene-copy="end">📋 Ende-Quelle</button>
+                  </div>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="camframe" style="--lc: #35c7ff">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="camframe"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Kamera-Rahmen zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Kamera-Rahmen<small>mit Namensschild</small></button>
+                  <span class="obs-layer-size" data-size-for="camframe"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Stil</span><select name="cfstyle"><option value="glow" selected>Leuchten</option><option value="clean">Schlicht</option><option value="corners">Nur Ecken</option><option value="neon">Neon</option></select></label>
+                  <label class="toggle obs-row-toggle"><input type="checkbox" name="cflabel" checked><span class="toggle-ui" aria-hidden="true"></span>Namensschild</label>
+                  <p class="obs-row-hint">Den <b class="obs-red">roten Rahmen</b> in der Vorschau auf die Kamera legen (derselbe Bereich wie bei „Würfe &amp; Sounds“). Die Farbe kommt aus Design und Akzentfarbe.</p>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="labels" style="--lc: #3ddc84">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="labels_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Info-Leiste zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Info-Leiste<small>Follower, Abo, Zuschauer</small></button>
+                  <span class="obs-layer-size" data-size-for="labels"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="lbsize" min="50" max="200" step="5" value="100"><output name="lbsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="labels"></span><button class="obs-mini-btn" type="button" data-reset-pos="labels">Zurück an den Standardplatz</button></span></div>
+                  <div class="obs-lbitems" id="obs-lbitems">
+                    <label class="toggle"><input type="checkbox" data-lbitem="follow"><span class="toggle-ui" aria-hidden="true"></span>💜 Letzter Follower</label>
+                    <label class="toggle"><input type="checkbox" data-lbitem="sub"><span class="toggle-ui" aria-hidden="true"></span>⭐ Letztes Abo</label>
+                    <label class="toggle"><input type="checkbox" data-lbitem="bits"><span class="toggle-ui" aria-hidden="true"></span>💎 Letzte Bits</label>
+                    <label class="toggle"><input type="checkbox" data-lbitem="viewers"><span class="toggle-ui" aria-hidden="true"></span>👀 Zuschauer</label>
+                    <label class="toggle"><input type="checkbox" data-lbitem="uptime"><span class="toggle-ui" aria-hidden="true"></span>⏱️ Live seit</label>
+                  </div>
+                  <input type="text" name="lbitems" value="follow,sub,viewers" hidden aria-hidden="true" tabindex="-1">
+                  <p class="obs-row-hint">Zuschauerzahl und Laufzeit aktualisieren sich alle paar Minuten, solange das Overlay in OBS läuft.</p>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="goal" style="--lc: #ffb81c">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="goal_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Ziel-Balken zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Ziel-Balken<small>Follower, Abos, Bits</small></button>
+                  <span class="obs-layer-size" data-size-for="goal"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="gsize" min="50" max="200" step="5" value="100"><output name="gsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="goal"></span><button class="obs-mini-btn" type="button" data-reset-pos="goal">Zurück an den Standardplatz</button></span></div>
+                  <label class="obs-row"><span>Zählt</span><select name="gtype"><option value="follow" selected>💜 neue Follower</option><option value="sub">⭐ Abos (auch verschenkte)</option><option value="bits">💎 Bits</option></select></label>
+                  <label class="obs-row"><span>Ziel</span><input type="number" name="gtarget" min="1" max="10000000" value="" placeholder="50"></label>
+                  <label class="obs-row"><span>Titel</span><input type="text" name="gtitle" maxlength="40" placeholder="z. B. Follower-Ziel"></label>
+                  <label class="obs-row"><span>Zählen ab</span><input type="date" name="gsince" value=""></label>
+                  <p class="obs-row-hint">Ohne Datum zählt es die letzten 30 Tage. Probe-Alerts zählen nicht.</p>
+                </div>
+              </div>
+            </section>
           </div>
 
           <!-- Positionen setzt die Vorschau (verschieben); Standard = Ecken -->
@@ -1771,6 +1918,8 @@
           <input type="text" name="chat" value="76,22" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="ticker" value="bc" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="cam" value="35,25,30,40" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="labels" value="tl" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="goal" value="tc" hidden aria-hidden="true" tabindex="-1">
 
           <!-- Inspektor: Einstellungen der gewählten Ebene (der Inhalt wird aus der Ebenenliste hierher geholt) -->
           <div class="obs-pane obs-inspector" data-pane="props" id="obs-inspector">
@@ -1788,6 +1937,11 @@
           </div>
           <div class="obs-pane obs-look" data-pane="look" hidden>
             <div class="obs-look-grid">
+              <div class="obs-themes-box obs-wide">
+                <p class="obs-mixer-head"><b>🎨 Design des ganzen Overlays</b><small>Gilt für alle Karten, Laufband und Kamera-Rahmen. Alerts behalten ihr eigenes Design.</small></p>
+                <div class="obs-themes" id="obs-themes" role="radiogroup" aria-label="Overlay-Design"></div>
+                <input type="text" name="otheme" value="standard" hidden aria-hidden="true" tabindex="-1">
+              </div>
               <label class="field obs-color"><span>Akzentfarbe</span>
                 <input type="color" name="accent" value="#ffb81c">
               </label>

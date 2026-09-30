@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.h{transform-origin:100px 110px;animation:b 1s ease-in-out infinite}.o{transform-origin:100px 110px;animation:o 1s ease-out infinite}
+.f{animation:f 2.4s ease-in infinite}.f2{animation-delay:.8s}.f3{animation-delay:1.6s}
+@keyframes b{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(.96)}45%{transform:scale(1.1)}}
+@keyframes o{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.6);opacity:0}}
+@keyframes f{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+</style><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4b3ff"/><stop offset=".5" stop-color="#9146ff"/><stop offset="1" stop-color="#5a1fc2"/></linearGradient></defs>
+<path class="o" d="M100 170C40 125 25 95 35 68c10-28 50-32 65-5 15-27 55-23 65 5 10 27-5 57-65 102z" fill="none" stroke="#b186ff" stroke-width="6"/>
+<g class="h"><path d="M100 170C40 125 25 95 35 68c10-28 50-32 65-5 15-27 55-23 65 5 10 27-5 57-65 102z" fill="url(#g)" stroke="#3a1180" stroke-width="5"/><ellipse cx="66" cy="76" rx="12" ry="7" fill="#fff" opacity=".6" transform="rotate(-30 66 76)"/></g>
+<path class="f" d="M40 150c-6-5-8-9-6-12 2-3 6-3 6 0 0-3 4-3 6 0 2 3 0 7-6 12z" fill="#ff7ac8"/><path class="f f2" d="M160 140c-6-5-8-9-6-12 2-3 6-3 6 0 0-3 4-3 6 0 2 3 0 7-6 12z" fill="#b186ff"/><path class="f f3" d="M100 60c-5-4-7-8-5-10 2-3 5-3 5 0 0-3 3-3 5 0 2 2 0 6-5 10z" fill="#fff"/>
+</svg>

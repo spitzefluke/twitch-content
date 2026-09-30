@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.c{transform-origin:100px 100px;animation:s 1.8s linear infinite}.y{animation:y 1.8s ease-in-out infinite}
+@keyframes s{0%{transform:scaleX(1)}25%{transform:scaleX(.08)}50%{transform:scaleX(-1)}75%{transform:scaleX(.08)}100%{transform:scaleX(1)}}
+@keyframes y{50%{transform:translateY(-12px)}}
+</style><defs><radialGradient id="g" cx=".35" cy=".35"><stop offset="0" stop-color="#fff6c8"/><stop offset=".6" stop-color="#ffc52e"/><stop offset="1" stop-color="#d98a00"/></radialGradient></defs>
+<ellipse cx="100" cy="182" rx="46" ry="8" fill="#000" opacity=".25"/>
+<g class="y"><g class="c"><circle cx="100" cy="95" r="70" fill="#b86b00"/><circle cx="100" cy="90" r="70" fill="url(#g)" stroke="#8a5200" stroke-width="5"/><circle cx="100" cy="90" r="52" fill="none" stroke="#b86b00" stroke-width="5" stroke-dasharray="6 7"/>
+<path d="M88 58h26l-8 22h16l-32 46 8-32h-14z" fill="#8a5200"/></g></g>
+</svg>

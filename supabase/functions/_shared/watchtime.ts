@@ -22,6 +22,10 @@ export async function watchTick() {
     await db.rpc("watch_offline");
     return { live: false };
   }
+  // Zuschauerzahl und Startzeit für die Labels im Overlay (…_overlay_designs.sql)
+  const live = stream.data[0];
+  await db.rpc("watch_stream_info", { p_viewers: live.viewer_count ?? 0, p_started_at: live.started_at ?? null })
+    .then(() => {}, () => {});
 
   // Gutgeschrieben wird die echte Zeit seit dem letzten Durchgang (1–10 Minuten),
   // beim ersten Durchgang eines Streams 5 Minuten.

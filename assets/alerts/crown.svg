@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.c{animation:c 2s ease-in-out infinite;transform-origin:100px 120px}.sh{animation:sh 2.4s ease-in-out infinite}
+.j{animation:j 1.5s ease-in-out infinite}.j2{animation-delay:.5s}.j3{animation-delay:1s}
+@keyframes c{50%{transform:translateY(-8px) rotate(-3deg)}}@keyframes sh{0%{transform:translateX(-160px)}60%,100%{transform:translateX(160px)}}
+@keyframes j{50%{opacity:.4}}
+</style><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#f2c94c"/><stop offset="1" stop-color="#a87b2a"/></linearGradient><clipPath id="k"><path d="M30 140l-8-80 40 35 38-55 38 55 40-35-8 80z"/></clipPath></defs>
+<g class="c"><path d="M30 140l-8-80 40 35 38-55 38 55 40-35-8 80z" fill="url(#g)" stroke="#6b4a0f" stroke-width="5" stroke-linejoin="round"/><rect x="28" y="140" width="144" height="22" rx="6" fill="url(#g)" stroke="#6b4a0f" stroke-width="5"/>
+<g clip-path="url(#k)"><rect class="sh" x="60" y="20" width="30" height="160" fill="#fff" opacity=".5" transform="skewX(-20)"/></g>
+<circle class="j" cx="100" cy="118" r="11" fill="#ff2a6d" stroke="#6b4a0f" stroke-width="4"/><circle class="j j2" cx="58" cy="124" r="8" fill="#35c7ff" stroke="#6b4a0f" stroke-width="4"/><circle class="j j3" cx="142" cy="124" r="8" fill="#3ddc84" stroke="#6b4a0f" stroke-width="4"/>
+<circle cx="22" cy="58" r="8" fill="#f2c94c" stroke="#6b4a0f" stroke-width="4"/><circle cx="100" cy="38" r="8" fill="#f2c94c" stroke="#6b4a0f" stroke-width="4"/><circle cx="178" cy="58" r="8" fill="#f2c94c" stroke="#6b4a0f" stroke-width="4"/></g>
+</svg>

@@ -17,6 +17,8 @@ import {
 } from './challenge.js';
 import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
 import { guardFrame } from './frame-guard.js';
+import { openAlertDesigner, setupAlertDesigner } from './alert-designer.js';
+import { OVERLAY_THEMES } from './overlay-stage.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -398,7 +400,7 @@ function setPage(name) {
 const PAGE_ENTER = {
   bot: () => renderBotPanel(),
   points: () => renderPoints(),
-  alerts: () => { renderHealth(); if (!state.health.data) runHealth(); $('#health-banner').hidden = true; },
+  alerts: () => { renderHealth(); if (!state.health.data) runHealth(); $('#health-banner').hidden = true; openAlertDesigner(); },
   overlay: () => { $('#dash-obs-url').value = obsLiveUrl(); },
   guard: () => renderGuard(),
   mods: () => loadMods(),
@@ -1121,6 +1123,7 @@ function setupDialogs() {
   $('#wheel-card').addEventListener('click', openWheel);
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();
+  setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
   $('#spin-btn').addEventListener('click', spinFromWeb);
   $('#simulate-btn').addEventListener('click', () => state.api.simulateRedemption?.());
   setupWheelEdit();
@@ -4593,11 +4596,11 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards'];
+const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
-  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', labels: 'lbsize', goal: 'gsize',
 };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
@@ -4652,7 +4655,11 @@ function setupObs() {
   // Verschieben in der Vorschau meldet das Overlay per postMessage.
   addEventListener('message', (e) => {
     if (e.origin !== location.origin) return;
-    if (e.data?.type === 'stellwerk-obs-select') { openObsLayer(e.data.key === 'cam' ? 'prank' : e.data.key, { scroll: true }); return; }
+    if (e.data?.type === 'stellwerk-obs-select') {
+      const cam = form.elements.prank.checked || !form.elements.camframe.checked ? 'prank' : 'camframe';
+      openObsLayer(e.data.key === 'cam' ? cam : e.data.key, { scroll: true });
+      return;
+    }
     if (e.data?.type !== 'stellwerk-obs') return;
     if (obsLocked()) { renderObsPreview(); return; } // nicht erlaubt: zurück auf den gespeicherten Stand
     const field = form.elements[e.data.key];
@@ -4668,6 +4675,7 @@ function setupObs() {
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
 const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null,
   forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', pause: 'pause',
+  scene: 'scene_on', camframe: 'camframe', labels: 'labels_on', goal: 'goal_on',
 };
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
 const POS_NAMES = { br: 'unten rechts', bl: 'unten links', bc: 'unten Mitte', tr: 'oben rechts', tl: 'oben links', tc: 'oben Mitte' };
@@ -4704,6 +4712,25 @@ function setupObsLayers() {
   });
   $('#obs-head-apply').addEventListener('click', applyObs);
   setupAlertLooks();
+  setupObsThemes();
+  // Info-Leiste: die Häkchen ergeben das Feld lbitems (läuft vor dem Formular-Ereignis)
+  $('#obs-lbitems').addEventListener('change', () => {
+    const items = [...document.querySelectorAll('#obs-lbitems [data-lbitem]')].filter((c) => c.checked).map((c) => c.dataset.lbitem);
+    $('#obs-options').elements.lbitems.value = items.join(',') || 'follow';
+  });
+  // Eigene OBS-Quelle je Szene: dieselben Live-Einstellungen, nur die Szene steht in der Adresse
+  $('#obs-scene-links').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-scene-copy]');
+    if (!btn) return;
+    const url = new URL(obsLive.ready ? obsLiveUrl() : obsUrl());
+    url.searchParams.set('scene', btn.dataset.sceneCopy);
+    try {
+      await navigator.clipboard.writeText(url.href);
+      toast(`Adresse kopiert – in OBS als eigene Browserquelle (1920 × 1080) in die Szene legen.${obsLive.ready ? '' : ' Ohne Live-Modus stehen die Einstellungen in der Adresse.'}`, 'ok', 6000);
+    } catch {
+      prompt('Adresse für die Browserquelle:', url.href);
+    }
+  });
   $('#obs-pet-say').addEventListener('submit', obsPetSay);
   setupObsPet();
 }
@@ -4740,7 +4767,38 @@ function setupAlertLooks() {
   });
 }
 
+// Overlay-Design: Kacheln mit Mini-Vorschau, Auswahl landet im Feld otheme
+function setupObsThemes() {
+  const box = $('#obs-themes');
+  const input = $('#obs-options').elements.otheme;
+  box.replaceChildren(...OVERLAY_THEMES.map((t) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'obs-theme';
+    btn.dataset.theme = t.id;
+    btn.setAttribute('role', 'radio');
+    btn.title = t.desc;
+    btn.innerHTML = '<span class="obs-theme-thumb" aria-hidden="true"><i></i><b></b><s></s></span><span class="obs-theme-name"></span>';
+    btn.querySelector('.obs-theme-thumb').dataset.theme = t.id;
+    btn.querySelector('.obs-theme-name').textContent = t.name;
+    return btn;
+  }));
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('.obs-theme');
+    if (!btn || obsLocked()) return;
+    input.value = btn.dataset.theme;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 function paintAlertLooks() {
+  const theme = $('#obs-options').elements.otheme.value || 'standard';
+  document.querySelectorAll('#obs-themes .obs-theme').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.theme === theme));
+    b.disabled = obsLocked();
+  });
+  const items = $('#obs-options').elements.lbitems.value.split(',');
+  document.querySelectorAll('#obs-lbitems [data-lbitem]').forEach((c) => { c.checked = items.includes(c.dataset.lbitem); c.disabled = obsLocked(); });
   const value = $('#obs-options').elements.alook.value || 'classic';
   document.querySelectorAll('#al-gallery .al-look').forEach((b) => {
     b.setAttribute('aria-checked', String(b.dataset.look === value));
@@ -5409,7 +5467,7 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   // Chat-Höhe ganz links = wächst mit den Nachrichten
   if (Number(f.elements.chh.value) < 20) f.elements['chh-out'].value = 'auto';
   obsFields().forEach((el) => { el.disabled = false; });
-  for (const key of OBS_PARTS) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
+  for (const key of OBS_PARTS) if (OBS_SIZE[key]) f.elements[OBS_SIZE[key]].disabled = !f.elements[`${key}_on`].checked;
   // Chat mit fester Höhe: die Höhe bestimmt, wie viele Nachrichten zu sehen sind
   if (Number(f.elements.chh.value) >= 20) f.elements.chmax.disabled = true;
   f.psize.disabled = !f.prank.checked;

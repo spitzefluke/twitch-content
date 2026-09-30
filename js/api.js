@@ -35,6 +35,7 @@ const ERRORS = [
   [/relation "public\.win_challenge"|could not find the (table|function) '?public\.(win_challenge|challenge_)/i, 'In der Datenbank fehlt die Win-Challenge: supabase/migrations/20261003000000_win_challenge.sql im SQL Editor ausführen.'],
   [/could not find the function '?public\.shop_lobby_by_(code|id)/i, 'In der Datenbank fehlt eine Sicherheits-Anpassung für den Kisten-Shop: supabase/migrations/20261008000000_shop_lobby_access.sql im SQL Editor ausführen.'],
   [/relation "public\.shop_|could not find the (table|function) '?public\.(shop_)/i, 'In der Datenbank fehlt der Kisten-Shop: supabase/migrations/20261001000000_loot_shop.sql im SQL Editor ausführen.'],
+  [/relation "public\.(alert_config|alert_media)"|could not find the table '?public\.(alert_config|alert_media)/i, 'In der Datenbank fehlt der Alert-Designer: supabase/migrations/20261018000000_overlay_designs.sql im SQL Editor ausführen.'],
   [/relation "public\.alert_sounds"|could not find the table '?public\.alert_sounds|stream_alerts_kind_check/i, 'In der Datenbank fehlen Bits und eigene Alert-Sounds: supabase/migrations/20261009000000_alert_bits_sounds.sql im SQL Editor ausführen.'],
   [/relation "public\.stream_alerts"|could not find the (table|function) '?public\.(stream_alerts|alert_test|alerts_status)/i, 'In der Datenbank fehlen die Alerts: supabase/migrations/20261005000000_stream_alerts.sql im SQL Editor ausführen.'],
   [/column .*bonus|'bonus' column/i, 'In der Datenbank fehlt das zweite Glücksrad: supabase/migrations/20261007000000_wheel_bonus.sql im SQL Editor ausführen.'],
@@ -573,6 +574,40 @@ async function createSupabaseApi() {
       unwrap(await sb.from('alert_sounds').delete().eq('id', sound.id));
       const { error } = await sb.storage.from('alert-sounds').remove([sound.path]);
       if (error) console.warn('Alert-Sound-Datei nicht gelöscht:', error);
+    },
+    // Alert-Designer (Migration …_overlay_designs.sql)
+    async getAlertConfig() {
+      return (unwrap(await sb.from('alert_config').select('config').eq('id', 1).maybeSingle()))?.config ?? {};
+    },
+    async saveAlertConfig(config) {
+      const rows = unwrap(await sb.from('alert_config').update({ config, updated_at: new Date().toISOString() }).eq('id', 1).select('id'));
+      if (!rows?.length) throw new Error('Nur der Streamer, Admins und freigegebene Mods dürfen die Alerts gestalten.');
+    },
+    alertMediaUrl(path) {
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${encodeURIComponent(path)}`;
+    },
+    async getAlertMedia() {
+      const rows = unwrap(await sb.from('alert_media').select('id, name, path, kind, created_at').order('created_at', { ascending: false }));
+      return rows.map((r) => ({ ...r, url: this.alertMediaUrl(r.path) }));
+    },
+    async uploadAlertMedia(file, name) {
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? '').toLowerCase().replace('jpeg', 'jpg');
+      const kind = /^video\//.test(file.type) ? 'video' : 'image';
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from('alert-media').upload(path, file, { contentType: file.type, cacheControl: '31536000', upsert: false });
+      if (up.error && /bucket not found/i.test(up.error.message)) throw new Error('relation "public.alert_media" does not exist');
+      unwrap(up);
+      const { data, error } = await sb.from('alert_media').insert({ name, path, kind }).select('id, name, path, kind, created_at').single();
+      if (error) {
+        await sb.storage.from('alert-media').remove([path]).catch(() => {});
+        throw error;
+      }
+      return { ...data, url: this.alertMediaUrl(path) };
+    },
+    async deleteAlertMedia(media) {
+      unwrap(await sb.from('alert_media').delete().eq('id', media.id));
+      const { error } = await sb.storage.from('alert-media').remove([media.path]);
+      if (error) console.warn('Alert-Datei nicht gelöscht:', error);
     },
     async twitchStatus() {
       return unwrap(await sb.rpc('twitch_status'));
@@ -1477,6 +1512,37 @@ function createLocalApi() {
     async deleteAlertSound(sound) {
       await requireAdmin();
       store.set('alert_sounds', store.get('alert_sounds', []).filter((x) => x.id !== sound.id));
+    },
+    // Alert-Designer im Demo-Modus: localStorage, das Overlay im selben Browser liest mit
+    async getAlertConfig() { return store.get('alert_config', {}); },
+    async saveAlertConfig(config) {
+      await requireAdmin();
+      store.set('alert_config', config);
+    },
+    alertMediaUrl(path) { return store.get('alert_media', []).find((x) => x.path === path)?.url ?? ''; },
+    async getAlertMedia() { return store.get('alert_media', []); },
+    async uploadAlertMedia(file, name) {
+      await requireAdmin();
+      if (file.size > 1024 * 1024) throw new Error('Im Demo-Modus höchstens 1 MB (live: 10 MB).');
+      const url = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden.'));
+        reader.readAsDataURL(file);
+      });
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? 'png').toLowerCase().replace('jpeg', 'jpg');
+      const id = `demo-${nextId++}`;
+      const media = { id, name, path: `${id}.${ext}`, kind: /^video\//.test(file.type) ? 'video' : 'image', created_at: new Date().toISOString(), url };
+      try {
+        store.set('alert_media', [media, ...store.get('alert_media', [])]);
+      } catch {
+        throw new Error('Im Browser ist kein Platz mehr – lösch ein Bild.');
+      }
+      return media;
+    },
+    async deleteAlertMedia(media) {
+      await requireAdmin();
+      store.set('alert_media', store.get('alert_media', []).filter((x) => x.id !== media.id));
     },
     // Demo: Kosten fürs Glücksrad lassen sich zum Ausprobieren einstellen
     async twitchStatus() { return { connected: false, reward_cost: store.get('wheel_cost', 10000) }; },
