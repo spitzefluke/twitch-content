@@ -2,7 +2,7 @@
 
 Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen, nur für diesen einen Kanal):
 
-- **Öffentliche Startseite** mit Hover-Menü oben (Funktionen, Für wen, Hilfe) und **Anmelden**-Knopf
+- **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (Designsystem Nocturne, `css/landing.css`, Icons von Phosphor lokal in `assets/fonts/`): „Dein Stream. Eine Zentrale.“, Overlay-Vorschau, Funktionen, Rollen, drei Schritte, Sicherheit. „Mit Twitch anmelden“ springt direkt zu Twitch, wenn der Anbieter in Supabase aktiv ist
 - **Animierte Anmeldeseite**: schwebende Lichter, Ringe und Funken, leuchtender Rand um die Karte – nach dem Anmelden fliegt die Karte weg und ein lila Kreis öffnet das Dashboard
 - **Dashboard mit Seitenleiste links**: eingeklappt nur Symbole, zuerst die Kacheln der **Content-Ideen**; ausgeklappt alles – Vorschläge & Archiv, Bot & Chat, Kanalpunkte, Alerts, Overlay & OBS, Raid-Schutz, Mods, Twitch-Verbindung
 - **Streameransicht / Modansicht** oben zum Umschalten, **OBS** oben rechts

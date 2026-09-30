@@ -267,6 +267,11 @@ function setupShell() {
     const go = e.target.closest('[data-go]');
     if (go && !state.user) {
       e.preventDefault();
+      // „Mit Twitch anmelden“: direkt zu Twitch, wenn der Anbieter in Supabase an ist
+      if (go.dataset.quick && state.providers?.[go.dataset.quick]) {
+        state.api.signInWithProvider(go.dataset.quick).catch((err) => { showAuth(); toast(germanError(err), 'error'); });
+        return;
+      }
       if (go.dataset.go === 'login') { history.pushState(null, '', '#login'); showAuth(); }
       else { history.pushState(null, '', location.pathname); showLanding(); }
     }
@@ -484,6 +489,7 @@ async function setupSocial() {
 
   let enabled = {};
   try { enabled = await state.api.authProviders(); } catch { /* Buttons bleiben aus */ }
+  state.providers = enabled;
   let visible = 0;
   box.querySelectorAll('[data-provider]').forEach((btn) => {
     const on = !!enabled[btn.dataset.provider];
