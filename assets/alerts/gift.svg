@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.l{animation:l 1.4s cubic-bezier(.3,1.6,.5,1) infinite;transform-origin:100px 80px}.b{animation:b 1.4s ease-in-out infinite;transform-origin:100px 180px}
+.p{animation:p 1.4s ease-out infinite;transform-origin:100px 90px;transform-box:view-box}
+@keyframes l{0%,40%,100%{transform:none}55%{transform:translateY(-30px) rotate(-10deg)}75%{transform:translateY(-6px) rotate(3deg)}}
+@keyframes b{0%,40%,100%{transform:none}50%{transform:scale(1.06,.94)}}
+@keyframes p{0%,45%{opacity:0;transform:scale(.3)}60%{opacity:1}100%{opacity:0;transform:scale(1.4)}}
+</style>
+<g class="p" fill="#ffd36b"><circle cx="60" cy="50" r="5"/><circle cx="140" cy="46" r="5"/><circle cx="100" cy="24" r="6" fill="#ff7ac8"/><circle cx="40" cy="80" r="4" fill="#35c7ff"/><circle cx="160" cy="84" r="4" fill="#3ddc84"/></g>
+<g class="b"><rect x="44" y="96" width="112" height="80" rx="8" fill="#9146ff" stroke="#2a0f5c" stroke-width="5"/><rect x="90" y="96" width="20" height="80" fill="#ffd36b" stroke="#2a0f5c" stroke-width="5"/></g>
+<g class="l"><path d="M100 80c-20-30-50-22-40-6 6 9 26 8 40 6zM100 80c20-30 50-22 40-6-6 9-26 8-40 6z" fill="#ffd36b" stroke="#2a0f5c" stroke-width="5" stroke-linejoin="round"/>
+<rect x="36" y="78" width="128" height="26" rx="7" fill="#b186ff" stroke="#2a0f5c" stroke-width="5"/><rect x="90" y="78" width="20" height="26" fill="#ffd36b" stroke="#2a0f5c" stroke-width="5"/></g>
+</svg>

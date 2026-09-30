@@ -4,15 +4,18 @@
 //   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
 //   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
 //   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
+//   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
+//                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import { corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
 import { watchTick } from "../_shared/watchtime.ts";
+import { startAnniversary } from "../_shared/anniversary.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
-  const { action, key } = await req.json().catch(() => ({}));
+  const { action, key, start } = await req.json().catch(() => ({}));
   // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt nur alle
   // 4,5 Minuten einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
   if (action === "watch_tick") {
@@ -47,6 +50,17 @@ Deno.serve(async (req) => {
       );
       await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
       return json(result);
+    }
+    if (action === "anniversary") {
+      if (!(await isAdminUser(user.id))) return json({ error: "Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods." }, 403);
+      const conn = await getConnection();
+      if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);
+      const { data: profile } = await db.from("profiles").select("username").eq("id", user.id).maybeSingle();
+      try {
+        return json(await startAnniversary(conn, profile?.username ?? "Mod", typeof start === "string" ? start : undefined));
+      } catch (e) {
+        return json({ error: String((e as Error)?.message ?? e).slice(0, 300) }, 409);
+      }
     }
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {

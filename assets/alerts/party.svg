@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.h{transform-origin:60px 150px;animation:h 1.2s ease-in-out infinite}
+.c{transform-box:fill-box;transform-origin:center;animation:c 1.2s ease-out infinite}.d1{animation-delay:.1s}.d2{animation-delay:.25s}.d3{animation-delay:.4s}
+@keyframes h{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg)}}
+@keyframes c{0%{transform:translate(-50px,50px) scale(.2);opacity:0}20%{opacity:1}100%{transform:translate(0,0) scale(1) rotate(200deg);opacity:0}}
+</style>
+<g class="h"><path d="M30 180l40-110 70 70z" fill="#ffb81c" stroke="#140a24" stroke-width="6" stroke-linejoin="round"/><path d="M50 126l30 30M62 96l46 46" stroke="#ff2a6d" stroke-width="10"/></g>
+<rect class="c" x="140" y="40" width="12" height="20" rx="3" fill="#35c7ff"/><rect class="c d1" x="110" y="24" width="10" height="18" rx="3" fill="#ff7ac8"/>
+<circle class="c d2" cx="170" cy="80" r="8" fill="#3ddc84"/><rect class="c d3" x="160" y="120" width="12" height="18" rx="3" fill="#ffd36b"/>
+<circle class="c d1" cx="120" cy="60" r="6" fill="#b186ff"/><path class="c d2" d="M140 20q10 10 0 20q-10 10 0 20" fill="none" stroke="#ff2a6d" stroke-width="5"/>
+</svg>

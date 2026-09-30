@@ -1,0 +1,34 @@
+/* Phosphor Icons (MIT, phosphoricons.com) – nur die Icons der Startseite, lokal statt vom CDN */
+@font-face { font-family: "Phosphor"; src: url("../assets/fonts/Phosphor.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: block; }
+.ph { font-family: "Phosphor" !important; speak: never; font-style: normal; font-weight: normal; font-variant: normal; text-transform: none; line-height: 1; letter-spacing: 0; font-feature-settings: "liga"; font-variant-ligatures: discretionary-ligatures; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.ph.ph-twitch-logo:before { content: "\e5ce"; }
+.ph.ph-monitor-play:before { content: "\e58c"; }
+.ph.ph-star:before { content: "\e46a"; }
+.ph.ph-film-slate:before { content: "\e8c2"; }
+.ph.ph-robot:before { content: "\e762"; }
+.ph.ph-ticket:before { content: "\e490"; }
+.ph.ph-bell-ringing:before { content: "\e5e8"; }
+.ph.ph-sliders-horizontal:before { content: "\e434"; }
+.ph.ph-shield:before { content: "\e40a"; }
+.ph.ph-spinner-gap:before { content: "\e66c"; }
+.ph.ph-grid-nine:before { content: "\ec8c"; }
+.ph.ph-smiley-angry:before { content: "\ec62"; }
+.ph.ph-question:before { content: "\e3e8"; }
+.ph.ph-paw-print:before { content: "\e648"; }
+.ph.ph-package:before { content: "\e390"; }
+.ph.ph-trophy:before { content: "\e67e"; }
+.ph.ph-prohibit:before { content: "\e3de"; }
+.ph.ph-timer:before { content: "\e492"; }
+.ph.ph-lightbulb:before { content: "\e2dc"; }
+.ph.ph-users-three:before { content: "\e68e"; }
+.ph.ph-speaker-high:before { content: "\e44a"; }
+.ph.ph-cards:before { content: "\e0f8"; }
+.ph.ph-coffee:before { content: "\e1c2"; }
+.ph.ph-video-camera:before { content: "\e4da"; }
+.ph.ph-shield-check:before { content: "\e40c"; }
+.ph.ph-heart:before { content: "\e2a8"; }
+.ph.ph-shield-warning:before { content: "\e412"; }
+.ph.ph-lock-key:before { content: "\e2fe"; }
+.ph.ph-heartbeat:before { content: "\e2ac"; }
+.ph.ph-arrow-right:before { content: "\e06c"; }
+.ph.ph-sign-in:before { content: "\e428"; }

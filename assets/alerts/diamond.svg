@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.d{transform-origin:100px 100px;animation:d 2.2s ease-in-out infinite}.s{animation:s 2.2s ease-in-out infinite}
+.k{transform-box:fill-box;transform-origin:center;animation:k 1.6s ease-in-out infinite}.k2{animation-delay:.8s}
+@keyframes d{50%{transform:translateY(-8px) scale(1.04)}}@keyframes s{0%,30%{transform:translateX(-140px)}70%,100%{transform:translateX(140px)}}
+@keyframes k{0%,100%{transform:scale(0) rotate(0)}50%{transform:scale(1) rotate(90deg)}}
+</style><defs><clipPath id="c"><path d="M60 40h80l40 40-80 100L20 80z"/></clipPath></defs>
+<g class="d"><path d="M60 40h80l40 40-80 100L20 80z" fill="#35c7ff" stroke="#062a4a" stroke-width="5" stroke-linejoin="round"/>
+<path d="M20 80h160M60 40l16 40 24 100 24-100 16-40M76 80l24-40 24 40" fill="none" stroke="#062a4a" stroke-width="4" stroke-linejoin="round"/>
+<path d="M60 40l16 40H20z" fill="#9be7ff"/><path d="M100 40l24 40H76z" fill="#d8f6ff"/><path d="M76 80h48l-24 100z" fill="#1ea5e0"/>
+<g clip-path="url(#c)"><rect class="s" x="80" y="0" width="26" height="200" fill="#fff" opacity=".7" transform="skewX(-25)"/></g></g>
+<path class="k" d="M168 30l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fff"/><path class="k k2" d="M28 140l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#fff"/>
+</svg>

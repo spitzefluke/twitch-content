@@ -22,7 +22,9 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
-//   alook=classic|neon|…      Design der Alerts (Bibliothek: ALERT_LOOKS in js/alerts.js)
+//   alook=classic|neon|…      Grund-Design der Alerts (Bibliothek: ALERT_LOOKS in js/alerts.js); alles Weitere
+//                              (Bild/Video, Texte, Animationen, Varianten) kommt aus dem Alert-Designer (alert_config)
+//   apreview=1                 nur die Vorschau im Alert-Designer: zeigt allein den Alert, gesteuert per postMessage
 //   vwheel=100, vprank=100 …   Lautstärke je Ebene in Prozent (0–200, mal vol), siehe MIX
 //   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
@@ -65,6 +67,9 @@
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
 //   forbid, subathon, pause, quiz, queue, tts, cards (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize)
 //                              die neueren Content-Ideen – siehe js/overlay-extras.js
+//   otheme, scene, camframe, labels, goal (+ sctitle, scsub, sctime, cfstyle, cflabel, lbitems, lbsize,
+//   gtype, gtarget, gtitle, gsince, gsize)
+//                              Overlay-Design, Szenen-Bildschirme, Kamera-Rahmen, Info-Leiste, Ziel-Balken – siehe js/overlay-stage.js
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
@@ -80,9 +85,15 @@ import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pip
 import { TICKER_STYLES, fillTicker, setTickerChannel } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
-import { ALERT_KINDS, alertLook, alertText, playAlertSound, sampleAlert } from './alerts.js';
+import {
+  ALERT_KINDS, alertLines, alertLook, alertVars, builtinMediaUrl, fillTemplate, normalizeAlertConfig, playAlertSound,
+  resolveDesign, sampleAlert, splitLetters,
+} from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 import { setupOverlayExtras } from './overlay-extras.js';
+import { setupOverlayStage } from './overlay-stage.js';
+import { startHack } from './overlay-hack.js';
+import { startAnniversary } from './overlay-anniversary.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -96,7 +107,8 @@ const LIVE = urlParams.get('live') === '1';
 let liveConfig = '';
 if (LIVE) liveConfig = await readOverlayConfig().catch((err) => { console.warn('Overlay: Live-Einstellungen nicht lesbar', err); return ''; });
 const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
-if (LIVE) for (const key of ['test', 'edit']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
+// scene: eigene OBS-Quelle je Szene (overlay.html?live=1&scene=start), sonst gilt die Szene aus den Einstellungen
+if (LIVE) for (const key of ['test', 'edit', 'scene']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
 
 // Der Streamer: Name und Login des verbundenen Twitch-Kanals (streamer_info, ohne Anmeldung).
 // Fehlt die Migration …_streamer_mods.sql oder läuft die Demo: CHANNEL aus js/config.js.
@@ -136,7 +148,7 @@ const number = (name, fallback, min, max) => {
   const n = raw === null || raw === '' ? NaN : Number(raw);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
-const text = (name, fallback) => (params.get(name) ?? '').trim().slice(0, 40) || fallback;
+const text = (name, fallback, max = 40) => (params.get(name) ?? '').trim().slice(0, max) || fallback;
 const legacyScale = number('scale', 1, 0.5, 2) * 100;
 const accent = (params.get('accent') ?? '').replace(/^#/, '');
 const opt = {
@@ -162,6 +174,7 @@ const opt = {
   bstyle: ['neon', 'paper'].includes(params.get('bstyle')) ? params.get('bstyle') : 'classic',
   prank: flag('prank', false),
   cam: camera(params.get('cam')),
+  camframe: flag('camframe', false),
   psize: number('psize', 100, 50, 200) / 100,
   quest: position(params.get('quest'), null),
   qsize: number('qsize', 100, 50, 200) / 100,
@@ -174,7 +187,7 @@ const opt = {
   ssize: number('ssize', 100, 50, 200) / 100,
   challenge: position(params.get('challenge'), null),
   csize: number('csize', 100, 50, 200) / 100,
-  alerts: position(params.get('alerts'), null),
+  alerts: params.get('apreview') === '1' ? 'tc' : position(params.get('alerts'), null),
   asize: number('asize', 100, 50, 200) / 100,
   recent: position(params.get('recent'), null),
   rsize: number('rsize', 100, 50, 200) / 100,
@@ -196,6 +209,7 @@ const opt = {
   tspeed: number('tspeed', 70, 20, 300),
   test: flag('test', false),
   edit: flag('edit', false),
+  apreview: params.get('apreview') === '1',
 };
 // Lautstärke je Ebene: Parameter → Schlüssel in opt.vols
 const MIX = {
@@ -294,6 +308,7 @@ async function start() {
     console.error('Overlay: keine Verbindung zu Supabase', err);
     return demoSource();
   });
+  if (opt.apreview) { document.body.classList.add('is-apreview'); setupAlerts(source); return; }
   const loaded = await source.variants().catch(() => null);
   if (loaded?.length) variants = loaded;
   tiles = await source.tiles().catch(() => []);
@@ -311,6 +326,7 @@ async function start() {
   setupTicker(source);
   if (opt.chat) setupChat();
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
+  setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
   if (LIVE) watchOverlayConfig(source);
   startWatchtime();
   if (!opt.edit) watchForUpdate();
@@ -430,6 +446,14 @@ async function connect() {
     },
     challenge: () => rows(sb.from('win_challenge').select('*').eq('id', 1).maybeSingle()),
     alerts: () => rows(sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(20)),
+    // Alert-Designer (…_overlay_designs.sql): fehlt die Tabelle, gelten die Standards
+    alertConfig: async () => (await rows(sb.from('alert_config').select('config').eq('id', 1).maybeSingle()))?.config ?? null,
+    onAlertConfig(cb) {
+      sb.channel('overlay-alert-config')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alert_config' }, (p) => cb(p.new.config))
+        .subscribe();
+    },
+    alertMediaUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${encodeURIComponent(path)}`,
     onAlert(cb) {
       sb.channel('overlay-alerts')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stream_alerts' }, (p) => cb(p.new))
@@ -516,6 +540,11 @@ function demoSource() {
     shopImages: async () => read('bingo_items', []).map((i) => ({ name: i.name, url: i.url })),
     challenge: async () => ({ ...DEFAULT_CHALLENGE, ...read('win_challenge', {}) }),
     alerts: async () => read('stream_alerts', []),
+    alertConfig: async () => read('alert_config', null),
+    onAlertConfig(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_alert_config') cb(read('alert_config', null)); });
+    },
+    alertMediaUrl: (path) => read('alert_media', []).find((x) => x.path === path)?.url ?? '',
     onAlert(cb) {
       const known = new Set(read('stream_alerts', []).map((a) => a.id));
       addEventListener('storage', (e) => {
@@ -814,7 +843,26 @@ function setupPranks(source) {
     playing = false;
   }
 
+  // Overlay-Hack (nur Mods): ganzes Bild, !firewall im Chat oder „Firewall“ im Dialog beendet ihn
+  let hack = null;
+  const runHack = (p) => {
+    if (p.item === 'firewall') { hack?.firewall(p.requested_by); return; }
+    if (hack || Date.now() - Date.parse(p.created_at) > 60_000) return;
+    say(p);
+    hack = startHack({ cam: opt.cam, sfx, channel: STREAMER.login, who: p.requested_by, onEnd: () => { hack = null; } });
+  };
+
+  // Kanal-Jubiläum (nur Mods): zweiminütiger Film über das ganze Bild mit den Daten des Kanals
+  let show = null;
+  const runShow = (p) => {
+    if (p.item === 'stop') { show?.stop(); return; }
+    if (show || !p.data || Date.now() - Date.parse(p.created_at) > 60_000) return;
+    show = startAnniversary({ data: p.data, accent: opt.accent, sfx, onEnd: () => { show = null; } });
+  };
+
   function handle(p) {
+    if (p.kind === 'hack') { runHack(p); return; }
+    if (p.kind === 'show') { runShow(p); return; }
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
     place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {
@@ -1284,15 +1332,20 @@ async function setupChallenge(source) {
 // ============================================================
 // Zwei Karten: Alerts (nur wenn einer kommt) und „Zuletzt“ mit dem letzten
 // Follower und dem letzten Abo (ohne Probe-Alerts). Beide sind einzeln an/aus.
-const ALERT_HOLD_MS = 7000;
+const VIDEO_MAX_MS = 30000;
+const LETTER_ANIMS = ['wave', 'type'];
 
 async function setupAlerts(source) {
   const card = $('ov-alert');
   const fx = $('ov-al-fx');
   const sfx = new Sfx({ volume: opt.vols.alerts });
+  const baseLook = alertLook(params.get('alook'));
   const queue = [];
   const seen = new Set();
   let playing = false;
+  // Designs aus dem Alert-Designer; ändern sie sich, gilt das ab dem nächsten Alert
+  let designs = normalizeAlertConfig(await source.alertConfig?.().catch(() => null));
+  source.onAlertConfig?.((cfg) => { designs = normalizeAlertConfig(cfg); if (card?.classList.contains('is-still')) showSample(); });
 
   const setLast = (a) => {
     if (a.test || !$('ov-recent')) return;
@@ -1304,40 +1357,79 @@ async function setupAlerts(source) {
     void row.offsetWidth;
     row.classList.add('is-new');
   };
+  const mediaUrl = (m) => (m.startsWith('b:') ? builtinMediaUrl(m.slice(2)) : m.startsWith('u:') ? source.alertMediaUrl?.(m.slice(2)) ?? '' : '');
+  // Karte füllen; liefert das Design und ggf. das Video (für die Dauer)
   const fill = (a) => {
-    const t = alertText(a);
-    card.dataset.kind = a.kind;
-    $('ov-al-icon').textContent = t.icon;
-    $('ov-al-title').textContent = t.title;
-    $('ov-al-name').textContent = a.user_name;
-    $('ov-al-sub-text').textContent = t.sub;
+    const d = resolveDesign(designs, a);
+    const lines = alertLines(a, d);
+    const vars = alertVars(a);
+    Object.assign(card.dataset, { kind: a.kind, look: d.look || baseLook, layout: d.layout, anim: d.anim, enter: d.enter });
+    if (d.color) card.style.setProperty('--c', d.color);
+    else card.style.removeProperty('--c');
+    card.style.setProperty('--ams', d.msize / 100);
+    const box = $('ov-al-media');
+    const src = d.media && d.media !== 'none' ? mediaUrl(d.media) : '';
+    let video = null;
+    if (src && /\.(webm|mp4)$/i.test(d.media)) {
+      video = document.createElement('video');
+      Object.assign(video, { src, playsInline: true, loop: false, preload: 'auto' });
+      video.muted = !d.vsound || !opt.vols.alerts;
+      video.volume = Math.min(1, opt.vols.alerts || 0);
+      box.replaceChildren(video);
+    } else if (src) {
+      const img = new Image();
+      img.alt = '';
+      img.src = src;
+      box.replaceChildren(img);
+    } else box.replaceChildren();
+    card.classList.toggle('has-media', !!src);
+    card.classList.toggle('no-icon', !!src || d.media === 'none');
+    $('ov-al-icon').textContent = lines.icon;
+    fillTemplate($('ov-al-title'), lines.label, vars);
+    fillTemplate($('ov-al-name'), lines.title, vars);
+    fillTemplate($('ov-al-sub-text'), lines.text, vars);
+    $('ov-al-sub-text').hidden = !$('ov-al-sub-text').textContent.trim();
+    const letters = LETTER_ANIMS.includes(d.anim) ? splitLetters($('ov-al-name')) : 0;
+    card.style.setProperty('--letters', letters);
+    return { d, video };
   };
+  // Video bis zum Ende (höchstens 30 Sekunden); ohne Ton-Erlaubnis stumm
+  const playVideo = (video) => new Promise((resolve) => {
+    const done = () => resolve();
+    video.addEventListener('ended', done, { once: true });
+    video.addEventListener('error', done, { once: true });
+    setTimeout(done, VIDEO_MAX_MS);
+    video.play().catch(() => { video.muted = true; video.play().catch(done); });
+  });
 
   async function play() {
     playing = true;
     while (queue.length) {
       const a = queue.shift();
       if (!card || Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
-      fill(a);
+      card.classList.remove('is-still');
+      const { d, video } = fill(a);
       card.classList.remove('is-alert');
       void card.offsetWidth;
       card.classList.add('is-alert');
-      burst(fx, a.kind);
-      const sound = playAlertSound(sfx, a.kind, opt.asound[a.kind],
-        (choice) => (choice.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(choice.slice(2)));
-      // Stehen bleiben, bis Zeit und Sound (bis 20 Sekunden) durch sind
-      await Promise.all([wait(ALERT_HOLD_MS), sound]);
+      if (d.confetti) burst(fx, a.kind);
+      const choice = d.sound || opt.asound[a.kind];
+      const sound = playAlertSound(sfx, a.kind, choice,
+        (c) => (c.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(c.slice(2)));
+      // Stehen bleiben, bis Zeit, Sound (bis 20 Sekunden) und Video durch sind
+      await Promise.all([wait(d.duration * 1000), sound, video ? playVideo(video) : null]);
       card.classList.remove('is-alert');
       setLast(a);
       await wait(700);
     }
     playing = false;
-    if (opt.edit) showSample();
+    if (opt.edit || opt.apreview) showSample();
   }
-  // Vorschau: ein stehender Alert zeigt Platz und Größe
+  // Vorschau: ein stehender Alert zeigt Platz, Größe und Design
+  let sample = sampleAlert('sub');
   function showSample() {
-    if (!card) return;
-    fill(sampleAlert('sub'));
+    if (!card || playing) return;
+    fill(sample);
     card.classList.add('is-alert', 'is-still');
   }
   const enqueue = (a) => {
@@ -1347,13 +1439,49 @@ async function setupAlerts(source) {
     if (!playing) play();
   };
 
+  // Alert-Designer: die Seite schickt das Design, das gerade bearbeitet wird. Hier gibt es
+  // keine Warteschlange – jede Änderung zeigt sofort den neuen Stand, „Abspielen“ startet neu.
+  if (opt.apreview) {
+    let timer = 0;
+    let running = false;
+    addEventListener('message', (e) => {
+      if (e.origin !== location.origin) return;
+      const m = e.data;
+      if (m?.type !== 'sh-alert-preview') return;
+      if (m.config) designs = normalizeAlertConfig(m.config);
+      if (m.kind) {
+        sample = { ...sampleAlert(m.kind), ...(m.amount ? { amount: m.amount | 0, months: m.amount | 0 } : {}) };
+      }
+      if (!m.play) {
+        if (running) fill(sample); // läuft gerade: Inhalt tauschen, Animation weiterlaufen lassen
+        else showSample();
+        return;
+      }
+      clearTimeout(timer);
+      running = true;
+      const { d, video } = fill(sample);
+      card.classList.remove('is-alert', 'is-still');
+      void card.offsetWidth;
+      card.classList.add('is-alert');
+      if (d.confetti) burst(fx, sample.kind);
+      video?.play().catch(() => {});
+      timer = setTimeout(() => {
+        card.classList.remove('is-alert');
+        timer = setTimeout(() => { running = false; showSample(); }, 700);
+      }, d.duration * 1000);
+    });
+    showSample();
+    parent.postMessage({ type: 'sh-alert-preview-ready' }, location.origin);
+    return;
+  }
+
   // Letzte echte Namen für die Karte „Zuletzt“
   const recent = await source.alerts().catch((err) => { console.warn('Overlay: Alerts nicht verfügbar', err); return []; });
   for (const a of [...(recent ?? [])].reverse()) { seen.add(a.id); setLast(a); }
   $('ov-recent')?.querySelectorAll('.is-new').forEach((r) => r.classList.remove('is-new'));
 
   if (opt.edit) showSample();
-  source.onAlert?.(opt.edit ? (a) => { card?.classList.remove('is-still'); enqueue(a); } : enqueue);
+  onAlerts(source, enqueue);
 
   if (opt.test && !opt.edit && card) {
     let n = 0;
@@ -1362,6 +1490,16 @@ async function setupAlerts(source) {
     setTimeout(fake, 2000);
     setInterval(fake, 15000);
   }
+}
+
+// Ein Realtime-Kanal für neue Alerts, den sich Alerts, Info-Leiste, Ziel-Balken und Szenen teilen
+let alertListeners = null;
+function onAlerts(source, cb) {
+  if (!alertListeners) {
+    alertListeners = [];
+    source.onAlert?.((a) => alertListeners.forEach((f) => f(a)));
+  }
+  alertListeners.push(cb);
 }
 
 // Konfetti und Sterne aus der Karte heraus
@@ -1480,7 +1618,7 @@ function testCard() {
 // postMessage an die Seite, die daraus die Adresse für OBS baut.
 function setupEdit() {
   document.body.classList.add('is-edit');
-  if (opt.prank) {
+  if (opt.prank || opt.camframe) {
     const cam = document.createElement('div');
     cam.id = 'ov-cam';
     cam.className = 'ov-cam-frame';
@@ -1499,7 +1637,7 @@ function setupEdit() {
     if (e.origin !== location.origin) return;
     if (e.data?.type === 'stellwerk-select') {
       document.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'));
-      const key = e.data.key === 'prank' ? 'cam' : e.data.key;
+      const key = ['prank', 'camframe'].includes(e.data.key) ? 'cam' : e.data.key;
       if (key) document.querySelector(`[data-drag="${key}"]`)?.classList.add('is-selected');
       return;
     }

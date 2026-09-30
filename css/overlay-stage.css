@@ -1,0 +1,155 @@
+/* ==========================================================
+   OBS-Overlay: Overlay-Designs (otheme), Szenen, Kamera-Rahmen,
+   Info-Leiste und Ziel-Balken – js/overlay-stage.js
+   Themes nutzen :where(), damit eigene Designs einzelner Karten
+   (Bingo-Stil, Alert-Designs, Laufband-Stil) weiter gewinnen.
+   ========================================================== */
+
+/* ---------- Overlay-Designs ---------- */
+html[data-theme="neon"] { --accent: #ff4fd8; }
+:where(html[data-theme="neon"]) .ov-card {
+  background: rgba(5, 3, 12, calc(.9 * var(--bga) + .05)); border: .12em solid color-mix(in srgb, var(--c, var(--accent)) 80%, transparent); border-radius: .9em;
+  box-shadow: 0 0 .5em color-mix(in srgb, var(--c, var(--accent)) 70%, transparent), 0 0 2em color-mix(in srgb, var(--c, var(--accent)) 30%, transparent), inset 0 0 1em color-mix(in srgb, var(--c, var(--accent)) 18%, transparent);
+}
+:where(html[data-theme="neon"]) .ov-head { background: transparent; color: #fff; text-shadow: 0 0 .4em var(--c, var(--accent)), 0 0 1em var(--c, var(--accent)); border-bottom-color: color-mix(in srgb, var(--c, var(--accent)) 35%, transparent); }
+
+:where(html[data-theme="glass"]) .ov-card {
+  background: rgba(255, 255, 255, calc(.1 * var(--bga) + .03)); border: 1px solid rgba(255, 255, 255, .28); border-radius: 1.8em;
+  backdrop-filter: blur(1.2em) saturate(1.4); -webkit-backdrop-filter: blur(1.2em) saturate(1.4);
+  box-shadow: 0 1.4em 3em -1em rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+:where(html[data-theme="glass"]) .ov-head { background: rgba(255, 255, 255, .06); color: #f1ecff; border-bottom-color: rgba(255, 255, 255, .14); }
+
+html[data-theme="gamer"] { --accent: #ff2e4d; --font-display: "Barlow Condensed", Impact, sans-serif; }
+:where(html[data-theme="gamer"]) .ov-card {
+  border-radius: 0; border: 0; background: linear-gradient(135deg, rgba(20, 8, 12, calc(.94 * var(--bga) + .04)), rgba(8, 8, 14, calc(.94 * var(--bga) + .04)));
+  box-shadow: inset .25em 0 0 var(--c, var(--accent));
+}
+/* Schräge Ecken – nicht bei Alerts (ihr Leuchten läge sonst außerhalb) und Laufband */
+:where(html[data-theme="gamer"] .ov-card:not(.ov-alert, .ov-ticker)) { clip-path: polygon(0 0, calc(100% - 1.2em) 0, 100% 1.2em, 100% 100%, 1.2em 100%, 0 calc(100% - 1.2em)); }
+:where(html[data-theme="gamer"]) .ov-head { background: var(--c, var(--accent)); color: #fff; font-weight: 800; letter-spacing: .22em; border: 0; }
+:where(html[data-theme="gamer"]) .ov-head .ov-dot { background: #fff; box-shadow: none; }
+
+html[data-theme="retro"] { --accent: #3ddc84; --font-display: var(--font-mono); }
+:where(html[data-theme="retro"]) .ov-card {
+  border-radius: 0; border: 0; background: #0b0b16 repeating-linear-gradient(0deg, rgba(0, 0, 0, .25) 0 2px, transparent 2px 4px);
+  box-shadow: 0 0 0 .2em #fff, 0 0 0 .4em var(--c, var(--accent)), .6em .6em 0 .4em rgba(0, 0, 0, .55);
+}
+:where(html[data-theme="retro"]) .ov-head { background: transparent; color: var(--c, var(--accent)); border-bottom: .2em dashed color-mix(in srgb, var(--c, var(--accent)) 60%, transparent); }
+
+html[data-theme="gold"] { --accent: #e8c46a; }
+:where(html[data-theme="gold"]) .ov-card { border-radius: .4em; background: linear-gradient(160deg, rgba(26, 20, 8, calc(.95 * var(--bga) + .03)), rgba(7, 6, 4, calc(.95 * var(--bga) + .03))); border: .1em solid #e8c46a; box-shadow: 0 0 0 .3em rgba(232, 196, 106, .12), 0 1.2em 3em -1em rgba(0, 0, 0, .7); }
+:where(html[data-theme="gold"]) .ov-head { background: transparent; color: #e8c46a; border-bottom-color: rgba(232, 196, 106, .35); font-family: Georgia, "Times New Roman", serif; letter-spacing: .24em; }
+
+html[data-theme="candy"] { --accent: #ff7ac8; }
+:where(html[data-theme="candy"]) .ov-card {
+  border-radius: 2em; border: .18em solid transparent;
+  background: linear-gradient(rgba(34, 18, 52, calc(.94 * var(--bga) + .04)), rgba(24, 14, 40, calc(.94 * var(--bga) + .04))) padding-box, linear-gradient(135deg, #ff9fd0, #b8a6ff, #8ee8ff) border-box;
+  box-shadow: 0 1em 2.4em -1em rgba(255, 122, 200, .45);
+}
+:where(html[data-theme="candy"]) .ov-head { background: rgba(255, 255, 255, .06); color: #ffd1ec; border-bottom-color: rgba(255, 159, 208, .25); }
+
+:where(html[data-theme="minimal"]) .ov-card { background: rgba(0, 0, 0, calc(.35 * var(--bga))); border: 0; border-left: .25em solid var(--c, var(--accent)); border-radius: .3em; box-shadow: none; }
+:where(html[data-theme="minimal"]) .ov-head { background: transparent; border: 0; color: #fff; text-shadow: 0 .1em .3em rgba(0, 0, 0, .9); }
+
+/* ---------- Szenen-Bildschirm (hinter allen Karten) ---------- */
+.ov-scene {
+  position: fixed; inset: 0; z-index: -1; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 15%, color-mix(in srgb, var(--accent) 28%, #140c26), #07060d 70%);
+  animation: sc-in .9s ease both;
+}
+@keyframes sc-in { from { opacity: 0; } }
+.is-edit .ov-scene { opacity: .45; }
+.sc-bg i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .4; animation: sc-drift 20s ease-in-out infinite alternate; }
+.sc-bg i:nth-child(1) { background: var(--accent); left: -18vmax; top: -22vmax; }
+.sc-bg i:nth-child(2) { background: #9146ff; right: -22vmax; bottom: -26vmax; animation-delay: -7s; }
+.sc-bg i:nth-child(3) { background: #35c7ff; left: 35vw; top: 45vh; width: 38vmax; height: 38vmax; animation-delay: -13s; opacity: .25; }
+.sc-grid {
+  position: absolute; inset: -50% -10% 0; transform: perspective(600px) rotateX(62deg); transform-origin: 50% 100%;
+  background: linear-gradient(transparent 0 96%, color-mix(in srgb, var(--accent) 45%, transparent) 96%) 0 0 / 100% 80px,
+    linear-gradient(90deg, transparent 0 97%, color-mix(in srgb, var(--accent) 35%, transparent) 97%) 0 0 / 80px 100%;
+  mask-image: linear-gradient(transparent 40%, #000 90%); -webkit-mask-image: linear-gradient(transparent 40%, #000 90%);
+  animation: sc-grid 3s linear infinite; opacity: .5;
+}
+@keyframes sc-drift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
+@keyframes sc-grid { to { background-position: 0 80px, 0 0; } }
+.sc-center { position: relative; display: grid; justify-items: center; gap: 20px; text-align: center; padding: 40px; max-width: 1500px; }
+.sc-tag { font-family: var(--font-mono); font-size: 26px; letter-spacing: .24em; text-transform: uppercase; color: var(--accent); animation: sc-pulse 2s ease-in-out infinite; }
+.sc-title { font-family: var(--font-display); font-size: 140px; font-weight: 800; text-transform: uppercase; line-height: .92; color: #fff; text-shadow: 0 .05em .3em rgba(0, 0, 0, .6), 0 0 .6em color-mix(in srgb, var(--accent) 40%, transparent); animation: sc-rise 1s var(--ease-out) .2s both; }
+.sc-sub { font-size: 38px; color: #d6dbe8; animation: sc-rise 1s var(--ease-out) .4s both; }
+.sc-clock { font-family: var(--font-mono); font-size: 110px; color: var(--accent); font-variant-numeric: tabular-nums; text-shadow: 0 0 .4em color-mix(in srgb, var(--accent) 50%, transparent); animation: sc-rise 1s var(--ease-out) .6s both; }
+.sc-clock.is-done { font-size: 80px; animation: sc-pulse 1.4s ease-in-out infinite; }
+.sc-thanks { display: grid; justify-items: center; gap: 12px; margin-top: 16px; animation: sc-rise 1s var(--ease-out) .7s both; }
+.sc-thanks > span { font-family: var(--font-mono); font-size: 22px; letter-spacing: .2em; text-transform: uppercase; color: #a7b0c2; }
+.sc-thanks p { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; max-width: 1300px; }
+.sc-thanks p span { padding: 10px 22px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); font: 700 32px var(--font-display); color: #fff; }
+.sc-foot { position: absolute; left: 60px; top: 50px; display: flex; align-items: center; gap: 16px; font-size: 28px; color: #c9cfdd; }
+.sc-foot b { font-family: var(--font-display); font-size: 40px; color: #fff; }
+.sc-url { font-family: var(--font-mono); font-size: 22px; color: #8f99ae; }
+.sc-live-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 1em var(--accent); animation: sc-pulse 1.6s ease-in-out infinite; }
+.ov-scene[data-scene="end"] .sc-live-dot { background: #8f99ae; box-shadow: none; animation: none; }
+@keyframes sc-pulse { 50% { opacity: .45; } }
+@keyframes sc-rise { from { opacity: 0; transform: translateY(.4em); } }
+
+/* ---------- Kamera-Rahmen ---------- */
+.ov-camframe { position: fixed; pointer-events: none; --cf: var(--accent); border-radius: 1.4vmin; }
+.ov-camframe[data-style="glow"] { border: .45vmin solid var(--cf); box-shadow: 0 0 2.4vmin color-mix(in srgb, var(--cf) 70%, transparent), inset 0 0 1.6vmin color-mix(in srgb, var(--cf) 35%, transparent); }
+.ov-camframe[data-style="clean"] { border: .35vmin solid rgba(255, 255, 255, .9); box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, .45); }
+.ov-camframe[data-style="neon"] { border: .35vmin solid #fff; box-shadow: 0 0 0 .35vmin var(--cf), 0 0 2vmin var(--cf), 0 0 4vmin var(--cf); animation: cf-flicker 4s steps(1) infinite; }
+.ov-camframe[data-style="corners"] { border-radius: 0; }
+.cf-c { display: none; position: absolute; width: 18%; height: 18%; max-width: 8vmin; max-height: 8vmin; border: .6vmin solid var(--cf); }
+.ov-camframe[data-style="corners"] .cf-c { display: block; filter: drop-shadow(0 0 .8vmin color-mix(in srgb, var(--cf) 80%, transparent)); }
+.cf-tl { left: -.3vmin; top: -.3vmin; border-right: 0; border-bottom: 0; }
+.cf-tr { right: -.3vmin; top: -.3vmin; border-left: 0; border-bottom: 0; }
+.cf-bl { left: -.3vmin; bottom: -.3vmin; border-right: 0; border-top: 0; }
+.cf-br { right: -.3vmin; bottom: -.3vmin; border-left: 0; border-top: 0; }
+@keyframes cf-flicker { 0%, 100% { opacity: 1; } 3% { opacity: .6; } 5% { opacity: 1; } 48% { opacity: 1; } 49% { opacity: .7; } 50% { opacity: 1; } }
+.cf-tag {
+  position: absolute; left: 1.4vmin; bottom: -1.8vmin; display: inline-flex; align-items: center; gap: .8vmin;
+  padding: .7vmin 1.6vmin; border-radius: 99px; background: var(--cf); color: #fff; font: 800 2.2vmin var(--font-display);
+  text-transform: uppercase; letter-spacing: .04em; box-shadow: 0 .6vmin 1.6vmin rgba(0, 0, 0, .45);
+}
+.cf-tag i { width: 1.1vmin; height: 1.1vmin; border-radius: 50%; background: #fff; animation: sc-pulse 1.4s ease-in-out infinite; }
+html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radius: 0; }
+
+/* ---------- Info-Leiste ---------- */
+.ov-labels { font-size: calc(16px * var(--lbs, 1)); display: flex; align-items: stretch; animation: ov-in .6s var(--ease-out) both; }
+.lb-item { display: flex; align-items: center; gap: .6em; padding: .7em 1.2em; min-width: 0; max-width: 18em; }
+.lb-item + .lb-item { border-left: 1px solid rgba(255, 255, 255, .1); }
+.lb-ico { font-size: 1.5em; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.lb-text { display: grid; min-width: 0; }
+.lb-text small { font-family: var(--font-mono); font-size: .62em; letter-spacing: .14em; text-transform: uppercase; color: #8f99ae; white-space: nowrap; }
+.lb-text b { font-family: var(--font-display); font-size: 1.35em; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-item.is-new b { animation: ov-pop .6s var(--ease-spring); color: #fff; text-shadow: 0 0 .6em color-mix(in srgb, var(--accent) 80%, transparent); }
+.lb-item[data-item="viewers"] b::before { content: ""; display: inline-block; width: .45em; height: .45em; margin-right: .35em; border-radius: 50%; background: #ff4d4d; vertical-align: .15em; animation: sc-pulse 1.6s ease-in-out infinite; }
+
+/* ---------- Ziel-Balken ---------- */
+.ov-goal { --c: var(--accent); font-size: calc(16px * var(--gs, 1)); width: 26em; padding: .9em 1.1em 1em; animation: ov-in .6s var(--ease-out) both; }
+.ov-goal[data-kind="follow"] { --c: #b186ff; }
+.ov-goal[data-kind="sub"] { --c: #ffb81c; }
+.ov-goal[data-kind="bits"] { --c: #35c7ff; }
+.gl-top { display: flex; align-items: baseline; gap: .5em; margin-bottom: .55em; }
+.gl-ico { font-size: 1.3em; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.gl-title { flex: 1; min-width: 0; font-family: var(--font-display); font-size: 1.4em; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gl-count { font-family: var(--font-mono); font-size: .85em; color: #c4cad6; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gl-bar { position: relative; height: 1.6em; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; box-shadow: inset 0 .1em .3em rgba(0, 0, 0, .5); }
+.gl-fill {
+  position: relative; height: 100%; width: 0; border-radius: inherit; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 55%, #fff), var(--c));
+  box-shadow: 0 0 1em color-mix(in srgb, var(--c) 60%, transparent);
+  transition: width 1.2s cubic-bezier(.2, .9, .3, 1.05);
+}
+.gl-fill::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .18) 0 .5em, transparent .5em 1em); background-size: 1.414em 1.414em; animation: gl-stripes 1s linear infinite; }
+.gl-shine { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .5) 50%, transparent 70%); transform: translateX(-100%); }
+.ov-goal.is-up .gl-shine { animation: ov-al-shine 1.2s ease-out .3s; }
+.ov-goal.is-up .gl-count { animation: ov-pop .6s var(--ease-spring); color: #fff; }
+.gl-pct { position: absolute; right: .7em; top: 50%; transform: translateY(-50%); font: 700 .8em var(--font-mono); color: #fff; text-shadow: 0 .1em .3em rgba(0, 0, 0, .8); }
+.ov-goal.is-done { box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 55%, transparent); }
+.ov-goal.is-done .gl-title::after { content: " ✓ Geschafft!"; color: var(--c); }
+.ov-goal.is-celebrate { animation: gl-party 1s var(--ease-spring) 2; }
+@keyframes gl-stripes { to { background-position: 1.414em 0; } }
+@keyframes gl-party { 30% { transform: scale(1.06) rotate(-1deg); } 60% { transform: scale(.98) rotate(1deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-scene, .ov-scene *, .ov-camframe, .gl-fill::before { animation: none !important; }
+}

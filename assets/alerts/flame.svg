@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.a{transform-origin:100px 185px;animation:f .5s ease-in-out infinite alternate}.b{transform-origin:100px 185px;animation:f .38s ease-in-out infinite alternate-reverse}
+.c{transform-origin:100px 185px;animation:f .3s ease-in-out infinite alternate}
+.e{animation:e 1.4s ease-out infinite}.e2{animation-delay:.5s}.e3{animation-delay:.9s}
+@keyframes f{from{transform:scale(1,1) skewX(-2deg)}to{transform:scale(.95,1.08) skewX(3deg)}}
+@keyframes e{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-80px);opacity:0}}
+</style>
+<path class="a" d="M100 10c20 40 60 60 60 110a60 60 0 01-120 0c0-30 18-44 24-66 10 16 16 26 20 30 4-30 0-50 16-74z" fill="#ff3d2e"/>
+<path class="b" d="M100 60c14 30 40 44 40 76a40 40 0 01-80 0c0-18 10-30 16-42 6 10 10 16 14 18 2-20 0-34 10-52z" fill="#ff9d00"/>
+<path class="c" d="M100 110c8 18 22 28 22 46a22 22 0 01-44 0c0-12 8-20 12-28 4 6 6 8 8 10 0-12 0-18 2-28z" fill="#ffe66b"/>
+<circle class="e" cx="70" cy="90" r="4" fill="#ffb81c"/><circle class="e e2" cx="134" cy="80" r="3" fill="#ffe66b"/><circle class="e e3" cx="110" cy="60" r="3" fill="#ff7a2e"/>
+</svg>

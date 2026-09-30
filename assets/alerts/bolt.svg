@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.z{animation:z 1.4s steps(1) infinite}.g{animation:g 1.4s ease-out infinite}
+@keyframes z{0%,100%{opacity:1}8%{opacity:.2}12%{opacity:1}16%{opacity:.4}20%{opacity:1}}
+@keyframes g{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+</style><defs><linearGradient id="y" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbe0"/><stop offset=".5" stop-color="#ffe14d"/><stop offset="1" stop-color="#ff9d00"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="8"/></filter></defs>
+<path class="g" style="transform-origin:100px 100px" d="M118 10L48 112h44l-20 78 78-110h-46z" fill="#35c7ff" filter="url(#b)"/>
+<path class="z" d="M118 10L48 112h44l-20 78 78-110h-46z" fill="url(#y)" stroke="#140a24" stroke-width="6" stroke-linejoin="round"/>
+</svg>

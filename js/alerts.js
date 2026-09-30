@@ -126,3 +126,167 @@ export function sampleAlert(kind, n = 0) {
     message: kind === 'resub' ? 'Weiter so!' : kind === 'redeem' ? '🎡 Glücksrad' : '',
   };
 }
+
+// ============================================================
+// Alert-Designer (Tabelle alert_config, Migration …_overlay_designs.sql)
+// ============================================================
+// Je Alert-Art ein Design: Grund-Design (Look), Bild/GIF/Video, Layout, drei Textzeilen mit
+// Platzhaltern, Textanimation, Einblenden, Dauer, Farbe und Sound. Varianten nach Menge
+// (z. B. ab 1000 Bits) haben ein eigenes, vollständiges Design.
+// { v: 1, kinds: { follow: {…}, … }, vars: [{ id, kind, min, design: {…} }] }
+
+// Eingebaute, animierte Bilder (assets/alerts/*.svg)
+export const ALERT_MEDIA = [
+  { id: 'star', name: 'Stern' }, { id: 'heart', name: 'Herz' }, { id: 'crown', name: 'Krone' },
+  { id: 'coin', name: 'Münze' }, { id: 'diamond', name: 'Diamant' }, { id: 'rocket', name: 'Rakete' },
+  { id: 'gift', name: 'Geschenk' }, { id: 'boom', name: 'WOW!' }, { id: 'bolt', name: 'Blitz' },
+  { id: 'flame', name: 'Feuer' }, { id: 'trophy', name: 'Pokal' }, { id: 'snow', name: 'Schneeflocke' },
+  { id: 'party', name: 'Party' },
+];
+export const builtinMediaUrl = (id) => new URL(`../assets/alerts/${id}.svg`, import.meta.url).href;
+
+export const TEXT_ANIMS = [
+  { id: 'none', name: 'Keine' }, { id: 'wave', name: 'Welle' }, { id: 'bounce', name: 'Hüpfen' },
+  { id: 'shake', name: 'Wackeln' }, { id: 'glow', name: 'Leuchten' }, { id: 'type', name: 'Schreibmaschine' },
+  { id: 'rubber', name: 'Gummi' }, { id: 'rainbow', name: 'Regenbogen' },
+];
+export const ENTER_ANIMS = [
+  { id: '', name: 'wie das Design' }, { id: 'pop', name: 'Aufploppen' }, { id: 'slide', name: 'Reinschieben' },
+  { id: 'drop', name: 'Von oben fallen' }, { id: 'zoom', name: 'Heranzoomen' }, { id: 'fade', name: 'Einblenden' },
+  { id: 'flip', name: 'Umdrehen' }, { id: 'spin', name: 'Wirbeln' },
+];
+export const ALERT_LAYOUTS = [
+  { id: 'top', name: 'Bild oben' }, { id: 'side', name: 'Bild links' }, { id: 'bg', name: 'Bild als Hintergrund' },
+];
+export const PLACEHOLDERS = ['{name}', '{amount}', '{months}', '{tier}', '{message}', '{reward}'];
+// Varianten gibt es nur, wo es eine Menge gibt
+export const VARIANT_KINDS = { bits: 'Bits', gift: 'Abos', resub: 'Monate', redeem: 'Kanalpunkte' };
+
+// Fertige Designs – ein Klick setzt Look, Bild, Animationen und Farbe
+export const ALERT_PRESETS = [
+  { id: 'party', name: 'Lila Party', design: { look: 'classic', media: 'b:party', layout: 'top', anim: 'wave', enter: 'pop', color: '#9146ff' } },
+  { id: 'star', name: 'Sternstunde', design: { look: 'glass', media: 'b:star', layout: 'top', anim: 'bounce', enter: 'zoom', color: '#ffd23f' } },
+  { id: 'neon', name: 'Neon-Herz', design: { look: 'neon', media: 'b:heart', layout: 'top', anim: 'glow', enter: 'fade', color: '#ff4fd8' } },
+  { id: 'arcade', name: 'Arcade', design: { look: 'retro', media: 'b:coin', layout: 'side', anim: 'type', enter: 'drop', color: '#3ddc84' } },
+  { id: 'comic', name: 'Comic', design: { look: 'bubble', media: 'b:boom', layout: 'top', anim: 'shake', enter: 'pop', color: '' } },
+  { id: 'royal', name: 'Königlich', design: { look: 'gold', media: 'b:crown', layout: 'top', anim: 'glow', enter: 'fade', color: '' } },
+  { id: 'hype', name: 'Hype-Rakete', design: { look: 'hype', media: 'b:rocket', layout: 'side', anim: 'rainbow', enter: 'slide', color: '' } },
+  { id: 'glitch', name: 'Stromschlag', design: { look: 'glitch', media: 'b:bolt', layout: 'side', anim: 'shake', enter: 'zoom', color: '#35c7ff' } },
+  { id: 'fire', name: 'Feuer', design: { look: 'banner', media: 'b:flame', layout: 'side', anim: 'rubber', enter: 'slide', color: '#ff5a2e' } },
+  { id: 'diamond', name: 'Diamant', design: { look: 'glass', media: 'b:diamond', layout: 'top', anim: 'wave', enter: 'flip', color: '#35c7ff' } },
+  { id: 'gift', name: 'Bescherung', design: { look: 'classic', media: 'b:gift', layout: 'top', anim: 'bounce', enter: 'drop', color: '#ff7ac8' } },
+  { id: 'ice', name: 'Eiskalt', design: { look: 'minimal', media: 'b:snow', layout: 'bg', anim: 'type', enter: 'fade', color: '#7fd6ff' } },
+  { id: 'champ', name: 'Champion', design: { look: 'banner', media: 'b:trophy', layout: 'side', anim: 'bounce', enter: 'spin', color: '#ffb81c' } },
+  { id: 'clean', name: 'Schlicht', design: { look: 'minimal', media: 'none', layout: 'top', anim: 'none', enter: 'fade', color: '' } },
+];
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const MEDIA = /^(b:[a-z]{2,20}|u:[a-z0-9-]{1,64}\.(png|jpe?g|gif|webp|webm|mp4))$/;
+const pick = (v, list, fallback) => (list.some((x) => x.id === v) ? v : fallback);
+const clampNum = (v, min, max, fallback) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Math.min(max, Math.max(min, Math.round(Number(v)))) : fallback);
+const tpl = (v) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').slice(0, 120) : '');
+
+export const DEFAULT_DESIGN = Object.freeze({
+  look: '', media: '', layout: 'top', label: '', title: '', text: '', anim: 'none', enter: '',
+  duration: 7, msize: 100, color: '', sound: '', vsound: true, confetti: true,
+});
+
+// Alles aus der Datenbank wird hier geprüft – unbekannte Werte werden zum Standard
+export function normalizeDesign(d) {
+  const x = d && typeof d === 'object' ? d : {};
+  return {
+    look: x.look === '' || ALERT_LOOKS.some((l) => l.id === x.look) ? (x.look ?? '') : '',
+    media: x.media === 'none' || MEDIA.test(x.media ?? '') ? x.media : '',
+    layout: pick(x.layout, ALERT_LAYOUTS, 'top'),
+    label: tpl(x.label), title: tpl(x.title), text: tpl(x.text),
+    anim: pick(x.anim, TEXT_ANIMS, 'none'),
+    enter: pick(x.enter ?? '', ENTER_ANIMS, ''),
+    duration: clampNum(x.duration, 3, 30, 7),
+    msize: clampNum(x.msize, 50, 200, 100),
+    color: HEX.test(x.color ?? '') ? x.color.toLowerCase() : '',
+    sound: typeof x.sound === 'string' ? x.sound.slice(0, 300) : '',
+    vsound: x.vsound !== false,
+    confetti: x.confetti !== false,
+  };
+}
+
+export function normalizeAlertConfig(cfg) {
+  const c = cfg && typeof cfg === 'object' ? cfg : {};
+  const kinds = {};
+  for (const { kind } of ALERT_KINDS) if (c.kinds?.[kind]) kinds[kind] = normalizeDesign(c.kinds[kind]);
+  const vars = (Array.isArray(c.vars) ? c.vars : [])
+    .filter((v) => v && VARIANT_KINDS[v.kind])
+    .slice(0, 30)
+    .map((v) => ({
+      id: String(v.id ?? '').replace(/[^a-z0-9-]/gi, '').slice(0, 24) || Math.random().toString(36).slice(2, 10),
+      kind: v.kind, min: clampNum(v.min, 1, 10000000, 100), design: normalizeDesign(v.design),
+    }));
+  return { v: 1, kinds, vars };
+}
+
+// Menge, nach der Varianten gewählt werden
+export const alertMeasure = (a) => (a.kind === 'resub' ? a.months | 0 : a.amount | 0);
+
+// Design für einen Alert: Variante mit der größten passenden Mindestmenge, sonst das der Art
+export function resolveDesign(cfg, a) {
+  const n = alertMeasure(a);
+  const v = (cfg?.vars ?? []).filter((x) => x.kind === a.kind && n >= x.min).sort((x, y) => y.min - x.min)[0];
+  return v ? v.design : cfg?.kinds?.[a.kind] ?? normalizeDesign(null);
+}
+
+export function alertVars(a) {
+  const n = Math.max(0, a.amount | 0);
+  return {
+    name: a.user_name || 'Jemand',
+    amount: n.toLocaleString('de-DE'),
+    months: String(Math.max(0, a.months | 0)),
+    tier: TIERS[a.tier] ?? 'Stufe 1',
+    message: (a.message ?? '').trim(),
+    reward: a.kind === 'redeem' ? (a.message ?? '').trim() : '',
+  };
+}
+
+// Vorlage → Knoten (nie innerHTML: Namen und Nachrichten kommen von Zuschauern)
+export function fillTemplate(el, template, vars) {
+  el.replaceChildren();
+  for (const part of template.split(/(\{[a-z]+\})/)) {
+    if (!part) continue;
+    const key = /^\{([a-z]+)\}$/.exec(part)?.[1];
+    if (key && key in vars) {
+      const em = document.createElement('em');
+      em.className = 'ov-al-var';
+      em.textContent = vars[key];
+      el.append(em);
+    } else el.append(part);
+  }
+}
+
+// Buchstaben einzeln verpacken (Welle, Schreibmaschine) – Hervorhebungen bleiben
+export function splitLetters(el) {
+  const seg = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('de', { granularity: 'grapheme' }) : null;
+  let i = 0;
+  const walk = (node) => {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === 1) { walk(child); continue; }
+      if (child.nodeType !== 3) continue;
+      const frag = document.createDocumentFragment();
+      const parts = seg ? [...seg.segment(child.textContent)].map((s) => s.segment) : Array.from(child.textContent);
+      for (const ch of parts) {
+        const s = document.createElement('span');
+        s.className = 'ov-ch';
+        s.style.setProperty('--i', i++);
+        s.textContent = ch;
+        frag.append(s);
+      }
+      child.replaceWith(frag);
+    }
+  };
+  walk(el);
+  return i;
+}
+
+// Die drei Zeilen: klein oben, groß (Name), darunter
+export function alertLines(a, d) {
+  const t = alertText(a);
+  return { icon: t.icon, label: d.label || t.title, title: d.title || '{name}', text: d.text || t.sub };
+}

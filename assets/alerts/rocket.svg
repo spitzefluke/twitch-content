@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>
+.r{animation:r .18s linear infinite alternate}.u{animation:u 2s ease-in-out infinite}.f{transform-origin:100px 150px;animation:f .15s linear infinite alternate}
+.l{animation:l .6s linear infinite}.l2{animation-delay:.2s}.l3{animation-delay:.4s}
+@keyframes r{to{transform:translate(1.5px,-1px)}}@keyframes u{50%{transform:translateY(-10px)}}@keyframes f{to{transform:scaleY(1.3)}}
+@keyframes l{0%{transform:translateY(-40px);opacity:0}30%{opacity:.9}100%{transform:translateY(60px);opacity:0}}
+</style>
+<g class="u"><rect class="l" x="40" y="60" width="4" height="30" rx="2" fill="#fff"/><rect class="l l2" x="156" y="40" width="4" height="26" rx="2" fill="#fff"/><rect class="l l3" x="60" y="20" width="3" height="22" rx="2" fill="#b186ff"/>
+<g class="r"><path class="f" d="M84 150q16 50 32 0z" fill="#ffb81c"/><path class="f" d="M92 150q8 30 16 0z" fill="#fff4b0"/>
+<path d="M76 118l-26 30 30-6zM124 118l26 30-30-6z" fill="#9146ff" stroke="#2a0f5c" stroke-width="5" stroke-linejoin="round"/>
+<path d="M100 18c30 24 34 70 24 128H76C66 88 70 42 100 18z" fill="#eef1f7" stroke="#2a0f5c" stroke-width="5" stroke-linejoin="round"/>
+<path d="M100 18c12 10 20 22 24 36H76c4-14 12-26 24-36z" fill="#ff2a6d" stroke="#2a0f5c" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="100" cy="86" r="15" fill="#35c7ff" stroke="#2a0f5c" stroke-width="5"/><circle cx="95" cy="81" r="4" fill="#fff"/></g></g>
+</svg>
