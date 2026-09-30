@@ -596,3 +596,110 @@ p { margin: 0; }
 .ov-ch-fx .ch-burst-text { font-size: 150px; }
 .ov-ch-fx .ch-burst-icon { font-size: 140px; }
 .ov-ch-fx .ch-burst-sub { font-size: 34px; }
+
+/* ==========================================================
+   Alert-Designs (Bibliothek, Parameter alook – Liste in js/alerts.js)
+   Jedes Design gestaltet dieselbe Karte um; --c ist die Farbe der Alert-Art.
+   ========================================================== */
+.ov-alert[data-look] .ov-head { transition: none; }
+
+/* Neon: Leuchtschrift auf fast schwarzem Grund */
+.ov-alert[data-look="neon"] { background: rgba(6, 4, 14, calc(.92 * var(--bga) + .08)); border: .12em solid var(--c); border-radius: .8em; }
+.ov-alert[data-look="neon"] .ov-head { display: none; }
+.ov-alert[data-look="neon"].is-alert { box-shadow: 0 0 .6em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 70%, transparent), inset 0 0 1.4em color-mix(in srgb, var(--c) 40%, transparent); animation: ov-neon-on 1s steps(1) both; }
+.ov-alert[data-look="neon"] .ov-al-name { color: #fff; text-shadow: 0 0 .15em #fff, 0 0 .5em var(--c), 0 0 1.2em var(--c), 0 0 2.4em var(--c); }
+.ov-alert[data-look="neon"] .ov-al-title { text-shadow: 0 0 .6em var(--c); }
+.ov-alert[data-look="neon"]::after { display: none; }
+@keyframes ov-neon-on { 0% { opacity: 0; } 10% { opacity: 1; } 15% { opacity: .2; } 25% { opacity: 1; } 32% { opacity: .4; } 40%, 100% { opacity: 1; } }
+
+/* Banner: breiter Streifen, fährt seitlich ein */
+.ov-alert[data-look="banner"] { width: 34em; border-radius: .6em; border: 0; border-left: .45em solid var(--c); background: linear-gradient(90deg, rgba(14, 10, 26, calc(.9 * var(--bga) + .1)), rgba(14, 10, 26, calc(.6 * var(--bga) + .1))); }
+.ov-alert[data-look="banner"] .ov-head { display: none; }
+.ov-alert[data-look="banner"] .ov-al-show { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto auto; justify-items: start; text-align: left; column-gap: .9em; padding: .8em 1.2em; }
+.ov-alert[data-look="banner"] .ov-al-icon { grid-row: 1 / 4; align-self: center; font-size: 2.6em; }
+.ov-alert[data-look="banner"] .ov-al-name { font-size: 2.1em; }
+.ov-alert[data-look="banner"] .ov-al-sub { -webkit-line-clamp: 2; }
+.ov-alert[data-look="banner"].is-alert { animation: ov-banner-in .7s cubic-bezier(.2, .9, .25, 1.1) both; box-shadow: 0 1em 2.4em -1em rgba(0, 0, 0, .8); }
+.ov-alert[data-look="banner"]:not(.is-alert) { transform: translateX(-2em); }
+@keyframes ov-banner-in { from { transform: translateX(-110%) skewX(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Comic: bunte Sprechblase */
+.ov-alert[data-look="bubble"] { overflow: visible; border: .2em solid #140a24; border-radius: 1.6em; background: linear-gradient(135deg, #ffe066, #ff7ac8 55%, #9146ff); box-shadow: .35em .35em 0 #140a24; }
+.ov-alert[data-look="bubble"] .ov-head { display: none; }
+.ov-alert[data-look="bubble"]::before { content: ""; position: absolute; left: 2.4em; bottom: -1.05em; width: 1.6em; height: 1.6em; background: #ff9fd0; border-right: .2em solid #140a24; border-bottom: .2em solid #140a24; transform: rotate(45deg); }
+.ov-alert[data-look="bubble"] .ov-al-name { color: #fff; -webkit-text-stroke: .06em #140a24; text-shadow: .08em .08em 0 #140a24; transform: rotate(-3deg); }
+.ov-alert[data-look="bubble"] .ov-al-title { color: #140a24; }
+.ov-alert[data-look="bubble"] .ov-al-sub { color: #1c0f33; font-weight: 600; }
+.ov-alert[data-look="bubble"].is-alert { animation: ov-bubble-in .8s cubic-bezier(.3, 1.6, .5, 1) both; box-shadow: .35em .35em 0 #140a24; }
+.ov-alert[data-look="bubble"]::after { display: none; }
+@keyframes ov-bubble-in { 0% { transform: scale(0) rotate(-12deg); } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: none; } }
+
+/* Glas: Milchglas, ruhig */
+.ov-alert[data-look="glass"] { border-radius: 1.6em; background: rgba(255, 255, 255, calc(.12 * var(--bga) + .04)); border: 1px solid rgba(255, 255, 255, .28); backdrop-filter: blur(1.2em) saturate(1.4); -webkit-backdrop-filter: blur(1.2em) saturate(1.4); }
+.ov-alert[data-look="glass"] .ov-head { display: none; }
+.ov-alert[data-look="glass"].is-alert { animation: ov-glass-in .9s var(--ease-out) both; box-shadow: 0 1.4em 3em -1em rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .4); }
+.ov-alert[data-look="glass"] .ov-al-name { text-shadow: 0 .1em .6em rgba(0, 0, 0, .45); }
+.ov-alert[data-look="glass"] .ov-al-sub { color: #f1ecff; }
+@keyframes ov-glass-in { from { opacity: 0; transform: translateY(1em) scale(.97); filter: blur(.4em); } to { opacity: 1; transform: none; filter: none; } }
+
+/* Minimal: nur Schrift */
+.ov-alert[data-look="minimal"] { background: none; border: 0; box-shadow: none !important; overflow: visible; }
+.ov-alert[data-look="minimal"] .ov-head, .ov-alert[data-look="minimal"]::after { display: none; }
+.ov-alert[data-look="minimal"] .ov-al-icon { font-size: 2.2em; }
+.ov-alert[data-look="minimal"] .ov-al-name { font-size: 3em; text-shadow: 0 .06em .25em rgba(0, 0, 0, .9), 0 0 .9em color-mix(in srgb, var(--c) 50%, transparent); }
+.ov-alert[data-look="minimal"] .ov-al-title, .ov-alert[data-look="minimal"] .ov-al-sub { text-shadow: 0 .1em .3em rgba(0, 0, 0, .95); color: #fff; }
+.ov-alert[data-look="minimal"].is-alert { animation: ov-min-in .6s var(--ease-out) both; }
+@keyframes ov-min-in { from { opacity: 0; letter-spacing: .3em; } to { opacity: 1; letter-spacing: normal; } }
+
+/* Arcade: Pixel und Scanlines */
+.ov-alert[data-look="retro"] { border-radius: 0; background: #0b0b16; border: 0; box-shadow: 0 0 0 .25em #fff, 0 0 0 .5em var(--c), .7em .7em 0 .5em rgba(0, 0, 0, .6) !important; image-rendering: pixelated; }
+.ov-alert[data-look="retro"] .ov-head { justify-content: center; color: var(--c); border-bottom: .2em dashed color-mix(in srgb, var(--c) 60%, transparent); }
+.ov-alert[data-look="retro"] .ov-head span:last-child::after { content: " ▸ PLAYER 1"; animation: blink 1s steps(1) infinite; }
+.ov-alert[data-look="retro"] .ov-al-name, .ov-alert[data-look="retro"] .ov-al-title, .ov-alert[data-look="retro"] .ov-al-sub { font-family: var(--font-mono); letter-spacing: .04em; }
+.ov-alert[data-look="retro"] .ov-al-name { font-size: 2em; color: #fff; text-shadow: .1em .1em 0 var(--c); }
+.ov-alert[data-look="retro"]::after { content: ""; position: absolute; inset: 0; pointer-events: none; transform: none; animation: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 2px, transparent 2px 4px); }
+.ov-alert[data-look="retro"].is-alert { animation: ov-retro-in .6s steps(6) both; }
+@keyframes ov-retro-in { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+
+/* Glitch: digitaler Störeffekt */
+.ov-alert[data-look="glitch"] { border-radius: .3em; background: rgba(8, 6, 16, calc(.9 * var(--bga) + .1)); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); }
+.ov-alert[data-look="glitch"] .ov-head { display: none; }
+.ov-alert[data-look="glitch"] .ov-al-name { position: relative; }
+.ov-alert[data-look="glitch"].is-alert .ov-al-name { animation: ov-glitch 2.4s steps(1) .2s 2 both; }
+.ov-alert[data-look="glitch"].is-alert { animation: ov-glitch-box .5s steps(4) both; }
+.ov-alert[data-look="glitch"]::after { background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 3px); transform: none; animation: none; }
+@keyframes ov-glitch {
+  0%, 100% { text-shadow: .06em 0 #ff2a6d, -.06em 0 #05d9e8; transform: none; }
+  10% { text-shadow: -.12em 0 #ff2a6d, .12em 0 #05d9e8; transform: translateX(.05em) skewX(-6deg); }
+  20% { text-shadow: .03em 0 #ff2a6d, -.03em 0 #05d9e8; transform: none; clip-path: inset(10% 0 40% 0); }
+  22% { clip-path: none; }
+  50% { text-shadow: .15em .03em #ff2a6d, -.1em -.03em #05d9e8; transform: translateX(-.06em); }
+  52% { text-shadow: .06em 0 #ff2a6d, -.06em 0 #05d9e8; transform: none; }
+}
+@keyframes ov-glitch-box { 0% { opacity: 0; transform: translateX(-.5em); } 25% { opacity: 1; transform: translateX(.4em); } 50% { transform: translateX(-.2em); } 100% { transform: none; } }
+
+/* Hype: Regenbogen-Rand, der rundherum läuft */
+@property --ov-hype { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.ov-alert[data-look="hype"] { border: 0; border-radius: 1.2em; background: rgba(16, 10, 30, calc(.92 * var(--bga) + .08)); }
+.ov-alert[data-look="hype"] .ov-head { display: none; }
+.ov-alert[data-look="hype"]::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: .22em; pointer-events: none;
+  background: conic-gradient(from var(--ov-hype), #ff2a6d, #ffd36b, #3ddc84, #35c7ff, #9146ff, #ff2a6d);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: ov-hype-spin 2s linear infinite;
+}
+.ov-alert[data-look="hype"].is-alert { animation: ov-al-in .7s var(--ease-spring), ov-hype-shake .5s ease-in-out .7s 2; box-shadow: 0 0 2.4em rgba(255, 42, 109, .45), 0 0 3.2em rgba(53, 199, 255, .35); }
+.ov-alert[data-look="hype"] .ov-al-name { background: linear-gradient(90deg, #ffd36b, #ff7ac8, #35c7ff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+@keyframes ov-hype-spin { to { --ov-hype: 360deg; } }
+@keyframes ov-hype-shake { 25% { transform: rotate(-1.5deg) scale(1.02); } 75% { transform: rotate(1.5deg) scale(1.02); } }
+
+/* Gold: Schwarz und Gold */
+.ov-alert[data-look="gold"] { --c: #e8c46a; border-radius: .4em; background: linear-gradient(160deg, #1a1408, #070604); border: .12em solid #e8c46a; }
+.ov-alert[data-look="gold"] .ov-head { justify-content: center; color: #e8c46a; border-bottom: 1px solid rgba(232, 196, 106, .35); }
+.ov-alert[data-look="gold"] .ov-al-name { font-family: Georgia, "Times New Roman", serif; text-transform: none; font-weight: 700; background: linear-gradient(180deg, #fff3c4, #e8c46a 55%, #a87b2a); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.ov-alert[data-look="gold"] .ov-al-title { color: #e8c46a; }
+.ov-alert[data-look="gold"] .ov-al-sub { color: #d9ccb0; font-style: italic; }
+.ov-alert[data-look="gold"].is-alert { box-shadow: 0 0 0 .3em rgba(232, 196, 106, .15), 0 0 2.6em rgba(232, 196, 106, .35); animation: ov-glass-in .9s var(--ease-out) both; }
+.ov-alert[data-look="gold"]::after { background: linear-gradient(105deg, transparent 35%, rgba(255, 236, 170, .35) 50%, transparent 65%); }
+@keyframes blink { 50% { opacity: 0; } }

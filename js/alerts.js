@@ -12,6 +12,22 @@ export const ALERT_KINDS = [
   { kind: 'redeem', param: 'sredeem', label: '🎟️ Kanalpunkte' },
 ];
 
+// Design-Bibliothek der Alerts (Overlay-Parameter alook). Neue Designs: hier eintragen und in
+// css/overlay.css unter „Alert-Designs“ als .ov-alert[data-look="…"] gestalten.
+export const ALERT_LOOKS = [
+  { id: 'classic', name: 'Klassik', desc: 'Karte mit Konfetti und Lichtstreifen' },
+  { id: 'neon', name: 'Neon', desc: 'Leuchtschrift, flackert beim Einschalten' },
+  { id: 'banner', name: 'Banner', desc: 'Breiter Streifen, fährt von der Seite ein' },
+  { id: 'bubble', name: 'Comic', desc: 'Bunte Sprechblase, springt ins Bild' },
+  { id: 'glass', name: 'Glas', desc: 'Milchglas, ruhig und edel' },
+  { id: 'minimal', name: 'Minimal', desc: 'Nur Schrift, ohne Karte' },
+  { id: 'retro', name: 'Arcade', desc: 'Pixel-Look mit Scanlines' },
+  { id: 'glitch', name: 'Glitch', desc: 'Digitaler Störeffekt' },
+  { id: 'hype', name: 'Hype', desc: 'Regenbogen-Rand, der rundherum läuft' },
+  { id: 'gold', name: 'Gold', desc: 'Edel in Schwarz und Gold' },
+];
+export const alertLook = (id) => (ALERT_LOOKS.some((l) => l.id === id) ? id : 'classic');
+
 // Eigene Alert-Sounds: so lang und so groß dürfen sie sein (wie in …_alert_sound_length.sql)
 export const ALERT_SOUND_SECONDS = 20;
 export const ALERT_SOUND_BYTES = 4 * 1024 * 1024;

@@ -1519,3 +1519,40 @@ body.obs-page .obs-layer-name { font-size: 13.5px; }
 body.obs-page .obs-layer-size { font-size: 11px; color: var(--dim); }
 body.obs-page .obs-layer.is-open .obs-layer-size { color: var(--text-2); }
 body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
+
+/* Alert-Design-Bibliothek (OBS-Editor → Ebene „Alerts“) */
+.al-lib { display: grid; gap: 8px; }
+.al-lib-head { display: grid; gap: 2px; }
+.al-lib-head small { color: var(--muted); font-size: 12px; }
+.al-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.al-look { display: grid; gap: 5px; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2); font: 600 12px var(--font-body); cursor: pointer; transition: border-color .2s, transform .15s, background-color .2s; }
+.al-look:hover:not(:disabled) { border-color: rgba(169, 112, 255, .6); transform: translateY(-2px); }
+.al-look[aria-checked="true"] { border-color: var(--twitch); background: rgba(145, 70, 255, .18); color: #fff; box-shadow: 0 0 0 2px rgba(145, 70, 255, .35); }
+.al-look:disabled { opacity: .5; cursor: default; }
+/* Mini-Vorschau: dieselbe Idee wie im Overlay, stark verkleinert */
+.al-thumb {
+  --c: #ffb81c; position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; height: 58px; overflow: hidden;
+  border-radius: 8px; background: #151b28; border: 1px solid rgba(255, 255, 255, .1); color: #fff;
+}
+.al-thumb i { font-style: normal; font-size: 15px; line-height: 1; }
+.al-thumb b { font: 800 13px var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.al-thumb s { width: 60%; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .25); text-decoration: none; }
+.al-thumb[data-look="classic"] { box-shadow: inset 0 0 0 2px var(--c); }
+.al-thumb[data-look="neon"] { background: #06040e; border: 2px solid #ff4fd8; box-shadow: 0 0 10px #ff4fd8 inset; }
+.al-thumb[data-look="neon"] b { text-shadow: 0 0 4px #fff, 0 0 10px #ff4fd8; }
+.al-thumb[data-look="banner"] { grid-template-columns: auto 1fr; justify-items: start; column-gap: 6px; padding: 0 8px; border-left: 5px solid var(--c); border-radius: 5px; }
+.al-thumb[data-look="banner"] s { display: none; }
+.al-thumb[data-look="bubble"] { background: linear-gradient(135deg, #ffe066, #ff7ac8 55%, #9146ff); border: 2px solid #140a24; border-radius: 14px; box-shadow: 3px 3px 0 #140a24; }
+.al-thumb[data-look="bubble"] b { -webkit-text-stroke: .5px #140a24; transform: rotate(-4deg); }
+.al-thumb[data-look="glass"] { background: linear-gradient(135deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .06)), url("../assets/bg-city.svg") center / cover; border-color: rgba(255, 255, 255, .35); border-radius: 14px; }
+.al-thumb[data-look="minimal"] { background: url("../assets/bg-storm.svg") center / cover; border-color: transparent; }
+.al-thumb[data-look="minimal"] b { font-size: 15px; text-shadow: 0 1px 4px #000; }
+.al-thumb[data-look="minimal"] s { display: none; }
+.al-thumb[data-look="retro"] { border-radius: 0; background: #0b0b16 repeating-linear-gradient(0deg, rgba(0, 0, 0, .35) 0 1px, transparent 1px 3px); box-shadow: 0 0 0 2px #fff inset, 0 0 0 4px var(--c) inset; }
+.al-thumb[data-look="retro"] b { font: 700 11px var(--font-mono); text-shadow: 1px 1px 0 var(--c); }
+.al-thumb[data-look="glitch"] { background: #08060f; border-radius: 3px; }
+.al-thumb[data-look="glitch"] b { text-shadow: 2px 0 #ff2a6d, -2px 0 #05d9e8; }
+.al-thumb[data-look="hype"] { border: 2px solid transparent; background: linear-gradient(#100a1e, #100a1e) padding-box, conic-gradient(#ff2a6d, #ffd36b, #3ddc84, #35c7ff, #9146ff, #ff2a6d) border-box; }
+.al-thumb[data-look="hype"] b { background: linear-gradient(90deg, #ffd36b, #ff7ac8, #35c7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.al-thumb[data-look="gold"] { background: linear-gradient(160deg, #1a1408, #070604); border: 2px solid #e8c46a; border-radius: 4px; }
+.al-thumb[data-look="gold"] b { font-family: Georgia, serif; text-transform: none; color: #e8c46a; }

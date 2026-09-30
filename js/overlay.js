@@ -22,6 +22,7 @@
 //   bg=94                      Deckkraft des Kartenhintergrunds in Prozent (0 – 100)
 //   accent=ffb81c              Akzentfarbe (Hex)
 //   vol=100                    Lautstärke in Prozent, 0 = ohne Ton (sound=0 geht auch)
+//   alook=classic|neon|…      Design der Alerts (Bibliothek: ALERT_LOOKS in js/alerts.js)
 //   vwheel=100, vprank=100 …   Lautstärke je Ebene in Prozent (0–200, mal vol), siehe MIX
 //   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
@@ -79,7 +80,7 @@ import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pip
 import { TICKER_STYLES, fillTicker, setTickerChannel } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
-import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
+import { ALERT_KINDS, alertLook, alertText, playAlertSound, sampleAlert } from './alerts.js';
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 import { setupOverlayExtras } from './overlay-extras.js';
 
@@ -249,7 +250,7 @@ if (opt.shop) place($('ov-shop'), opt.shop);
 else $('ov-shop').remove();
 if (opt.challenge) place($('ov-challenge'), opt.challenge);
 else $('ov-challenge').remove();
-if (opt.alerts) place($('ov-alert'), opt.alerts);
+if (opt.alerts) { place($('ov-alert'), opt.alerts); $('ov-alert').dataset.look = alertLook(params.get('alook')); }
 else $('ov-alert').remove();
 if (opt.recent) place($('ov-recent'), opt.recent);
 else $('ov-recent').remove();

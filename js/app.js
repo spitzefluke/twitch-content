@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
-import { ALERT_KINDS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
+import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -4697,6 +4697,7 @@ function setupObsLayers() {
     if (!obs.ws?.connected) $('#obs-ws-form').password.focus({ preventScroll: true });
   });
   $('#obs-head-apply').addEventListener('click', applyObs);
+  setupAlertLooks();
   $('#obs-pet-say').addEventListener('submit', obsPetSay);
   setupObsPet();
 }
@@ -4705,6 +4706,40 @@ function showObsTab(name) {
   const dlg = $('#obs-dialog');
   dlg.querySelectorAll('.obs-tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
   dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
+}
+
+// Alert-Design-Bibliothek: Kacheln mit Mini-Vorschau, Auswahl landet im Feld alook
+function setupAlertLooks() {
+  const gallery = $('#al-gallery');
+  const input = $('#obs-options').elements.alook;
+  gallery.replaceChildren(...ALERT_LOOKS.map((look) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'al-look';
+    btn.dataset.look = look.id;
+    btn.setAttribute('role', 'radio');
+    btn.title = look.desc;
+    btn.innerHTML = '<span class="al-thumb" aria-hidden="true"><i>⭐</i><b>Name</b><s></s></span><span class="al-look-name"></span>';
+    btn.querySelector('.al-thumb').dataset.look = look.id;
+    btn.querySelector('.al-look-name').textContent = look.name;
+    return btn;
+  }));
+  gallery.addEventListener('click', (e) => {
+    const btn = e.target.closest('.al-look');
+    if (!btn || obsLocked()) return;
+    input.value = btn.dataset.look;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    // Vorschau: Alerts-Ebene auswählen, damit man das Design gleich sieht
+    if (!$('#obs-options').elements.alerts_on.checked) toast('Tipp: Die Ebene „Alerts“ ist noch aus – links einschalten, dann erscheint das Design im Stream.', 'info', 5000);
+  });
+}
+
+function paintAlertLooks() {
+  const value = $('#obs-options').elements.alook.value || 'classic';
+  document.querySelectorAll('#al-gallery .al-look').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.look === value));
+    b.disabled = obsLocked();
+  });
 }
 
 // Ebene auswählen: ihre Einstellungen erscheinen rechts im Inspektor, die Vorschau markiert sie
@@ -4772,6 +4807,7 @@ function paintObsLayers() {
     }
   });
   paintObsInspector();
+  paintAlertLooks();
   // Mischpult: Regler von ausgeschalteten Ebenen abblenden, 0 % heißt stumm
   dlg.querySelectorAll('.obs-mix').forEach((row) => {
     const sw = OBS_LAYER_SWITCH[row.dataset.mix];
