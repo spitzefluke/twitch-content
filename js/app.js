@@ -1816,6 +1816,8 @@ function setupPrank() {
   $('#prank-admin').addEventListener('change', savePrankSettings);
   $('#prank-hack-start').addEventListener('click', () => sendPrank('hack', 'start'));
   $('#prank-hack-stop').addEventListener('click', () => sendPrank('hack', 'firewall'));
+  $('#prank-anniv-start').addEventListener('click', startAnniversaryShow);
+  $('#prank-anniv-stop').addEventListener('click', () => sendPrank('show', 'stop'));
   $('#prank-sync').addEventListener('click', () => syncPrankRewards({ loud: true }));
   $('#prank-dialog').addEventListener('close', () => {
     $('#prank-stage').querySelectorAll('.pf-item, .pf-splat, .prank-bubble').forEach((el) => el.remove());
@@ -1977,6 +1979,28 @@ async function sendPrank(kind, item, sound = null) {
   }
 }
 
+// Kanal-Jubiläum: die Edge Function sammelt die Daten des verbundenen Kanals und startet den Film
+async function startAnniversaryShow() {
+  if (!state.prank.on) return;
+  const btn = $('#prank-anniv-start');
+  const dlg = $('#prank-dialog');
+  btn.disabled = true;
+  dlg.classList.add('is-sending');
+  try {
+    const row = await state.api.startAnniversary($('#prank-anniv-date').value);
+    state.prank.seen.add(row.id);
+    addPrankLog(row);
+    showPrank(row, true);
+    toast(`🎂 Der Jubiläums-Film läuft jetzt in OBS – mit den Daten von ${row.data?.name ?? streamerName()}.`, 'ok', 6000);
+  } catch (err) {
+    console.error(err);
+    toast(germanError(err), 'error', 7000);
+  } finally {
+    btn.disabled = false;
+    dlg.classList.remove('is-sending');
+  }
+}
+
 // Anleitung: Zuschauer über Kanalpunkte, Admins direkt
 function renderPrankHowTo() {
   const box = $('#prank-howto');
@@ -2019,6 +2043,12 @@ function showPrank(row, own) {
     const bubble = document.createElement('span');
     bubble.className = 'prank-bubble';
     bubble.textContent = row.item === 'firewall' ? '🛡️ Firewall aktiviert' : '💻 0xNULL hackt das Overlay …';
+    stage.append(bubble);
+    setTimeout(() => bubble.remove(), 2600);
+  } else if (row.kind === 'show') {
+    const bubble = document.createElement('span');
+    bubble.className = 'prank-bubble';
+    bubble.textContent = row.item === 'stop' ? '⏹️ Film beendet' : '🎂 Happy Birthday, Kanal!';
     stage.append(bubble);
     setTimeout(() => bubble.remove(), 2600);
   } else if (row.kind === 'throw') {

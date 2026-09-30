@@ -93,6 +93,7 @@ import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winner
 import { setupOverlayExtras } from './overlay-extras.js';
 import { setupOverlayStage } from './overlay-stage.js';
 import { startHack } from './overlay-hack.js';
+import { startAnniversary } from './overlay-anniversary.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -851,8 +852,17 @@ function setupPranks(source) {
     hack = startHack({ cam: opt.cam, sfx, channel: STREAMER.login, who: p.requested_by, onEnd: () => { hack = null; } });
   };
 
+  // Kanal-Jubiläum (nur Mods): zweiminütiger Film über das ganze Bild mit den Daten des Kanals
+  let show = null;
+  const runShow = (p) => {
+    if (p.item === 'stop') { show?.stop(); return; }
+    if (show || !p.data || Date.now() - Date.parse(p.created_at) > 60_000) return;
+    show = startAnniversary({ data: p.data, accent: opt.accent, sfx, onEnd: () => { show = null; } });
+  };
+
   function handle(p) {
     if (p.kind === 'hack') { runHack(p); return; }
+    if (p.kind === 'show') { runShow(p); return; }
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
     place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {

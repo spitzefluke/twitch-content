@@ -232,6 +232,8 @@ async function createSupabaseApi() {
       }
       return data;
     },
+    // Kanal-Jubiläum (…_channel_anniversary.sql): die Edge Function sammelt die Kanaldaten
+    async startAnniversary(start = '') { return invoke('stream-tools', { action: 'anniversary', start: start || undefined }); },
     onPrank(cb) {
       sb.channel('pranks-feed')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pranks' }, (p) => cb(p.new))
@@ -1020,6 +1022,27 @@ function createLocalApi() {
         label: sound?.name ?? '',
         requested_by: profile.username,
       };
+      store.set('pranks', [prank, ...store.get('pranks', [])].slice(0, 30));
+      setTimeout(() => prankListeners.forEach((cb) => cb(prank)), 50);
+      return prank;
+    },
+    // Demo: Beispieldaten statt Twitch – Name aus js/config.js, Kacheln und Watchtime aus dem Browser
+    async startAnniversary(start = '') {
+      const profile = await this.getProfile(current);
+      if (!profile.is_admin) throw new Error('Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods.');
+      const name = CONFIG.CHANNEL || 'DeinKanal';
+      const since = /^\d{4}-\d{2}-\d{2}$/.test(start) ? new Date(`${start}T12:00:00Z`) : new Date(Date.now() - 366 * 864e5);
+      const tiles = (await this.getTiles()).filter((t) => t.kind !== 'countdown').slice(0, 8);
+      const next = (await this.getTiles()).filter((t) => t.target_at && Date.parse(t.target_at) > Date.now())
+        .sort((a, b) => Date.parse(a.target_at) - Date.parse(b.target_at))[0];
+      const data = {
+        v: 1, name, login: name.toLowerCase(), avatar: '', since: since.toISOString(), since_kind: start ? 'custom' : 'twitch',
+        title: 'Heute: Jubiläums-Stream', game: 'Fortnite', followers: 1284, watch_hours: 612, chatters: 318, bits: 25400, subs: 96,
+        content_count: tiles.length, content: tiles.map((t) => ({ title: t.title, text: t.description })),
+        mods: ['PixelPaul', 'GG_Gina', 'LootLukas'], top: [{ name: 'NightOwl_Mia', hours: 84.5 }, { name: 'CrispyCarl', hours: 61 }, { name: 'StreamSofia', hours: 40.2 }],
+        next: next ? { title: next.title, at: next.target_at } : null,
+      };
+      const prank = { id: nextId++, created_at: new Date().toISOString(), kind: 'show', item: 'anniversary', label: '', sound_path: null, requested_by: profile.username, data };
       store.set('pranks', [prank, ...store.get('pranks', [])].slice(0, 30));
       setTimeout(() => prankListeners.forEach((cb) => cb(prank)), 50);
       return prank;
