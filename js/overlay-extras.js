@@ -214,7 +214,7 @@ async function setupSubathon({ src, opt }, el) {
     let demo = { status: 'running', ends_at: new Date(Date.now() + 5025000).toISOString(), last_event: { n: 1 } };
     paint(demo, { effects: false });
     if (opt.test && !opt.edit) {
-      const who = ['Lokfuehrer_Lena', 'SchienenSeb', 'ICE_Irina'];
+      const who = ['NightOwl_Mia', 'PixelPaul', 'CrispyCarl'];
       setInterval(() => {
         const secs = [30, 300, 150][demo.last_event.n % 3];
         demo = { ...demo, ends_at: new Date(Date.parse(demo.ends_at) + secs * 1000).toISOString(), last_event: { n: demo.last_event.n + 1, seconds: secs, who: who[demo.last_event.n % 3], kind: 'sub' } };
@@ -280,7 +280,7 @@ async function setupPause({ src, opt }) {
   };
   setInterval(tick, 1000);
   if (opt.test || opt.edit) {
-    paint({ active: true, title: 'Gleich geht’s weiter!', message: 'Kurz Kaffee holen', ends_at: new Date(Date.now() + 300000).toISOString(), game_on: true, guess_command: '!rate', game_low: 23, game_high: 61, game_last: { n: 1, who: 'SchienenSeb', guess: 62, hint: 'lower' }, game_winners: [] }, { effects: false });
+    paint({ active: true, title: 'Gleich geht’s weiter!', message: 'Kurz Kaffee holen', ends_at: new Date(Date.now() + 300000).toISOString(), game_on: true, guess_command: '!rate', game_low: 23, game_high: 61, game_last: { n: 1, who: 'PixelPaul', guess: 62, hint: 'lower' }, game_winners: [] }, { effects: false });
     return;
   }
   paint(await src.one('pause_screen').catch(() => null), { effects: false });
@@ -343,7 +343,7 @@ async function setupQuiz({ src, opt }, el) {
       let revealed = false;
       setInterval(() => {
         revealed = !revealed;
-        paint(revealed ? { ...q, status: 'revealed', correct: 1, winners: [{ name: 'ICE_Irina' }, { name: 'SchienenSeb' }] } : { ...q, n: q.n + 1, closes_at: new Date(Date.now() + 30000).toISOString() });
+        paint(revealed ? { ...q, status: 'revealed', correct: 1, winners: [{ name: 'CrispyCarl' }, { name: 'PixelPaul' }] } : { ...q, n: q.n + 1, closes_at: new Date(Date.now() + 30000).toISOString() });
       }, 8000);
     }
     return;
@@ -384,9 +384,9 @@ async function setupQueue({ src, opt }, el) {
   if (opt.test || opt.edit) {
     settings = { open: true, sub_priority: true, note: 'EU · Null Bauen' };
     entries = [
-      { name: 'Lokfuehrer_Lena', status: 'picked', is_sub: true }, { name: 'SchienenSeb', status: 'picked' },
-      { name: 'ICE_Irina', status: 'waiting', is_sub: true, joined_at: '2026-01-01T10:00:00Z' }, { name: 'Bahnhofskater', status: 'waiting', joined_at: '2026-01-01T10:01:00Z' },
-      { name: 'Gleis9dreiviertel', status: 'waiting', joined_at: '2026-01-01T10:02:00Z' },
+      { name: 'NightOwl_Mia', status: 'picked', is_sub: true }, { name: 'PixelPaul', status: 'picked' },
+      { name: 'CrispyCarl', status: 'waiting', is_sub: true, joined_at: '2026-01-01T10:00:00Z' }, { name: 'LootLukas', status: 'waiting', joined_at: '2026-01-01T10:01:00Z' },
+      { name: 'StreamSofia', status: 'waiting', joined_at: '2026-01-01T10:02:00Z' },
     ];
     paint();
     return;
@@ -452,7 +452,7 @@ async function setupTts({ src, opt }, el) {
     next();
   };
   if (opt.test || opt.edit) {
-    show({ who: 'Lokfuehrer_Lena', text: 'Hallo zusammen, das ist eine Probe fürs Vorlesen!' });
+    show({ who: 'NightOwl_Mia', text: 'Hallo zusammen, das ist eine Probe fürs Vorlesen!' });
     if (opt.edit) return;
   }
   const state = await src.one('tts_state').catch(() => null);
@@ -511,7 +511,7 @@ async function setupCards({ src, opt }, el) {
     next();
   };
   if (opt.test || opt.edit) {
-    show({ who: 'ICE_Irina', card_name: 'Goldener Pott', rarity: 'legendary', emoji: '🏆' });
+    show({ who: 'CrispyCarl', card_name: 'Goldener Pott', rarity: 'legendary', emoji: '🏆' });
     if (opt.edit) return;
   }
   src.on('card_pulls', (p, type) => {

@@ -1,11 +1,11 @@
 /* ==========================================================
-   OBS-Overlay · Content-Stellwerk
+   OBS-Overlay · StreamHelp
    Durchsichtiger Hintergrund, zwei Karten in den Ecken.
    Optionen kommen als CSS-Variablen aus js/overlay.js.
    ========================================================== */
 :root {
   --ws: 1;                 /* Größe Glücksrad */
-  --ns: 1;                 /* Größe Nächste Abfahrt */
+  --ns: 1;                 /* Größe Als Nächstes */
   --m: 40px;               /* Abstand zum Bildrand */
   --bga: .94;              /* Deckkraft des Kartenhintergrunds */
   --accent: #ffb81c;
@@ -117,7 +117,7 @@ p { margin: 0; }
 @keyframes ov-pop { from { transform: scale(.85); opacity: 0; } }
 @keyframes ov-rise { from { transform: translateY(.4em); opacity: 0; } }
 
-/* ---------- Nächste Abfahrt ---------- */
+/* ---------- Als Nächstes ---------- */
 .ov-next { font-size: calc(16px * var(--ns)); width: 25em; animation: ov-in .6s var(--ease-out) both; }
 @keyframes ov-in { from { opacity: 0; transform: translateY(1em); } }
 .ov-next-body { padding: .8em 1em 1em; transition: opacity .35s ease, transform .35s ease; }
@@ -255,7 +255,7 @@ p { margin: 0; }
 .ov-bingo.bingo-style-paper .ov-bingo-bet.is-won { background: #e3f6cf; border-color: #6aa33a; color: #24480c; }
 .ov-bingo.bingo-style-paper .ov-bingo-win { color: #d8322a; text-shadow: 0 .06em 0 #fff6e0, 0 .12em .3em rgba(0, 0, 0, .35); }
 
-/* ---------- Ärgere den Dave ---------- */
+/* ---------- Ärgere den Streamer ---------- */
 .ov-pranks { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
 .ov-prank-feed {
   position: absolute; transform: translateX(-50%);
@@ -326,7 +326,7 @@ p { margin: 0; }
 @keyframes ov-quest-in { from { transform: translateY(-1.5em) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes ov-quest-pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* ---------- Daves Dino ---------- */
+/* ---------- Der Dino ---------- */
 .ov-pet {
   position: fixed; left: var(--m); right: var(--m); bottom: calc(var(--m) * .5); z-index: 4;
   height: calc(var(--dsz) * 2.2); pointer-events: none;
@@ -430,7 +430,7 @@ p { margin: 0; }
 .social-kick, .social-snapchat, .social-streamlabs { color: #0b0e14; }
 .social-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
 .social-youtube svg, .social-discord svg { width: 68%; height: 68%; }
-/* Neon: Logos leuchten mit, Bahnhofs-Anzeige: etwas eckiger */
+/* Neon: Logos leuchten mit, LED-Anzeige: etwas eckiger */
 .ov-ticker.ticker-style-neon .social-badge { box-shadow: 0 0 .5em var(--sc, #ff5fa8); }
 .ov-ticker.ticker-style-board .social-badge { border-radius: .18em; }
 
@@ -446,7 +446,7 @@ p { margin: 0; }
 .ov-ticker.ticker-style-neon .ticker-item { color: #fff; text-shadow: 0 0 .25em #ff5fa8, 0 0 .8em #ff5fa8; }
 .ov-ticker.ticker-style-neon .ticker-sep { color: #7ff6ff; text-shadow: 0 0 .4em #7ff6ff; }
 
-/* Bahnhofs-Anzeige: gelbe LED-Schrift auf schwarzer Tafel */
+/* LED-Anzeige: gelbe LED-Schrift auf schwarzer Tafel */
 .ov-ticker.ticker-style-board {
   border-radius: .35em; background: #0b0c0e; border: .22em solid #2b2f36;
   box-shadow: 0 .6em 1.6em rgba(0, 0, 0, .6), inset 0 0 0 .08em #000;

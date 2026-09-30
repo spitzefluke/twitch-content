@@ -180,7 +180,7 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
 }
 
 // Zufällige Karte aus den hochgeladenen Bildern (für die eigene Karte).
-// Daves Karte zieht die Datenbank (bingo_new_card), mit derselben Regel.
+// Die Karte des Streamers zieht die Datenbank (bingo_new_card), mit derselben Regel.
 export function drawCard(items, size, free = true) {
   const withFree = free && size % 2 === 1;
   const need = size * size - (withFree ? 1 : 0);

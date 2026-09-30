@@ -21,15 +21,15 @@ export const DEFAULT_PET = {
   phrases: [
     'Du Flitzpiepe!',
     'Der Rentner ist älter als mein Dino!',
-    'Wer hat hier die Weiche falsch gestellt?',
+    'Wer hat hier den Controller falsch rum gehalten?',
     'Rawr! Das heißt „Hallo“.',
     'Ich bin 65 Millionen Jahre alt und DU spielst so?',
-    'Nächster Halt: Niederlage.',
-    'Bitte zurückbleiben, der Dino fährt ein!',
+    'Spoiler: Das wird knapp.',
+    'Platz da, der Dino kommt!',
     'Chat, habt ihr Snacks dabei?',
     'Ich bin nicht dick, ich bin prähistorisch.',
     '{streamer}, du alte Pflaume!',
-    'Zug hat Verspätung. Wie immer.',
+    'Ich hab mehr Lag als dein WLAN.',
     'Kurze Arme, große Klappe.',
     'Ich hab mehr Zähne als {streamer} Kills.',
     'Mein Opa war ein T-Rex. Und deiner?',
@@ -38,17 +38,17 @@ export const DEFAULT_PET = {
     'Pssst … ich glaube, {streamer} hat Lag im Kopf.',
     'Einmal Victory Royale zum Mitnehmen, bitte.',
     'Meine Lieblingswaffe? Meine Zähne.',
-    'Achtung an Gleis 3: Der Dino-Express fährt ein!',
+    'Achtung, Achtung: Der Dino ist jetzt live!',
     'Ich esse keine Zuschauer. Nur ein bisschen.',
     'Da war ein Busch. Der Busch war {streamer}.',
     'Ich hab Angst vor Meteoriten. Frag nicht, warum.',
     'Emote-Spam macht auch nicht satt.',
-    'Der Zug ist abgefahren. Ich sitz drin.',
+    'Chat, wer hat hier die Bananen verteilt?',
     'Ich wurde ausgebrütet, um zu nerven.',
     'Wort des Tages: Flitzpiepe.',
     'Wenn {streamer} gewinnt, ess ich einen Busch.',
     'Ich brauch keinen Baumodus, ich bin schon gebaut.',
-    'Nächster Halt: Snackautomat.',
+    'Nächste Mission: Snackautomat.',
     'Pausenbrot? Wo? WO?!',
     'Ich hab {streamer} ins Knie gebissen. Aus Liebe.',
     'Rawr heißt übersetzt: Gib Snacks.',
@@ -56,10 +56,10 @@ export const DEFAULT_PET = {
     'Wer hat mein Ei geklaut?!',
     'Ich bin nicht faul, ich spare Energie für die Evolution.',
     'Heute schon gestretcht? Ich komm nicht an meine Zehen.',
-    '{streamer} spielt wie ein Fahrplan: niemand versteht ihn.',
+    '{streamer} spielt wie ein Tutorial: sehr langsam.',
     'Klatscht mal alle! … Ich kann nicht, kurze Arme.',
     'Ich hätte gern einen Fensterplatz im Battle Bus.',
-    'Ist das hier der Ruhewagen? Nein? Gut. RAWR!',
+    'Ist das hier die Bibliothek? Nein? Gut. RAWR!',
     'Mein Horoskop sagt: Heute gibt es Snacks.',
     'Kennt ihr den? Kommt ein Dino in den Stream …',
     'Ich zähl bis drei, dann hab ich Hunger. Eins …',
@@ -86,7 +86,7 @@ export const isStarving = (pet, now) => hungerOf(pet, now) >= 2 || isFrenzy(pet)
 // {befehl} wird zum Chat-Befehl fürs Füttern (Standard !füttern)
 export const HUNGRY_LINES = [
   'HUNGER! Schreibt {befehl} in den Chat!',
-  'Mein Magen knurrt lauter als ein Güterzug.',
+  'Mein Magen knurrt lauter als ein Subwoofer.',
   'Wenn mich keiner füttert, knabber ich euch an!',
   'Ich rieche Zuschauer … lecker.',
   '{befehl} – so schwer ist das doch nicht, Chat!',
@@ -97,7 +97,7 @@ export const HUNGRY_LINES = [
 const CLIMB_LINES = [
   'Wenn ihr nicht füttert, ess ich die Karten!',
   'Mmh, knusprige Pixel!',
-  'Die Karte schmeckt nach Fahrplan.',
+  'Die Karte schmeckt nach Pixeln.',
   'Ich hab gesagt, ich hab HUNGER!',
   '{befehl} – oder die nächste Karte ist dran!',
   'Knack! Das war die Ecke.',
@@ -134,15 +134,15 @@ export const screenLine = () => pick(SCREEN_LINES);
 export const climbLine = () => pick(CLIMB_LINES);
 
 // Die Zeichnung (Rexi aus „OBS Overlay v2“ in Claude Design): seitlich, schaut nach rechts.
-// Drei Kostüme (data-costume): Schaffner (Mütze + Pfeife), Lokführer (Streifenmütze +
-// Halstuch), Gleisbauer (Helm + Warnweste). Farben kommen aus CSS-Variablen (--dn-…),
+// Drei Kostüme (data-costume): Kapitän (Mütze + Pfeife), Mechaniker (Streifenmütze +
+// Halstuch), Bauarbeiter (Helm + Warnweste). Die ids bleiben (Datenbank). Farben kommen aus CSS-Variablen (--dn-…),
 // damit er bei Hunger rot wird (css/pet.css). Teile mit Klassen bewegen sich per CSS,
 // Drehpunkte in SVG-Einheiten (viewBox 170 × 140). IDs sind pro Dino eindeutig –
 // sonst zeigen alle Dinos auf den Verlauf des ersten.
 export const COSTUMES = [
-  { id: 'schaffner', name: 'Schaffner', sound: 'whistle' },
-  { id: 'lok', name: 'Lokführer', sound: 'roar' },
-  { id: 'bau', name: 'Gleisbauer', sound: 'step' },
+  { id: 'schaffner', name: 'Kapitän', sound: 'whistle' },
+  { id: 'lok', name: 'Mechaniker', sound: 'roar' },
+  { id: 'bau', name: 'Bauarbeiter', sound: 'step' },
 ];
 export const costumeName = (id) => COSTUMES.find((c) => c.id === id)?.name ?? COSTUMES[0].name;
 let svgCount = 0;

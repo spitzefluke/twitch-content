@@ -49,7 +49,7 @@ export async function getUserFromRequest(req: Request) {
 
 // ---------- Twitch API ----------
 // Streamer: Kanalpunkte verwalten, Vorhersagen fürs Bingo starten und dem Bot erlauben,
-// in seinem Chat zu schreiben. Selbst schreibt die Seite nie in Daves Namen – dafür gibt es den Bot.
+// in seinem Chat zu schreiben. Selbst schreibt die Seite nie in Namen des Streamers – dafür gibt es den Bot.
 // Dazu Follower, Abos und Bits lesen – für die Alerts im OBS-Overlay –, und die Mods
 // des Kanals, damit sie auf der Seite mitsteuern dürfen (wenn der Streamer es freigibt).
 export const BROADCASTER_SCOPES = [
@@ -57,15 +57,15 @@ export const BROADCASTER_SCOPES = [
   "moderator:read:followers", "channel:read:subscriptions", "bits:read", "moderation:read",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
-// und Daves Chat lesen – für Befehle wie !füttern.
+// und den Chat des Streamers lesen – für Befehle wie !füttern.
 export const BOT_SCOPES = ["user:write:chat", "user:bot", "user:read:chat"];
 export const oauthRedirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitch-oauth`;
 
 // Twitch-Login starten. Den Rückweg (twitch-oauth, GET) findet der state:
-// Daves Kanal geht zurück auf die Webseite, der Bot in den Admin-Bereich.
+// Der Kanal des Streamers geht zurück auf die Webseite, der Bot in den Admin-Bereich.
 export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bot") {
   const state = crypto.randomUUID() + crypto.randomUUID();
-  // "kind" nur beim Bot mitschicken: So klappt Daves Verbinden auch, solange
+  // "kind" nur beim Bot mitschicken: So klappt das Verbinden des Streamers auch, solange
   // die Migration …_chat_bot.sql (Spalte kind) noch nicht eingespielt ist.
   const row = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
   const { error } = await db.from("oauth_states").insert(row);
@@ -177,8 +177,8 @@ export async function getBot(): Promise<{ user_id: string; login: string; displa
   return data;
 }
 
-// Chat-Nachrichten schreibt der Stellwerk-Bot, nie Dave selbst. Gesendet
-// wird mit dem App-Token: Dafür hat der Bot user:bot freigegeben und Dave
+// Chat-Nachrichten schreibt der StreamHelp-Bot, nie der Streamer selbst. Gesendet
+// wird mit dem App-Token: Dafür hat der Bot user:bot freigegeben und der Streamer
 // channel:bot (oder der Bot ist Moderator im Kanal). Twitch zeigt dann das
 // Bot-Abzeichen. Ohne verbundenen Bot bleibt der Chat still.
 export async function sendChat(conn: Connection, message: string) {

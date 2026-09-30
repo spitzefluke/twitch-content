@@ -2,60 +2,57 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-AeosarC/H3Rzfsfmt52ncY/k2o4vYXyRieuQPI8hq+k=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-juYUX/FMtJ5CadXPTnmPzfJEDl8FsVkYDNYVuIMHxFI=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Content-Stellwerk</title>
-  <meta name="description" content="Content-Ideen, Countdowns und das Fortnite-Glücksrad für den Stream.">
-  <meta name="theme-color" content="#07090f">
+  <title>StreamHelp</title>
+  <meta name="description" content="StreamHelp – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay für den Stream.">
+  <meta name="theme-color" content="#0b0714">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=e499cd24c7">
-  <link rel="stylesheet" href="css/prank-fx.css?v=c051194a73">
+  <link rel="stylesheet" href="css/style.css?v=cf0a731108">
+  <link rel="stylesheet" href="css/shell.css?v=511bc8d209">
+  <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
-  <link rel="stylesheet" href="css/pet.css?v=b60d3469b7">
+  <link rel="stylesheet" href="css/pet.css?v=acbd04dbd4">
   <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
-  <link rel="stylesheet" href="css/extras.css?v=4556904fb7">
+  <link rel="stylesheet" href="css/extras.css?v=cdd7d7d2ce">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=89031139a4",
-      "./js/alerts.js": "./js/alerts.js?v=d780620ee2",
-      "./js/api.js": "./js/api.js?v=426d148e87",
-      "./js/app.js": "./js/app.js?v=96bb661624",
-      "./js/bingo.js": "./js/bingo.js?v=ed6d67ecbf",
-      "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
-      "./js/config.js": "./js/config.js?v=4c6e85333d",
-      "./js/defaults.js": "./js/defaults.js?v=54655d8b93",
-      "./js/extras-api.js": "./js/extras-api.js?v=fb0b2f13a5",
+      "./js/admin.js": "./js/admin.js?v=ca05db518e",
+      "./js/alerts.js": "./js/alerts.js?v=951c5e8239",
+      "./js/api.js": "./js/api.js?v=eb0bd14c67",
+      "./js/app.js": "./js/app.js?v=7f78fe5667",
+      "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
+      "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
+      "./js/config.js": "./js/config.js?v=ffb743d9ae",
+      "./js/defaults.js": "./js/defaults.js?v=b38e9252c7",
+      "./js/extras-api.js": "./js/extras-api.js?v=99d94339a4",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
-      "./js/extras-fun.js": "./js/extras-fun.js?v=51566dad40",
-      "./js/extras-guard.js": "./js/extras-guard.js?v=e82b33cda3",
+      "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
+      "./js/extras-guard.js": "./js/extras-guard.js?v=6ef5d043e0",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
-      "./js/extras.js": "./js/extras.js?v=3b3718b606",
+      "./js/extras.js": "./js/extras.js?v=a9db7d7573",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
-      "./js/intro-engine.js": "./js/intro-engine.js?v=2f3a626469",
-      "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
-      "./js/intro.js": "./js/intro.js?v=b67e9663cf",
-      "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay-extras.js": "./js/overlay-extras.js?v=3c94f6ed57",
-      "./js/overlay.js": "./js/overlay.js?v=c2f1b8f951",
-      "./js/pet.js": "./js/pet.js?v=17f758b878",
-      "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
+      "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=62842e7183",
+      "./js/overlay.js": "./js/overlay.js?v=53f98f1003",
+      "./js/pet.js": "./js/pet.js?v=3bca368d37",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=c278b34900",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
-      "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=66d3439a86",
+      "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
-      "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
+      "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
-      "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
+      "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=25a4461934",
-      "./js/weather.js": "./js/weather.js?v=b1e3736ff5",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=0bb1cb5113",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
     }
@@ -70,75 +67,126 @@
     <div class="bg-stars"></div>
     <div class="bg-glow bg-glow--a"></div>
     <div class="bg-glow bg-glow--b"></div>
-    <div class="bg-fog bg-fog--a"></div>
-    <div class="bg-fog bg-fog--b"></div>
-    <div class="bg-wire"></div>
-    <div class="bg-line"></div>
-    <div class="bg-train">
-      <svg viewBox="0 0 300 40" xmlns="http://www.w3.org/2000/svg">
-        <path d="M14 30 L4 24 Q0 22 2 18 L8 8 Q11 3 18 3 L92 3 Q96 3 96 7 L96 30 Z" fill="currentColor"/>
-        <rect x="102" y="6" width="88" height="24" rx="4" fill="currentColor"/>
-        <rect x="196" y="6" width="88" height="24" rx="4" fill="currentColor"/>
-        <g fill="currentColor">
-          <circle cx="20" cy="33" r="4"/><circle cx="36" cy="33" r="4"/><circle cx="70" cy="33" r="4"/><circle cx="86" cy="33" r="4"/>
-          <circle cx="116" cy="33" r="4"/><circle cx="176" cy="33" r="4"/><circle cx="210" cy="33" r="4"/><circle cx="270" cy="33" r="4"/>
-        </g>
-        <circle cx="5" cy="26" r="2.5" fill="#ffe9a8"/>
-      </svg>
-    </div>
+    <div class="bg-grid"></div>
   </div>
-
-  <!-- ============ INTRO ============================================
-       Intro v2 aus Claude Design – eine durchgehende Reise durch die Nacht:
-       Berge → Tunnel → Frontal aus dem Tunnel → Einfahrt → Tafel blättert
-       ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen → Überblendung.
-       Das Bild (1920 × 1080) zeichnet js/intro.js in .intro-stage.
-  ================================================================= -->
-  <section id="intro" class="intro" aria-label="Intro">
-    <div class="intro-stage" aria-hidden="true"></div>
-    <p class="intro-weather" id="intro-weather" aria-live="polite"><span class="intro-weather__dot" aria-hidden="true"></span><span>Deutschland · Wetter wird geladen</span></p>
-    <button class="intro-skip" type="button">Überspringen <kbd>Esc</kbd></button>
-    <div class="intro-progress" aria-hidden="true"><span id="intro-progress-bar"></span></div>
-  </section>
 
   <div id="demo-banner" class="demo-banner" hidden>
     Demo-Modus: Daten liegen nur in diesem Browser. Für echte Accounts und Twitch Supabase in <code>js/config.js</code> eintragen.
   </div>
 
+  <!-- ============ STARTSEITE (öffentlich) ============ -->
+  <div id="landing" class="landing" hidden>
+    <header class="lp-nav">
+      <a class="sh-brand" href="#top" aria-label="StreamHelp – nach oben"><span class="sh-logo" aria-hidden="true"></span><span>Stream<b>Help</b></span></a>
+      <nav class="lp-menu" aria-label="Hauptmenü">
+        <ul>
+          <li class="lp-item">
+            <button type="button" class="lp-link" aria-expanded="false" aria-haspopup="true">Funktionen <span class="lp-caret" aria-hidden="true"></span></button>
+            <div class="lp-drop">
+              <a href="#f-ideas"><span aria-hidden="true">🎬</span><span><b>Content-Ideen</b><small>Glücksrad, Bingo, Quiz, Challenges und mehr</small></span></a>
+              <a href="#f-bot"><span aria-hidden="true">🤖</span><span><b>Chat-Bot</b><small>Befehle und Antworten im Twitch-Chat</small></span></a>
+              <a href="#f-points"><span aria-hidden="true">🎟️</span><span><b>Kanalpunkte</b><small>Belohnungen anlegen, Kosten ändern</small></span></a>
+              <a href="#f-alerts"><span aria-hidden="true">🔔</span><span><b>Alerts</b><small>Follows, Abos, Bits und Kanalpunkte</small></span></a>
+              <a href="#f-obs"><span aria-hidden="true">🎛️</span><span><b>OBS-Overlay</b><small>Eine Browserquelle für alles</small></span></a>
+            </div>
+          </li>
+          <li class="lp-item">
+            <button type="button" class="lp-link" aria-expanded="false" aria-haspopup="true">Für wen <span class="lp-caret" aria-hidden="true"></span></button>
+            <div class="lp-drop">
+              <a href="#f-roles"><span aria-hidden="true">🎥</span><span><b>Streamer</b><small>Alles einrichten und im Blick behalten</small></span></a>
+              <a href="#f-roles"><span aria-hidden="true">🛡️</span><span><b>Mods</b><small>Mitsteuern, sobald der Streamer freigibt</small></span></a>
+              <a href="#f-roles"><span aria-hidden="true">💜</span><span><b>Zuschauer</b><small>Mitmachen, abstimmen, Ideen einreichen</small></span></a>
+            </div>
+          </li>
+          <li class="lp-item">
+            <button type="button" class="lp-link" aria-expanded="false" aria-haspopup="true">Hilfe <span class="lp-caret" aria-hidden="true"></span></button>
+            <div class="lp-drop">
+              <a href="#f-start"><span aria-hidden="true">🚀</span><span><b>So startest du</b><small>In drei Schritten live</small></span></a>
+              <a href="#f-safe"><span aria-hidden="true">🔒</span><span><b>Sicherheit</b><small>Raid-Schutz und Datenschutz</small></span></a>
+            </div>
+          </li>
+        </ul>
+      </nav>
+      <button class="btn btn--primary btn--sm lp-login" type="button" data-go="login">Anmelden</button>
+    </header>
+
+    <main class="lp-main">
+      <section class="lp-hero" id="top">
+        <div class="lp-hero-text">
+          <p class="lp-kicker"><span class="lp-live" aria-hidden="true"></span>Die Stream-Zentrale von <b data-streamer>Streamer</b></p>
+          <h1 class="lp-title">Stream<span>Help</span></h1>
+          <p class="lp-lead">Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und das OBS-Overlay – alles an einem Ort. Wie StreamElements und ein Chat-Bot zusammen, nur für diesen einen Kanal.</p>
+          <div class="lp-cta">
+            <button class="btn btn--primary btn--lg" type="button" data-go="login">Jetzt anmelden</button>
+            <a class="btn btn--ghost btn--lg" href="#f-ideas">Funktionen ansehen</a>
+          </div>
+        </div>
+        <div class="lp-visual" aria-hidden="true">
+          <div class="lp-screen">
+            <div class="lp-screen-bar"><i></i><i></i><i></i></div>
+            <div class="lp-screen-body">
+              <span class="lp-wheel"></span>
+              <span class="lp-bars"><i></i><i></i><i></i><i></i></span>
+            </div>
+          </div>
+          <div class="lp-float lp-float--alert">🎉 <b>NightOwl_Mia</b> hat abonniert!</div>
+          <div class="lp-float lp-float--points">🎟️ <b>5.000</b> Kanalpunkte eingelöst</div>
+          <div class="lp-float lp-float--chat"><b>PixelPaul:</b> !join</div>
+          <div class="lp-float lp-float--bits">💎 <b>500 Bits</b> von GG_Gina</div>
+        </div>
+      </section>
+
+      <section class="lp-features" aria-label="Funktionen">
+        <article class="lp-feature" id="f-ideas"><span class="lp-ico">🎬</span><h2>Content-Ideen</h2><p>Glücksrad, Bingo, Quiz, Win-Challenge, Subathon, Verbotenes Wort und mehr – mit Countdown und Freischalten per Klick.</p></article>
+        <article class="lp-feature" id="f-bot"><span class="lp-ico">🤖</span><h2>Chat-Bot</h2><p>Ein eigenes Bot-Konto liest den Chat mit: !join, !a–!d, Dino füttern – und schreibt Ergebnisse direkt in den Chat.</p></article>
+        <article class="lp-feature" id="f-points"><span class="lp-ico">🎟️</span><h2>Kanalpunkte</h2><p>Belohnungen werden automatisch auf Twitch angelegt. Kosten ändern Streamer und Mods direkt hier.</p></article>
+        <article class="lp-feature" id="f-alerts"><span class="lp-ico">🔔</span><h2>Alerts</h2><p>Follows, Abos, Resubs, Bits und Kanalpunkte erscheinen im Stream. Die Verbindung zu Twitch wird automatisch geprüft und repariert.</p></article>
+        <article class="lp-feature" id="f-obs"><span class="lp-ico">🎛️</span><h2>OBS-Overlay</h2><p>Eine einzige Browserquelle zeigt alles. Änderungen im OBS-Fenster sind nach Sekunden live – ohne neu einzufügen.</p></article>
+        <article class="lp-feature" id="f-safe"><span class="lp-ico">🛡️</span><h2>Raid-Schutz</h2><p>Bei Spam oder Hate-Raids pausiert ein Klick alle Zuschauer-Aktionen. Kanalpunkte gehen automatisch zurück.</p></article>
+      </section>
+
+      <section class="lp-roles" id="f-roles">
+        <h2 class="lp-h2">Für alle, die den Stream machen</h2>
+        <div class="lp-role-grid">
+          <article class="lp-role"><b>🎥 Streamer</b><p>Twitch verbinden, Mods freigeben, alles einstellen. Du siehst sofort, wenn bei Twitch etwas klemmt.</p></article>
+          <article class="lp-role"><b>🛡️ Mods</b><p>Nach der Freigabe steuerst du Content-Ideen, OBS, Kanalpunkte-Kosten und den Bot mit.</p></article>
+          <article class="lp-role"><b>💜 Zuschauer</b><p>Mitmachen, abstimmen, Ideen einreichen – mit deinem Twitch-Konto.</p></article>
+        </div>
+      </section>
+
+      <section class="lp-start" id="f-start">
+        <h2 class="lp-h2">So startest du</h2>
+        <ol class="lp-steps">
+          <li><b>Anmelden</b><span>Am schnellsten mit Twitch.</span></li>
+          <li><b>Twitch verbinden</b><span>Der Streamer erlaubt einmal Kanalpunkte, Chat und Alerts.</span></li>
+          <li><b>OBS öffnen</b><span>Browserquelle einfügen – fertig, alles läuft live.</span></li>
+        </ol>
+        <button class="btn btn--primary btn--lg" type="button" data-go="login">Los geht’s</button>
+      </section>
+    </main>
+    <footer class="lp-foot"><span>StreamHelp</span><a href="admin.html">Admin-Zugang</a></footer>
+  </div>
+
   <!-- ============ ANMELDEN / REGISTRIEREN ============ -->
   <main id="auth" class="auth" hidden>
-    <section class="auth-hero">
-      <div class="brand">
-        <img src="assets/favicon.svg" alt="" width="34" height="34">
-        <span data-streamer>Streamer</span>
-        <span class="brand-badge">Gleis 1</span>
-      </div>
-      <h1>Das Content-<wbr>Stellwerk</h1>
-      <p class="auth-kicker"><span class="rule" aria-hidden="true"></span>Fahrplan · Glücksrad · Countdown</p>
-      <p class="auth-lead">Hier werden Ideen für den Stream gesammelt, getaktet und auf die Strecke geschickt – mit Countdown bis zur Abfahrt und einem Glücksrad, das die Fortnite-Runden des Streamers durcheinanderbringt.</p>
-      <div class="site-status" aria-label="Stellwerk-Status">
-        <span class="site-status__dot" aria-hidden="true"></span>
-        <span><b>Stellwerk online</b> · Demo-Fahrplan synchronisiert</span>
-        <time id="status-updated" datetime="">gerade eben</time>
-      </div>
-      <ul class="auth-points">
-        <li><span class="dot dot--amber"></span><span>Countdowns für kommende<br>Stream-Ideen</span></li>
-        <li><span class="dot dot--green"></span><span>Fortnite-Glücksrad mit<br>drei Varianten</span></li>
-        <li><span class="dot dot--twitch"></span><span>Per Kanalpunkte direkt<br>aus dem Chat drehbar</span></li>
-      </ul>
-    </section>
+    <div class="auth-fx" aria-hidden="true">
+      <span class="auth-orb auth-orb--a"></span>
+      <span class="auth-orb auth-orb--b"></span>
+      <span class="auth-orb auth-orb--c"></span>
+      <span class="auth-ring auth-ring--1"></span>
+      <span class="auth-ring auth-ring--2"></span>
+      <span class="auth-ring auth-ring--3"></span>
+      <span class="auth-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+    <button class="auth-back" type="button" data-go="landing">← Zur Startseite</button>
 
     <section class="auth-card" aria-labelledby="auth-title">
-      <h2 id="auth-title" class="visually-hidden">Anmelden oder registrieren</h2>
-
-      <div class="auth-card-head">
-        <span>Einstieg</span>
-        <span>Abfahrt <b id="auth-clock">--:--</b></span>
-      </div>
+      <div class="auth-logo" aria-hidden="true"><span class="sh-logo sh-logo--lg"></span></div>
+      <h1 id="auth-title" class="auth-title">Willkommen bei <span>StreamHelp</span></h1>
+      <p class="auth-sub">Melde dich an und mach beim Stream von <b data-streamer>Streamer</b> mit.</p>
 
       <div class="auth-card-body">
         <div id="social" class="social" hidden>
-          <p class="social-title">Schnell einsteigen mit</p>
           <div class="social-grid">
             <button type="button" class="social-btn social-btn--twitch" data-provider="twitch"><span class="s-icon" aria-hidden="true"></span>Mit Twitch anmelden</button>
             <button type="button" class="social-btn social-btn--discord" data-provider="discord"><span class="s-icon" aria-hidden="true"></span>Discord</button>
@@ -159,15 +207,14 @@
         <form id="form-login" class="auth-form" role="tabpanel" aria-labelledby="tab-login" novalidate>
           <label class="field">
             <span>E-Mail</span>
-            <input name="email" type="email" autocomplete="email" required placeholder="dave@beispiel.de">
+            <input name="email" type="email" autocomplete="email" required placeholder="du@beispiel.de">
           </label>
           <label class="field">
             <span>Passwort</span>
             <input name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
           </label>
           <p class="form-msg" role="alert"></p>
-          <button class="btn btn--primary btn--block" type="submit">Einsteigen</button>
-          <a class="admin-link" href="admin.html">Admin-Zugang</a>
+          <button class="btn btn--primary btn--block" type="submit">Anmelden</button>
         </form>
 
         <form id="form-register" class="auth-form" role="tabpanel" aria-labelledby="tab-register" hidden novalidate>
@@ -188,94 +235,249 @@
         </form>
       </div>
     </section>
+    <div class="auth-warp" aria-hidden="true"></div>
   </main>
 
   <!-- ============ DASHBOARD ============ -->
-  <div id="app" class="app" hidden>
-    <header class="topbar">
-      <div class="topbar-brand">
-        <div class="brand">
-          <img src="assets/favicon.svg" alt="" width="30" height="30">
-          <span data-streamer>Streamer</span>
-        </div>
-        <p class="topbar-greeting" id="greeting"></p>
-      </div>
-      <div class="topbar-actions">
-        <span id="live-pill" class="live-pill" hidden>Live</span>
-        <button id="twitch-btn" class="btn btn--twitch btn--sm" type="button"></button>
-        <div class="user-chip">
-          <span class="avatar" id="user-avatar" aria-hidden="true"></span>
-          <span id="user-name"></span>
-          <span id="user-role" class="role-badge" hidden>Admin</span>
-        </div>
-        <button id="obs-btn" class="btn btn--ghost btn--sm" type="button">OBS</button>
-        <a id="admin-btn" class="btn btn--ghost btn--sm" href="admin.html" hidden>Admin</a>
-        <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
-      </div>
-    </header>
-
-    <main class="dashboard">
-      <!-- Nächste Abfahrt + Glücksrad -->
-      <section class="dash-hero">
-        <article class="next-departure" id="next-departure">
-          <span class="nd-bg" aria-hidden="true"></span>
-          <span class="nd-shade" aria-hidden="true"></span>
-          <div class="nd-body">
-            <p class="eyebrow">Nächste Abfahrt · <span id="today"></span></p>
-            <h1 id="next-title">Kein Termin geplant</h1>
-            <p class="nd-desc" id="next-desc">Sobald eine Idee einen Termin bekommt, steht sie hier.</p>
-            <div class="countdown countdown--lg" id="next-countdown"></div>
-          </div>
-        </article>
-
-        <button type="button" class="wheel-card" id="wheel-card">
-          <span class="wheel-card-disc" aria-hidden="true"></span>
-          <span class="wheel-card-shade" aria-hidden="true"></span>
-          <span class="tile-tag" id="wheel-card-tag">Jederzeit</span>
-          <span class="wheel-card-title" id="wheel-card-title">Fortnite-Glücksrad</span>
-          <span class="wheel-card-desc" id="wheel-card-desc"></span>
-          <span class="wheel-card-cta">Rad drehen →</span>
+  <div id="app" class="app" hidden data-view="viewer">
+    <aside class="sidebar" id="sidebar" aria-label="Bereiche">
+      <div class="sb-head">
+        <button class="sb-toggle" id="sb-toggle" type="button" aria-expanded="false" aria-controls="sidebar" title="Leiste ausklappen">
+          <span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="visually-hidden">Leiste ausklappen</span>
         </button>
-      </section>
+        <span class="sh-brand sb-brand"><span class="sh-logo" aria-hidden="true"></span><span>Stream<b>Help</b></span></span>
+      </div>
+      <nav class="sb-nav">
+        <button class="sb-item" type="button" data-page="ideas" aria-current="page" title="Content-Ideen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Content-Ideen</span></button>
+        <button class="sb-item" type="button" data-page="community" title="Vorschläge &amp; Archiv"><span class="sb-ico" aria-hidden="true">💡</span><span class="sb-label">Vorschläge &amp; Archiv</span></button>
+        <p class="sb-group" data-for="team">Stream-Werkzeuge</p>
+        <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><span class="sb-ico" aria-hidden="true">🤖</span><span class="sb-label">Bot &amp; Chat</span></button>
+        <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><span class="sb-ico" aria-hidden="true">🎟️</span><span class="sb-label">Kanalpunkte</span></button>
+        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><span class="sb-ico" aria-hidden="true">🔔</span><span class="sb-label">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
+        <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><span class="sb-ico" aria-hidden="true">🎛️</span><span class="sb-label">Overlay &amp; OBS</span></button>
+        <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz"><span class="sb-ico" aria-hidden="true">🛡️</span><span class="sb-label">Raid-Schutz</span></button>
+        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><span class="sb-ico" aria-hidden="true">👥</span><span class="sb-label">Mods</span></button>
+        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><span class="sb-ico" aria-hidden="true">🟣</span><span class="sb-label">Twitch-Verbindung</span></button>
+      </nav>
+      <div class="sb-foot">
+        <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><span class="sb-ico" aria-hidden="true">⚙️</span><span class="sb-label">Admin-Bereich</span></a>
+      </div>
+    </aside>
+    <div class="sb-scrim" id="sb-scrim" hidden></div>
 
-      <!-- Fahrplan -->
-      <section class="section">
-        <div class="section-head">
-          <h2>Fahrplan</h2>
-          <span id="plan-count"></span>
+    <div class="app-main">
+      <header class="topbar">
+        <button class="sb-mobile" id="sb-mobile" type="button" aria-controls="sidebar" aria-label="Menü öffnen"><span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <div class="topbar-title">
+          <p class="topbar-greeting" id="greeting"></p>
+          <h1 id="page-title">Content-Ideen</h1>
         </div>
-        <div id="grid" class="grid" aria-live="polite"></div>
-      </section>
-
-      <!-- Archiv + Vorschläge -->
-      <section class="panels">
-        <div class="panel">
-          <div class="section-head">
-            <h2>Archiv</h2>
-            <span>Gefahrene Strecken</span>
-          </div>
-          <ul id="archive-list" class="archive"></ul>
+        <div class="view-switch" id="view-switch" role="tablist" aria-label="Ansicht" hidden>
+          <button type="button" role="tab" data-view="streamer" aria-selected="true">🎥 <span>Streameransicht</span></button>
+          <button type="button" role="tab" data-view="mod" aria-selected="false">🛡️ <span>Modansicht</span></button>
+          <span class="view-thumb" aria-hidden="true"></span>
         </div>
-
-        <div class="panel" id="ideas-panel" hidden>
-          <div class="section-head">
-            <h2>Vorschläge</h2>
-            <span>Von Zuschauern</span>
+        <div class="topbar-actions">
+          <span id="live-pill" class="live-pill" hidden>Kanalpunkte aktiv</span>
+          <button id="health-btn" class="health-btn" type="button" hidden></button>
+          <div class="user-chip">
+            <span class="avatar" id="user-avatar" aria-hidden="true"></span>
+            <span id="user-name"></span>
+            <span id="user-role" class="role-badge" hidden>Admin</span>
           </div>
-          <div class="ideas-box">
-            <form id="idea-form" novalidate>
-              <label class="field">
-                <span>Deine Idee für den Fahrplan</span>
-                <input name="text" type="text" maxlength="120" required placeholder="z. B. Nachtzug durch die Alpen">
+          <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
+          <button id="obs-btn" class="btn btn--primary btn--sm obs-top" type="button">🎛️ OBS</button>
+        </div>
+      </header>
+
+      <div class="health-banner" id="health-banner" role="alert" hidden>
+        <span class="health-banner-ico" aria-hidden="true">⚠️</span>
+        <span class="health-banner-text"><b id="health-banner-title">Twitch-Problem</b><small id="health-banner-detail"></small></span>
+        <button class="btn btn--sm btn--ghost" type="button" data-goto="alerts">Details</button>
+      </div>
+
+      <main class="dashboard">
+        <!-- Content-Ideen: die Startseite im Dashboard -->
+        <section class="page" data-page="ideas" aria-labelledby="page-title">
+          <div class="dash-hero">
+            <article class="next-departure" id="next-departure">
+              <span class="nd-bg" aria-hidden="true"></span>
+              <span class="nd-shade" aria-hidden="true"></span>
+              <div class="nd-body">
+                <p class="eyebrow">Als Nächstes · <span id="today"></span></p>
+                <h2 id="next-title">Kein Termin geplant</h2>
+                <p class="nd-desc" id="next-desc">Sobald eine Idee einen Termin bekommt, steht sie hier.</p>
+                <div class="countdown countdown--lg" id="next-countdown"></div>
+              </div>
+            </article>
+
+            <button type="button" class="wheel-card" id="wheel-card">
+              <span class="wheel-card-disc" aria-hidden="true"></span>
+              <span class="wheel-card-shade" aria-hidden="true"></span>
+              <span class="tile-tag" id="wheel-card-tag">Jederzeit</span>
+              <span class="wheel-card-title" id="wheel-card-title">Fortnite-Glücksrad</span>
+              <span class="wheel-card-desc" id="wheel-card-desc"></span>
+              <span class="wheel-card-cta">Rad drehen →</span>
+            </button>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <h2>Alle Content-Ideen</h2>
+              <span id="plan-count"></span>
+            </div>
+            <div id="grid" class="grid" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <!-- Vorschläge & Archiv -->
+        <section class="page" data-page="community" hidden>
+          <div class="panels">
+            <div class="panel" id="ideas-panel" hidden>
+              <div class="section-head">
+                <h2>Vorschläge</h2>
+                <span>Von Zuschauern</span>
+              </div>
+              <div class="ideas-box">
+                <form id="idea-form" novalidate>
+                  <label class="field">
+                    <span>Deine Idee für den Stream</span>
+                    <input name="text" type="text" maxlength="120" required placeholder="z. B. Horror-Nacht mit Chat-Voting">
+                  </label>
+                  <p class="form-msg" role="alert"></p>
+                  <button class="btn btn--outline btn--block" type="submit">Vorschlag einreichen</button>
+                </form>
+                <ul id="ideas-list" class="ideas"></ul>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="section-head">
+                <h2>Archiv</h2>
+                <span>Vergangene Streams</span>
+              </div>
+              <ul id="archive-list" class="archive"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bot & Chat -->
+        <section class="page" data-page="bot" hidden>
+          <div class="dash-cards">
+            <article class="dash-card dash-card--wide" id="bot-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🤖</span><div><h2>Chat-Bot-Konto</h2><p id="bot-status" class="dash-status">Wird geladen …</p></div></header>
+              <p class="form-hint">Der Bot ist ein eigener Twitch-Account (nicht der Kanal des Streamers). Er liest Chat-Befehle mit und schreibt Ergebnisse in den Chat. Vor dem Verbinden auf twitch.tv mit dem Bot-Account anmelden.</p>
+              <div class="dash-actions">
+                <button class="btn btn--twitch" type="button" id="bot-connect">🤖 Bot verbinden</button>
+                <button class="btn btn--ghost" type="button" id="bot-disconnect" hidden>Bot trennen</button>
+              </div>
+              <p class="form-msg" id="bot-msg" role="alert"></p>
+            </article>
+            <article class="dash-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
+              <ul class="cmd-list" id="cmd-list"></ul>
+            </article>
+            <article class="dash-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>
+              <ul class="dash-list">
+                <li>🎡 Ergebnis jeder Glücksrad-Drehung</li>
+                <li>🧠 Quiz-Fragen und Auflösung</li>
+                <li>🎮 Warteschlange: wer dran ist</li>
+                <li>🚫 Verbotenes Wort erwischt</li>
+                <li>🦖 Dino gefüttert, Kostüm gewechselt</li>
+              </ul>
+              <p class="form-hint">Eingetippte Texte wiederholt der Bot nie – nur feste Texte der Seite.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- Kanalpunkte -->
+        <section class="page" data-page="points" hidden>
+          <p class="page-intro">Alle Belohnungen, die StreamHelp auf Twitch anlegt. Kosten ändern Streamer und freigegebene Mods – die Änderung gilt sofort auf Twitch.</p>
+          <div class="dash-cards" id="points-list"></div>
+        </section>
+
+        <!-- Alerts -->
+        <section class="page" data-page="alerts" hidden>
+          <div class="dash-cards">
+            <article class="dash-card dash-card--wide health-card" id="health-card" data-state="unknown">
+              <header class="dash-card-head">
+                <span class="health-light" aria-hidden="true"></span>
+                <div><h2 id="health-title">Twitch-Verbindung wird geprüft …</h2><p class="dash-status" id="health-meta"></p></div>
+                <button class="btn btn--outline btn--sm" type="button" id="health-check">🔄 Jetzt prüfen &amp; reparieren</button>
+              </header>
+              <ul class="health-problems" id="health-problems"></ul>
+              <ul class="health-subs" id="health-subs"></ul>
+            </article>
+            <section class="dash-card obs-alerts" id="obs-alerts">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🧪</span><div><h2>Probe-Alerts</h2><p class="dash-status" id="obs-alerts-status">Erscheinen sofort im Overlay – echte kommen von Twitch.</p></div></header>
+              <div class="obs-alerts-btns">
+                <button class="btn btn--outline btn--sm" type="button" data-alert="follow">💜 Follower</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="sub">⭐ Abo</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="resub">🔁 Resub</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="bits">💎 Bits</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="redeem">🎟️ Kanalpunkte</button>
+              </div>
+              <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
+              <p class="form-hint">Aussehen, Töne und Position der Alerts stellst du im OBS-Fenster unter „Alerts“ ein.</p>
+            </section>
+          </div>
+        </section>
+
+        <!-- Overlay & OBS -->
+        <section class="page" data-page="overlay" hidden>
+          <div class="dash-cards">
+            <article class="dash-card dash-card--wide">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🎛️</span><div><h2>OBS-Overlay</h2><p class="dash-status">Eine Browserquelle für alles – Änderungen sind nach Sekunden live</p></div></header>
+              <div class="obs-url dash-url">
+                <input id="dash-obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
+                <button id="dash-obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
+              </div>
+              <div class="dash-actions">
+                <button class="btn btn--primary" type="button" data-open-obs>🎛️ OBS-Fenster öffnen</button>
+              </div>
+              <p class="form-hint">In OBS: Quellen → + → Browser → Adresse einfügen, 1920 × 1080. Ebenen, Größen, Farben, Laufband und Alerts stellst du im OBS-Fenster ein.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- Raid-Schutz -->
+        <section class="page" data-page="guard" hidden>
+          <div class="dash-cards"><div class="dash-card dash-card--wide" id="guard-slot"></div></div>
+        </section>
+
+        <!-- Mods -->
+        <section class="page" data-page="mods" hidden>
+          <div class="dash-cards">
+            <section class="dash-card dash-card--wide obs-mods" id="obs-mods">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">👥</span><div><h2>Mods</h2><p class="dash-status" id="obs-mods-intro">Freigegebene Mods steuern Content-Ideen, OBS, Kanalpunkte-Kosten und den Bot mit. Twitch verbinden und die Freigabe bleiben beim Streamer.</p></div></header>
+              <label class="toggle" id="obs-mods-wrap" data-for="streamer">
+                <input type="checkbox" id="obs-mods-toggle">
+                <span class="toggle-ui" aria-hidden="true"></span>
+                Für Mods freigeben
               </label>
-              <p class="form-msg" role="alert"></p>
-              <button class="btn btn--outline btn--block" type="submit">Vorschlag einreichen</button>
-            </form>
-            <ul id="ideas-list" class="ideas"></ul>
+              <p class="obs-mods-status" id="obs-mods-status"></p>
+              <ul class="obs-mods-list" id="obs-mods-list"></ul>
+              <div class="dash-actions">
+                <button class="btn btn--outline btn--sm" type="button" id="obs-mods-sync">🔄 Mods von Twitch holen</button>
+              </div>
+              <p class="form-hint">Mods melden sich hier mit „Mit Twitch anmelden“ an – StreamHelp erkennt sie an ihrem Twitch-Konto.</p>
+            </section>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        <!-- Twitch-Verbindung (nur Streameransicht) -->
+        <section class="page" data-page="twitch" hidden>
+          <div class="dash-cards">
+            <article class="dash-card dash-card--wide">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🟣</span><div><h2>Twitch-Kanal</h2><p class="dash-status" id="twitch-state">…</p></div></header>
+              <div id="twitch-dialog-body" class="twitch-dialog-body"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <!-- ============ GLÜCKSRAD ============ -->
@@ -405,7 +607,7 @@
     </div>
   </dialog>
 
-  <!-- ============ ÄRGERE DEN DAVE ============ -->
+  <!-- ============ ÄRGERE DEN STREAMER ============ -->
   <dialog id="prank-dialog" class="dialog dialog--prank" aria-labelledby="prank-title">
     <div class="dialog-head">
       <div>
@@ -988,7 +1190,7 @@
         <section class="bingo-box">
           <h3 class="prank-h3">Kostüm &amp; Heißhunger</h3>
           <div class="pet-costume-box">
-            <label class="field"><span>Kostüm im Stream</span><select id="pet-costume"><option value="schaffner">🎩 Schaffner</option><option value="lok">🚂 Lokführer</option><option value="bau">🦺 Gleisbauer</option></select></label>
+            <label class="field"><span>Kostüm im Stream</span><select id="pet-costume"><option value="schaffner">⚓ Kapitän</option><option value="lok">🔧 Mechaniker</option><option value="bau">🦺 Bauarbeiter</option></select></label>
             <div class="obs-pet-btns">
               <button class="btn btn--outline btn--sm" type="button" data-pet-frenzy>🔥 Heißhunger auslösen</button>
             </div>
@@ -1035,13 +1237,13 @@
       <form id="tile-form" class="tile-form" hidden>
         <label class="field"><span>Titel</span><input name="title" required maxlength="60"></label>
         <label class="field"><span>Kurzbeschreibung</span><textarea name="description" rows="3" maxlength="220"></textarea></label>
-        <label class="field"><span>Abfahrt (Datum &amp; Uhrzeit)</span><input name="target_at" type="datetime-local" required></label>
+        <label class="field"><span>Start (Datum &amp; Uhrzeit)</span><input name="target_at" type="datetime-local" required></label>
         <label class="field"><span>Hintergrund</span>
           <select name="theme">
-            <option value="tracks">Gleise bei Nacht</option>
+            <option value="tracks">Neon-Nacht</option>
             <option value="storm">Fortnite-Sturm</option>
-            <option value="ghost">Geisterzug</option>
-            <option value="city">Viadukt im Sonnenuntergang</option>
+            <option value="ghost">Spukmond</option>
+            <option value="city">Skyline im Sonnenuntergang</option>
           </select>
         </label>
         <label class="field"><span>Eigenes Hintergrundbild (https-URL, optional)</span><input name="background" type="url" placeholder="https://…"></label>
@@ -1143,21 +1345,6 @@
 
         <!-- Streameransicht: Mods freigeben und alle Content-Ideen steuern (Streamer, Admins, freigegebene Mods) -->
         <div class="obs-pane obs-content" data-pane="content" hidden>
-          <section class="obs-card-form obs-mods" id="obs-mods">
-            <b>👥 Mods</b>
-            <small id="obs-mods-intro">Freigegebene Mods steuern das OBS-Overlay und alle Content-Ideen mit – so wie du. Twitch trennen und Kanalpunkte-Kosten bleiben bei dir.</small>
-            <label class="toggle" id="obs-mods-wrap">
-              <input type="checkbox" id="obs-mods-toggle">
-              <span class="toggle-ui" aria-hidden="true"></span>
-              Für Mods freigeben
-            </label>
-            <p class="obs-mods-status" id="obs-mods-status"></p>
-            <ul class="obs-mods-list" id="obs-mods-list"></ul>
-            <div class="obs-pet-btns">
-              <button class="btn btn--outline btn--sm" type="button" id="obs-mods-sync">🔄 Mods von Twitch holen</button>
-            </div>
-            <p class="form-hint">Mods melden sich hier auf der Seite mit „Mit Twitch anmelden“ an – die Seite erkennt sie an ihrem Twitch-Konto.</p>
-          </section>
           <section class="obs-content-box">
             <b class="obs-content-head">🎬 Content-Ideen</b>
             <p class="form-hint">Öffnen startet und steuert die Idee (Glücksrad drehen, Bingo-Tipprunde, Frage zeigen …). „Freischalten“ macht sie sofort für alle Zuschauer sichtbar.</p>
@@ -1179,7 +1366,7 @@
                 <div class="obs-layer-body" hidden>
                   <label class="obs-row"><span>Größe</span><input type="range" name="tsize" min="50" max="200" step="5" value="100"><output name="tsize-out"></output></label>
                   <label class="obs-row"><span>Tempo</span><input type="range" name="tspeed" min="20" max="200" step="5" value="70"><output name="tspeed-out"></output></label>
-                  <label class="obs-row"><span>Design</span><select name="tstyle"><option value="bar" selected>Laufband</option><option value="neon">Neon</option><option value="board">Bahnhofs-Anzeige</option></select></label>
+                  <label class="obs-row"><span>Design</span><select name="tstyle"><option value="bar" selected>Laufband</option><option value="neon">Neon</option><option value="board">LED-Anzeige</option></select></label>
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="ticker"></span><button class="obs-mini-btn" type="button" data-reset-pos="ticker">Zurück an den Standardplatz</button></span></div>
                 </div>
               </div>
@@ -1221,7 +1408,7 @@
                   <!-- Rexi selbst (nur Admins): gilt sofort in allen OBS-Quellen, steht in der Tabelle pet -->
                   <div class="obs-pet-admin" id="obs-pet-admin" hidden>
                     <p class="obs-row-hint">Rexi im Stream – gilt sofort in allen OBS-Quellen:</p>
-                    <label class="obs-row"><span>Kostüm</span><select id="obs-pet-costume"><option value="schaffner">🎩 Schaffner</option><option value="lok">🚂 Lokführer</option><option value="bau">🦺 Gleisbauer</option></select></label>
+                    <label class="obs-row"><span>Kostüm</span><select id="obs-pet-costume"><option value="schaffner">⚓ Kapitän</option><option value="lok">🔧 Mechaniker</option><option value="bau">🦺 Bauarbeiter</option></select></label>
                     <label class="toggle obs-row-toggle"><input type="checkbox" id="obs-pet-change"><span class="toggle-ui" aria-hidden="true"></span>Zuschauer wechseln das Kostüm mit !change</label>
                     <label class="obs-row"><span>Abklingzeit</span><input type="range" id="obs-pet-cooldown" min="0" max="300" step="10" value="60"><output id="obs-pet-cooldown-out"></output></label>
                     <div class="obs-pet-btns">
@@ -1297,16 +1484,16 @@
               <p class="obs-group-head"><span>Info</span><span class="obs-group-count"></span></p>
               <div class="obs-layer" data-layer="next" style="--lc: #ffb81c">
                 <div class="obs-layer-head">
-                  <label class="toggle obs-switch"><input type="checkbox" name="next_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Nächste Abfahrt zeigen</span></label>
+                  <label class="toggle obs-switch"><input type="checkbox" name="next_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">„Als Nächstes“ zeigen</span></label>
                   <span class="obs-layer-dot" aria-hidden="true"></span>
-                  <button class="obs-layer-name" type="button" aria-expanded="false">Nächste Abfahrt</button>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Als Nächstes</button>
                   <span class="obs-layer-size" data-size-for="next"></span>
                   <span class="obs-layer-chev" aria-hidden="true">▾</span>
                 </div>
                 <div class="obs-layer-body" hidden>
                   <label class="obs-row"><span>Größe</span><input type="range" name="nsize" min="50" max="200" step="5" value="100"><output name="nsize-out"></output></label>
                   <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="next"></span><button class="obs-mini-btn" type="button" data-reset-pos="next">Zurück an den Standardplatz</button></span></div>
-                  <label class="obs-row"><span>Überschrift</span><input type="text" name="nlabel" maxlength="40" placeholder="Nächste Abfahrt"></label>
+                  <label class="obs-row"><span>Überschrift</span><input type="text" name="nlabel" maxlength="40" placeholder="Als Nächstes"></label>
                   <label class="obs-row"><span>Nächste Idee</span><input type="range" name="rotate" min="5" max="60" step="1" value="12"><output name="rotate-out"></output></label>
                 </div>
               </div>
@@ -1515,12 +1702,14 @@
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="follow" aria-label="Follower-Sound anhören">▶</button>
             <label class="field"><span>⭐ Abo</span><select name="ssub"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="sub" aria-label="Abo-Sound anhören">▶</button>
-            <label class="field"><span>🚂 Resub</span><select name="sresub"><option value="" selected>Standard</option></select></label>
+            <label class="field"><span>🔁 Resub</span><select name="sresub"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="resub" aria-label="Resub-Sound anhören">▶</button>
             <label class="field"><span>🎁 Verschenkte Abos</span><select name="sgift"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="gift" aria-label="Sound für verschenkte Abos anhören">▶</button>
             <label class="field"><span>💎 Bits</span><select name="sbits"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="bits" aria-label="Bits-Sound anhören">▶</button>
+            <label class="field"><span>🎟️ Kanalpunkte</span><select name="sredeem"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="redeem" aria-label="Kanalpunkte-Sound anhören">▶</button>
           </div>
           <!-- Eigene Alert-Sounds hochladen (nur Admins). Absichtlich ohne name-Attribute:
                die Felder gehören nicht zu den OBS-Einstellungen. -->
@@ -1532,7 +1721,7 @@
                 <input type="file" id="obs-alert-file" accept="audio/*">
               </label>
               <label class="field"><span>Name</span>
-                <input type="text" id="obs-alert-name" maxlength="30" placeholder="z. B. Zug-Tusch" autocomplete="off">
+                <input type="text" id="obs-alert-name" maxlength="30" placeholder="z. B. Tusch" autocomplete="off">
               </label>
               <button class="btn btn--outline btn--sm" type="button" id="obs-alert-upload-btn">Hochladen</button>
             </div>
@@ -1556,22 +1745,6 @@
           <button class="btn btn--outline btn--sm" type="submit">Speichern</button>
         </details>
       </form>
-      <section class="obs-alerts" id="obs-alerts" hidden>
-        <details>
-          <summary>🔔 Alerts prüfen &amp; testen</summary>
-          <p class="obs-alerts-status" id="obs-alerts-status"></p>
-          <ul class="obs-alerts-subs" id="obs-alerts-subs" hidden></ul>
-          <button class="btn btn--outline btn--sm" type="button" id="obs-alerts-check" hidden>🔄 Bei Twitch prüfen</button>
-          <div class="obs-alerts-btns">
-            <button class="btn btn--outline btn--sm" type="button" data-alert="follow">💜 Follower</button>
-            <button class="btn btn--outline btn--sm" type="button" data-alert="sub">⭐ Abo</button>
-            <button class="btn btn--outline btn--sm" type="button" data-alert="resub">🚂 Resub</button>
-            <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
-            <button class="btn btn--outline btn--sm" type="button" data-alert="bits">💎 Bits</button>
-          </div>
-          <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
-        </details>
-      </section>
 
           <!-- Dino sagt im Stream sofort einen eigenen Satz (nur Admins) -->
           <div class="obs-card-form" id="obs-pet-frenzy" hidden>
@@ -1604,17 +1777,6 @@
     </div>
   </dialog>
 
-  <!-- ============ TWITCH-FREIGABE ============ -->
-  <dialog id="twitch-dialog" class="dialog dialog--small" aria-labelledby="twitch-dialog-title">
-    <div class="dialog-head">
-      <div>
-        <p class="eyebrow">Nur für den Streamer</p>
-        <h2 id="twitch-dialog-title">Twitch verbinden</h2>
-      </div>
-      <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
-    </div>
-    <div id="twitch-dialog-body" class="twitch-dialog-body"></div>
-  </dialog>
 
   <div id="toasts" class="toasts" popover="manual" aria-live="polite"></div>
 </body>

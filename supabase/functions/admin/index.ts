@@ -125,6 +125,8 @@ async function overview() {
   }
   // Getrennt abgefragt: Fehlt die Tabelle noch (Migration …_chat_bot.sql), bleibt der Rest heil.
   const bot = await db.from("twitch_bot").select("login, display_name, updated_at").eq("id", 1).maybeSingle();
+  // Gesundheitscheck (Migration …_streamhelp.sql) – fehlt die Tabelle, bleibt er einfach weg
+  const health = await db.from("twitch_health").select("checked_at, ok, problems, last_event_at, last_event_type").eq("id", 1).maybeSingle();
 
   const byId = new Map((profiles.data ?? []).map((p) => [p.id, p]));
   const userList = users.data.users.map((u) => ({
@@ -154,6 +156,7 @@ async function overview() {
     twitch: conn.data,
     twitch_bot: bot.error ? null : bot.data,
     twitch_bot_ready: !bot.error,
+    twitch_health: health.error ? null : health.data,
   };
 }
 
@@ -203,7 +206,7 @@ async function ensureSiteAdmin(): Promise<string> {
   const created = await db.auth.admin.createUser({
     email: SITE_ADMIN_EMAIL,
     email_confirm: true,
-    user_metadata: { username: "Stellwerk-Admin" },
+    user_metadata: { username: "StreamHelp-Admin" },
     app_metadata: { [SITE_ADMIN_MARK]: true },
   });
   if (created.error || !created.data.user) throw created.error ?? new Error("Interner Admin-Account nicht angelegt");
@@ -219,7 +222,7 @@ async function siteSession() {
   if (data.user.id !== id) throw new Error("Interner Admin-Account passt nicht – bitte erneut versuchen.");
 
   const { error: profileError } = await db.from("profiles")
-    .upsert({ id, username: "Stellwerk-Admin", is_admin: true });
+    .upsert({ id, username: "StreamHelp-Admin", is_admin: true });
   if (profileError) throw profileError;
 
   return { token_hash: data.properties.hashed_token };

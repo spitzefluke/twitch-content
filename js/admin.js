@@ -1,4 +1,4 @@
-// Stellwerk-Admin: Login mit Admin-Passwort, danach Live-Daten (alle 5 s aktualisiert).
+// StreamHelp-Admin: Login mit Admin-Passwort, danach Live-Daten (alle 5 s aktualisiert).
 import { CONFIG } from './config.js';
 import { isDemo } from './api.js';
 import { DEFAULT_VARIANTS } from './defaults.js';
@@ -72,7 +72,7 @@ function demoCall(action, extra) {
   if (action === 'bot_disconnect') return { ok: true };
   if (action === 'site_session') {
     const users = read('users', {});
-    users['stellwerk-admin@example.com'] = { username: 'Stellwerk-Admin', pass: null, is_admin: true };
+    users['stellwerk-admin@example.com'] = { username: 'StreamHelp-Admin', pass: null, is_admin: true };
     localStorage.setItem('zd_users', JSON.stringify(users));
     return { token_hash: 'stellwerk-admin@example.com' };
   }
@@ -415,13 +415,25 @@ function renderTwitch(t, data = {}) {
       : `${chip('warn', 'Abgelaufen')} wird beim nächsten Einsatz erneuert`]);
     rows.push(['Rechte', (t.scopes ?? []).map((s) => `<code>${escapeHtml(s)}</code>`).join(' ') || '–']);
   }
+  // Automatischer Gesundheitscheck (Dashboard, alle 30 Minuten per GitHub Action)
+  const h = data.twitch_health;
+  if (h?.checked_at) {
+    const when = new Date(h.checked_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const problems = (h.problems ?? []).filter((p) => p.level === 'error');
+    rows.push(['Gesundheit', problems.length
+      ? `${chip('bad', `${problems.length} ${problems.length === 1 ? 'Problem' : 'Probleme'}`)} <small class="muted">geprüft ${when}</small>${problems.map((p) => `<br><small>✕ ${escapeHtml(p.text)} → <b>${escapeHtml(p.fix ?? '')}</b></small>`).join('')}`
+      : `${chip('ok', 'Alles läuft')} <small class="muted">geprüft ${when}</small>`]);
+    rows.push(['Letztes Ereignis', h.last_event_at
+      ? `${new Date(h.last_event_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} <small class="muted">${escapeHtml(h.last_event_type ?? '')}</small>`
+      : '<small class="muted">Von Twitch kam noch nichts an.</small>']);
+  }
   $('#twitch-panel').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   $('#twitch-check').disabled = !t;
   renderBot(t, data);
 }
 
 // ---------- Chat-Bot ----------
-// Chat-Nachrichten schreibt ein eigener Twitch-Account, nie Dave selbst.
+// Chat-Nachrichten schreibt ein eigener Twitch-Account, nie der Streamer selbst.
 // Verbunden wird er nur hier im Admin-Bereich.
 function renderBot(t, data) {
   const text = $('#bot-text');
@@ -513,7 +525,7 @@ function showBotReturn() {
     bot_is_broadcaster: 'Das war der Account des Streamers. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal verbinden.',
-    redirect_uri: `Twitch hat nach der Freigabe nicht zum Stellwerk zurückgeleitet, sondern zur Supabase-Anmeldung. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → „Verwalten“) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen (genau so, ohne / am Ende), speichern, ein paar Minuten warten und noch einmal verbinden.`,
+    redirect_uri: `Twitch hat nach der Freigabe nicht zu StreamHelp zurückgeleitet, sondern zur Supabase-Anmeldung. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → „Verwalten“) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen (genau so, ohne / am Ende), speichern, ein paar Minuten warten und noch einmal verbinden.`,
   };
   const reason = params.get('reason');
   botMsg(`Verbinden fehlgeschlagen: ${reasons[reason] ?? params.get('detail') ?? reason ?? 'unbekannter Fehler'}`, 'error');

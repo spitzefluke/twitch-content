@@ -1,29 +1,32 @@
-# Content-Stellwerk
+# StreamHelp
 
-Webseite zum Verwalten von Content-Ideen für einen Twitch-Streamer (eingerichtet für **Zugfahrer_DaveTV**):
+Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen, nur für diesen einen Kanal):
 
-- **Intro v2 (aus Claude Design)** – eine durchgehende Reise durch die Nacht: Berglandschaft mit fahrendem Zug → Tunnel → der Zug rast frontal auf die Kamera zu → Einfahrt in den Bahnhof → die Abfahrtstafel blättert ZUGFAHRER_DAVETV auf → Signal auf Grün → Türen öffnen, die Kamera fährt ins Licht. Himmel, Wolken, Regen, Schnee, Nebel und Gewitter richten sich nach Tageszeit und aktuellem Wetter in Deutschland. Überspringen mit Esc, Enter oder Leertaste.
-- **Animierter Hintergrund**: ziehende Lichter, Sternenfeld, Bodennebel, Oberleitung und alle paar Minuten ein kleiner Zug
+- **Öffentliche Startseite** mit Hover-Menü oben (Funktionen, Für wen, Hilfe) und **Anmelden**-Knopf
+- **Animierte Anmeldeseite**: schwebende Lichter, Ringe und Funken, leuchtender Rand um die Karte – nach dem Anmelden fliegt die Karte weg und ein lila Kreis öffnet das Dashboard
+- **Dashboard mit Seitenleiste links**: eingeklappt nur Symbole, zuerst die Kacheln der **Content-Ideen**; ausgeklappt alles – Vorschläge & Archiv, Bot & Chat, Kanalpunkte, Alerts, Overlay & OBS, Raid-Schutz, Mods, Twitch-Verbindung
+- **Streameransicht / Modansicht** oben zum Umschalten, **OBS** oben rechts
+- **Twitch-Gesundheitscheck**: prüft automatisch, ob die Twitch-Verbindung alle Rechte für die neuesten Funktionen hat und die Abos für Alerts, Kanalpunkte und Chat laufen – repariert, was geht, und meldet den Rest Streamer, Mods und Admin
 - **Anmelden / Registrieren** (E-Mail + Passwort) oder per **Social-Login** (Twitch, Discord, Google, Spotify, GitHub)
-- **Nächste Abfahrt** groß im Kopf des Dashboards, daneben die Karte fürs **Fortnite-Glücksrad** mit 4 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Express, Waffen-Lotto – dort dreht nach der Waffe sofort ein zweites Rad die Seltenheit) – Admins ändern Ergebnisse, Varianten und Kanalpunkte-Kosten direkt auf der Seite
-- **Fahrplan**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (der Streamer kann Titel, Text, Datum und Hintergrund bearbeiten)
+- **Als Nächstes** groß im Kopf der Content-Ideen, daneben die Karte fürs **Fortnite-Glücksrad** mit 4 Varianten (Waffen-Roulette, Lande-Lotto, Handicap-Runde, Waffen-Lotto – dort dreht nach der Waffe sofort ein zweites Rad die Seltenheit) – Admins ändern Ergebnisse, Varianten und Kanalpunkte-Kosten direkt auf der Seite
+- **Content-Ideen**: Kacheln mit Hintergrund, Hover-Animation, Kurzbeschreibung und **Countdown** (der Streamer kann Titel, Text, Datum und Hintergrund bearbeiten)
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
-- **Vorschläge**: Zuschauer reichen Ideen für den Fahrplan ein und stimmen darüber ab
+- **Vorschläge**: Zuschauer reichen Ideen für den Stream ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
 - **Fortnite-Bingo**: Die Bilder kommen automatisch aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
 - **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
-- **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft die nächste Abfahrt mit Countdown, und ein Alert-Feld zeigt neue Follower und Abos. Den Link gibt's im Dashboard unter **OBS**.
-- **Twitch-Integration**: Der Streamer verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie in Daves Namen.
+- **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft „Als Nächstes“ mit Countdown, und ein Alert-Feld zeigt neue Follower, Abos, Bits und Kanalpunkte-Einlösungen. Den Link gibt's im Dashboard unter **OBS** (oben rechts) und **Overlay & OBS**.
+- **Twitch-Integration**: Der Streamer verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie im Namen des Streamers.
 
 ## Aufbau
 
 ```
 index.html, css/, js/, assets/   → statische Seite für GitHub Pages
-overlay.html                     → OBS-Browserquelle (Glücksrad + nächste Abfahrt)
+overlay.html                     → OBS-Browserquelle (alle Ebenen, live eingestellt)
 supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Vorschläge, Twitch-Tokens)
 supabase/functions/
-  twitch-oauth/                  → Twitch-Login für den Streamer, legt Belohnung + EventSub-Webhook an
+  twitch-oauth/                  → Twitch-Login für Streamer und Bot, Belohnungen, EventSub-Abos, Gesundheitscheck
   twitch-eventsub/               → empfängt Kanalpunkte-Einlösungen von Twitch, dreht, postet im Chat
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
@@ -48,7 +51,7 @@ Lokal starten (ES-Module brauchen einen Webserver):
 npx http-server -p 5317
 ```
 
-Das Intro erzwingen: `http://localhost:5317/?intro=1`. Das Intro (Intro v2 aus Claude Design, rund 28 Sekunden: Berge → Tunnel → Einfahrt → Tafel → Signal → Einstieg) steht in `js/intro-scene.jsx`; nach Änderungen daraus `js/intro-scene.js` erzeugen (Befehl steht oben in der Datei).
+Die Startseite ist öffentlich, `…/#login` öffnet direkt die Anmeldung. Die Oberfläche (Startseite, Anmeldung, Seitenleiste) steht in `css/shell.css`, die Logik dazu am Anfang von `js/app.js`.
 
 ---
 
@@ -83,7 +86,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_bingo_lootpool.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -123,7 +126,7 @@ supabase link --project-ref <projekt-ref>
 ```
 
 ```bash
-supabase secrets set TWITCH_CLIENT_ID=xxx TWITCH_CLIENT_SECRET=xxx EVENTSUB_SECRET=<zufällige-zeichenkette-32-zeichen> SITE_URL=https://<dein-name>.github.io/<repo>/ BROADCASTER_LOGIN=zugfahrer_davetv
+supabase secrets set TWITCH_CLIENT_ID=xxx TWITCH_CLIENT_SECRET=xxx EVENTSUB_SECRET=<zufällige-zeichenkette-32-zeichen> SITE_URL=https://<dein-name>.github.io/<repo>/ BROADCASTER_LOGIN=<twitch-name-des-streamers> HEALTH_CHECK_KEY=<zufällige-zeichenkette-32-zeichen>
 ```
 
 ```bash
@@ -144,21 +147,24 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `BROADCASTER_LOGIN` | **Pflicht:** nur dieser Twitch-Kanal darf sich verbinden (und wird dabei Admin). Fehlt es, dürfen sich aus Sicherheitsgründen nur Admins verbinden. |
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
+| `HEALTH_CHECK_KEY` *(empfohlen)* | beliebige zufällige Zeichenkette (mindestens 20 Zeichen). Damit prüft die GitHub Action „Twitch-Gesundheitscheck“ alle 30 Minuten die Twitch-Verbindung – denselben Wert als GitHub-Secret `HEALTH_CHECK_KEY` eintragen (siehe „Twitch-Gesundheitscheck“). |
 | `FORTNITEAPI_IO_KEY` *(fürs Bingo)* | Schlüssel von [fortniteapi.io](https://fortniteapi.io) (kostenlos, mit Discord anmelden) – damit holt `bingo-loot` den aktuellen Lootpool |
 
 ### 5. Der Streamer verbindet Twitch
 
 1. Der Streamer registriert sich auf der Webseite und meldet sich an.
-2. Oben rechts auf **„Mit Twitch verbinden“** klicken, die Berechtigungen lesen und **„Weiter zu Twitch“** wählen.
-3. Auf Twitch mit `zugfahrer_davetv` anmelden und den Zugriff erlauben:
+2. In der Seitenleiste auf **🟣 Twitch-Verbindung** (nur in der Streameransicht) und **„Mit Twitch verbinden“** klicken.
+3. Auf Twitch mit dem Kanal aus `BROADCASTER_LOGIN` anmelden und den Zugriff erlauben:
    - `channel:manage:redemptions` (Belohnung anlegen, Einlösungen erledigen)
    - `channel:read:redemptions` (Einlösungen empfangen)
    - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
    - `moderator:read:followers`, `channel:read:subscriptions` und `bits:read` (neue Follower, Abos und Bits für die Alerts im Overlay)
+   - `moderation:read`, `channel:manage:predictions` (Mods erkennen, Bingo-Tipprunde)
 4. Danach passiert automatisch Folgendes:
    - Die Belohnung „Glücksrad“ für 10.000 Kanalpunkte wird angelegt.
    - Der EventSub-Webhook wird registriert.
    - Der Account des Streamers wird Admin und darf die Kacheln bearbeiten.
+   - Der Gesundheitscheck läuft einmal durch; das Ergebnis steht unter **🔔 Alerts**.
 
 Löst ab jetzt ein Zuschauer die Belohnung ein, passiert Folgendes:
 
@@ -183,14 +189,14 @@ Einmal nötig: Migration `20261006000000_wheel_edit.sql` ausführen (die Edge Fu
 
 ### 6. Chat-Bot verbinden
 
-Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht der Streamer. Ohne verbundenen Bot bleibt der Chat still, das Rad dreht trotzdem.
+Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht der Streamer. Er liest außerdem die Chat-Befehle mit (`!join`, `!a`–`!d`, `!füttern`, `!change` …). Ohne verbundenen Bot bleibt der Chat still, das Rad dreht trotzdem.
 
-1. Auf Twitch einen eigenen Account für den Bot anlegen, z. B. `StellwerkBot`. Sein Name steht später im Chat.
+1. Auf Twitch einen eigenen Account für den Bot anlegen, z. B. `StreamHelpBot`. Sein Name steht später im Chat.
 2. Auf twitch.tv mit **diesem Bot-Account** anmelden (in einem privaten Fenster geht es am einfachsten).
-3. Im selben Fenster den **Admin-Bereich** (`admin.html`) öffnen, mit dem Admin-Passwort anmelden und im Kasten **Twitch → Chat-Bot** auf **„Bot verbinden“** klicken. Nur dort geht das – auf der Webseite gibt es den Knopf nicht.
-4. Twitch fragt jetzt den Bot-Account nach `user:write:chat` und `user:bot`. Erlauben. Danach geht es zurück in den Admin-Bereich, dort steht „Chat-Bot … ist verbunden“.
+3. Im selben Fenster auf der Webseite anmelden (Streamer, Admin oder freigegebener Mod) und in der Seitenleiste unter **🤖 Bot & Chat** auf **„Bot verbinden“** klicken. (Im Admin-Bereich geht es weiterhin auch.)
+4. Twitch fragt jetzt den Bot-Account nach `user:write:chat`, `user:read:chat` und `user:bot`. Erlauben. Danach geht es zurück ins Dashboard, dort steht „Chat-Bot … ist verbunden“.
 
-Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es das Recht des Streamers `channel:bot` aus Schritt 5. Hat der Streamer schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StellwerkBot`).
+Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es das Recht des Streamers `channel:bot` aus Schritt 5. Hat der Streamer schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StreamHelpBot`).
 
 ## Social-Logins für Zuschauer
 
@@ -216,26 +222,51 @@ Die Client-ID und das Secret aus der App trägst du dann in Supabase unter **Aut
 
 Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mit Twitch anmelden“ (für Zuschauer) und „Mit Twitch verbinden“ (für den Streamer, Kanalpunkte und Chat) sind zwei getrennte Dinge.
 
-## Streameransicht und Mods
+## Dashboard: Streameransicht, Modansicht und Mods
 
-Wer auf **„Mit Twitch verbinden“** klickt und sich als der Kanal anmeldet, ist der **Streamer** dieser Seite: Danach landet er direkt in der **Streameransicht** (das OBS-Fenster, `index.html?obs=1`, oben der Knopf **🎛️ Streameransicht**). Der Name des Kanals steht überall auf der Seite (Kopfzeile, Laufband „Mehr von …“, Sprüche des Dinos mit `{streamer}`, Kanalpunkte-Belohnungen „🍅 Wirf was auf ‹Kanal›“).
+Nach dem Anmelden kommt das **Dashboard**. Links die **Seitenleiste** (☰ klappt sie aus, der Zustand bleibt gespeichert; auf dem Handy öffnet ☰ sie über dem Inhalt). Zuerst stehen immer die **🎬 Content-Ideen**. Zuschauer sehen nur Content-Ideen und Vorschläge & Archiv; Streamer, Admins und freigegebene Mods zusätzlich die **Stream-Werkzeuge**:
 
-Die Streameransicht hat den Reiter **Content**:
-- **👥 Mods – „Für Mods freigeben“** (schaltet nur der Streamer): Die Seite holt die Mods des Kanals von Twitch (**🔄 Mods von Twitch holen**, passiert auch beim Verbinden). Mods melden sich auf der Seite mit **„Mit Twitch anmelden“** an; ist die Freigabe an, steuern sie das **OBS-Overlay** (`overlay.html?live=1` – jede Änderung erscheint sofort in OBS beim Streamer) und alle **Content-Ideen** mit – wie Admins. Twitch trennen und die Kosten der Kanalpunkte-Belohnungen bleiben beim Streamer. Freigabe aus → Mods sind sofort wieder normale Zuschauer.
-- **🎬 Content-Ideen**: alle Kacheln mit Stand; **Öffnen** startet und steuert die Idee (Glücksrad drehen, Bingo-Tipprunde, Frage zeigen, Dino füttern, Kisten-Shop, Win-Challenge …), **Jetzt freischalten** macht eine Idee mit Starttermin sofort für alle sichtbar.
+| Bereich | Was es dort gibt |
+|---|---|
+| 🤖 **Bot & Chat** | Bot-Konto verbinden/trennen, alle Chat-Befehle, was der Bot von selbst schreibt |
+| 🎟️ **Kanalpunkte** | alle Belohnungen mit Kosten und Stand; „Kosten & Einstellungen“ öffnet das passende Fenster |
+| 🔔 **Alerts** | Twitch-Gesundheitscheck mit „Jetzt prüfen & reparieren“, Probe-Alerts (auch Kanalpunkte) |
+| 🎛️ **Overlay & OBS** | Adresse der Browserquelle, OBS-Fenster öffnen |
+| 🛡️ **Raid-Schutz** | alle Zuschauer-Aktionen mit einem Klick pausieren |
+| 👥 **Mods** | Mods von Twitch holen, Freigabe (nur Streamer) |
+| 🟣 **Twitch-Verbindung** | Kanal verbinden, neu verbinden, trennen (nur Streameransicht) |
 
-Einmal nötig: Migration `supabase/migrations/20261012000000_streamer_mods.sql` ausführen (ersetzt auch „Dave“ in den mitgelieferten Texten), und der Streamer verbindet **Twitch einmal neu** – für die Mod-Liste braucht die Seite das Recht `moderation:read`. Die Mods brauchen „Mit Twitch anmelden“ (siehe Social-Logins).
+Oben schaltest du zwischen **🎥 Streameransicht** und **🛡️ Modansicht** um. Die Modansicht zeigt genau das, was freigegebene Mods sehen: alles – auch die **Kanalpunkte-Kosten** und das **Bot-Konto** – außer Twitch verbinden/trennen und der Mod-Freigabe. Mods haben nur die Modansicht. **🎛️ OBS** oben rechts öffnet das OBS-Fenster.
+
+Wer Twitch verbindet und sich als der Kanal anmeldet, ist der **Streamer** dieser Seite. Der Name des Kanals steht überall (Startseite, Laufband „Mehr von …“ und `{kanal}`, Sprüche des Dinos mit `{streamer}`, Kanalpunkte-Belohnungen „🍅 Wirf was auf ‹Kanal›“).
+
+**Mods – „Für Mods freigeben“** (schaltet nur der Streamer): Die Seite holt die Mods des Kanals von Twitch (**🔄 Mods von Twitch holen**, passiert auch beim Verbinden). Mods melden sich mit **„Mit Twitch anmelden“** an; ist die Freigabe an, steuern sie das OBS-Overlay, alle Content-Ideen, die Kanalpunkte-Kosten und den Bot mit. Freigabe aus → Mods sind sofort wieder normale Zuschauer.
+
+Einmal nötig: Migration `supabase/migrations/20261012000000_streamer_mods.sql` ausführen, und der Streamer verbindet **Twitch einmal neu** – für die Mod-Liste braucht die Seite das Recht `moderation:read`.
+
+## Twitch-Gesundheitscheck
+
+Neue Funktionen brauchen oft neue Twitch-Rechte, und Twitch schaltet Webhook-Abos nach Zustellfehlern still ab – dann kommen keine Alerts mehr. Deshalb prüft StreamHelp automatisch:
+
+- **Rechte:** fragt Twitch, welche Rechte der gespeicherte Zugang wirklich hat, und vergleicht sie mit dem, was die neuesten Funktionen brauchen. Fehlt etwas, steht dort, wofür (z. B. „Bits-Alerts“) – Lösung: Twitch einmal neu verbinden.
+- **Abos bei Twitch** für Follows, Abos, Resubs, Abo-Geschenke, Bits, Kanalpunkte und Chat: fehlende oder abgeschaltete legt er sofort neu an.
+- **Bot** verbunden und liest den Chat? Secrets gesetzt (`EVENTSUB_SECRET` 10–100 Zeichen)?
+- **Letzte Nachricht von Twitch:** wann zuletzt ein echtes Ereignis ankam.
+
+Wann: beim Öffnen des Dashboards (Streamer, Mods, Admins – höchstens einmal pro Minute wirklich bei Twitch), alle 10 Minuten solange es offen ist, nach dem Verbinden mit Twitch und **alle 30 Minuten per GitHub Action** („Twitch-Gesundheitscheck“), auch wenn niemand online ist. Probleme sehen Streamer, Mods und Admins sofort: roter Punkt in der Kopfzeile, Banner über dem Inhalt, Zahl an **🔔 Alerts** und eine Meldung; im Admin-Bereich steht es unter Twitch → „Gesundheit“. Echte Kanalpunkte-Einlösungen erscheinen jetzt auch als Alert (🎟️).
+
+Einrichten: Migration `20261016000000_streamhelp.sql` ausführen. Für den 30-Minuten-Check eine zufällige Zeichenkette (mindestens 20 Zeichen) zweimal als Secret eintragen: in Supabase unter **Edge Functions → Secrets** als `HEALTH_CHECK_KEY` und in GitHub unter **Settings → Secrets and variables → Actions** als `HEALTH_CHECK_KEY`. Ohne das Secret überspringt die Action den Check einfach.
 
 ## OBS-Overlay
 
-Im Dashboard oben auf **OBS** klicken – das kann jeder, der angemeldet ist. Die OBS-Einstellungen öffnen sich in einem **eigenen Fenster** (`index.html?obs`), nicht als Pop-up; „← Zur Webseite“ schließt es wieder. **Am Anfang ist alles aus** – nur das Laufband läuft immer. Aufbau: **links die Vorschau** mit Adresse und OBS-Verbindung, **rechts die Ebenen**, gruppiert nach „Immer im Bild“, „Bei Aktion“, „Info“ und „Spiele“. Jede Ebene hat einen Schalter und klappt auf Klick ihre Einstellungen auf (Größe, Platz mit „Zurück an den Standardplatz“, dazu z. B. beim Glücksrad „Zeigen bei“ und Ergebnisdauer, beim Dino „Läuft auf“ und das Klettern). Ein Klick auf eine Karte in der Vorschau öffnet ihre Ebene, die offene Ebene ist in der Vorschau markiert. Weitere Reiter: **„Aussehen & Ton“** (Akzentfarbe, Kartenhintergrund, Abstand, Lautstärke, Alert-Sounds) und **„Texte & Tests“** (Laufband-Texte, Probe-Alerts, „Dino sagt im Stream“, Admin-Freigabe). Die Kopfzeile zeigt, ob OBS verbunden ist und ob live gespeichert wird. Am einfachsten auf dem PC, auf dem OBS läuft:
+Im Dashboard oben rechts auf **🎛️ OBS** klicken – das kann jeder, der angemeldet ist. Die OBS-Einstellungen öffnen sich in einem **eigenen Fenster** (`index.html?obs`), nicht als Pop-up; „← Zur Webseite“ schließt es wieder. **Am Anfang ist alles aus** – nur das Laufband läuft immer. Aufbau: **links die Vorschau** mit Adresse und OBS-Verbindung, **rechts die Ebenen**, gruppiert nach „Immer im Bild“, „Bei Aktion“, „Info“ und „Spiele“. Jede Ebene hat einen Schalter und klappt auf Klick ihre Einstellungen auf (Größe, Platz mit „Zurück an den Standardplatz“, dazu z. B. beim Glücksrad „Zeigen bei“ und Ergebnisdauer, beim Dino „Läuft auf“ und das Klettern). Ein Klick auf eine Karte in der Vorschau öffnet ihre Ebene, die offene Ebene ist in der Vorschau markiert. Weitere Reiter: **„Aussehen & Ton“** (Akzentfarbe, Kartenhintergrund, Abstand, Lautstärke, Alert-Sounds) und **„Texte & Tests“** (Laufband-Texte, „Dino sagt im Stream“, Admin-Freigabe); Probe-Alerts gibt es im Dashboard unter **🔔 Alerts**. Die Kopfzeile zeigt, ob OBS verbunden ist und ob live gespeichert wird. Am einfachsten auf dem PC, auf dem OBS läuft:
 
 1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
 2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt die Kamera des Streamers in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
 3. **Karten verschieben:** Karten in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Rechts bei den Ebenen: was zu sehen ist, Größen und die Einstellungen jeder Karte.
-4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„Stellwerk-Overlay“** an (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
+4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„StreamHelp-Overlay“** an (eine alte „Stellwerk-Overlay“-Quelle wird dabei umbenannt) (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
 
-**Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann Dave mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
+**Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann der Streamer mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
 
 Das Passwort bleibt nur in diesem Browser; die Verbindung geht direkt an OBS auf `127.0.0.1:4455`, nicht ins Internet. Ohne Verbindung geht es auch: „OBS-Fenster teilen“ zeigt ein geteiltes Fenster (z. B. einen Fenster-Projektor) als Hintergrund der Vorschau, und die Adresse lässt sich kopieren und von Hand als Browserquelle (Breite 1920, Höhe 1080) einfügen.
 
@@ -244,7 +275,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | Option in der Adresse | Wirkung |
 |---|---|
 | `wheel=br` / `bc` / `bl` / `tr` / `tc` / `tl` | Glücksrad an (unten rechts, unten Mitte, unten links, oben …) – oder frei wie `wheel=62.5,70` (linke obere Ecke in Prozent; so speichert es das Verschieben in der Vorschau). Fehlt es, ist das Glücksrad aus – wie alle Karten |
-| `next=bl` / … | „Nächste Abfahrt“ an (auch frei wie beim Glücksrad) |
+| `next=bl` / … | „Als Nächstes“ an (auch frei wie beim Glücksrad) |
 | `wsize=120`, `nsize=80` | Größe der Karten in Prozent (50 bis 200); `scale=1.2` gilt für beide |
 | `from=twitch` / `web` | nur Kanalpunkte-Drehungen bzw. nur Drehungen auf der Seite zeigen (von der Seite kommen nur Drehungen von Admins ins Overlay) |
 | `hold=15` | Sekunden, die das Ergebnis stehen bleibt (3 bis 60) |
@@ -317,21 +348,21 @@ Zwei eigene Bausteine, im OBS-Dialog einzeln ein- und ausschaltbar, verschiebbar
 - **Alerts:** Kommt ein neuer Follower, ein Abo, ein Resub (mit Monaten und Nachricht), werden Abos verschenkt oder Bits gecheert (mit Anzahl und Nachricht), springt die Karte mit Animation, Konfetti und Klang auf und zeigt den Namen ein paar Sekunden groß. Dazwischen ist sie unsichtbar. Kommen mehrere gleichzeitig, laufen sie nacheinander.
 - **Letzter Follower & Abo:** kleine Karte, die immer den letzten Follower, das letzte Abo und die letzten Bits zeigt.
 
-Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Streamer“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 4 MB und 20 Sekunden, bis zu 30 Stück). Der Alert bleibt stehen, solange sein Sound läuft. Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins schicken unter **🔔 Alerts prüfen & testen** (Reiter „Texte & Tests“) Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
+Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Streamer“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 4 MB und 20 Sekunden, bis zu 30 Stück). Der Alert bleibt stehen, solange sein Sound läuft. Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins und Mods schicken im Dashboard unter **🔔 Alerts** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
 
-Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **der Streamer muss Twitch einmal neu verbinden** (oben rechts „Twitch“) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der OBS-Dialog zeigt, ob die Rechte schon da sind.
+Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **der Streamer muss Twitch einmal neu verbinden** (Seitenleiste → Twitch-Verbindung) – für Follower und Abos braucht die Seite die neuen Berechtigungen `moderator:read:followers` und `channel:read:subscriptions`. Danach meldet Twitch die Ereignisse an `twitch-eventsub`; die Abos dafür legt die Seite selbst an (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog). Der Gesundheitscheck unter **🔔 Alerts** zeigt, ob die Rechte schon da sind.
 
-**Kommen echte Alerts nicht an** (Follow oder Bits, Probe-Alerts gehen aber)? Im OBS-Dialog unter „Texte & Tests“ → **🔔 Alerts prüfen & testen** fragt die Seite bei jedem Öffnen (und mit **🔄 Bei Twitch prüfen**) nach, ob die EventSub-Abos wirklich stehen. Fehlende oder von Twitch abgeschaltete Abos (z. B. nach Zustellfehlern) legt sie dabei sofort neu an. Die Liste zeigt je Art: „✓ aktiv“, „Recht fehlt“ (dann Twitch neu verbinden) oder die genaue Meldung von Twitch.
+**Kommen echte Alerts nicht an** (Probe-Alerts gehen aber)? Im Dashboard unter **🔔 Alerts** auf **„Jetzt prüfen & reparieren“**: Fehlende oder von Twitch abgeschaltete Abos (z. B. nach Zustellfehlern) legt die Seite sofort neu an; die Liste zeigt je Art ✓ aktiv, … wird freigeschaltet oder ✕ mit der genauen Meldung. Fehlen Rechte, steht dort „Twitch neu verbinden“. Das passiert auch automatisch (siehe „Twitch-Gesundheitscheck“).
 
 **Bits und eigene Alert-Sounds:** Einmal nötig: Migrationen `20261009000000_alert_bits_sounds.sql` und `20261010000000_alert_sound_length.sql` (20 Sekunden, 4 MB) ausführen und **der Streamer verbindet Twitch noch einmal neu** – für Bits braucht die Seite das Recht `bits:read`.
 
 ### Laufband
 
-Unten im Overlay laufen langsam von rechts nach links weitere Seiten und Socials durch (z. B. Twitch, YouTube, TikTok, die Stellwerk-Seite). Das Laufband ist immer da und lässt sich nicht ausschalten, aber in der Vorschau des OBS-Dialogs verschieben; Design (Laufband, Neon, Bahnhofs-Anzeige), Größe und Tempo stehen im Dialog. Die Texte pflegen Admins im OBS-Dialog unter **📢 Laufband-Texte bearbeiten** (eine Zeile pro Eintrag, `{seite}` = Adresse dieser Webseite). Für bekannte Plattformen – Twitch, YouTube, TikTok, Instagram, Discord, X, Kick, Spotify, Steam, Facebook, Threads, Bluesky, Reddit, Patreon, Ko-fi, PayPal, Streamlabs, Snapchat, WhatsApp, Telegram, GitHub – steht automatisch das echte Logo davor (Simple Icons, CC0); es reicht die Adresse, z. B. `youtube.com/@dave`. Änderungen laufen sofort in allen OBS-Quellen. Einmal nötig: Migration `20260929000000_ticker.sql` – ohne sie läuft das Band mit Twitch und der Stellwerk-Seite.
+Unten im Overlay laufen langsam von rechts nach links weitere Seiten und Socials durch (z. B. Twitch, YouTube, TikTok, die StreamHelp-Seite). Das Laufband ist immer da und lässt sich nicht ausschalten, aber in der Vorschau des OBS-Dialogs verschieben; Design (Laufband, Neon, LED-Anzeige), Größe und Tempo stehen im Dialog. Die Texte pflegen Admins im OBS-Dialog unter **📢 Laufband-Texte bearbeiten** (eine Zeile pro Eintrag, `{seite}` = Adresse dieser Webseite, `{kanal}` = Twitch-Name des Streamers). Für bekannte Plattformen – Twitch, YouTube, TikTok, Instagram, Discord, X, Kick, Spotify, Steam, Facebook, Threads, Bluesky, Reddit, Patreon, Ko-fi, PayPal, Streamlabs, Snapchat, WhatsApp, Telegram, GitHub – steht automatisch das echte Logo davor (Simple Icons, CC0); es reicht die Adresse, z. B. `youtube.com/@kanal`. Änderungen laufen sofort in allen OBS-Quellen. Einmal nötig: Migration `20260929000000_ticker.sql` – ohne sie läuft das Band mit Twitch und der StreamHelp-Seite.
 
 ## Ärgere den Streamer
 
-Kachel im Fahrplan, jederzeit verfügbar. Einmal nötig: `supabase/migrations/20260924000000_pranks.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `sounds` für eigene Sounds.
+Kachel bei den Content-Ideen, jederzeit verfügbar. Einmal nötig: `supabase/migrations/20260924000000_pranks.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `sounds` für eigene Sounds.
 
 - **Kanalpunkte:** Beim Verbinden mit Twitch (und bei jedem Speichern der Einstellungen) legt die Seite im Kanal des Streamers zwei Belohnungen an: **„🍅 Wirf was auf ‹Kanal›“** (Standard 500 Punkte) und **„🔊 Sound für ‹Kanal›“** (300 Punkte). Zuschauer tippen beim Einlösen ein, was fliegen bzw. welcher Sound laufen soll – Tippfehler und Emojis werden erkannt. Unbekanntes gibt die Punkte zurück, der Chat-Bot sagt, was es gibt. Die Webseite zeigt Zuschauern die Liste zum Kopieren und eine Vorschau; direkt auslösen können dort nur Admins. Migration `20260925000000_channel_points.sql` nötig; bei Belohnungen, die schon vorher bestanden, einmal im Dialog „Auf Twitch übernehmen“ klicken.
 - **Werfen:** Banane, Tomate, Torte, Ei, Fisch, Quietscheente, Stinkesocke, Schneeball, rote Unterhose, Nuke (mit Explosion und Rauchpilz), Flashbang (der ganze Bildschirm wird für ein paar Sekunden weiß – ein einzelner Blitz, kein Flackern) – oder Blumen, wenn man nett sein will. Im Overlay fliegt das Geschoss auf Kamera des Streamers und hinterlässt einen Fleck.
@@ -342,7 +373,7 @@ Direkt von der Webseite lässt die Datenbank nur Admins werfen (`send_prank`); a
 
 ## Fortnite-Bingo
 
-Kachel im Fahrplan. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `bingo`.
+Kachel bei den Content-Ideen. Einmal nötig: `supabase/migrations/20260924120000_bingo.sql` im SQL Editor ausführen. Das legt die Kachel an, die Tabellen und den Storage-Bucket `bingo`.
 
 1. Auf der Webseite als Admin die Kachel **Fortnite-Bingo** öffnen.
 2. Rechts unter **Bilder** Bilder der Items wählen – mehrere auf einmal gehen. Der Name kommt aus dem Dateinamen (`chug-jug.png` → „Chug Jug“) und lässt sich danach ändern. Die Bilder werden vor dem Hochladen verkleinert.
@@ -397,7 +428,7 @@ Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer 
 
 ## Stream-Dino
 
-Ein kleiner Dino (Standardname „Rexi“, der Schaffner-Dino mit Mütze und Pfeife) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf – oder mit „Läuft auf: dem Bildrand“ ganz unten) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
+Ein kleiner Dino (Standardname „Rexi“, im Kapitän-Kostüm mit Mütze und Pfeife) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf – oder mit „Läuft auf: dem Bildrand“ ganz unten) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
 
 **Füttern im Stream:** Zuschauer schreiben den Chat-Befehl (Standard **`!füttern`**, im Dialog änderbar) in den Twitch-Chat des Kanals – höchstens alle 10 Minuten pro Person. Dann fällt Futter vom Himmel und der Dino bedankt sich mit Namen. Dafür liest der Chat-Bot den Chat des Kanals mit (Berechtigung `user:read:chat`): **Den Chat-Bot im Admin-Bereich einmal neu verbinden**, danach richtet die Seite das Chat-Abo selbst ein (auch beim Klick auf „Auf Twitch übernehmen“ im Ärgern-Dialog).
 
@@ -409,7 +440,7 @@ Bei Hunger wird Rexi **rot** (auch die kleine Zeichnung auf der Kachel) und der 
 
 **Heißhunger:** Nach der doppelten Hungerzeit (Standard 90 Minuten) – oder sofort per Knopf **🔥 Heißhunger auslösen** (OBS-Fenster: beim Dino und unter „Texte & Tests“, außerdem im Dino-Dialog) – brüllt Rexi, wächst auf 1,3-fache Größe, frisst sich abwechselnd durch den **Bildschirm** und die Karten. Zuerst der Bildschirm: Er klettert an der näheren Bildschirmkante hoch und frisst Löcher ins Streambild – schwarze Löcher mit gezackter Bisskante, Farbversatz wie bei einem kaputten Display und Sprüngen im „Glas“, bunte Pixel fallen heraus, die Karten wackeln bei jedem Biss. Solange keiner füttert, frisst er sich die Kante hoch und immer weiter ins Bild. Danach klettert er an einer Karte hoch und frisst Stücke aus dem Rand: am liebsten von rechts an der Karte **„Als Nächstes“**, 9 Bissen von der Kante bis zur oberen Ecke, dann kaut er weiter und droht („Wenn ihr nicht füttert, ess ich die Karten!“). Die Karte wackelt, Krümel fallen. Sobald ihn jemand füttert (Chat oder **🍖 Rexi füttern**), springt er runter, rülpst, freut sich – der Bildschirm repariert sich und die Karten wachsen wieder zu. Derselbe Knopf beendet den Heißhunger auch ohne Füttern. Beides ist abschaltbar im OBS-Fenster beim Dino („Bei Heißhunger an Karten hochklettern“, `pclimb=0`; „Bei Heißhunger Löcher in den Bildschirm fressen“, `pscreen=0`). In der Vorschau des OBS-Fensters frisst er nur den Bildschirm an, und nur, wenn dort „Heißhunger auslösen“ gedrückt wird – Karten lässt er dort in Ruhe.
 
-**Kostüme:** Schaffner (Mütze + Pfeife), Lokführer (Streifenmütze + Halstuch) und Gleisbauer (Helm + Warnweste). Zuschauer wechseln es mit **`!change`** im Twitch-Chat (nimmt das nächste) oder gezielt mit `!change schaffner`, `!change lok` bzw. `!change bau` – über dem Dino erscheint dann „@name !change lok → LOKFÜHRER“, und jedes Kostüm hat seinen Sound (Pfeife, Brüllen, Stapfen). Im OBS-Fenster beim Dino stellen Admins das Kostüm direkt ein, schalten `!change` ab und legen die **Abklingzeit** fest (0–300 Sekunden, Standard 60, gilt für alle). Wie `!füttern` braucht `!change` den Chat-Bot.
+**Kostüme:** Kapitän (Mütze + Pfeife), Mechaniker (Streifenmütze + Halstuch) und Bauarbeiter (Helm + Warnweste). Zuschauer wechseln es mit **`!change`** im Twitch-Chat (nimmt das nächste) oder gezielt mit `!change kapitän`, `!change mechaniker` bzw. `!change bauarbeiter` (die alten Wörter gehen weiter) – über dem Dino erscheint dann „@name !change mechaniker → MECHANIKER“, und jedes Kostüm hat seinen Sound (Pfeife, Brüllen, Stapfen). Im OBS-Fenster beim Dino stellen Admins das Kostüm direkt ein, schalten `!change` ab und legen die **Abklingzeit** fest (0–300 Sekunden, Standard 60, gilt für alle). Wie `!füttern` braucht `!change` den Chat-Bot.
 
 Rexis Sounds (Brüllen, Kauen, Kartenknuspern, Magenknurren, Rülpsen, Schnarchen, Pfeife …) entstehen im Browser (`js/rexi-sfx.js`), es werden keine Dateien geladen. Lautstärke wie alle Overlay-Sounds über `vol`.
 
@@ -455,7 +486,7 @@ Jede Stufe hat ein Ziel (so viele Siege braucht sie). Optional hat die Challenge
 
 ## Sieben weitere Content-Ideen
 
-Einmal nötig: `supabase/migrations/20261014000000_stream_extras.sql` im SQL Editor ausführen (legt alle sieben Kacheln an). Die Edge Function `stream-tools` kommt mit dem nächsten Merge automatisch zu Supabase. Chat-Befehle brauchen den verbundenen **Chat-Bot** (Abschnitt 6) – er liest den Chat und antwortet. Im OBS-Fenster gibt es für jede Idee eine Ebene unter **„Neue Content-Ideen“**. Alles lässt sich auch aus der **Streameransicht → Content** öffnen, von Streamer und freigegebenen Mods.
+Einmal nötig: `supabase/migrations/20261014000000_stream_extras.sql` im SQL Editor ausführen (legt alle sieben Kacheln an). Die Edge Function `stream-tools` kommt mit dem nächsten Merge automatisch zu Supabase. Chat-Befehle brauchen den verbundenen **Chat-Bot** (Abschnitt 6) – er liest den Chat und antwortet. Im OBS-Fenster gibt es für jede Idee eine Ebene unter **„Neue Content-Ideen“**. Alles lässt sich auch aus dem OBS-Fenster (Reiter **Content**) öffnen, von Streamer und freigegebenen Mods.
 
 | Idee | Zuschauer | Streamer / Mods |
 |---|---|---|
@@ -507,7 +538,7 @@ Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen A
 - Twitch-Status (Verbindung, Belohnung, Webhook, Token) mit Button „Live bei Twitch prüfen“
 - Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf.
 
-Mit **„Webseite als Admin öffnen“** (oben rechts) landest du direkt auf der Webseite, als interner Account „Stellwerk-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
+Mit **„Webseite als Admin öffnen“** (oben rechts) landest du direkt auf der Webseite, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
 
 Das Passwort steht **nicht** im Code, weil das Repo öffentlich ist. Es liegt als Secret `ADMIN_PASSWORD` in Supabase und wird im Setup-Skript abgefragt. Später ändern:
 

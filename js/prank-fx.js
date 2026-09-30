@@ -67,7 +67,7 @@ export function setPrankIcon(el, p) {
 }
 
 export const BOARD = [
-  { id: 'whistle', name: 'Zugpfeife', emoji: '🚂' },
+  { id: 'whistle', name: 'Trillerpfeife', emoji: '📯' },
   { id: 'horn', name: 'Tröte', emoji: '📯' },
   { id: 'rimshot', name: 'Ba-dum-tss', emoji: '🥁' },
   { id: 'buzzer', name: 'Falsch!', emoji: '❌' },
@@ -75,14 +75,14 @@ export const BOARD = [
   { id: 'boing', name: 'Boing', emoji: '🌀' },
   { id: 'quack', name: 'Quak', emoji: '🦆' },
   { id: 'applause', name: 'Applaus', emoji: '👏' },
-  { id: 'gong', name: 'Bahnhofsgong', emoji: '🔔' },
+  { id: 'gong', name: 'Gong', emoji: '🔔' },
 ];
 
 export const MAX_SOUND_SECONDS = 10;
 export const itemById = (id) => ITEMS.find((i) => i.id === id);
 export const boardById = (id) => BOARD.find((b) => b.id === id);
 
-// "Lena wirft eine Tomate" / "Lena spielt „Zugpfeife“"
+// "Lena wirft eine Tomate" / "Lena spielt „Trillerpfeife“"
 export function prankText(p) {
   if (p.kind === 'throw') {
     const item = itemById(p.item);

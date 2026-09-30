@@ -47,8 +47,8 @@ async function wireReward(dlg, key) {
     paint((await X.api.rewards.list().catch(() => [])).find((x) => x.key === key));
   });
   return async () => {
-    // Kanalpunkte-Kosten bleiben beim Streamer und den Admins der Seite (nicht bei Mods)
-    box.hidden = !isAdmin() || !!X.ctx.state.access?.is_mod && !X.ctx.state.access?.is_site_admin;
+    // Kanalpunkte-Kosten: Streamer, Admins und freigegebene Mods
+    box.hidden = !isAdmin();
     if (!box.hidden) paint((await X.api.rewards.list().catch(() => [])).find((x) => x.key === key));
   };
 }
@@ -125,7 +125,7 @@ export const tts = {
     $('[data-no-tts]', d).hidden = ttsAvailable();
     $('[data-skip]', d).addEventListener('click', (e) => act(e.currentTarget, async () => { this.state = await X.api.tts.skip(); }, 'Abgebrochen.'));
     $('[data-mute]', d).addEventListener('change', (e) => act(null, async () => { this.state = await X.api.tts.skip(e.target.checked); }));
-    $('[data-simulate]', d).addEventListener('click', () => X.api.tts.simulate?.('Lokfuehrer_Lena', 'Hallo zusammen, das ist eine Probe!', 'oma').then(() => this.reload()));
+    $('[data-simulate]', d).addEventListener('click', () => X.api.tts.simulate?.('NightOwl_Mia', 'Hallo zusammen, das ist eine Probe!', 'oma').then(() => this.reload()));
     onSubmit($('[data-web]', d), async (form) => {
       await X.api.tts.web(form.text.value, form.voice.value);
       form.text.value = '';

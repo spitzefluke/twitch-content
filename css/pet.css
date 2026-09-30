@@ -1,4 +1,4 @@
-/* Daves Dino (js/pet.js) – im OBS-Overlay und in der Vorschau auf der Webseite.
+/* Der Dino (js/pet.js) – im OBS-Overlay und in der Vorschau auf der Webseite.
    --ds = Größe des Dinos in px, der Behälter braucht position: relative/fixed. */
 .dino {
   --ds: 150px;

@@ -1,7 +1,7 @@
 // Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos und Bits.
 // Twitch meldet sie über EventSub an twitch-eventsub, hier landen sie in
 // stream_alerts – das Overlay liest die Tabelle per Realtime (auch ohne Login).
-// Dave braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
+// Der Streamer braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
 // (einmal Twitch neu verbinden).
 import { db, getAppToken, helix, HelixError } from "./twitch.ts";
 
@@ -13,7 +13,7 @@ type AlertType = {
 };
 
 export const ALERT_TYPES: AlertType[] = [
-  // Follow braucht zusätzlich einen Moderator – Dave ist Moderator seines eigenen Kanals
+  // Follow braucht zusätzlich einen Moderator – Der Streamer ist Moderator seines eigenen Kanals
   { type: "channel.follow", version: "2", scope: "moderator:read:followers", condition: (id) => ({ broadcaster_user_id: id, moderator_user_id: id }) },
   { type: "channel.subscribe", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "channel.subscription.message", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
@@ -22,7 +22,7 @@ export const ALERT_TYPES: AlertType[] = [
 ];
 export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === type);
 
-// Für jede Alert-Art genau ein Abo auf diesen Webhook. Fehlt Dave ein Scope,
+// Für jede Alert-Art genau ein Abo auf diesen Webhook. Fehlt dem Streamer ein Scope,
 // wird die Art übersprungen (Twitch würde das Abo sonst ablehnen).
 // Ergebnis je Art: ok (aktiv), pending (gerade angelegt, Twitch prüft den Webhook),
 // missing_scope (Twitch neu verbinden) oder error mit der Meldung von Twitch.

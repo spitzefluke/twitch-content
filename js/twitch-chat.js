@@ -1,4 +1,4 @@
-// Twitch-Chat fürs OBS-Overlay: liest Daves Chat anonym über Twitchs Chat-Schnittstelle
+// Twitch-Chat fürs OBS-Overlay: liest den Chat des Streamers anonym über Twitchs Chat-Schnittstelle
 // (IRC über WebSocket, Gast-Login „justinfan…“). Kein Login, kein Bot, keine Datenbank –
 // das Overlay schreibt nie etwas, es liest nur mit. Emotes, Namensfarben und Abzeichen
 // kommen direkt von Twitch mit. Löschen Mods eine Nachricht oder sperren jemanden,
@@ -236,16 +236,16 @@ export function connectTwitchChat(channel, on = {}) {
 
 // Probe-Nachrichten für die Vorschau im OBS-Dialog (test=1)
 const SAMPLES = [
-  ['Lokfuehrer_Lena', '#FF69B4', 'subscriber/6', 'Guten Abend! 🚂'],
-  ['SchienenSeb', '', 'moderator/1', 'Denkt an !füttern, Rexi hat Hunger'],
-  ['TTV_Weichensteller', '#1E90FF', '', 'Was für ein Kunstschuss 😂'],
-  ['Bahnhofskater', '#9ACD32', 'vip/1', 'GG! Nächste Runde gleich?'],
-  ['ICE_Irina', '#DAA520', 'subscriber/24', '!change lok'],
-  ['Gleis9dreiviertel', '', '', 'Ich wette, er landet wieder am Pleasant Park'],
+  ['NightOwl_Mia', '#FF69B4', 'subscriber/6', 'Guten Abend! 🚂'],
+  ['PixelPaul', '', 'moderator/1', 'Denkt an !füttern, Rexi hat Hunger'],
+  ['GG_Gina', '#1E90FF', '', 'Was für ein Kunstschuss 😂'],
+  ['LootLukas', '#9ACD32', 'vip/1', 'GG! Nächste Runde gleich?'],
+  ['CrispyCarl', '#DAA520', 'subscriber/24', '!change lok'],
+  ['StreamSofia', '', '', 'Ich wette, er landet wieder am Pleasant Park'],
 ];
 const YT_SAMPLES = [
-  ['Zugfan Sabine', 'member', 'Hallo aus dem YouTube-Chat! 👋', null],
-  ['Max Gleisbett', '', 'Stark gespielt!', '5,00 €'],
+  ['Sabine_Plays', 'member', 'Hallo aus dem YouTube-Chat! 👋', null],
+  ['Max Mustermann', '', 'Stark gespielt!', '5,00 €'],
 ];
 // youtube = true: jede dritte Probe-Nachricht kommt von YouTube
 export function sampleMessage(n = 0, { youtube = false } = {}) {
