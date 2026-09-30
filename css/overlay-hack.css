@@ -1,0 +1,128 @@
+/* ==========================================================
+   Overlay-Hack (Ärgere den Streamer, nur Mods) – js/overlay-hack.js
+   Nach dem Claude-Design „Overlay Hack“: Nocturne-Flächen (#161826 / #232532),
+   Blurple #9184d9 für die Firewall, Rot oklch(.72 .17 22) für den Hacker.
+   Liegt über dem ganzen Bild.
+   ========================================================== */
+.ov-hack {
+  --hk: oklch(0.72 0.17 22); --hk-soft: oklch(0.78 0.14 22); --fw: #9184d9; --fw-2: #e7e5fe;
+  --surface: #232532; --bg: #161826; --n200: #e4e7f5; --n300: #cfd3e5; --n800: #3f424d;
+  --h: 0;
+  position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden;
+  font-family: "Inter", var(--font-body); color: #e9e9ed; text-shadow: none;
+  animation: hk-in .4s ease both;
+}
+.ov-hack.is-gone { opacity: 0; transition: opacity .6s ease; }
+@keyframes hk-in { from { opacity: 0; } }
+.ov-hack .hk-mono, .hk-term, .hk-toast span, .hk-kicker, .hk-progress, .hk-popup b, .hk-cam, .hk-fw-lines { font-family: var(--font-mono); }
+
+/* Abdunkeln bis fast ganz zu – der Hacker hat das ganze Bild */
+.hk-shade { position: absolute; inset: 0; background: rgba(12, 10, 20, calc(.15 + var(--h) * .45)); transition: background .6s; }
+.ov-hack.is-takeover .hk-shade { background: rgba(12, 10, 20, .78); }
+.hk-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 40%, oklch(0.45 0.16 22 / 0.6)); opacity: calc(var(--h) * .95); }
+.hk-scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .5) 0 2px, transparent 2px 4px); opacity: calc(.08 + var(--h) * .35); }
+.hk-slices i { position: absolute; left: 0; right: 0; mix-blend-mode: screen; }
+.ov-hack.is-spike { text-shadow: 3px 0 var(--hk), -3px 0 var(--fw); }
+
+/* Die echten Karten im Overlay flackern mit */
+body.is-hacked .ov-card { transition: border-color .3s, box-shadow .3s; }
+body.is-hacked-hard .ov-card { border-color: oklch(0.72 0.17 22) !important; box-shadow: 0 0 1.6em oklch(0.6 0.18 22 / .45) !important; }
+body.is-hack-spike .ov-card, body.is-hack-spike .ov-pet { animation: hk-jitter .12s steps(2) 1 !important; filter: drop-shadow(3px 0 oklch(0.72 0.17 22)) drop-shadow(-3px 0 #9184d9); }
+@keyframes hk-jitter { 0% { translate: -18px 4px; } 50% { translate: 14px -3px; } 100% { translate: 0 0; } }
+
+/* Terminals */
+.hk-term {
+  position: absolute; display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(12px) scale(.98);
+  background: oklch(0.16 0.02 280 / .94); border: 1px solid var(--hk); border-radius: 8px; box-shadow: 0 0 32px oklch(0.6 0.18 22 / .35);
+  transition: opacity .35s, transform .35s;
+}
+.hk-term header { padding: 8px 12px; border-bottom: 1px solid oklch(0.7 0.18 22 / .4); font-size: 13px; color: var(--hk-soft); }
+.hk-term1 { left: 29%; top: 14%; width: 680px; height: 320px; }
+.hk-term2 { left: 29%; top: 46%; width: 600px; height: 300px; border-color: oklch(0.7 0.18 22 / .7); }
+.ov-hack.is-term1 .hk-term1, .ov-hack.is-term2 .hk-term2 { opacity: 1; transform: none; }
+.hk-lines { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; padding: 12px 14px; font-size: 16px; color: #f3f5fe; }
+.hk-lines div { white-space: pre; }
+.hk-lines .is-ok { color: oklch(0.8 0.12 22); }
+.hk-hex { margin: 0; padding: 10px 14px; font: 15px/1.45 var(--font-mono); color: var(--n300); white-space: pre; }
+
+/* Gekaperte Kamera */
+.hk-cam {
+  position: absolute; display: grid; place-content: center; justify-items: center; gap: 6px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--hk); border-radius: 8px; opacity: 0; transition: opacity 1.2s;
+}
+.ov-hack.is-cam .hk-cam { opacity: .92; }
+.hk-noise { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; opacity: .8; }
+.hk-noise i { display: block; }
+.hk-cam b { position: relative; font-size: clamp(14px, 1.6vw, 30px); letter-spacing: .12em; color: var(--hk); }
+.hk-cam span { position: relative; font-size: clamp(11px, .9vw, 16px); color: var(--n300); }
+
+/* Warnung oben */
+.hk-toast {
+  position: absolute; left: 50%; top: 48px; display: flex; align-items: center; gap: 14px; padding: 14px 22px;
+  background: var(--surface); border: 1px solid var(--hk); border-radius: 8px; box-shadow: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, .65);
+  opacity: 0; transform: translate(-50%, -20px); transition: opacity .35s, transform .35s;
+}
+.hk-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.hk-toast i { font-style: normal; font-size: 26px; color: var(--hk); }
+.hk-toast div { display: grid; gap: 2px; }
+.hk-toast b { font-size: 19px; font-weight: 500; }
+.hk-toast span { font-size: 14px; color: var(--n300); }
+
+/* Pop-ups */
+.hk-popup {
+  position: absolute; width: 320px; display: grid; gap: 4px; padding: 14px 16px; background: var(--surface);
+  border: 1px solid var(--hk); border-radius: 8px; box-shadow: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, .65);
+  animation: hk-pop .3s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+.hk-popup b { font-size: 16px; font-weight: 500; color: oklch(0.76 0.16 22); }
+.hk-popup span { font-size: 14px; color: var(--n300); }
+@keyframes hk-pop { from { opacity: 0; scale: .7; } }
+
+/* Übernahme */
+.hk-takeover {
+  position: absolute; left: 50%; top: 50%; width: 1000px; max-width: 86vw; display: grid; gap: 18px; padding: 36px 44px;
+  background: oklch(0.14 0.02 280 / .96); border: 1px solid var(--hk); border-radius: 8px; box-shadow: 0 0 80px oklch(0.55 0.18 22 / .4);
+  opacity: 0; transform: translate(-50%, -46%) scale(.96); transition: opacity .8s, transform .8s;
+}
+.ov-hack.is-takeover .hk-takeover { opacity: 1; transform: translate(-50%, -50%); }
+.hk-kicker { font-size: 15px; letter-spacing: .2em; color: oklch(0.76 0.16 22); }
+.hk-title { font-size: 76px; font-weight: 500; line-height: 1; letter-spacing: -.01em; white-space: pre; }
+.hk-progress { display: flex; justify-content: space-between; font-size: 16px; color: var(--n200); }
+.hk-bar { height: 8px; border-radius: 4px; background: var(--n800); overflow: hidden; }
+.hk-bar i { display: block; height: 100%; width: 0; background: var(--hk); box-shadow: 0 0 16px var(--hk); transition: width .3s linear; }
+.hk-hint { font-size: 22px; color: var(--n200); animation: hk-pulse 1.4s ease-in-out infinite; }
+.hk-hint b { font-weight: 500; color: var(--fw-2); }
+@keyframes hk-pulse { 50% { opacity: .55; } }
+
+/* Firewall: Lichtstreifen fegt alles weg */
+.hk-sweep {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 3px; opacity: 0;
+  background: var(--fw-2); box-shadow: 0 0 24px 8px var(--fw), 0 0 120px 40px oklch(0.6 0.12 289 / .35);
+}
+.ov-hack.is-sweep .hk-sweep { opacity: 1; }
+.ov-hack.is-cleared .hk-term, .ov-hack.is-cleared .hk-popups, .ov-hack.is-cleared .hk-takeover, .ov-hack.is-cleared .hk-toast,
+.ov-hack.is-cleared .hk-cam, .ov-hack.is-cleared .hk-vignette, .ov-hack.is-cleared .hk-scan { opacity: 0 !important; transition: opacity .5s; }
+.ov-hack.is-cleared .hk-shade { background: rgba(12, 10, 20, .25); }
+.ov-hack.is-badge .hk-shade { background: transparent; }
+.hk-fw {
+  position: absolute; left: 50%; top: 50%; width: 620px; display: grid; gap: 14px; padding: 32px 36px;
+  background: var(--surface); border: 1px solid var(--fw); border-radius: 8px; box-shadow: 0 0 60px oklch(0.6 0.12 289 / .35), 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, .65);
+  opacity: 0; transform: translate(-50%, -50%) scale(.95); transition: opacity .4s, transform .4s;
+}
+.ov-hack.is-fwcard .hk-fw { opacity: 1; transform: translate(-50%, -50%); }
+.hk-fw-head { display: flex; align-items: center; gap: 14px; }
+.hk-fw-head i { font-style: normal; font-size: 40px; }
+.hk-fw-head b { font-size: 42px; font-weight: 500; }
+.hk-fw-by { margin: 0; font-size: 17px; color: var(--n300); }
+.hk-fw-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 17px; color: #f3f5fe; }
+.hk-fw-lines li { display: flex; gap: 10px; animation: hk-pop .3s ease both; }
+.hk-fw-lines li::before { content: "✓"; color: #d2cefd; }
+.hk-badge {
+  position: absolute; left: 50%; top: 48px; transform: translateX(-50%); padding: 9px 16px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--fw); color: var(--fw-2); font-size: 16px; opacity: 0; transition: opacity .4s;
+}
+.ov-hack.is-badge .hk-badge { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  body.is-hack-spike .ov-card { animation: none !important; }
+  .hk-hint { animation: none; }
+}

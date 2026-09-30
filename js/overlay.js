@@ -92,6 +92,7 @@ import {
 import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winnersOf } from './shop.js';
 import { setupOverlayExtras } from './overlay-extras.js';
 import { setupOverlayStage } from './overlay-stage.js';
+import { startHack } from './overlay-hack.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -841,7 +842,17 @@ function setupPranks(source) {
     playing = false;
   }
 
+  // Overlay-Hack (nur Mods): ganzes Bild, !firewall im Chat oder „Firewall“ im Dialog beendet ihn
+  let hack = null;
+  const runHack = (p) => {
+    if (p.item === 'firewall') { hack?.firewall(p.requested_by); return; }
+    if (hack || Date.now() - Date.parse(p.created_at) > 60_000) return;
+    say(p);
+    hack = startHack({ cam: opt.cam, sfx, channel: STREAMER.login, who: p.requested_by, onEnd: () => { hack = null; } });
+  };
+
   function handle(p) {
+    if (p.kind === 'hack') { runHack(p); return; }
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
     place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {

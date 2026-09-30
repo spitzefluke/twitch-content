@@ -1814,6 +1814,8 @@ function setupPrank() {
   });
 
   $('#prank-admin').addEventListener('change', savePrankSettings);
+  $('#prank-hack-start').addEventListener('click', () => sendPrank('hack', 'start'));
+  $('#prank-hack-stop').addEventListener('click', () => sendPrank('hack', 'firewall'));
   $('#prank-sync').addEventListener('click', () => syncPrankRewards({ loud: true }));
   $('#prank-dialog').addEventListener('close', () => {
     $('#prank-stage').querySelectorAll('.pf-item, .pf-splat, .prank-bubble').forEach((el) => el.remove());
@@ -1859,6 +1861,7 @@ function renderPrankDialog() {
   $('#prank-dialog').classList.toggle('is-viewer', !admin);
   renderPrankHowTo();
 
+  $('#prank-hack').hidden = !(admin && on);
   const form = $('#prank-admin');
   form.hidden = !(admin && on);
   paintTileStart('prank');
@@ -2012,7 +2015,13 @@ function showPrank(row, own) {
   const stage = $('#prank-stage');
   const dave = $('#prank-dave');
   const sfx = own ? prankSfx() : null;
-  if (row.kind === 'throw') {
+  if (row.kind === 'hack') {
+    const bubble = document.createElement('span');
+    bubble.className = 'prank-bubble';
+    bubble.textContent = row.item === 'firewall' ? '🛡️ Firewall aktiviert' : '💻 0xNULL hackt das Overlay …';
+    stage.append(bubble);
+    setTimeout(() => bubble.remove(), 2600);
+  } else if (row.kind === 'throw') {
     // Ziel: das Gesicht in der Zeichnung
     const s = stage.getBoundingClientRect();
     const d = dave.getBoundingClientRect();

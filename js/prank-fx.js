@@ -84,6 +84,7 @@ export const boardById = (id) => BOARD.find((b) => b.id === id);
 
 // "Lena wirft eine Tomate" / "Lena spielt „Trillerpfeife“"
 export function prankText(p) {
+  if (p.kind === 'hack') return p.item === 'firewall' ? `${p.requested_by} startet die Firewall` : `${p.requested_by} hackt das Overlay`;
   if (p.kind === 'throw') {
     const item = itemById(p.item);
     return item?.nice ? `${p.requested_by} schenkt dem Streamer ${item.acc}` : `${p.requested_by} wirft ${item?.acc ?? 'etwas'}`;
@@ -93,6 +94,7 @@ export function prankText(p) {
 }
 
 export function prankEmoji(p) {
+  if (p.kind === 'hack') return p.item === 'firewall' ? '🛡️' : '💻';
   if (p.kind === 'throw') return itemById(p.item)?.emoji ?? '🍌';
   return p.item === 'custom' ? '🔊' : boardById(p.item)?.emoji ?? '🔊';
 }

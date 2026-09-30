@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-M0F9NgxYxsCr5fOf4rSecA5iD0j7a7Hj+d60GipPENA=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WBzEzlLMsDOmP21zZMiUkuGFFTRzQrJ7CtHft09yUKA=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=bd2e8c3ae4">
+  <link rel="stylesheet" href="css/style.css?v=8751371ef7">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=932e3a091c">
   <link rel="stylesheet" href="css/shell.css?v=78e49bacd0">
@@ -29,7 +29,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=c282416e12",
       "./js/alerts.js": "./js/alerts.js?v=2ad0e2e362",
       "./js/api.js": "./js/api.js?v=41c25a8318",
-      "./js/app.js": "./js/app.js?v=4eadd07177",
+      "./js/app.js": "./js/app.js?v=39457499f2",
       "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -44,10 +44,11 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=fedf6df0ca",
+      "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=d2021cde65",
-      "./js/overlay.js": "./js/overlay.js?v=e8e677dbfd",
+      "./js/overlay.js": "./js/overlay.js?v=ffc3eeb39c",
       "./js/pet.js": "./js/pet.js?v=3bca368d37",
-      "./js/prank-fx.js": "./js/prank-fx.js?v=c278b34900",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=7a38e11af1",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
@@ -853,6 +854,17 @@
             <span class="toggle-ui" aria-hidden="true"></span>
             Auf dieser Seite mithören
           </label>
+        </section>
+
+        <!-- Overlay-Hack: nur Streamer, Admins und freigegebene Mods (send_prank prüft das) -->
+        <section class="prank-hack" id="prank-hack" hidden>
+          <h3 class="prank-h3">💻 Overlay-Hack <small>nur Mods</small></h3>
+          <p class="prank-hack-text">Der Hacker <b>0xNULL</b> übernimmt für knapp eine Minute das <b>ganze Bild</b>: Glitches, Terminal, gestörte Kamera, Pop-ups und am Ende „Overlay geklaut“. Wer im Chat <code>!firewall</code> tippt, rettet den Stream – sonst springt am Ende die Notfall-Firewall an.</p>
+          <div class="prank-hack-btns">
+            <button class="btn btn--primary btn--sm" type="button" id="prank-hack-start">💻 Hack starten</button>
+            <button class="btn btn--outline btn--sm" type="button" id="prank-hack-stop">🛡️ Firewall – sofort beenden</button>
+          </div>
+          <p class="form-hint">Läuft in allen OBS-Quellen mit der Ebene „Würfe &amp; Sounds“.</p>
         </section>
 
         <form id="prank-admin" class="prank-admin" hidden>
