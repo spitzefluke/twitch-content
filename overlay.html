@@ -2,59 +2,55 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-AeosarC/H3Rzfsfmt52ncY/k2o4vYXyRieuQPI8hq+k=' 'sha256-1dpdyh6JXtFZbzfkXFZ/xgAWfAwTqYsvf8/76+dJgcM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-juYUX/FMtJ5CadXPTnmPzfJEDl8FsVkYDNYVuIMHxFI=' 'sha256-1dpdyh6JXtFZbzfkXFZ/xgAWfAwTqYsvf8/76+dJgcM='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OBS-Overlay · Content-Stellwerk</title>
+  <title>OBS-Overlay · StreamHelp</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/overlay.css?v=5cf8b86f2c">
-  <link rel="stylesheet" href="css/prank-fx.css?v=c051194a73">
+  <link rel="stylesheet" href="css/overlay.css?v=5e36a956aa">
+  <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
-  <link rel="stylesheet" href="css/pet.css?v=b60d3469b7">
+  <link rel="stylesheet" href="css/pet.css?v=acbd04dbd4">
   <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
   <link rel="stylesheet" href="css/overlay-extras.css?v=97dc9d91eb">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=89031139a4",
-      "./js/alerts.js": "./js/alerts.js?v=d780620ee2",
-      "./js/api.js": "./js/api.js?v=426d148e87",
-      "./js/app.js": "./js/app.js?v=96bb661624",
-      "./js/bingo.js": "./js/bingo.js?v=ed6d67ecbf",
-      "./js/challenge.js": "./js/challenge.js?v=0825bf598f",
-      "./js/config.js": "./js/config.js?v=4c6e85333d",
-      "./js/defaults.js": "./js/defaults.js?v=54655d8b93",
-      "./js/extras-api.js": "./js/extras-api.js?v=fb0b2f13a5",
+      "./js/admin.js": "./js/admin.js?v=ca05db518e",
+      "./js/alerts.js": "./js/alerts.js?v=951c5e8239",
+      "./js/api.js": "./js/api.js?v=eb0bd14c67",
+      "./js/app.js": "./js/app.js?v=7f78fe5667",
+      "./js/bingo.js": "./js/bingo.js?v=497720b6e7",
+      "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
+      "./js/config.js": "./js/config.js?v=ffb743d9ae",
+      "./js/defaults.js": "./js/defaults.js?v=b38e9252c7",
+      "./js/extras-api.js": "./js/extras-api.js?v=99d94339a4",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
-      "./js/extras-fun.js": "./js/extras-fun.js?v=51566dad40",
-      "./js/extras-guard.js": "./js/extras-guard.js?v=e82b33cda3",
+      "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
+      "./js/extras-guard.js": "./js/extras-guard.js?v=6ef5d043e0",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
-      "./js/extras.js": "./js/extras.js?v=3b3718b606",
+      "./js/extras.js": "./js/extras.js?v=a9db7d7573",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
-      "./js/intro-engine.js": "./js/intro-engine.js?v=2f3a626469",
-      "./js/intro-scene.js": "./js/intro-scene.js?v=4308a643f9",
-      "./js/intro.js": "./js/intro.js?v=b67e9663cf",
-      "./js/obs-ws.js": "./js/obs-ws.js?v=dde286a8f3",
-      "./js/overlay-extras.js": "./js/overlay-extras.js?v=3c94f6ed57",
-      "./js/overlay.js": "./js/overlay.js?v=c2f1b8f951",
-      "./js/pet.js": "./js/pet.js?v=17f758b878",
-      "./js/prank-fx.js": "./js/prank-fx.js?v=659bebc978",
+      "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=62842e7183",
+      "./js/overlay.js": "./js/overlay.js?v=53f98f1003",
+      "./js/pet.js": "./js/pet.js?v=3bca368d37",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=c278b34900",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
-      "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=66d3439a86",
+      "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
-      "./js/social-icons.js": "./js/social-icons.js?v=54cb7e84b8",
+      "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
-      "./js/ticker.js": "./js/ticker.js?v=5e954fd7b9",
+      "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
-      "./js/twitch-chat.js": "./js/twitch-chat.js?v=25a4461934",
-      "./js/weather.js": "./js/weather.js?v=b1e3736ff5",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=0bb1cb5113",
       "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=afaf641be6"
     }
@@ -96,11 +92,11 @@
     </div>
   </section>
 
-  <!-- Nächste Abfahrt: wechselt durch die kommenden Content-Ideen -->
+  <!-- Als Nächstes: wechselt durch die kommenden Content-Ideen -->
   <section class="ov-card ov-next" id="ov-next" hidden>
     <header class="ov-head">
       <span class="ov-dot" aria-hidden="true"></span>
-      <span id="ov-nlabel">Nächste Abfahrt</span>
+      <span id="ov-nlabel">Als Nächstes</span>
       <span class="ov-sep" aria-hidden="true">·</span>
       <span id="ov-next-date"></span>
     </header>

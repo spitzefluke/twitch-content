@@ -1,7 +1,7 @@
 // OBS-Overlay: als Browserquelle in OBS einbinden (Breite 1920, Höhe 1080).
 // Wird das Glücksrad gedreht – per Kanalpunkte oder auf der Webseite –,
 // erscheint es klein im Bild, dreht sich und zeigt das Ergebnis.
-// Daneben läuft "Nächste Abfahrt" mit den kommenden Content-Ideen.
+// Daneben läuft "Als Nächstes" mit den kommenden Content-Ideen.
 //
 // Die Adresse baut der OBS-Dialog im Dashboard. Empfohlen: overlay.html?live=1 – dann kommen alle
 // Einstellungen aus der Datenbank (OBS-Dialog), und jede Änderung erscheint sofort in OBS.
@@ -10,7 +10,7 @@
 //   wheel=br|bl|bc|tr|tl|tc    Glücksrad an dieser Stelle (br = unten rechts, bc/tc = Mitte); fehlt es, ist es aus;
 //                              oder frei: wheel=62.5,70 (linke obere Ecke in Prozent des Bildes) –
 //                              so speichert es der OBS-Dialog, wenn man die Karte in der Vorschau verschiebt
-//   next=bl|…                  "Nächste Abfahrt" an dieser Stelle; fehlt es, ist es aus
+//   next=bl|…                  "Als Nächstes" an dieser Stelle; fehlt es, ist es aus
 //   wsize=100 / nsize=100      Größe der Karten in Prozent (50 – 200); scale=1.2 gilt für beide
 //   hold=9                     Sekunden, die das Ergebnis stehen bleibt (3 – 60)
 //   from=all|twitch|web        welche Drehungen: alle, nur Kanalpunkte, nur Webseite
@@ -58,7 +58,7 @@
 //   yt=@kanal                  YouTube-Livechat dazu (über die Edge Function youtube-chat), Nachrichten mit Logo
 //   chtw=0                     Twitch-Chat weglassen (z. B. nur YouTube)
 //   ticker=bc|…                Position des Laufbands (Standard bc = unten Mitte) – immer an, lässt sich nicht ausschalten
-//   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, Bahnhofs-Anzeige
+//   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
 //   forbid, subathon, pause, quiz, queue, tts, cards (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize)
@@ -75,7 +75,7 @@ import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { ScreenHoles } from './screen-holes.js';
 import { DEFAULT_CHALLENGE, KINDS, challengeBurst, currentStage, heartsHtml, pipsHtml, stageDone } from './challenge.js';
-import { TICKER_STYLES, fillTicker } from './ticker.js';
+import { TICKER_STYLES, fillTicker, setTickerChannel } from './ticker.js';
 import { CHAT_BOTS, connectTwitchChat, renderMessage, sampleMessage } from './twitch-chat.js';
 import { connectYouTubeChat, youtubeChannel } from './youtube-chat.js';
 import { ALERT_KINDS, alertText, playAlertSound, sampleAlert } from './alerts.js';
@@ -84,7 +84,8 @@ import { setupOverlayExtras } from './overlay-extras.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
-const TILES_REFRESH_MS = 60000;
+const TILES_REFRESH_MS = 15000;
+const CONFIG_POLL_MS = 3000; // Live-Einstellungen aus dem OBS-Fenster
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
 // live=1: Einstellungen aus der Datenbank (overlay_config). test/edit aus der Adresse gelten weiter.
@@ -97,7 +98,8 @@ if (LIVE) for (const key of ['test', 'edit']) if (urlParams.has(key)) params.set
 
 // Der Streamer: Name und Login des verbundenen Twitch-Kanals (streamer_info, ohne Anmeldung).
 // Fehlt die Migration …_streamer_mods.sql oder läuft die Demo: CHANNEL aus js/config.js.
-const STREAMER = await readStreamer().catch(() => null) ?? { name: CONFIG.CHANNEL, login: CONFIG.CHANNEL };
+const STREAMER = await readStreamer().catch(() => null) ?? { name: CONFIG.CHANNEL || 'Streamer', login: CONFIG.CHANNEL };
+setTickerChannel(STREAMER.login);
 async function readStreamer() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return null;
   const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/streamer_info`, {
@@ -145,7 +147,7 @@ const opt = {
   always: flag('always', false),
   variantColor: flag('vcolor', true),
   wlabel: text('wlabel', 'Glücksrad'),
-  nlabel: text('nlabel', 'Nächste Abfahrt'),
+  nlabel: text('nlabel', 'Als Nächstes'),
   rotateMs: number('rotate', 12, 5, 120) * 1000,
   margin: number('margin', 40, 0, 300),
   bg: number('bg', 94, 0, 100) / 100,
@@ -327,7 +329,10 @@ function watchOverlayConfig(source) {
     if (typeof next === 'string' && next !== liveConfig) location.reload();
   };
   source.onOverlayConfig?.(changed);
-  setInterval(() => readOverlayConfig().then(changed).catch(() => {}), 30000);
+  // Realtime kommt sofort; fällt es in OBS mal aus, fängt die kurze Abfrage alles nach Sekunden auf
+  const poll = () => readOverlayConfig().then(changed).catch(() => {});
+  setInterval(poll, CONFIG_POLL_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 }
 
 // ============================================================
@@ -659,7 +664,7 @@ function setupSpins(source) {
       if (playing) return;
       const v = variants[Math.floor(Math.random() * variants.length)];
       const i = Math.floor(Math.random() * v.segments.length);
-      const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
+      const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
       enqueue({
         id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
         variant_id: v.id, variant_name: v.name, segment_index: i,
@@ -677,7 +682,7 @@ function setupSpins(source) {
 }
 
 // ============================================================
-// Nächste Abfahrt
+// Als Nächstes
 // ============================================================
 function setupNext(source) {
   const card = $('ov-next');
@@ -807,7 +812,7 @@ function setupPranks(source) {
 
   if (opt.test) {
     const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke', 'flashbang'];
-    const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
+    const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
     let n = 0;
     const fake = () => {
       const who = names[Math.floor(Math.random() * names.length)];
@@ -947,8 +952,8 @@ async function setupQuestions(source) {
   let stage = await source.questionStage().catch((err) => { console.warn('Overlay: Fragen nicht verfügbar', err); return null; });
   if (opt.test || opt.edit) {
     const samples = [
-      { question_id: 't1', text: 'Was war dein peinlichster Moment im Stream?', author: 'Lokfuehrer_Lena' },
-      { question_id: 't2', text: 'Wie oft hast du schon wegen einem Zug verschlafen?', author: 'Anonym' },
+      { question_id: 't1', text: 'Was war dein peinlichster Moment im Stream?', author: 'NightOwl_Mia' },
+      { question_id: 't2', text: 'Wie oft hast du schon einen Stream verschlafen?', author: 'Anonym' },
     ];
     let n = 0;
     const next = () => {
@@ -1013,7 +1018,7 @@ async function setupPet(source) {
     screenOnFrenzy: opt.edit,
     names: async () => {
       const list = await source.recentNames().catch(() => []);
-      return list.length ? list : opt.test ? ['Lokfuehrer_Lena', 'SchienenSeb', 'Bahnhofskater'] : [];
+      return list.length ? list : opt.test ? ['NightOwl_Mia', 'PixelPaul', 'LootLukas'] : [];
     },
     idleEvery: opt.test ? [8, 14] : [45, 90],
     nibbleEvery: opt.test ? [16, 24] : [40, 75],
@@ -1404,7 +1409,7 @@ function setupChat() {
       empty();
     },
   };
-  if (opt.chtw) connectTwitchChat(STREAMER.login || CONFIG.CHANNEL, handlers);
+  if (opt.chtw && (STREAMER.login || CONFIG.CHANNEL)) connectTwitchChat(STREAMER.login || CONFIG.CHANNEL, handlers);
   if (opt.yt) connectYouTubeChat(opt.yt, handlers);
   // Vorschau und Probe: ein paar Beispiel-Nachrichten, damit man Platz und Größe sieht
   if (opt.test || opt.edit) {
@@ -1578,7 +1583,7 @@ const sound = {
   },
   tick() { this.tone(1900, { type: 'triangle', peak: 0.05, decay: 0.03 }); },
   whoosh() { this.tone(220, { type: 'sine', peak: 0.06, decay: 0.35 }); },
-  // Zweiklang wie ein kurzer Bahnhofsgong
+  // Zweiklang wie ein kurzer Gong
   ding() {
     this.tone(659.25, { peak: 0.22, decay: 1.2 });
     this.tone(880, { at: 0.22, peak: 0.2, decay: 1.6 });

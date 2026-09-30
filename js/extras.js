@@ -29,3 +29,5 @@ export const openExtra = (kind) => byKind[kind]?.open();
 export const extraIcon = (kind) => byKind[kind]?.icon;
 export const paintExtraTiles = () => EXTRAS.forEach((f) => paintTile(f));
 export const renderGuard = () => guard.render();
+// Kanalpunkte-Belohnungen Vorlesen und Karten-Pack (für die Übersicht im Dashboard)
+export const listRewards = async () => (X.api ? X.api.rewards.list() : []);

@@ -1,5 +1,5 @@
-// „Ärgere den Dave“ über Kanalpunkte: Belohnungen in Daves Kanal anlegen bzw.
-// abgleichen und eingetippte Wünsche („Tomate“, „Zugpfeife“) erkennen.
+// „Ärgere den Streamer“ über Kanalpunkte: Belohnungen im Kanal des Streamers anlegen bzw.
+// abgleichen und eingetippte Wünsche („Tomate“, „Pfeife“) erkennen.
 // Die Gegenstände und Sounds stehen auch in js/prank-fx.js – beide gleich halten.
 import { CodedError, db, getAppToken, helix, HelixError, type Connection } from "./twitch.ts";
 
@@ -19,7 +19,7 @@ export const THROW_ITEMS: { id: string; name: string; alias: string[] }[] = [
 ];
 
 export const BOARD_SOUNDS: { id: string; name: string; alias: string[] }[] = [
-  { id: "whistle", name: "Zugpfeife", alias: ["pfeife", "zug", "🚂"] },
+  { id: "whistle", name: "Trillerpfeife", alias: ["pfeife", "triller", "zugpfeife", "📯", "🚂"] },
   { id: "horn", name: "Tröte", alias: ["troete", "hupe", "horn", "📯"] },
   { id: "rimshot", name: "Ba-dum-tss", alias: ["badumtss", "ba dum tss", "trommel", "🥁"] },
   { id: "buzzer", name: "Falsch!", alias: ["falsch", "buzzer", "❌"] },
@@ -27,10 +27,10 @@ export const BOARD_SOUNDS: { id: string; name: string; alias: string[] }[] = [
   { id: "boing", name: "Boing", alias: ["🌀"] },
   { id: "quack", name: "Quak", alias: ["quack", "🦆"] },
   { id: "applause", name: "Applaus", alias: ["klatschen", "👏"] },
-  { id: "gong", name: "Bahnhofsgong", alias: ["gong", "🔔"] },
+  { id: "gong", name: "Gong", alias: ["gong", "bahnhofsgong", "🔔"] },
 ];
 
-// Die Belohnungen tragen den Namen des Kanals („Wirf was auf Zugfahrer_DaveTV“).
+// Die Belohnungen tragen den Namen des Kanals („Wirf was auf <Kanal>“).
 // Früher hießen sie fest „… auf Dave“ – unter dem alten Titel werden sie auch noch gefunden.
 const OLD_TITLES = { throw: "🍅 Wirf was auf Dave", sound: "🔊 Sound für Dave" } as const;
 function rewards(name: string) {

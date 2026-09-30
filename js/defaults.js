@@ -46,7 +46,7 @@ export const DEFAULT_VARIANTS = [
       { label: 'Chat wählt', detail: 'Der Chat bestimmt den Landeort.' },
       { label: 'Höchster Punkt', detail: 'Lande auf dem höchsten Punkt in Reichweite.' },
       { label: 'Nur zu Fuß', detail: 'Keine Fahrzeuge in dieser Runde.' },
-      { label: 'Gleisarbeiter', detail: 'Lande so nah wie möglich an Gleisen oder einer Straße.' },
+      { label: 'Straßenkind', detail: 'Lande so nah wie möglich an einer Straße.' },
       { label: 'Freie Wahl', detail: 'Glück gehabt: lande, wo du willst!' },
     ],
   },
@@ -241,8 +241,8 @@ export const DEFAULT_TILES = [
     id: 'idea-1',
     position: 15,
     kind: 'countdown',
-    title: 'Nachtschicht Güterzug',
-    description: 'Train Sim World: Langstrecke durch die Nacht – ohne Pause bis zum Zielbahnhof.',
+    title: 'Late-Night-Marathon',
+    description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
     theme: 'tracks',
     target_at: '2026-10-03T20:00:00+02:00',
     background: null,
@@ -251,8 +251,8 @@ export const DEFAULT_TILES = [
     id: 'idea-4',
     position: 16,
     kind: 'countdown',
-    title: 'Subathon: Endstation?',
-    description: 'Jeder Sub verlängert die Fahrt. Wo liegt die Endstation?',
+    title: 'Subathon',
+    description: 'Jeder Sub verlängert den Stream. Wie lange geht es diesmal?',
     theme: 'city',
     target_at: '2026-11-21T12:00:00+01:00',
     background: null,
@@ -261,7 +261,7 @@ export const DEFAULT_TILES = [
 
 // Vorschläge aus der Community (nur Demo-Modus – live kommen sie aus Supabase)
 export const DEFAULT_IDEAS = [
-  { id: 1, text: 'Nachtzug durch die Alpen', author: 'lokfuchs', votes: 42, voters: [] },
-  { id: 2, text: 'Glücksrad mit Chat-Regeln', author: 'signal_sina', votes: 31, voters: [] },
-  { id: 3, text: '24h Güterverkehr-Schicht', author: 'kupplung_kev', votes: 18, voters: [] },
+  { id: 1, text: 'Late-Night-Horror mit Chat-Voting', author: 'pixelfuchs', votes: 42, voters: [] },
+  { id: 2, text: 'Glücksrad mit Chat-Regeln', author: 'gg_sina', votes: 31, voters: [] },
+  { id: 3, text: '24h-Stream mit Zuschauer-Challenges', author: 'loot_kev', votes: 18, voters: [] },
 ];

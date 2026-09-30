@@ -1,14 +1,16 @@
 // Raid-Schutz: Streamer und Mods pausieren mit einem Klick alle Zuschauer-Aktionen
-// (Migration …_security_hardening.sql). Schalter in der Streameransicht, Hinweis für alle oben auf der Seite.
+// (Migration …_security_hardening.sql). Schalter im Dashboard (Raid-Schutz), Hinweis für alle oben auf der Seite.
 import { $, X, act, h, isAdmin, onTick, secondsUntil, span, timeOf, toast } from './extras-core.js';
 
 export const guard = {
   on: false, data: null, subscribed: false,
 
   setup() {
+    // Platz im Dashboard (Seite „Raid-Schutz“), sonst vor den Mods
+    const slot = $('#guard-slot');
     const mods = $('#obs-mods');
-    if (mods) {
-      mods.before(h('section', { class: 'obs-card-form x-guard', id: 'obs-guard' },
+    if (slot || mods) {
+      const box = (h('section', { class: 'obs-card-form x-guard', id: 'obs-guard' },
         h('b', {}, '🛡️ Raid-Schutz'),
         h('small', {}, 'Bei einem Hate-Raid oder Spam: pausiert sofort alle Zuschauer-Aktionen – Chat-Befehle, Kanalpunkte (Punkte gehen zurück) und Aktionen hier auf der Seite. Du und die Mods können weiter alles.'),
         h('p', { class: 'x-guard-state', 'data-guard-state': '' }),
@@ -19,8 +21,10 @@ export const guard = {
           h('button', { class: 'btn btn--primary btn--sm', type: 'button', 'data-guard-toggle': '', onclick: (e) => this.toggle(e.currentTarget) }, 'Einschalten')),
         h('p', { class: 'form-hint', 'data-guard-note': '', hidden: true },
           'Einmal nötig: supabase/migrations/20261015000000_security_hardening.sql im SQL Editor ausführen.')));
+      if (slot) slot.append(box);
+      else mods.before(box);
     }
-    $('#app')?.prepend(h('div', { class: 'x-guard-banner', id: 'guard-banner', hidden: true, role: 'status' }));
+    ($('.app-main') ?? $('#app'))?.prepend(h('div', { class: 'x-guard-banner', id: 'guard-banner', hidden: true, role: 'status' }));
     onTick(() => { if (this.data?.viewer_pause && this.data.until) this.render(); });
   },
 

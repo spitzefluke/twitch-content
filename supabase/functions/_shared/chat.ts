@@ -1,6 +1,6 @@
-// Chat-Befehle aus Daves Twitch-Chat (EventSub channel.chat.message).
-// Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, Dave channel:bot.
-// Befehle: Daves Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]).
+// Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
+// Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
+// Befehle: den Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]).
 import { db, getAppToken, getBot, helix } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
@@ -12,12 +12,14 @@ const FEED_GAP_MS = 15_000; // zwischen zwei Fütterungen insgesamt – sonst fr
 // Kostüme in fester Reihenfolge („!change“ allein nimmt das nächste) und was Zuschauer dafür tippen dürfen
 const COSTUMES = ["schaffner", "lok", "bau"] as const;
 const COSTUME_WORDS: Record<string, typeof COSTUMES[number]> = {
-  schaffner: "schaffner", schaffnerin: "schaffner", pfeife: "schaffner",
-  lok: "lok", lokfuhrer: "lok", lokfuehrer: "lok", lokfuhrerin: "lok", lokfuehrerin: "lok", dampflok: "lok",
-  bau: "bau", gleisbau: "bau", gleisbauer: "bau", gleisbauerin: "bau", helm: "bau", bauarbeiter: "bau",
+  // Angezeigt werden Kapitän, Mechaniker und Bauarbeiter; die alten Wörter gehen weiter
+  kapitan: "schaffner", kapitaen: "schaffner", kapitanin: "schaffner", kapitaenin: "schaffner", kaptn: "schaffner",
+  pfeife: "schaffner", schaffner: "schaffner", schaffnerin: "schaffner",
+  mechaniker: "lok", mechanikerin: "lok", mecha: "lok", lok: "lok", lokfuhrer: "lok", lokfuehrer: "lok",
+  bau: "bau", bauarbeiter: "bau", bauarbeiterin: "bau", helm: "bau", gleisbauer: "bau",
 };
 
-// Ein Abo für Daves Chat, gelesen als Bot. Ohne Bot gibt es keins.
+// Ein Abo für den Chat des Streamers, gelesen als Bot. Ohne Bot gibt es keins.
 export async function ensureChatSubscription(broadcasterId: string, callback: string, secret: string) {
   const bot = await getBot();
   if (!bot) return null;

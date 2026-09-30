@@ -4,7 +4,7 @@
 // bekommt sie das echte Logo (js/social-icons.js).
 import { socialBadge, socialFor } from './social-icons.js';
 
-export const DEFAULT_TICKER = ['twitch.tv/zugfahrer_davetv', '🚂 Content-Stellwerk: {seite}'];
+export const DEFAULT_TICKER = ['🟣 twitch.tv/{kanal}', '💜 StreamHelp: {seite}'];
 export const TICKER_STYLES = ['bar', 'neon', 'board'];
 
 // Symbole, die früher automatisch vor Socials standen (auch in gespeicherten Texten):
@@ -14,9 +14,18 @@ const OLD_SOCIAL_EMOJI = /^(🟣|▶️|▶|🎵|📸|💬|𝕏|🟢|🎧|🎮|�
 const ICONS = [[/throne|wunschliste|amazon/i, '🎁'], [/tipeee|spende|donat/i, '💛']];
 const startsWithSymbol = (text) => /^[\p{Extended_Pictographic}\p{So}]/u.test(text);
 
+// {kanal} wird zum Twitch-Namen des Streamers (setzt das Overlay, sobald er bekannt ist)
+let channel = '';
+export function setTickerChannel(login) { channel = String(login ?? '').trim(); }
+const fillChannel = (line) => {
+  const raw = String(line ?? '');
+  if (!raw.includes('{kanal}')) return raw;
+  return channel ? raw.replaceAll('{kanal}', channel) : ''; // Kanal unbekannt: Zeile weglassen
+};
+
 // Eine Zeile: Text und – falls bekannt – die Plattform fürs Logo
 export function tickerLine(line, site = siteAddress()) {
-  let text = String(line ?? '').replaceAll('{seite}', site).trim();
+  let text = fillChannel(line).replaceAll('{seite}', site).trim();
   const social = text ? socialFor(text) : null;
   if (social) text = text.replace(OLD_SOCIAL_EMOJI, '');
   return { text: social ? text : tickerText(text, site), social };
@@ -29,7 +38,7 @@ export function siteAddress(loc = location) {
 }
 
 export function tickerText(line, site = siteAddress()) {
-  const text = String(line ?? '').replaceAll('{seite}', site).trim();
+  const text = fillChannel(line).replaceAll('{seite}', site).trim();
   if (!text || startsWithSymbol(text)) return text;
   const icon = ICONS.find(([re]) => re.test(text))?.[1];
   return icon ? `${icon} ${text}` : text;

@@ -29,7 +29,7 @@ const CSP = (scriptHashes) => [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https://*.supabase.co",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
   "frame-src 'self'",
   "worker-src 'self' blob:",
   "object-src 'none'",

@@ -36,7 +36,7 @@
 .x-hero {
   display: grid; gap: 8px; justify-items: center; text-align: center; padding: 22px 18px;
   border-radius: 18px; border: 1px solid var(--line-2);
-  background: radial-gradient(120% 90% at 50% 0%, rgba(255, 184, 28, .12), transparent 60%), var(--bg-2);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(169, 112, 255, .12), transparent 60%), var(--bg-2);
 }
 .x-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .x-inline { display: flex; gap: 8px; align-items: stretch; }
@@ -101,7 +101,7 @@ ol.x-list { list-style: none; }
 .sa-rates span { padding: 6px 12px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); font-size: 14px; }
 
 /* ---------- Pause ---------- */
-.pz-hero { background: radial-gradient(120% 90% at 50% 0%, rgba(255, 184, 28, .18), transparent 60%), var(--bg-2); }
+.pz-hero { background: radial-gradient(120% 90% at 50% 0%, rgba(169, 112, 255, .18), transparent 60%), var(--bg-2); }
 .pz-state { font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); }
 .pz-title { font-family: var(--font-display); font-size: clamp(30px, 5vw, 48px); font-weight: 800; text-transform: uppercase; }
 .pz-msg { color: var(--text-2); }
@@ -124,7 +124,7 @@ ol.x-list { list-style: none; }
 .qz-answer:hover:not(:disabled) { transform: translateY(-2px); border-color: #35c7ff; }
 .qz-answer:disabled { cursor: default; }
 .qz-answer b { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #35c7ff; color: #04222e; flex: none; }
-.qz-answer.is-mine { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(255, 184, 28, .25); }
+.qz-answer.is-mine { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(169, 112, 255, .25); }
 .qz-answer.is-right { border-color: var(--green); background: rgba(61, 220, 132, .14); }
 .qz-answer.is-right b { background: var(--green); }
 .qz-answer.is-wrong { border-color: var(--red); background: rgba(255, 90, 78, .12); }
@@ -160,7 +160,7 @@ ol.x-list { list-style: none; }
   padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2);
   font: inherit; font-weight: 600; cursor: pointer;
 }
-.cd-tabs button[aria-selected="true"] { background: var(--amber); border-color: var(--amber); color: #1a1204; }
+.cd-tabs button[aria-selected="true"] { background: var(--amber); border-color: var(--amber); color: #fff; }
 .cd-tabs button[hidden] { display: none; }
 .cd-pane { padding: 18px 24px 26px; display: grid; gap: 14px; }
 .cd-pane .x-layout { padding: 0; }
@@ -200,7 +200,7 @@ button.xcard:hover { transform: translateY(-3px); }
 .xc-emoji { font-size: 46px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .xc-name { font-family: var(--font-display); font-size: 16px; font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
 .xc-rarity { font-size: 11px; color: var(--rc); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-.xc-count { position: absolute; top: 6px; right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amber); color: #1a1204; font-weight: 800; font-size: 12px; }
+.xc-count { position: absolute; top: 6px; right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--amber); color: #fff; font-weight: 800; font-size: 12px; }
 .xc-new { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--green); color: #04220f; font-weight: 800; font-size: 11px; }
 .xcard.is-small { padding: 6px 5px 8px; border-radius: 10px; }
 .xcard.is-small .xc-emoji { font-size: 30px; }

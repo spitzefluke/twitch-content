@@ -13,6 +13,7 @@ import { BOARD_SOUNDS, matchBoardSound, matchCustomSound, matchThrow, prankState
 import { handleChatMessage } from "../_shared/chat.ts";
 import { handleAlert, isAlertType } from "../_shared/alerts.ts";
 import { handleExtraRedemption } from "../_shared/extras.ts";
+import { noteEvent } from "../_shared/health.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -58,6 +59,12 @@ Deno.serve(async (req) => {
     return new Response(null, { status: 204 });
   }
 
+  // Gesundheitscheck: Wann kam zuletzt etwas von Twitch an? (twitch_health, …_streamhelp.sql)
+  if (type === "notification") {
+    const note = noteEvent(payload.subscription?.type ?? "").catch(() => {});
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(note);
+  }
+
   if (type === "notification" && isAlertType(payload.subscription?.type ?? "")) {
     const task = handleAlert(payload.subscription.type, payload.event, req.headers.get("Twitch-Eventsub-Message-Id"))
       .catch((e) => console.error("Alert fehlgeschlagen:", e));
@@ -74,13 +81,30 @@ Deno.serve(async (req) => {
   }
 
   if (type === "notification" && payload.subscription?.type === "channel.channel_points_custom_reward_redemption.add") {
-    const task = handleRedemption(payload.event).catch((e) => console.error("Einlösung fehlgeschlagen:", e));
+    const messageId = req.headers.get("Twitch-Eventsub-Message-Id");
+    const task = Promise.all([
+      redemptionAlert(payload.event, messageId).catch((e) => console.error("Kanalpunkte-Alert fehlgeschlagen:", e)),
+      handleRedemption(payload.event).catch((e) => console.error("Einlösung fehlgeschlagen:", e)),
+    ]);
     // Twitch sofort antworten, die Arbeit läuft im Hintergrund weiter
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
     else await task;
   }
   return new Response(null, { status: 204 });
 });
+
+// Jede Kanalpunkte-Einlösung (egal welche Belohnung) als Alert im Overlay – ohne den eingetippten Text
+async function redemptionAlert(event: Redemption, messageId: string | null) {
+  const { error } = await db.from("stream_alerts").upsert({
+    kind: "redeem",
+    user_name: (event.user_name || event.user_login || "Jemand").slice(0, 60),
+    amount: Math.max(0, Number(event.reward.cost) || 0),
+    message: String(event.reward.title ?? "").slice(0, 300),
+    event_id: messageId,
+  }, { onConflict: "event_id", ignoreDuplicates: true });
+  // Migration …_streamhelp.sql fehlt noch (kind 'redeem' unbekannt): kein Alert, sonst alles wie gehabt
+  if (error && !/stream_alerts_kind_check/.test(error.message)) throw error;
+}
 
 type Redemption = {
   id: string;

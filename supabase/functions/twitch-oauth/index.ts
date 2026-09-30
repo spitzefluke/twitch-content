@@ -1,10 +1,14 @@
-// Twitch mit dem Stellwerk verbinden.
+// Twitch mit StreamHelp verbinden.
 //   POST {action:"start"}          → Twitch-Login-URL für den Kanal des Streamers (angemeldeter User nötig)
 //   POST {action:"disconnect"}     → Kanal trennen (nur Admin)
 //   POST {action:"sync_pranks"}    → Kanalpunkte-Belohnungen fürs Ärgern anlegen/abgleichen (nur Admin)
 //   POST {action:"wheel_cost", cost} → Kosten der Glücksrad-Belohnung ändern (nur Admin)
 //   POST {action:"alerts_check"}   → Twitch-Abos für die Alerts prüfen und reparieren (Admins, freigegebene Mods)
 //   POST {action:"sync_mods"}      → die Mods des Kanals von Twitch holen (Streamer und Admins)
+//   POST {action:"health", force}  → Twitch-Gesundheitscheck (Rechte, Abos, Bot) inkl. Reparatur (Admins, freigegebene Mods);
+//                                    ohne Anmeldung mit Header x-health-key = Secret HEALTH_CHECK_KEY (für den Zeitplan)
+//   POST {action:"bot_start"}      → Twitch-Login für den Chat-Bot (Admins, freigegebene Mods)
+//   POST {action:"bot_disconnect"} → Chat-Bot trennen (Admins, freigegebene Mods)
 //   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für den Streamer-Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
@@ -15,6 +19,7 @@ import {
 import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
 import { ensureAlertSubscriptions } from "../_shared/alerts.ts";
+import { runHealthCheck } from "../_shared/health.ts";
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
@@ -25,10 +30,22 @@ Deno.serve(async (req) => {
   if (req.method === "GET") return handleCallback(url);
 
   if (req.method === "POST") {
+    const body = await req.json().catch(() => ({}));
+    const { action, cost } = body;
+    // Zeitplan (GitHub Action): Gesundheitscheck ohne Anmeldung, nur mit dem geheimen Schlüssel
+    const key = Deno.env.get("HEALTH_CHECK_KEY");
+    if (action === "health" && key && key.length >= 20 && req.headers.get("x-health-key") === key) {
+      return json(await runHealthCheck({ repair: true }));
+    }
     const user = await getUserFromRequest(req);
     if (!user) return json({ error: "Nicht angemeldet" }, 401);
-    const { action, cost } = await req.json().catch(() => ({}));
     try {
+      if (action === "health") return await health(user.id, body.force === true);
+      if (action === "bot_start") {
+        if (!(await isAdminUser(user.id))) return json({ error: "Den Bot verbinden der Streamer, Admins und freigegebene Mods." }, 403);
+        return json({ url: await startTwitchLogin(user.id, "bot") });
+      }
+      if (action === "bot_disconnect") return await botDisconnect(user.id);
       if (action === "start") return json({ url: await startTwitchLogin(user.id, "broadcaster") });
       if (action === "disconnect") return await disconnect(user.id);
       if (action === "sync_pranks") return await syncPranks(user.id);
@@ -71,7 +88,8 @@ async function handleCallback(url: URL) {
   const { data: st } = state
     ? await db.from("oauth_states").delete().eq("state", state).select().maybeSingle()
     : { data: null };
-  const page = st?.kind === "bot" ? "admin.html" : "";
+  // Beides kommt aufs Dashboard zurück (vom Admin-Bereich aus leitet die Seite dorthin weiter)
+  const page = "";
   const back = (params: Record<string, string>) => backToSite(params, page);
 
   const twitchError = url.searchParams.get("error");
@@ -145,6 +163,8 @@ async function handleCallback(url: URL) {
     await alertSubscriptions(me.id, tok.scope ?? []);
     // Mods des Kanals holen – scheitert es, geht der Rest trotzdem
     await syncMods(me.id, tok.access_token, tok.scope ?? []).catch((e) => console.warn("Mods nicht geholt:", e));
+    // Gesundheitscheck gleich mit dem neuen Stand (Rechte, Abos)
+    await runHealthCheck({ repair: false }).catch((e) => console.warn("Gesundheitscheck:", e));
 
     return backToSite({ twitch: "connected" });
   } catch (e) {
@@ -177,7 +197,7 @@ async function saveBot(me: { id: string; login: string; display_name: string }, 
   if (error) throw error;
   const conn = await getConnection().catch(() => null);
   if (conn) await chatSubscription(conn.broadcaster_id);
-  return backToSite({ twitch: "bot_connected", bot: me.display_name }, "admin.html");
+  return backToSite({ twitch: "bot_connected", bot: me.display_name });
 }
 
 // Alerts (Follower, Abos): scheitert es, läuft der Rest trotzdem
@@ -304,8 +324,7 @@ async function ensureReward(broadcasterId: string, token: string, knownId?: stri
 // Admin: Belohnungen fürs Ärgern jetzt auf den Stand der Einstellungen bringen
 // (Kosten, Abklingzeit, an/aus, Startdatum) – und das Einlösungs-Abo prüfen.
 async function syncPranks(userId: string) {
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Belohnungen ändern." }, 403);
+  if (!(await isAdminUser(userId))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
   const conn = await getConnection();
   if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
   try {
@@ -323,8 +342,8 @@ async function syncPranks(userId: string) {
 
 // Admin: Kosten fürs Drehen auf Twitch ändern (1 bis 1.000.000 Kanalpunkte)
 async function setWheelCost(userId: string, raw: unknown) {
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Kosten ändern." }, 403);
+  // Kanalpunkte-Kosten: Streamer, Admins und freigegebene Mods
+  if (!(await isAdminUser(userId))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Kosten ändern." }, 403);
   const cost = Math.round(Number(raw));
   if (!Number.isFinite(cost) || cost < 1 || cost > 1_000_000) {
     return json({ error: "Die Kosten müssen zwischen 1 und 1.000.000 Kanalpunkten liegen." }, 400);
@@ -372,5 +391,32 @@ async function disconnect(userId: string) {
     }).catch((e) => console.warn(e));
   }
   await db.from("twitch_connection").delete().eq("id", 1);
+  return json({ ok: true });
+}
+
+// Gesundheitscheck: höchstens alle 60 Sekunden neu (force: sofort), sonst der letzte Stand
+async function health(userId: string, force: boolean) {
+  if (!(await isAdminUser(userId)) && !(await isOwnerUser(userId))) return json({ error: "Nur der Streamer, Admins und Mods." }, 403);
+  const { data: last } = await db.from("twitch_health").select("*").eq("id", 1).maybeSingle();
+  if (!force && last?.checked_at && Date.now() - Date.parse(last.checked_at) < 60_000) return json(last);
+  return json(await runHealthCheck({ repair: true }));
+}
+
+async function isOwnerUser(userId: string) {
+  const { data } = await db.from("twitch_connection").select("connected_by").eq("id", 1).maybeSingle();
+  return data?.connected_by === userId;
+}
+
+// Chat-Bot trennen (Streamer, Admins, freigegebene Mods)
+async function botDisconnect(userId: string) {
+  if (!(await isAdminUser(userId))) return json({ error: "Den Bot trennen der Streamer, Admins und freigegebene Mods." }, 403);
+  const appToken = await getAppToken().catch(() => null);
+  if (appToken) {
+    const existing = await helix("eventsub/subscriptions", appToken, { query: { type: "channel.chat.message" } }).catch(() => ({ data: [] }));
+    for (const sub of existing.data ?? []) {
+      await helix("eventsub/subscriptions", appToken, { method: "DELETE", query: { id: sub.id } }).catch(() => {});
+    }
+  }
+  await db.from("twitch_bot").delete().eq("id", 1);
   return json({ ok: true });
 }

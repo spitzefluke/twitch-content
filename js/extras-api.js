@@ -223,7 +223,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   // ---------- Quizfragen (Startfragen wie in der Migration, gekürzt) ----------
   const DEMO_QUESTIONS = [
     ['Wie viele Spieler starten in einem normalen Battle-Royale-Match?', ['50', '100', '150', '64'], 1],
-    ['Wie heißt das Fahrzeug, aus dem alle zu Beginn abspringen?', ['Kampfbus', 'Sturmzug', 'Loot-Laster', 'Party-Zeppelin'], 0],
+    ['Wie heißt das Fahrzeug, aus dem alle zu Beginn abspringen?', ['Kampfbus', 'Sturm-Gleiter', 'Loot-Laster', 'Party-Zeppelin'], 0],
     ['Welche Farbe hat die Seltenheit „Episch“?', ['Blau', 'Lila', 'Gold', 'Grün'], 1],
     ['Wie viel Schild gibt ein kleiner Schildtrank?', ['10', '25', '50', '75'], 1],
     ['Was füllt Leben UND Schild komplett auf?', ['Medikit', 'Pott', 'Bandage', 'Kleiner Schildtrank'], 1],

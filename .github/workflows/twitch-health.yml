@@ -1,0 +1,39 @@
+# Prüft alle 30 Minuten, ob die Twitch-Verbindung von StreamHelp noch alles kann
+# (Rechte für neue Funktionen, Abos für Follows/Abos/Bits/Kanalpunkte, Chat-Bot) und
+# repariert fehlende Abos. Probleme erscheinen im Dashboard bei Streamer, Mods und Admins.
+#
+# Einmal nötig (sonst wird nur übersprungen):
+#   1. Einen zufälligen Schlüssel (mind. 20 Zeichen) als Secret HEALTH_CHECK_KEY in Supabase
+#      (Edge Functions → Secrets) UND in GitHub (Settings → Secrets and variables → Actions) anlegen.
+name: Twitch-Gesundheitscheck
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      HEALTH_CHECK_KEY: ${{ secrets.HEALTH_CHECK_KEY }}
+      # Steht auch in js/config.js (SUPABASE_URL) und ist nicht geheim.
+      FUNCTION_URL: https://ssibsphuttjlphijilsc.supabase.co/functions/v1/twitch-oauth
+    steps:
+      - name: Prüfen
+        run: |
+          if [ -z "$HEALTH_CHECK_KEY" ]; then
+            echo "Secret HEALTH_CHECK_KEY fehlt – Check übersprungen."
+            exit 0
+          fi
+          result=$(curl -sS --fail-with-body -X POST "$FUNCTION_URL" \
+            -H "Content-Type: application/json" -H "x-health-key: $HEALTH_CHECK_KEY" \
+            -d '{"action":"health"}')
+          echo "$result" | head -c 2000
+          echo
+          if echo "$result" | grep -q '"ok":false'; then
+            echo "::warning::Twitch-Verbindung hat Probleme – Details im StreamHelp-Dashboard."
+          fi

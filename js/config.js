@@ -12,6 +12,7 @@ export const CONFIG = {
   SUPABASE_URL: 'https://ssibsphuttjlphijilsc.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzaWJzcGh1dHRqbHBoaWppbHNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDIyODYsImV4cCI6MjEwNTQxODI4Nn0.VGJXuEtG5hXyxGCVLagzDYciDx18EkNk_i--rCX-P3c',
 
-  // Twitch-Kanal, der sich verbinden darf (muss zu BROADCASTER_LOGIN im Backend passen)
-  CHANNEL: 'zugfahrer_davetv',
+  // Optional: Twitch-Name des Streamers, solange noch kein Kanal verbunden ist.
+  // Leer lassen – sobald der Streamer Twitch verbindet, kommt der Name aus der Datenbank.
+  CHANNEL: '',
 };

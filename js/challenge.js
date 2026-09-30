@@ -1,5 +1,5 @@
 // Win-Challenge: gemeinsame Helfer für die Webseite und das OBS-Overlay.
-// Eine Leiter aus Stufen (Games, Runden, Fights gegen Mods), die Dave der Reihe
+// Eine Leiter aus Stufen (Games, Runden, Fights gegen Mods), die der Streamer der Reihe
 // nach gewinnen muss. Optional mit Leben: jede Niederlage kostet eins.
 
 export const KINDS = {

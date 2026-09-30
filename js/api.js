@@ -115,7 +115,7 @@ async function createSupabaseApi() {
       if (error) throw error;
       location.href = data.url;
     },
-    // Einmal-Code aus admin.html einlösen → echte Sitzung als Stellwerk-Admin
+    // Einmal-Code aus admin.html einlösen → echte Sitzung als StreamHelp-Admin
     async adminSiteLogin(tokenHash) {
       unwrap(await sb.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }));
     },
@@ -527,6 +527,19 @@ async function createSupabaseApi() {
     async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
     // Twitch-Abos für die Alerts prüfen und fehlende neu anlegen (nur Admins)
     async checkAlertSubscriptions() { return invoke('twitch-oauth', { action: 'alerts_check' }); },
+    // Gesundheitscheck (Migration …_streamhelp.sql): Rechte, Abos, Bot – repariert, was geht.
+    // Ohne force höchstens einmal pro Minute wirklich bei Twitch (sonst letzter Stand).
+    async twitchHealth(force = false) { return invoke('twitch-oauth', { action: 'health', force }); },
+    async getTwitchHealth() {
+      const { data, error } = await sb.from('twitch_health').select('*').eq('id', 1).maybeSingle();
+      if (error) { console.warn('twitch_health:', error.message); return null; }
+      return data;
+    },
+    onTwitchHealth(cb) {
+      sb.channel('twitch-health')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'twitch_health' }, (p) => cb(p.new))
+        .subscribe();
+    },
     // Eigene Alert-Sounds (nur Admins laden hoch), Bucket "alert-sounds"
     alertSoundUrl(path) {
       return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`;
@@ -571,6 +584,12 @@ async function createSupabaseApi() {
     async twitchDisconnect() {
       await invoke('twitch-oauth', { action: 'disconnect' });
     },
+    // Chat-Bot-Konto (Streamer, Admins, freigegebene Mods)
+    async botConnect() {
+      const { url } = await invoke('twitch-oauth', { action: 'bot_start' });
+      location.href = url;
+    },
+    async botDisconnect() { return invoke('twitch-oauth', { action: 'bot_disconnect' }); },
   };
 }
 
@@ -894,7 +913,7 @@ function createLocalApi() {
       return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit, mods_enabled: !!cfg.mods_enabled, is_mod: false };
     },
     // Demo: kein Twitch – der Streamer heißt wie der Kanal in js/config.js
-    async streamerInfo() { return { connected: false, login: CONFIG.CHANNEL, name: CONFIG.CHANNEL }; },
+    async streamerInfo() { return { connected: false, login: CONFIG.CHANNEL, name: CONFIG.CHANNEL || 'Streamer' }; },
     async myAccess() {
       const admin = isAdminNow();
       const cfg = store.get('overlay_config', {});
@@ -1398,7 +1417,7 @@ function createLocalApi() {
     onSpin(cb) { spinListeners.push(cb); },
     // Nur Demo: tut so, als hätte ein Zuschauer die Kanalpunkte-Belohnung eingelöst.
     simulateRedemption() {
-      const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina'];
+      const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
       const variants = demoVariants();
       const variant = variants[randomInt(variants.length)];
       const spin = makeSpin(variant, 'twitch', names[randomInt(names.length)]);
@@ -1410,13 +1429,13 @@ function createLocalApi() {
     onAlerts(cb) { (demoListeners.stream_alerts ??= []).push(cb); },
     async testAlert(kind) {
       await requireAdmin();
-      if (!['follow', 'sub', 'resub', 'gift', 'bits'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
-      const names = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina', 'Gleis9dreiviertel'];
+      if (!['follow', 'sub', 'resub', 'gift', 'bits', 'redeem'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
+      const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia'];
       const row = {
         id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: '1000',
         months: kind === 'resub' ? 3 + randomInt(20) : 0,
-        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : 0,
-        message: kind === 'resub' ? 'Test-Nachricht: Weiter so!' : kind === 'bits' ? 'Test-Cheer: Volle Fahrt voraus!' : '', test: true,
+        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : kind === 'redeem' ? [500, 1000][randomInt(2)] : 0,
+        message: kind === 'resub' ? 'Test-Nachricht: Weiter so!' : kind === 'bits' ? "Test-Cheer: Let's go!" : kind === 'redeem' ? '🎡 Glücksrad' : '', test: true,
       };
       store.set('stream_alerts', [row, ...store.get('stream_alerts', [])].slice(0, 30));
       emitDemo('stream_alerts', row);
@@ -1453,5 +1472,21 @@ function createLocalApi() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },
     async twitchDisconnect() {},
+    async botConnect() {
+      throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
+    },
+    async botDisconnect() {},
+    // Demo: zeigt, wie ein Problem aussieht
+    async twitchHealth() {
+      await requireAdmin();
+      const row = {
+        checked_at: new Date().toISOString(), ok: false, last_event_at: null, last_event_type: '',
+        problems: [{ code: 'not_connected', level: 'error', text: 'Twitch ist noch nicht verbunden – ohne Verbindung keine Alerts, Kanalpunkte und Chat-Befehle.', fix: 'Streamer: Twitch verbinden' }],
+        details: {},
+      };
+      store.set('twitch_health', row);
+      return row;
+    },
+    async getTwitchHealth() { return store.get('twitch_health', null); },
   };
 }

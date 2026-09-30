@@ -1,4 +1,4 @@
-// Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos und Bits.
+// Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos, Bits und Kanalpunkte.
 // Die Zeilen kommen aus stream_alerts (twitch-eventsub schreibt sie, alert_test für Proben).
 import { BOARD } from './prank-fx.js';
 
@@ -6,9 +6,10 @@ import { BOARD } from './prank-fx.js';
 export const ALERT_KINDS = [
   { kind: 'follow', param: 'sfollow', label: '💜 Follower' },
   { kind: 'sub', param: 'ssub', label: '⭐ Abo' },
-  { kind: 'resub', param: 'sresub', label: '🚂 Resub' },
+  { kind: 'resub', param: 'sresub', label: '🔁 Resub' },
   { kind: 'gift', param: 'sgift', label: '🎁 Verschenkte Abos' },
   { kind: 'bits', param: 'sbits', label: '💎 Bits' },
+  { kind: 'redeem', param: 'sredeem', label: '🎟️ Kanalpunkte' },
 ];
 
 // Eigene Alert-Sounds: so lang und so groß dürfen sie sein (wie in …_alert_sound_length.sql)
@@ -22,12 +23,12 @@ export function alertText(a) {
   const tier = TIERS[a.tier] ? ` · ${TIERS[a.tier]}` : '';
   switch (a.kind) {
     case 'follow':
-      return { icon: '💜', title: 'Neuer Follower', sub: 'Willkommen an Bord!' };
+      return { icon: '💜', title: 'Neuer Follower', sub: 'Willkommen in der Community!' };
     case 'sub':
       return { icon: '⭐', title: `Neues Abo${tier}`, sub: 'Danke fürs Abonnieren!' };
     case 'resub':
       return {
-        icon: '🚂',
+        icon: '🔁',
         title: a.months > 1 ? `${a.months} Monate Abo${tier}` : `Abo verlängert${tier}`,
         sub: a.message?.trim() || 'Danke für die Treue!',
       };
@@ -38,6 +39,10 @@ export function alertText(a) {
     case 'bits': {
       const n = Math.max(1, a.amount | 0);
       return { icon: '💎', title: `${n.toLocaleString('de-DE')} ${n === 1 ? 'Bit' : 'Bits'}`, sub: a.message?.trim() || 'Danke für die Bits!' };
+    }
+    case 'redeem': {
+      const n = Math.max(0, a.amount | 0);
+      return { icon: '🎟️', title: a.message?.trim() || 'Kanalpunkte eingelöst', sub: n ? `für ${n.toLocaleString('de-DE')} Kanalpunkte` : 'Kanalpunkte eingelöst' };
     }
     default:
       return { icon: '🔔', title: 'Alert', sub: '' };
@@ -50,6 +55,12 @@ export function alertSound(sfx, kind) {
     // Zwei helle Glöckchen
     sfx.tone(784, { type: 'triangle', release: 0.5, peak: 0.22 });
     sfx.tone(1175, { at: 0.14, type: 'triangle', release: 0.8, peak: 0.2 });
+    return;
+  }
+  if (kind === 'redeem') {
+    // Kurzer „Plopp“ nach oben
+    sfx.tone(660, { type: 'triangle', release: 0.25, peak: 0.18 });
+    sfx.tone(990, { at: 0.09, type: 'triangle', release: 0.45, peak: 0.16 });
     return;
   }
   if (kind === 'bits') {
@@ -72,7 +83,7 @@ export function alertSound(sfx, kind) {
 
 // Sound eines Alerts: "default" (eigener Klang je Art), "none", ein Sound vom
 // Soundboard (z. B. "gong"), ein eigener Alert-Sound als "a:<pfad>" oder ein
-// Sound aus „Ärgere den Dave“ als "c:<pfad>". urlFor bekommt den ganzen Wert.
+// Sound aus „Ärgere den Streamer“ als "c:<pfad>". urlFor bekommt den ganzen Wert.
 // Liefert ein Promise, das endet, wenn eine Sound-Datei fertig ist – so bleibt
 // der Alert stehen, solange sein Sound läuft.
 export function playAlertSound(sfx, kind, choice = 'default', urlFor = null) {
@@ -89,13 +100,13 @@ export function playAlertSound(sfx, kind, choice = 'default', urlFor = null) {
 }
 
 // Probe-Alerts zum Einrichten (test=1)
-const NAMES = ['Lokfuehrer_Lena', 'SchienenSeb', 'TTV_Weichensteller', 'Bahnhofskater', 'ICE_Irina', 'Gleis9dreiviertel'];
+const NAMES = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia'];
 export function sampleAlert(kind, n = 0) {
   return {
     id: `test-${Date.now()}-${n}`, created_at: new Date().toISOString(), kind, test: true, tier: '1000',
     user_name: NAMES[n % NAMES.length],
     months: kind === 'resub' ? 7 : 0,
-    amount: kind === 'gift' ? 5 : kind === 'bits' ? 500 : 0,
-    message: kind === 'resub' ? 'Weiter so!' : '',
+    amount: kind === 'gift' ? 5 : kind === 'bits' ? 500 : kind === 'redeem' ? 1000 : 0,
+    message: kind === 'resub' ? 'Weiter so!' : kind === 'redeem' ? '🎡 Glücksrad' : '',
   };
 }

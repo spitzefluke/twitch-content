@@ -1,9 +1,11 @@
 // Verbindung zu OBS über den eingebauten WebSocket-Server (OBS 28 oder neuer,
 // Protokoll obs-websocket 5). Läuft im Browser auf dem PC, auf dem OBS läuft:
-// Die Seite holt sich Bilder aus OBS für die Vorschau, liest aus, wo Daves
+// Die Seite holt sich Bilder aus OBS für die Vorschau, liest aus, wo die
 // Kamera sitzt, und richtet die Browserquelle für das Overlay ein.
 
-export const OVERLAY_SOURCE = 'Stellwerk-Overlay';
+export const OVERLAY_SOURCE = 'StreamHelp-Overlay';
+// So hieß die Quelle früher – wird beim Übernehmen umbenannt statt doppelt angelegt
+const OLD_SOURCE = 'Stellwerk-Overlay';
 const OVERLAY_SIZE = { width: 1920, height: 1080 };
 
 // Typen, die fast immer eine Kamera sind (Windows, macOS, Linux, Capture-Karten, NDI)
@@ -118,7 +120,7 @@ export class ObsSocket {
   async sources(scene) {
     const [{ sceneItems }, canvas] = await Promise.all([this.request('GetSceneItemList', { sceneName: scene }), this.canvas()]);
     return sceneItems
-      .filter((it) => !it.isGroup && it.sourceName !== OVERLAY_SOURCE && !NOT_VIDEO.test(it.inputKind ?? ''))
+      .filter((it) => !it.isGroup && it.sourceName !== OVERLAY_SOURCE && it.sourceName !== OLD_SOURCE && !NOT_VIDEO.test(it.inputKind ?? ''))
       .map((it) => ({
         name: it.sourceName,
         kind: it.inputKind ?? '',
@@ -137,6 +139,10 @@ export class ObsSocket {
     const canvas = await this.canvas();
     const settings = { url, ...OVERLAY_SIZE, reroute_audio: true, shutdown: false };
     const { inputs } = await this.request('GetInputList');
+    if (!inputs.some((i) => i.inputName === OVERLAY_SOURCE) && inputs.some((i) => i.inputName === OLD_SOURCE)) {
+      await this.request('SetInputName', { inputName: OLD_SOURCE, newInputName: OVERLAY_SOURCE });
+      inputs.find((i) => i.inputName === OLD_SOURCE).inputName = OVERLAY_SOURCE;
+    }
     const exists = inputs.some((i) => i.inputName === OVERLAY_SOURCE);
     let created = false;
     if (exists) {

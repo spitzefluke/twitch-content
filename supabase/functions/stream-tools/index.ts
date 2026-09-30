@@ -2,7 +2,7 @@
 //   POST {action:"flush"}               → offene Bot-Nachrichten in den Chat (jeder Angemeldete –
 //                                          verschickt werden nur Texte, die die Datenbank selbst geschrieben hat)
 //   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
-//   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (nur Admins der Seite)
+//   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
 import { corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
@@ -23,9 +23,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "sync_reward") {
-      // Kanalpunkte-Kosten bleiben beim Streamer und den Admins der Seite (keine Mods)
-      const { data: profile } = await db.from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
-      if (!profile?.is_admin) return json({ error: "Nur Admins dürfen die Belohnungen ändern." }, 403);
+      // Kanalpunkte: Streamer, Admins und freigegebene Mods
+      if (!(await isAdminUser(user.id))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
       if (key !== "tts" && key !== "cards") return json({ error: "Unbekannte Belohnung" }, 400);
       const conn = await getConnection();
       if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);

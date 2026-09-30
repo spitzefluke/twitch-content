@@ -202,7 +202,7 @@ const SOUNDS = {
     tone(1250, { at: 1.3, to: 950, attack: 0.3, hold: 0.25, release: 0.5, peak: 0.035, vibrato: { rate: 5, depth: 8 } });
     noise({ at: 1.3, pink: true, type: 'bandpass', freq: 1100, to: 700, q: 1, attack: 0.3, hold: 0.25, release: 0.5, peak: 0.07 });
   },
-  // Schaffnerpfeife: Triller mit Kugel (Frequenz-Wackeln) – passt zur Mütze
+  // Trillerpfeife: Triller mit Kugel (Frequenz-Wackeln) – passt zur Mütze
   whistle({ tone, noise }) {
     for (const [at, hold] of [[0, 0.12], [0.24, 0.55]]) {
       tone(2750, { at, type: 'sine', attack: 0.02, hold, release: 0.08, peak: 0.12, vibrato: { rate: 38, depth: 180 } });
