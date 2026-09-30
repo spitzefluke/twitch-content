@@ -40,9 +40,12 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # Feste Version: Bei "latest" fragt setup-cli erst die GitHub-API nach der neuesten
+      # Version – das scheitert gelegentlich am Rate-Limit ("rate limit exceeded").
+      # Neuere Version: Nummer hier erhöhen (siehe github.com/supabase/cli/releases).
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       # --no-verify-jwt: Twitch schickt beim Zurückleiten und beim Webhook keinen Supabase-Login mit.
       - name: Deployen
