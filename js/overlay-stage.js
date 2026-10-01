@@ -1,7 +1,8 @@
 // OBS-Overlay: Design fürs ganze Overlay und Stream-Grafiken rundherum.
 //   otheme=standard|neon|glass|gamer|retro|gold|candy|minimal   Design aller Karten (OVERLAY_THEMES)
-//   scene=start|brb|end        Szenen-Bildschirm über das ganze Bild (liegt hinter allen Karten):
-//                              Start mit Countdown, Pause („Bin gleich zurück“), Ende mit Dank
+//   scene=start|brb|end|chat   Szenen-Bildschirm über das ganze Bild (liegt hinter allen Karten):
+//                              Start mit Countdown, Pause („Bin gleich zurück“), Ende mit Dank,
+//                              Chatting (große Kamera mit Rahmen, Chat daneben; die Kamera bleibt frei)
 //   sctitle=… / scsub=…        eigene Überschrift und Zeile darunter
 //   sctime=20:15               Countdown bis zu dieser Uhrzeit (Start und Pause)
 //   camframe=1                 Rahmen um die Kamera (Bereich aus cam=…)      cfstyle=glow|clean|corners|neon
@@ -28,6 +29,7 @@ export const SCENES = {
   start: { tag: '● Gleich live', title: 'Gleich geht’s los!', sub: (n) => `${n} startet in Kürze` },
   brb: { tag: '☕ Kurz weg', title: 'Bin gleich zurück', sub: () => 'Nicht weglaufen – es geht gleich weiter' },
   end: { tag: '💜 Stream vorbei', title: 'Danke fürs Zuschauen!', sub: () => 'Bis zum nächsten Stream' },
+  chat: { tag: '💬 Just Chatting', title: '', sub: () => '' },
 };
 export const LABEL_ITEMS = {
   follow: { icon: '💜', label: 'Letzter Follower' },
@@ -116,9 +118,15 @@ function setupScene(o, data, kind) {
   el.querySelector('.sc-url').textContent = o.streamer.login ? `twitch.tv/${o.streamer.login}` : '';
   document.body.prepend(el);
 
+  // Chatting: dort, wo die Kamera ist, ein Loch in den Hintergrund schneiden
+  if (kind === 'chat') {
+    const { x, y, w, h } = o.opt.cam;
+    el.style.clipPath = `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${x}% ${y}%, ${x + w}% ${y}%, ${x + w}% ${y + h}%, ${x}% ${y + h}%, ${x}% ${y}%)`;
+  }
+
   // Countdown bis zur Uhrzeit (heute; ist sie schon vorbei: „gleich“)
   const time = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(o.params.get('sctime') ?? '');
-  if (time && kind !== 'end') {
+  if (time && kind !== 'end' && kind !== 'chat') {
     const clock = el.querySelector('.sc-clock');
     clock.hidden = false;
     const target = new Date();
