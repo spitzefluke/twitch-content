@@ -387,6 +387,13 @@ Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **der
 
 **Bits und eigene Alert-Sounds:** Einmal nötig: Migrationen `20261009000000_alert_bits_sounds.sql` und `20261010000000_alert_sound_length.sql` (20 Sekunden, 4 MB) ausführen und **der Streamer verbindet Twitch noch einmal neu** – für Bits braucht die Seite das Recht `bits:read`.
 
+### Design-Bibliothek
+
+Im Dashboard unter **📚 Design-Bibliothek** (Streamer, Admins, freigegebene Mods) stehen alle fertigen Designs nebeneinander – mit großer Vorschau:
+
+- **Overlay-Designs:** die 8 Designs fürs ganze Overlay. Die Vorschau zeigt die eigenen Ebenen (oder Beispielkarten, solange keine an sind). **Fürs Overlay übernehmen** speichert das Design in den zentralen Overlay-Einstellungen – OBS mit `live=1` zeigt es sofort. Das aktive Design ist markiert.
+- **Alert-Designs:** die 14 fertigen Alert-Designs, abspielbar für jede Alert-Art. **Für alle Alerts übernehmen** setzt Look, Bild, Farbe und Animationen bei allen Alert-Arten (Texte, Sounds und Varianten bleiben) und öffnet den Alert-Designer – dort prüfen und **Speichern**.
+
 ### Overlay-Design, Szenen, Kamera-Rahmen, Info-Leiste und Ziel-Balken
 
 - **Design des ganzen Overlays:** OBS-Editor → „Aussehen & Ton“ → 🎨: Standard, Neon, Glas, Gamer, Arcade, Gold, Candy oder Minimal. Gilt für alle Karten, das Laufband und den Kamera-Rahmen; Alerts, Bingo, Chat und Laufband mit eigenem Stil behalten ihn (Parameter `otheme`).
