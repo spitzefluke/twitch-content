@@ -17,7 +17,7 @@ import {
 } from './challenge.js';
 import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
 import { guardFrame } from './frame-guard.js';
-import { openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
+import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
 import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
 
@@ -1152,7 +1152,8 @@ function setupDialogs() {
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
   setupLibrary({
-    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset,
+    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset,
+    liveUrl: () => obsLiveUrl(),
     // Overlay-Einstellungen aus diesem Browser (für alle, die noch nicht zentral gespeichert haben)
     localObsQuery: () => { loadObs(); return new URL(obsUrl()).search.slice(1); },
   });

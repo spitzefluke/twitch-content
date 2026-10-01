@@ -153,3 +153,6 @@ html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radi
 @media (prefers-reduced-motion: reduce) {
   .ov-scene, .ov-scene *, .ov-camframe, .gl-fill::before { animation: none !important; }
 }
+/* Chatting: kein Text in der Mitte – dort ist die Kamera */
+.ov-scene[data-scene="chat"] .sc-center { display: none; }
+.ov-scene[data-scene="chat"] .sc-foot { top: auto; bottom: 110px; left: auto; right: 60px; }

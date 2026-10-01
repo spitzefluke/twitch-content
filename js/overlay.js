@@ -112,6 +112,14 @@ if (LIVE) liveConfig = await readOverlayConfig().catch((err) => { console.warn('
 const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
 // scene: eigene OBS-Quelle je Szene (overlay.html?live=1&scene=start), sonst gilt die Szene aus den Einstellungen
 if (LIVE) for (const key of ['test', 'edit', 'scene']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
+// Chatting-Szene (scene=chat): große Kamera links, Chat rechts – Spiel-Ebenen bleiben weg
+if (params.get('scene') === 'chat') {
+  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'recent', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'goal']) params.delete(key);
+  params.set('camframe', '1');
+  params.set('cam', '3,7,62,76');
+  params.set('chat', 'tr');
+  if (!params.has('chsize')) params.set('chsize', '115');
+}
 
 // Der Streamer: Name und Login des verbundenen Twitch-Kanals (streamer_info, ohne Anmeldung).
 // Fehlt die Migration …_streamer_mods.sql oder läuft die Demo: CHANNEL aus js/config.js.

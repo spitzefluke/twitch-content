@@ -8,6 +8,7 @@
 // für Alerts mit apreview=1 (Design per postMessage, wie im Alert-Designer).
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, builtinMediaUrl, normalizeAlertConfig, normalizeDesign } from './alerts.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
+import { setupThemes, showThemes } from './theme-gallery.js';
 
 const $ = (sel) => document.querySelector(sel);
 const STAGE_W = 1920;
@@ -22,12 +23,22 @@ const OVERLAY_KEYS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'a
 const lib = {
   api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, useAlertPreset: null,
   localObsQuery: () => '',
-  tab: 'overlay', pick: { overlay: 'standard', alerts: ALERT_PRESETS[0]?.id }, kind: 'sub',
+  tab: 'themes', pick: { overlay: 'standard', alerts: ALERT_PRESETS[0]?.id }, kind: 'sub',
   params: '', current: 'standard', access: null, frameReady: false, busy: false,
 };
 
 export function setupLibrary(deps) {
   Object.assign(lib, deps);
+  setupThemes({
+    api: lib.api, toast: lib.toast, germanError: lib.germanError, canEdit: lib.canEdit,
+    installAlertPreset: deps.installAlertPreset, liveUrl: deps.liveUrl,
+    access: () => lib.access, params: () => lib.params, localParams: safeLocal,
+    setParams: (query) => {
+      lib.params = query;
+      lib.current = new URLSearchParams(query).get('otheme') || 'standard';
+      lib.pick.overlay = lib.current;
+    },
+  });
   $('#lib-kind').replaceChildren(...ALERT_KINDS.map((k) => new Option(k.label, k.kind)));
   $('#lib-kind').value = lib.kind;
 
@@ -80,6 +91,17 @@ const lookName = (id) => ALERT_LOOKS.find((l) => l.id === id)?.name ?? '';
 function paint() {
   const tab = lib.tab;
   document.querySelectorAll('[data-lib-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.libTab === tab)));
+  // Themes haben eine eigene Galerie (js/theme-gallery.js)
+  const themes = tab === 'themes';
+  $('#lib-themes').hidden = !themes;
+  $('.lib .lib-grid').hidden = themes;
+  if (themes) {
+    $('#lib-preview').replaceChildren();
+    $('#lib-status').textContent = 'Komplette Looks mit Overlay, Alerts und fünf Szenen – mit einem Klick installiert';
+    showThemes();
+    return;
+  }
+  $('#th-preview').replaceChildren();
   $('#lib-status').textContent = tab === 'overlay'
     ? `${OVERLAY_THEMES.length} Designs für alle Karten im Overlay – aktiv: ${theme(lib.current)?.name ?? 'Standard'}`
     : `${ALERT_PRESETS.length} fertige Alert-Designs – Bild, Look, Farbe und Animationen in einem Klick`;

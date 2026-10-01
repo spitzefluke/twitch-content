@@ -200,6 +200,22 @@ export async function useAlertPreset(id) {
   return true;
 }
 
+// Theme-Paket aus der Design-Bibliothek: Design für alle Alert-Arten einstellen und gleich speichern.
+// 'ok' | 'dirty' (ungespeicherte Änderungen im Designer) | 'locked' | 'missing' | 'error'
+export async function installAlertPreset(id) {
+  const preset = ALERT_PRESETS.find((p) => p.id === id);
+  if (!preset) return 'missing';
+  if (ad.dirty && ad.loaded) return 'dirty';
+  await openAlertDesigner();
+  if (!ad.loaded) return 'missing';
+  if (!ad.canEdit()) return 'locked';
+  for (const k of ALERT_KINDS) Object.assign((ad.cfg.kinds[k.kind] ??= normalizeDesign(null)), preset.design);
+  changed();
+  paint();
+  await save({ quiet: true });
+  return ad.dirty ? 'error' : 'ok';
+}
+
 function design() {
   if (ad.varId) {
     const v = ad.cfg.vars.find((x) => x.id === ad.varId);
@@ -485,7 +501,7 @@ async function deleteMedia(id) {
   }
 }
 
-async function save() {
+async function save({ quiet = false } = {}) {
   if (!ad.canEdit()) return;
   const config = normalizeAlertConfig(ad.cfg);
   if (new TextEncoder().encode(JSON.stringify(config)).length > CONFIG_BYTES) {
@@ -499,7 +515,7 @@ async function save() {
     await ad.api.saveAlertConfig(config);
     ad.cfg = config;
     ad.dirty = false;
-    ad.toast('✓ Alert-Designs gespeichert – sie gelten sofort im Overlay.', 'ok');
+    if (!quiet) ad.toast('✓ Alert-Designs gespeichert – sie gelten sofort im Overlay.', 'ok');
   } catch (err) {
     ad.toast(ad.germanError(err), 'error');
   }
