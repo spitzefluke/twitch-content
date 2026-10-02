@@ -458,3 +458,5 @@
   .cmd-row .cmd-resp { grid-column: 1 / -1; grid-row: 2; }
   .cmd-modonly span:last-child, .cmd-uses { display: none; }
 }
+.health-problems li .btn { justify-self: start; margin-top: 6px; }
+.health-banner .btn[hidden] { display: none; }

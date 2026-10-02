@@ -362,6 +362,20 @@ function setupShell() {
 
   $('#health-btn').addEventListener('click', () => setPage('alerts'));
   $('#health-check').addEventListener('click', () => runHealth({ force: true, loud: true }));
+  // Fehlende Rechte oder abgelaufener Zugang: direkt neu verbinden (nicht „Mit Twitch anmelden“ –
+  // das meldet nur bei der Webseite an und erneuert den Streamer-Zugang nicht)
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-twitch-reconnect]');
+    if (!btn) return;
+    btn.disabled = true;
+    try {
+      try { sessionStorage.setItem('zd_twitch_flow', '1'); } catch { /* egal */ }
+      await state.api.twitchConnect(); // leitet zu Twitch weiter
+    } catch (err) {
+      toast(germanError(err), 'error', 7000);
+      btn.disabled = false;
+    }
+  });
   $('#bot-connect').addEventListener('click', connectBot);
   $('#cmd-form').addEventListener('submit', addBotCommand);
   $('#cmd-custom').addEventListener('click', botCommandClick);
@@ -6186,6 +6200,9 @@ async function runHealth({ force = false, loud = false } = {}) {
   }
 }
 
+// Probleme, die nur ein neues Verbinden mit Twitch löst (twitch-oauth → _shared/health.ts)
+const RECONNECT_CODES = ['missing_scopes', 'token_invalid', 'token_refresh', 'not_connected'];
+
 function renderHealth() {
   const h = state.health;
   const d = h.data;
@@ -6217,6 +6234,19 @@ function renderHealth() {
     fix.textContent = 'Lösung: ';
     small.append(fix, p.fix ?? '');
     li.append(b, small);
+    if (RECONNECT_CODES.includes(p.code)) {
+      const hint = document.createElement('small');
+      hint.textContent = 'Wichtig: „Mit Twitch anmelden“ reicht dafür nicht – das meldet nur bei der Webseite an. Der Streamer muss die Twitch-Verbindung neu herstellen und bei Twitch alles erlauben.';
+      li.append(hint);
+      if (canStreamerView()) {
+        const go = document.createElement('button');
+        go.type = 'button';
+        go.className = 'btn btn--primary btn--sm';
+        go.dataset.twitchReconnect = '';
+        go.textContent = '🔄 Twitch neu verbinden';
+        li.append(go);
+      }
+    }
     return li;
   }));
   const subs = d?.details?.subscriptions ?? {};
@@ -6239,6 +6269,9 @@ function renderHealth() {
   $('#sb-alert-badge').textContent = String(errors.length);
   const banner = $('#health-banner');
   banner.hidden = !errors.length || !isTeam() || state.page === 'alerts';
+  // Lösung „neu verbinden“: Knopf dafür (nur wer Twitch verbinden darf – der Streamer bzw. Seiten-Admin)
+  const reconnect = canStreamerView() && errors.some((p) => RECONNECT_CODES.includes(p.code));
+  banner.querySelector('[data-twitch-reconnect]').hidden = !reconnect;
   if (errors.length) {
     $('#health-banner-title').textContent = errors.length === 1 ? 'Twitch-Problem: Alerts oder Kanalpunkte kommen evtl. nicht an' : `${errors.length} Twitch-Probleme: Alerts oder Kanalpunkte kommen evtl. nicht an`;
     $('#health-banner-detail').textContent = `${errors[0].text} → ${errors[0].fix}`;
