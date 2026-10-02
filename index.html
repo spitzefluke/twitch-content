@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-/cUlCLs/JK1k4M6LUt/ecOoQUcCMfoq/+0XMT7RXOoI=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Wrcya+nzlgKDJ7NovqPO0zTr8PzqfEDe1F9cIiY52nY=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/style.css?v=490584cb97">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=932e3a091c">
-  <link rel="stylesheet" href="css/shell.css?v=78e49bacd0">
+  <link rel="stylesheet" href="css/shell.css?v=b44c96ce1c">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=acbd04dbd4">
@@ -31,7 +31,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ff8db6e602",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=36b12c4da2",
-      "./js/app.js": "./js/app.js?v=6d73d91841",
+      "./js/app.js": "./js/app.js?v=8ff1d1a8ed",
       "./js/bingo.js": "./js/bingo.js?v=869ee787b2",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -377,6 +377,7 @@
       <div class="health-banner" id="health-banner" role="alert" hidden>
         <span class="health-banner-ico" aria-hidden="true">⚠️</span>
         <span class="health-banner-text"><b id="health-banner-title">Twitch-Problem</b><small id="health-banner-detail"></small></span>
+        <button class="btn btn--sm btn--primary" type="button" data-twitch-reconnect hidden>🔄 Twitch neu verbinden</button>
         <button class="btn btn--sm btn--ghost" type="button" data-goto="alerts">Details</button>
       </div>
 
