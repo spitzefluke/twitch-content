@@ -17,6 +17,9 @@ export function createApi() {
 
 // Supabase-Fehlermeldungen auf Deutsch
 const ERRORS = [
+  // Supabase konnte den Code von Twitch & Co. nicht gegen ein Token tauschen: fast immer passt
+  // das Client-Secret in Supabase nicht (mehr) zur App beim Anbieter
+  [/unable to exchange external code/i, 'Der Anbieter hat die Anmeldung nicht bestätigt. In Supabase unter Authentication → Providers → Twitch stimmt das Client-Secret nicht (mehr) mit der Twitch-App überein – z. B. nach „Neues Secret“ in der Twitch-Konsole. Secret neu eintragen, dann klappt es wieder.'],
   [/invalid login credentials/i, 'E-Mail oder Passwort ist falsch.'],
   [/already registered|already been registered/i, 'Diese E-Mail ist bereits registriert.'],
   [/password should be at least (\d+)/i, 'Das Passwort ist zu kurz.'],
