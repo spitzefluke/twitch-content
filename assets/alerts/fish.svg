@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>.f{animation:f 2.4s ease-in-out infinite;transform-origin:100px 100px}.t{animation:t .5s ease-in-out infinite alternate;transform-origin:150px 100px}.b{animation:b 2.6s ease-in infinite}.b2{animation-delay:.9s}.b3{animation-delay:1.7s}@keyframes f{50%{transform:translate(-6px,-6px) rotate(-4deg)}}@keyframes t{to{transform:rotate(14deg)}}@keyframes b{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-70px);opacity:0}}</style><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#ff7a3c"/></linearGradient></defs>
+<g class="f"><path class="t" d="M146 100l34-28v56z" fill="#ff9a4d" stroke="#3a1a08" stroke-width="5" stroke-linejoin="round"/>
+<path d="M30 100c18-38 92-46 120 0-28 46-102 38-120 0z" fill="url(#g)" stroke="#3a1a08" stroke-width="5"/>
+<path d="M84 66c6 12 6 56 0 68M106 70c5 12 5 48 0 60" stroke="#fff" stroke-opacity=".7" stroke-width="7" fill="none"/>
+<circle cx="58" cy="94" r="9" fill="#fff" stroke="#3a1a08" stroke-width="3"/><circle cx="60" cy="94" r="4" fill="#3a1a08"/><path d="M36 106q6 4 12 0" stroke="#3a1a08" stroke-width="3" fill="none"/>
+<path d="M92 64l14-22 10 26z" fill="#ff9a4d" stroke="#3a1a08" stroke-width="4" stroke-linejoin="round"/></g>
+<g fill="none" stroke="#bff8ff" stroke-width="3"><circle class="b" cx="30" cy="70" r="6"/><circle class="b b2" cx="22" cy="80" r="4"/><circle class="b b3" cx="36" cy="60" r="3"/></g></svg>
