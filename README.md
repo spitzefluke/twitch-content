@@ -479,7 +479,15 @@ Zuschauer schreiben auf der Webseite Fragen an den Streamer (höchstens 3 pro Ta
 
 Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer sehen nur ihre eigenen Fragen und deren Stand; den echten Namen hinter „Anonym“ sehen nur Admins.
 
-## Stream-Dino
+## Stream-Haustier (Stream-Dino)
+
+**Tier des Kanals:** Rexi bekommt Gesellschaft – der Streamer wählt im Haustier-Dialog (Kachel) oder im OBS-Fenster bei der Ebene **„Haustier“** unter **Tier & Entwicklung** das Tier: **Dino** (Rexi), **Katze** (Mimi, Schnurrhaare, schwingt den Schwanz), **Fuchs** (Fipsi, Buschschwanz), **Axolotl** (Axel, wehende Kiemen), **Pinguin** (Pino, watschelt) oder **Drache** (Funki, schlägt mit den Flügeln und spuckt beim Brüllen Feuer). Alle Tiere nutzen Rexis Gelenke – Laufen, Sprechen, Tricks, Hunger, Heißhunger und die drei Kostüme funktionieren bei allen. Neben den Sprüchen aus dem Dialog hat jedes Tier eigene; Dino-Sprüche sagt nur der Dino. Hieß das Tier wie das alte Standard-Tier, bekommt es beim Wechsel den neuen Standard-Namen. Zeichnungen in `js/pet-species.js`.
+
+**Ei → Baby → Erwachsen:** Mit **🥚 Ei** legt der Streamer ein neues Ei in den Stream. Es wackelt, bekommt beim Füttern Risse, kurz vor Schluss schauen Augen heraus – und nach **50 × Füttern** (einstellbar 5–500) schlüpft das Baby: kleiner, großer Kopf, große Augen. Das Baby wächst nach **5 Streams mit guter Laune** (einstellbar 1–30; ein Stream mit guter Laune ist ein Tag, an dem es mindestens 3 × gefüttert wurde). Jede Stufe erscheint im Overlay als Banner mit Konfetti, der Chat-Bot dankt den Helfern („🐣 Mimi ist geschlüpft! Danke an …“). Gezählt wird in der Datenbank (Trigger), egal ob über den Chat oder die Webseite gefüttert wird. Mods sehen den Stand, ändern kann ihn der Streamer.
+
+Einmal nötig: Migration `supabase/migrations/20261021000000_pet_species.sql` im SQL Editor ausführen.
+
+### Der Dino (Rexi)
 
 Ein kleiner Dino (Standardname „Rexi“, im Kapitän-Kostüm mit Mütze und Pfeife) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf – oder mit „Läuft auf: dem Bildrand“ ganz unten) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
 

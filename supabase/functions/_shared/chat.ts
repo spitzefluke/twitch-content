@@ -2,7 +2,7 @@
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
 // Befehle: den Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]);
 // alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command in der Datenbank.
-import { db, getAppToken, getBot, helix } from "./twitch.ts";
+import { db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
@@ -76,7 +76,8 @@ export async function handleChatMessage(event: ChatMessage) {
 
   if (normalize(command) === "change") return await changeCostume(event, arg);
 
-  const { data: pet } = await db.from("pet").select("feed_command, last_fed_at, fed_count").eq("id", 1).maybeSingle();
+  // stage gibt es erst mit …_pet_species.sql – ohne die Spalte ist es einfach undefined
+  const { data: pet } = await db.from("pet").select("*").eq("id", 1).maybeSingle();
   if (!pet) return;
   // "!füttern" und "!fuettern" zählen gleich
   if (normalize(command) !== normalize(pet.feed_command ?? "!füttern")) return;
@@ -96,12 +97,27 @@ export async function handleChatMessage(event: ChatMessage) {
   const at = new Date(now).toISOString();
   const who = event.chatter_user_name || event.chatter_user_login;
   await db.from("pet_chat_cooldowns").upsert({ twitch_user_id: event.chatter_user_id, last_at: at });
-  const { error } = await db.from("pet")
+  const { data: fed, error } = await db.from("pet")
     .update({ last_fed_at: at, last_fed_by: who, fed_count: (pet.fed_count ?? 0) + 1 })
-    .eq("id", 1);
+    .eq("id", 1).select("*").single();
   if (error) throw error;
   await db.from("pet_events").insert({ kind: "feed", who });
+  // Ei geschlüpft oder Baby erwachsen (Trigger …_pet_species.sql): der Bot dankt den Helfern
+  if (fed?.stage && pet.stage && fed.stage !== pet.stage) await announceStage(fed).catch((e) => console.warn("Haustier-Stadium:", e));
   await db.from("pet_events").delete().lt("created_at", new Date(now - 2 * 86400_000).toISOString());
+}
+
+// Neues Stadium im Chat verkünden (nur mit verbundenem Chat-Bot)
+async function announceStage(pet: { name?: string; stage?: string }) {
+  const { data: ev } = await db.from("pet_events").select("who").eq("kind", "stage").eq("text", pet.stage ?? "")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const helpers = ev?.who ? ` Danke an ${ev.who}!` : "";
+  const name = pet.name || "Das Haustier";
+  const text = pet.stage === "baby"
+    ? `🐣 ${name} ist geschlüpft!${helpers} Ab jetzt füttern – nach ein paar Streams mit guter Laune wird es groß.`
+    : `🎉 ${name} ist erwachsen!${helpers}`;
+  const conn = await getConnection().catch(() => null);
+  if (conn) await sendChat(conn, text);
 }
 
 // !change [kostüm]: Rexi zieht sich um. Eine Pause für alle (Abklingzeit im OBS-Fenster).

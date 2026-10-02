@@ -1082,7 +1082,7 @@ async function setupPet(source) {
   ground();
   addEventListener('resize', ground);
   new ResizeObserver(ground).observe($('ov-ticker'));
-  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name, costume: pet.costume });
+  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name, costume: pet.costume, species: pet.species, stage: pet.stage });
   if (opt.test) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
     pet = { ...pet, last_fed_at: new Date(Date.now() - 86400000).toISOString() };
@@ -1132,8 +1132,29 @@ async function setupPet(source) {
       dino.cuddle(ev.who);
     } else if (ev.kind === 'say') {
       dino.say(ev.text, 5500);
+    } else if (ev.kind === 'stage') {
+      stageAlert(ev);
     }
   });
+
+  // Geschlüpft / erwachsen: Banner mit Konfetti über dem Tier (das Tier selbst zeigt runDino)
+  function stageAlert(ev) {
+    const el = document.createElement('div');
+    el.className = 'ov-pet-stage';
+    const icon = document.createElement('span');
+    icon.textContent = ev.text === 'baby' ? '🐣' : '🎉';
+    const title = document.createElement('b');
+    title.textContent = ev.text === 'baby' ? `${pet.name} ist geschlüpft!` : `${pet.name} ist erwachsen!`;
+    const thanks = document.createElement('small');
+    thanks.textContent = ev.who ? `Danke an ${ev.who}` : 'Danke, Chat!';
+    const fx = document.createElement('div');
+    fx.className = 'ov-al-fx';
+    el.append(fx, icon, title, thanks);
+    document.body.append(el);
+    burst(fx, 'stage');
+    setTimeout(() => el.classList.add('is-out'), 6500);
+    setTimeout(() => el.remove(), 7200);
+  }
 }
 
 // ============================================================

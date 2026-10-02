@@ -787,3 +787,18 @@ body.is-apreview .ov-alert { position: relative; margin: 0; }
 .chat-pill[data-state="bad"] i { background: #ff5a4e; box-shadow: 0 0 .5em #ff5a4e; }
 .chat-style-bubble .chat-status, .chat-style-clean .chat-status { padding: 0 0 .45em; }
 .chat-style-clean .chat-pill { background: rgba(0, 0, 0, .45); text-shadow: 0 .05em .2em #000; }
+
+/* Haustier: Banner beim Schlüpfen und Wachsen (js/overlay.js, stageAlert) */
+.ov-pet-stage {
+  position: fixed; left: 50%; top: 22%; z-index: 40; display: grid; justify-items: center; gap: .15em;
+  padding: .7em 1.6em .8em; border-radius: 1.2em; transform: translateX(-50%);
+  background: linear-gradient(160deg, rgba(40, 22, 70, .96), rgba(14, 10, 26, .96)); border: .12em solid #ffd36b;
+  box-shadow: 0 0 2em rgba(255, 211, 107, .45), 0 1em 3em rgba(0, 0, 0, .6); color: #fff; text-align: center;
+  font-size: 30px; animation: ov-pet-stage-in .7s cubic-bezier(.2, .8, .2, 1) both;
+}
+.ov-pet-stage > span { font-size: 2em; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.ov-pet-stage b { font: 800 1.2em/1.05 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.ov-pet-stage small { font: 600 .55em var(--font-body); color: #ffe7a8; }
+.ov-pet-stage.is-out { animation: ov-pet-stage-out .5s cubic-bezier(.5, 0, .75, 0) forwards; }
+@keyframes ov-pet-stage-in { from { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(.85); filter: blur(6px); } 60% { opacity: 1; transform: translateX(-50%) translateY(3px) scale(1.03); filter: blur(0); } to { transform: translateX(-50%); } }
+@keyframes ov-pet-stage-out { to { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(.94); filter: blur(4px); } }

@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, cardCell, fullBetLines, lootImageUrl } from './bingo.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
+import { advanceStage, isSpecies } from './pet-species.js';
 import { DEFAULT_STAGE } from './questions.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import { DEFAULT_SHOP } from './shop.js';
@@ -17,6 +18,10 @@ export function createApi() {
 
 // Supabase-Fehlermeldungen auf Deutsch
 const ERRORS = [
+  [/could not find the '(species|stage|hatch_feeds|grow_days|stage_feeds|good_days)' column|column [\w.]*"?(species|stage|hatch_feeds|grow_days)"? (of relation "pet" )?does not exist/i, 'In der Datenbank fehlen die neuen Haustiere (Tierwahl, Ei → Baby → Erwachsen): supabase/migrations/20261021000000_pet_species.sql im SQL Editor ausführen.'],
+  [/pet_species_check/i, 'Dieses Tier gibt es nicht.'],
+  [/pet_hatch_feeds_check/i, 'Schlüpfen nach 5 bis 500 × Füttern.'],
+  [/pet_grow_days_check/i, 'Wachsen nach 1 bis 30 Streams.'],
   // Supabase konnte den Code von Twitch & Co. nicht gegen ein Token tauschen: fast immer passt
   // das Client-Secret in Supabase nicht (mehr) zur App beim Anbieter
   [/unable to exchange external code/i, 'Der Anbieter hat die Anmeldung nicht bestätigt. In Supabase unter Authentication → Providers → Twitch stimmt das Client-Secret nicht (mehr) mit der Twitch-App überein – z. B. nach „Neues Secret“ in der Twitch-Konsole. Secret neu eintragen, dann klappt es wieder.'],
@@ -1449,7 +1454,9 @@ function createLocalApi() {
       if (kind === 'feed') {
         const pet = await this.getPet();
         // Füttern beendet den Heißhunger (wie der Trigger in …_pet_costume.sql)
-        savePet({ ...pet, last_fed_at: new Date().toISOString(), last_fed_by: profile?.username ?? 'Zuschauer', fed_count: (pet.fed_count ?? 0) + 1, frenzy_at: null });
+        const { pet: fed, changed } = advanceStage(pet, { ...pet, last_fed_at: new Date().toISOString(), last_fed_by: profile?.username ?? 'Zuschauer', fed_count: (pet.fed_count ?? 0) + 1, frenzy_at: null });
+        savePet(fed);
+        if (changed) addPetEvent({ kind: 'stage', who: changed.helpers, text: changed.stage });
       }
       return addPetEvent({ kind, who: profile?.username ?? 'Zuschauer', text: '' });
     },
@@ -1466,7 +1473,10 @@ function createLocalApi() {
       if (patch.name !== undefined) next.name = String(patch.name).trim().slice(0, 20) || 'Rexi';
       if (patch.feed_command !== undefined && !/^![^\s!]{1,29}$/.test(patch.feed_command)) throw new Error('Der Chat-Befehl beginnt mit ! und hat keine Leerzeichen.');
       if (patch.costume_cooldown !== undefined && !(patch.costume_cooldown >= 0 && patch.costume_cooldown <= 300)) throw new Error('Abklingzeit 0 bis 300 Sekunden.');
-      return savePet(next);
+      if (patch.species !== undefined && !isSpecies(patch.species)) throw new Error('Dieses Tier gibt es nicht.');
+      if (patch.hatch_feeds !== undefined && !(patch.hatch_feeds >= 5 && patch.hatch_feeds <= 500)) throw new Error('Schlüpfen nach 5 bis 500 × Füttern.');
+      if (patch.grow_days !== undefined && !(patch.grow_days >= 1 && patch.grow_days <= 30)) throw new Error('Wachsen nach 1 bis 30 Streams.');
+      return savePet(advanceStage(await this.getPet(), next).pet);
     },
     async petFrenzy(on = true) {
       await requireAdmin();

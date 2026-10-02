@@ -7,6 +7,7 @@ import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIco
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { COSTUMES, DEFAULT_PET, Dino, costumeName, dinoSvg, hungerOf, isFrenzy, isHungry, isStarving, runDino } from './pet.js';
+import { SPECIES, STAGES, speciesOf, stageName } from './pet-species.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import {
   DEFAULT_SHOP, GOLD, PLAYER_COLORS, catalogFromText, pointsText, catalogToText, chestSvg, coinsLeft, colorOf, itemIcon, priceOf, renderLoadout, renderTug,
@@ -2931,7 +2932,7 @@ function buildPetTile(tile, i) {
   const el = buildActionTile(tile, i, { cls: 'tile--dino', cta: 'Zum Dino →', onClick: openPet });
   const mini = document.createElement('span');
   mini.className = 'pet-tile-dino';
-  mini.innerHTML = dinoSvg(state.pet.data?.costume);
+  mini.innerHTML = dinoSvg(state.pet.data?.costume, state.pet.data?.species);
   el.querySelector('.tile-body').prepend(mini);
   paintPetTile(el);
   return el;
@@ -2942,12 +2943,18 @@ function paintPetTile(el = $('.tile--pet')) {
   if (!label) return;
   const pet = state.pet.data;
   const hungry = state.pet.on && isHungry(pet);
+  const egg = pet?.stage === 'egg';
   label.textContent = !state.pet.on ? '🦖 Wohnt im Stream'
+    : egg ? `🥚 ${pet.name} ist noch im Ei – ${Math.max(0, (pet.hatch_feeds ?? 50) - (pet.stage_feeds ?? 0))} × füttern`
     : isFrenzy(pet) ? `🔥 ${pet.name} hat Heißhunger!`
       : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
   el.classList.toggle('is-hungry', hungry);
   // Die kleine Zeichnung: Kostüm und rot bei Hunger
-  const svg = el.querySelector('.pet-tile-dino .dino-svg');
+  let svg = el.querySelector('.pet-tile-dino .dino-svg');
+  if (svg && pet?.species && svg.dataset.species !== pet.species) {
+    el.querySelector('.pet-tile-dino').innerHTML = dinoSvg(pet.costume, pet.species);
+    svg = el.querySelector('.pet-tile-dino .dino-svg');
+  }
   if (svg) {
     if (pet?.costume) svg.dataset.costume = pet.costume;
     svg.classList.toggle('is-hungry', hungry);
@@ -4209,6 +4216,11 @@ function setupPet() {
   $('#pet-say-form').addEventListener('submit', petSay);
   $('#pet-settings').addEventListener('submit', savePetSettings);
   $('#pet-costume').addEventListener('change', (e) => setPetCostume(e.currentTarget.value, $('.pet-costume-msg')));
+  // Direkt an den Kästen: im OBS-Fenster stoppt die Haustier-Box input/change (setupObsPet)
+  document.querySelectorAll('[data-pet-evo]').forEach((box) => {
+    box.addEventListener('click', onPetEvoClick);
+    box.addEventListener('change', onPetEvoChange);
+  });
   // Heißhunger und Füttern: dieselben Knöpfe im Dino-Dialog und im OBS-Fenster
   document.addEventListener('click', (e) => {
     const frenzy = e.target.closest('[data-pet-frenzy]');
@@ -4273,7 +4285,8 @@ function startPetStage() {
   state.pet.sfx ??= new Sfx({ volume: 0.6 });
   const stage = $('#pet-stage');
   const size = Math.max(100, Math.min(160, stage.clientWidth * 0.26));
-  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, costume: state.pet.data?.costume, reducedMotion });
+  const d = state.pet.data ?? {};
+  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: d.name ?? DEFAULT_PET.name, costume: d.costume, species: d.species, stage: d.stage, reducedMotion });
   // In der Vorschau knabbert er an den Namen, die zuletzt da waren
   state.pet.stopBrain = runDino(state.pet.dino, {
     streamer: streamerName,
@@ -4291,6 +4304,7 @@ function petReact(ev) {
   if (ev.kind === 'feed') dino.eat(ev.who);
   else if (ev.kind === 'pet') dino.cuddle(ev.who);
   else if (ev.kind === 'say') dino.say(ev.text, 5000);
+  else if (ev.kind === 'stage') toast(stageLine(ev), 'ok', 7000);
   else if (ev.kind === 'costume') {
     dino.chatLine(ev.who, ev.text);
     dino.setCostume(ev.text);
@@ -4305,7 +4319,7 @@ function renderPetDialog() {
     ? (state.pet.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260928000000_questions_pet.sql ausführen.')
     : 'Der Dino ist noch nicht eingezogen. Schau später noch mal vorbei.';
   note.hidden = on;
-  $('#pet-title').textContent = on ? `Stream-Dino: ${data.name}` : 'Stream-Dino';
+  $('#pet-title').textContent = on ? `${speciesOf(data.species).icon} ${data.name}` : 'Das Haustier';
   $('#pet-feed').disabled = !on;
   $('#pet-pet').disabled = !on;
   // Zuschauer füttern hier nur für sich – im Stream über den Twitch-Chat. Admins können beides.
@@ -4323,6 +4337,7 @@ function renderPetDialog() {
     const costume = $('#pet-costume');
     if (document.activeElement !== costume) costume.value = data.costume ?? 'schaffner';
     paintFrenzyButtons();
+    renderPetEvo();
   }
   renderPetLog();
   $('#pet-admin').hidden = !(admin && on);
@@ -4341,8 +4356,19 @@ function renderPetDialog() {
 function paintPetMeter() {
   const pet = state.pet.data;
   if (!pet) return;
-  const h = isFrenzy(pet) ? 2 : hungerOf(pet);
   const fill = $('#pet-meter-fill');
+  // Im Ei: Fortschritt bis zum Schlüpfen statt Hunger
+  if (pet.stage === 'egg') {
+    const need = pet.hatch_feeds ?? 50;
+    const done = Math.min(need, pet.stage_feeds ?? 0);
+    fill.style.width = `${Math.round((done / need) * 100)}%`;
+    fill.classList.remove('is-hungry');
+    $('#pet-meter-label').textContent = 'Schlüpfen';
+    $('#pet-status').textContent = `${pet.name} ist noch im Ei – ${done} von ${need} × gefüttert. Noch ${need - done} × ${pet.feed_command || DEFAULT_PET.feed_command}, dann schlüpft es.`;
+    return;
+  }
+  $('#pet-meter-label').textContent = 'Hunger';
+  const h = isFrenzy(pet) ? 2 : hungerOf(pet);
   fill.style.width = `${Math.round(Math.min(1, h) * 100)}%`;
   fill.classList.toggle('is-hungry', h >= 1);
   const since = pet.last_fed_at ? Math.round((Date.now() - Date.parse(pet.last_fed_at)) / 60000) : null;
@@ -4351,6 +4377,7 @@ function paintPetMeter() {
     : h >= 1
     ? `${pet.name} hat Hunger und knabbert im Stream an den Zuschauern! Schnell füttern.`
     : `${pet.name} ist satt${pet.last_fed_by ? ` – zuletzt gefüttert von ${pet.last_fed_by}` : ''}${since !== null ? (since < 1 ? ' gerade eben' : ` vor ${since} Min`) : ''}. Hunger in etwa ${Math.max(1, Math.round((1 - h) * pet.hungry_after))} Min.`;
+  if (pet.stage === 'baby') $('#pet-status').textContent += ` · Baby: ${pet.good_days ?? 0} von ${pet.grow_days ?? 5} Streams mit guter Laune (heute ${Math.min(3, pet.feed_day === berlinDay() ? pet.day_feeds ?? 0 : 0)}/3 × gefüttert).`;
   state.pet.dino?.setHungry(isHungry(pet));
   state.pet.dino?.setStarving(isStarving(pet));
 }
@@ -4369,12 +4396,13 @@ function renderPetLog() {
     const li = document.createElement('li');
     const icon = document.createElement('span');
     icon.className = 'prank-log-icon';
-    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : ev.kind === 'costume' ? '👕' : '💬';
+    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : ev.kind === 'costume' ? '👕' : ev.kind === 'stage' ? (ev.text === 'baby' ? '🐣' : '🎉') : '💬';
     const main = document.createElement('span');
     main.className = 'h-main';
     main.textContent = (ev.kind === 'feed' ? `${ev.who} hat gefüttert`
       : ev.kind === 'pet' ? `${ev.who} hat gestreichelt`
         : ev.kind === 'costume' ? `${ev.who} hat das Kostüm gewechselt: ${costumeName(ev.text)}`
+        : ev.kind === 'stage' ? stageLine(ev)
         : `„${ev.text}“`) + (ev.local ? ' (nur hier)' : '');
     const time = document.createElement('time');
     time.dateTime = ev.created_at;
@@ -4446,7 +4474,9 @@ function applyPetRow(row) {
   if (!row) return;
   state.pet.data = { ...state.pet.data, ...row };
   if (row.costume) state.pet.dino?.setCostume(row.costume);
+  if (row.species) state.pet.dino?.setSpecies(row.species);
   paintPetTile();
+  renderPetEvo();
   if ($('#pet-dialog').open) renderPetDialog();
   if ($('#obs-dialog').open) paintObsPet();
 }
@@ -4501,6 +4531,87 @@ async function obsFeedPet(btn) {
   }
 }
 
+const berlinDay = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+const stageLine = (ev) => {
+  const name = state.pet.data?.name ?? 'Das Haustier';
+  const thanks = ev.who ? ` Danke an ${ev.who}!` : '';
+  return ev.text === 'baby' ? `🐣 ${name} ist geschlüpft!${thanks}` : `🎉 ${name} ist erwachsen!${thanks}`;
+};
+
+// Tier & Entwicklung – im Haustier-Dialog und im OBS-Fenster (Ebene „Haustier“). Tierart und
+// Stadium stellt der Streamer ein (Seiten-Admins auch), Mods sehen den Stand.
+function renderPetEvo() {
+  const pet = { ...DEFAULT_PET, ...state.pet.data };
+  const boss = canStreamerView();
+  document.querySelectorAll('[data-pet-evo]').forEach((box) => {
+    if (box.contains(document.activeElement) && document.activeElement.matches('input')) return;
+    const need = pet.hatch_feeds ?? 50;
+    const progress = pet.stage === 'egg'
+      ? `🥚 Im Ei: ${Math.min(need, pet.stage_feeds ?? 0)} von ${need} × gefüttert`
+      : pet.stage === 'baby'
+        ? `🍼 Baby: ${pet.good_days ?? 0} von ${pet.grow_days ?? 5} Streams mit guter Laune (ein Tag mit 3 × Füttern)`
+        : '🌟 Erwachsen';
+    box.innerHTML = `
+      <p class="pet-evo-label">Tier des Kanals${boss ? '' : ' <small>(wählt der Streamer)</small>'}</p>
+      <div class="pet-species-grid" role="radiogroup" aria-label="Tierart">
+        ${SPECIES.map((s) => `<button type="button" class="pet-species" role="radio" data-species="${s.id}" aria-checked="${s.id === pet.species}" ${boss ? '' : 'disabled'}>
+          <span class="pet-species-pic">${dinoSvg(pet.costume, s.id)}</span><b>${s.name}</b><small>${s.pet}</small></button>`).join('')}
+      </div>
+      <p class="pet-evo-label">Entwicklung</p>
+      <div class="pet-stage-seg" role="radiogroup" aria-label="Stadium">
+        ${STAGES.map((st) => `<button type="button" class="pet-stage-btn" role="radio" data-stage="${st.id}" aria-checked="${st.id === pet.stage}" ${boss ? '' : 'disabled'}>${st.id === 'egg' ? '🥚' : st.id === 'baby' ? '🐣' : '🌟'} ${st.name}</button>`).join('')}
+      </div>
+      <p class="pet-evo-progress">${progress}</p>
+      <div class="pet-evo-nums">
+        <label class="field"><span>Schlüpft nach (× Füttern)</span><input type="number" min="5" max="500" step="1" data-pet-num="hatch_feeds" value="${need}" ${boss ? '' : 'disabled'}></label>
+        <label class="field"><span>Wächst nach (Streams)</span><input type="number" min="1" max="30" step="1" data-pet-num="grow_days" value="${pet.grow_days ?? 5}" ${boss ? '' : 'disabled'}></label>
+      </div>
+      <p class="form-msg pet-evo-msg" role="alert"></p>`;
+  });
+}
+
+async function onPetEvoClick(e) {
+  const box = e.target.closest('[data-pet-evo]');
+  if (!box || !canStreamerView()) return;
+  const pet = { ...DEFAULT_PET, ...state.pet.data };
+  const sp = e.target.closest('[data-species]');
+  const st = e.target.closest('.pet-stage-btn');
+  let patch = null;
+  let ok = '';
+  if (sp && sp.dataset.species !== pet.species) {
+    const next = speciesOf(sp.dataset.species);
+    // Hieß das Tier wie das alte Standard-Tier, bekommt es den neuen Standard-Namen
+    const rename = pet.name === speciesOf(pet.species).pet;
+    patch = { species: next.id, ...(rename ? { name: next.pet } : {}) };
+    ok = `✓ Neues Tier im Kanal: ${rename ? next.pet : pet.name} (${next.name}).`;
+  } else if (st && st.dataset.stage !== pet.stage) {
+    const stage = st.dataset.stage;
+    if (stage === 'egg' && !confirm(`Neues Ei legen? ${pet.name} wird wieder zum Ei und schlüpft nach ${pet.hatch_feeds ?? 50} × Füttern im Chat.`)) return;
+    patch = { stage };
+    ok = stage === 'egg' ? '✓ Ein neues Ei liegt im Stream.' : `✓ ${pet.name} ist jetzt ${stageName(stage)}.`;
+  }
+  if (!patch) return;
+  try {
+    applyPetRow(await state.api.updatePet(patch));
+    toast(ok, 'ok');
+  } catch (err) {
+    box.querySelector('.pet-evo-msg').textContent = germanError(err);
+  }
+}
+
+async function onPetEvoChange(e) {
+  const input = e.target.closest('[data-pet-num]');
+  if (!input || !canStreamerView()) return;
+  const box = input.closest('[data-pet-evo]');
+  const key = input.dataset.petNum;
+  const value = Math.round(Number(input.value));
+  try {
+    applyPetRow(await state.api.updatePet({ [key]: value }));
+  } catch (err) {
+    box.querySelector('.pet-evo-msg').textContent = germanError(err);
+  }
+}
+
 function paintFrenzyButtons() {
   const on = isFrenzy(state.pet.data);
   document.querySelectorAll('[data-pet-frenzy]').forEach((b) => {
@@ -4524,6 +4635,7 @@ function paintObsPet() {
   $('#obs-pet-cooldown-out').textContent = `${cd.value} s`;
   cd.disabled = !$('#obs-pet-change').checked;
   paintFrenzyButtons();
+  renderPetEvo();
 }
 
 function setupObsPet() {
