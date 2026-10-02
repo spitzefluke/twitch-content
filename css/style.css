@@ -1662,6 +1662,15 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .obs-theme-thumb[data-theme="gold"] { --c: #e8c46a; background: linear-gradient(160deg, #1a1408, #070604); border: 2px solid #e8c46a; border-radius: 4px; }
 .obs-theme-thumb[data-theme="candy"] { --c: #ff7ac8; border: 2px solid transparent; border-radius: 18px; background: linear-gradient(#22123a, #180e28) padding-box, linear-gradient(135deg, #ff9fd0, #b8a6ff, #8ee8ff) border-box; }
 .obs-theme-thumb[data-theme="minimal"] { --c: #ffb81c; background: url("../assets/bg-storm.svg") center / cover; border: 0; border-left: 4px solid #ffb81c; border-radius: 3px; }
+.obs-theme-thumb[data-theme="space"] { --c: #8ea2ff; background: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 1.5px) 0 0 / 14px 14px, linear-gradient(160deg, #101436, #06061a); border-color: rgba(142, 162, 255, .5); border-radius: 12px; }
+.obs-theme-thumb[data-theme="hud"] { --c: #35f0ff; border-radius: 0; border-color: rgba(53, 240, 255, .45); background: repeating-linear-gradient(0deg, rgba(53, 240, 255, .08) 0 1px, transparent 1px 4px), #020e16; box-shadow: inset 3px 3px 0 -1px #35f0ff, inset -3px -3px 0 -1px #35f0ff; }
+.obs-theme-thumb[data-theme="kawaii"] { --c: #ff8fc8; border: 2px dotted #ffc3e1; border-radius: 18px; background: linear-gradient(180deg, #4a2046, #30163a); }
+.obs-theme-thumb[data-theme="horror"] { --c: #d1162f; border: 0; border-top: 4px solid #d1162f; border-radius: 3px; background: radial-gradient(120% 80% at 50% 0, #5a000c, #060203 70%); }
+.obs-theme-thumb[data-theme="forest"] { --c: #79c95a; border: 2px solid #6b4a2b; border-radius: 12px 4px 12px 4px; background: linear-gradient(170deg, #162c1a, #0a160e); }
+.obs-theme-thumb[data-theme="fantasy"] { --c: #d8a64a; border: 2px solid #d8a64a; border-radius: 6px; background: linear-gradient(180deg, #24180e, #100a06); box-shadow: inset 0 0 0 3px #100a06, inset 0 0 0 4px rgba(216, 166, 74, .5); }
+.obs-theme-thumb[data-theme="ocean"] { --c: #2fd3c6; border-color: rgba(120, 240, 230, .4); border-radius: 16px; background: radial-gradient(60% 50% at 100% 100%, rgba(47, 211, 198, .35), transparent 70%), linear-gradient(170deg, #062e42, #031222); }
+.obs-theme-thumb[data-theme="spooky"] { --c: #ff8a1c; border: 2px solid #ff8a1c; border-radius: 10px; background: linear-gradient(160deg, #2a1038, #100616); box-shadow: inset 0 -4px 0 rgba(140, 60, 200, .5); }
+.obs-theme-thumb[data-theme="xmas"] { --c: #e3283e; border: 2px solid #fff; border-radius: 12px; background: radial-gradient(circle, rgba(255, 255, 255, .6) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(170deg, #14462c, #082216); box-shadow: 0 0 0 2px #e3283e; }
 .obs-lbitems { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; font-size: 13px; }
 .obs-scene-links { display: flex; flex-wrap: wrap; gap: 6px; }
 .obs-row input[type="time"], .obs-row input[type="date"], .obs-row input[type="number"] {

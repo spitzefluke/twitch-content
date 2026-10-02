@@ -142,6 +142,9 @@ export const ALERT_MEDIA = [
   { id: 'gift', name: 'Geschenk' }, { id: 'boom', name: 'WOW!' }, { id: 'bolt', name: 'Blitz' },
   { id: 'flame', name: 'Feuer' }, { id: 'trophy', name: 'Pokal' }, { id: 'snow', name: 'Schneeflocke' },
   { id: 'party', name: 'Party' },
+  { id: 'planet', name: 'Planet' }, { id: 'visor', name: 'Helm' }, { id: 'kitty', name: 'Kätzchen' },
+  { id: 'skull', name: 'Totenkopf' }, { id: 'leaf', name: 'Blatt' }, { id: 'sword', name: 'Schwert' },
+  { id: 'fish', name: 'Fisch' }, { id: 'pumpkin', name: 'Kürbis' }, { id: 'xmastree', name: 'Tannenbaum' },
 ];
 export const builtinMediaUrl = (id) => new URL(`../assets/alerts/${id}.svg`, import.meta.url).href;
 
@@ -178,6 +181,15 @@ export const ALERT_PRESETS = [
   { id: 'ice', name: 'Eiskalt', design: { look: 'minimal', media: 'b:snow', layout: 'bg', anim: 'type', enter: 'fade', color: '#7fd6ff' } },
   { id: 'champ', name: 'Champion', design: { look: 'banner', media: 'b:trophy', layout: 'side', anim: 'bounce', enter: 'spin', color: '#ffb81c' } },
   { id: 'clean', name: 'Schlicht', design: { look: 'minimal', media: 'none', layout: 'top', anim: 'none', enter: 'fade', color: '' } },
+  { id: 'cosmos', name: 'Kosmos', design: { look: 'glass', media: 'b:planet', layout: 'top', anim: 'wave', enter: 'zoom', color: '#8ea2ff' } },
+  { id: 'mission', name: 'Mission Control', design: { look: 'glitch', media: 'b:visor', layout: 'side', anim: 'type', enter: 'fade', color: '#35f0ff' } },
+  { id: 'kawaii', name: 'Kawaii', design: { look: 'bubble', media: 'b:kitty', layout: 'top', anim: 'bounce', enter: 'pop', color: '#ff8fc8' } },
+  { id: 'bloodmoon', name: 'Blutmond', design: { look: 'glitch', media: 'b:skull', layout: 'top', anim: 'shake', enter: 'drop', color: '#d1162f' } },
+  { id: 'forest', name: 'Waldlichtung', design: { look: 'classic', media: 'b:leaf', layout: 'side', anim: 'wave', enter: 'fade', color: '#79c95a' } },
+  { id: 'quest', name: 'Heldensaga', design: { look: 'gold', media: 'b:sword', layout: 'top', anim: 'glow', enter: 'flip', color: '#d8a64a' } },
+  { id: 'deepsea', name: 'Tiefsee', design: { look: 'glass', media: 'b:fish', layout: 'side', anim: 'wave', enter: 'slide', color: '#2fd3c6' } },
+  { id: 'halloween', name: 'Halloween', design: { look: 'banner', media: 'b:pumpkin', layout: 'side', anim: 'rubber', enter: 'drop', color: '#ff8a1c' } },
+  { id: 'xmas', name: 'Weihnachten', design: { look: 'classic', media: 'b:xmastree', layout: 'top', anim: 'bounce', enter: 'drop', color: '#e3283e' } },
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;

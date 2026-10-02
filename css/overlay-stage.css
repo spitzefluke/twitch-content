@@ -52,6 +52,98 @@ html[data-theme="candy"] { --accent: #ff7ac8; }
 :where(html[data-theme="minimal"]) .ov-card { background: rgba(0, 0, 0, calc(.35 * var(--bga))); border: 0; border-left: .25em solid var(--c, var(--accent)); border-radius: .3em; box-shadow: none; }
 :where(html[data-theme="minimal"]) .ov-head { background: transparent; border: 0; color: #fff; text-shadow: 0 .1em .3em rgba(0, 0, 0, .9); }
 
+/* Weltraum: Nachtblau mit Sternen, weiche Leuchtkante */
+html[data-theme="space"] { --accent: #8ea2ff; }
+:where(html[data-theme="space"]) .ov-card {
+  border-radius: 1.4em; border: 1px solid color-mix(in srgb, var(--c, var(--accent)) 55%, transparent);
+  background: radial-gradient(circle at 18% 22%, rgba(255, 255, 255, .55) 0 1px, transparent 1.5px) 0 0 / 3.2em 3.2em,
+    radial-gradient(circle at 70% 64%, rgba(255, 255, 255, .35) 0 1px, transparent 1.5px) 0 0 / 4.6em 4.6em,
+    linear-gradient(160deg, rgba(16, 20, 54, calc(.94 * var(--bga) + .04)), rgba(6, 6, 22, calc(.94 * var(--bga) + .04)));
+  box-shadow: 0 0 1.6em color-mix(in srgb, var(--c, var(--accent)) 28%, transparent), inset 0 0 1.2em rgba(120, 140, 255, .12);
+}
+:where(html[data-theme="space"]) .ov-head { background: linear-gradient(90deg, color-mix(in srgb, var(--c, var(--accent)) 30%, transparent), transparent); color: #dfe4ff; border-bottom-color: rgba(142, 162, 255, .25); }
+
+/* Sci-Fi-HUD: durchsichtig, feine Linien, Eckklammern, Mono-Schrift */
+html[data-theme="hud"] { --accent: #35f0ff; --font-display: var(--font-mono); }
+:where(html[data-theme="hud"]) .ov-card {
+  border-radius: 0; border: 1px solid color-mix(in srgb, var(--c, var(--accent)) 45%, transparent);
+  background:
+    linear-gradient(var(--c, var(--accent)), var(--c, var(--accent))) 0 0 / 1.4em .18em, linear-gradient(var(--c, var(--accent)), var(--c, var(--accent))) 0 0 / .18em 1.4em,
+    linear-gradient(var(--c, var(--accent)), var(--c, var(--accent))) 100% 100% / 1.4em .18em, linear-gradient(var(--c, var(--accent)), var(--c, var(--accent))) 100% 100% / .18em 1.4em,
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--c, var(--accent)) 7%, transparent) 0 1px, transparent 1px 4px),
+    rgba(2, 14, 22, calc(.8 * var(--bga) + .05));
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+  box-shadow: 0 0 1.2em color-mix(in srgb, var(--c, var(--accent)) 22%, transparent);
+}
+:where(html[data-theme="hud"]) .ov-head { background: transparent; color: var(--c, var(--accent)); border-bottom: 1px dashed color-mix(in srgb, var(--c, var(--accent)) 50%, transparent); letter-spacing: .3em; }
+
+/* Kawaii: Pastellrosa, sehr rund, gepunkteter Rand */
+html[data-theme="kawaii"] { --accent: #ff8fc8; }
+:where(html[data-theme="kawaii"]) .ov-card {
+  border-radius: 2.2em; border: .2em dotted #ffc3e1;
+  background: radial-gradient(circle, rgba(255, 255, 255, .1) 0 .18em, transparent .2em) 0 0 / 1.6em 1.6em, linear-gradient(180deg, rgba(74, 32, 70, calc(.92 * var(--bga) + .05)), rgba(48, 22, 58, calc(.92 * var(--bga) + .05)));
+  box-shadow: 0 .5em 0 rgba(255, 143, 200, .35), 0 1.4em 2.4em -1em rgba(255, 143, 200, .5);
+}
+:where(html[data-theme="kawaii"]) .ov-head { background: #ffc3e1; color: #6a2350; border: 0; border-radius: 2em 2em 0 0; font-weight: 800; }
+:where(html[data-theme="kawaii"]) .ov-head .ov-dot { background: #fff; box-shadow: none; }
+
+/* Horror: tiefes Rot, harte Kante, Schatten wie Blut */
+html[data-theme="horror"] { --accent: #d1162f; --font-display: Georgia, "Times New Roman", serif; }
+:where(html[data-theme="horror"]) .ov-card {
+  border-radius: .2em; border: 0; border-top: .22em solid var(--c, var(--accent));
+  background: radial-gradient(120% 80% at 50% 0%, rgba(90, 0, 12, calc(.5 * var(--bga))), transparent 70%), linear-gradient(180deg, rgba(18, 4, 6, calc(.95 * var(--bga) + .03)), rgba(6, 2, 3, calc(.95 * var(--bga) + .03)));
+  box-shadow: 0 .4em 0 -.1em color-mix(in srgb, var(--c, var(--accent)) 60%, transparent), 0 1.4em 2.6em -1em rgba(0, 0, 0, .85), inset 0 0 2em rgba(0, 0, 0, .7);
+}
+:where(html[data-theme="horror"]) .ov-head { background: transparent; color: #ff9aa8; border-bottom-color: rgba(209, 22, 47, .3); font-family: Georgia, "Times New Roman", serif; letter-spacing: .3em; text-shadow: 0 0 .5em rgba(209, 22, 47, .7); }
+
+/* Wald: dunkles Grün, Holzkante, Blattgrün */
+html[data-theme="forest"] { --accent: #79c95a; }
+:where(html[data-theme="forest"]) .ov-card {
+  border-radius: 1em .3em 1em .3em; border: .14em solid #6b4a2b;
+  background: linear-gradient(170deg, rgba(22, 44, 26, calc(.94 * var(--bga) + .04)), rgba(10, 22, 14, calc(.94 * var(--bga) + .04)));
+  box-shadow: inset 0 0 0 .14em rgba(121, 201, 90, .25), 0 1.2em 2.4em -1em rgba(0, 0, 0, .7);
+}
+:where(html[data-theme="forest"]) .ov-head { background: linear-gradient(90deg, #6b4a2b, #8a6238); color: #f2e6c9; border: 0; }
+:where(html[data-theme="forest"]) .ov-head .ov-dot { background: #b8f08f; box-shadow: 0 0 .5em #79c95a; }
+
+/* Fantasy: Pergament-Dunkel mit Gold-Doppelrand, Serifenschrift */
+html[data-theme="fantasy"] { --accent: #d8a64a; --font-display: Georgia, "Times New Roman", serif; }
+:where(html[data-theme="fantasy"]) .ov-card {
+  border-radius: .6em; border: .12em solid #d8a64a;
+  background: radial-gradient(130% 100% at 50% 0%, rgba(80, 52, 22, calc(.5 * var(--bga))), transparent 70%), linear-gradient(180deg, rgba(36, 24, 14, calc(.95 * var(--bga) + .03)), rgba(16, 10, 6, calc(.95 * var(--bga) + .03)));
+  box-shadow: inset 0 0 0 .3em rgba(16, 10, 6, .9), inset 0 0 0 .4em rgba(216, 166, 74, .5), 0 1.2em 2.6em -1em rgba(0, 0, 0, .75);
+}
+:where(html[data-theme="fantasy"]) .ov-head { background: transparent; color: #f0cf87; border-bottom-color: rgba(216, 166, 74, .35); font-family: Georgia, "Times New Roman", serif; letter-spacing: .2em; }
+
+/* Ozean: Türkis-Verlauf, weiche Wellenkante */
+html[data-theme="ocean"] { --accent: #2fd3c6; }
+:where(html[data-theme="ocean"]) .ov-card {
+  border-radius: 1.6em; border: 1px solid rgba(120, 240, 230, .35);
+  background: radial-gradient(60% 40% at 100% 100%, rgba(47, 211, 198, .22), transparent 70%), linear-gradient(170deg, rgba(6, 46, 66, calc(.92 * var(--bga) + .05)), rgba(3, 18, 34, calc(.92 * var(--bga) + .05)));
+  box-shadow: 0 1.2em 2.6em -1em rgba(0, 30, 50, .8), inset 0 1px 0 rgba(160, 255, 245, .25);
+}
+:where(html[data-theme="ocean"]) .ov-head { background: linear-gradient(90deg, rgba(47, 211, 198, .25), transparent); color: #c9fff8; border-bottom-color: rgba(120, 240, 230, .2); }
+
+/* Halloween: Kürbis-Orange und Lila */
+html[data-theme="spooky"] { --accent: #ff8a1c; }
+:where(html[data-theme="spooky"]) .ov-card {
+  border-radius: .9em; border: .14em solid var(--c, var(--accent));
+  background: linear-gradient(160deg, rgba(42, 16, 56, calc(.94 * var(--bga) + .04)), rgba(16, 6, 22, calc(.94 * var(--bga) + .04)));
+  box-shadow: 0 0 1.2em rgba(255, 138, 28, .35), inset 0 -.3em 0 rgba(140, 60, 200, .4);
+}
+:where(html[data-theme="spooky"]) .ov-head { background: var(--c, var(--accent)); color: #2a1038; border: 0; font-weight: 800; }
+:where(html[data-theme="spooky"]) .ov-head .ov-dot { background: #2a1038; box-shadow: none; }
+
+/* Weihnachten: Rot und Tannengrün, Schneekante */
+html[data-theme="xmas"] { --accent: #e3283e; }
+:where(html[data-theme="xmas"]) .ov-card {
+  border-radius: 1.1em; border: .14em solid #fff;
+  background: radial-gradient(circle, rgba(255, 255, 255, .5) 0 1px, transparent 1.6px) 0 0 / 2.4em 2.4em, linear-gradient(170deg, rgba(20, 70, 44, calc(.94 * var(--bga) + .04)), rgba(8, 34, 22, calc(.94 * var(--bga) + .04)));
+  box-shadow: 0 0 0 .3em var(--c, var(--accent)), 0 1.2em 2.6em -1em rgba(0, 0, 0, .7);
+}
+:where(html[data-theme="xmas"]) .ov-head { background: var(--c, var(--accent)); color: #fff; border: 0; font-weight: 800; }
+:where(html[data-theme="xmas"]) .ov-head .ov-dot { background: #fff; box-shadow: none; }
+
 /* ---------- Szenen-Bildschirm (hinter allen Karten) ---------- */
 .ov-scene {
   position: fixed; inset: 0; z-index: -1; display: grid; place-items: center; overflow: hidden;
@@ -156,3 +248,23 @@ html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radi
 /* Chatting: kein Text in der Mitte – dort ist die Kamera */
 .ov-scene[data-scene="chat"] .sc-center { display: none; }
 .ov-scene[data-scene="chat"] .sc-foot { top: auto; bottom: 110px; left: auto; right: 60px; }
+
+/* Szenen je Overlay-Design: eigener Hintergrund (assets/bg-<design>.svg), das Perspektiv-Gitter passt nur zu Neon & Co. */
+html[data-theme="space"] .ov-scene, html[data-theme="hud"] .ov-scene, html[data-theme="kawaii"] .ov-scene, html[data-theme="horror"] .ov-scene,
+html[data-theme="forest"] .ov-scene, html[data-theme="fantasy"] .ov-scene, html[data-theme="ocean"] .ov-scene, html[data-theme="spooky"] .ov-scene,
+html[data-theme="xmas"] .ov-scene { background: linear-gradient(180deg, rgba(5, 4, 12, .25), rgba(5, 4, 12, .6)), var(--scene-bg) center / cover; }
+html[data-theme="space"] { --scene-bg: url("../assets/bg-space.svg"); }
+html[data-theme="hud"] { --scene-bg: url("../assets/bg-hud.svg"); }
+html[data-theme="kawaii"] { --scene-bg: url("../assets/bg-kawaii.svg"); }
+html[data-theme="horror"] { --scene-bg: url("../assets/bg-horror.svg"); }
+html[data-theme="forest"] { --scene-bg: url("../assets/bg-forest.svg"); }
+html[data-theme="fantasy"] { --scene-bg: url("../assets/bg-fantasy.svg"); }
+html[data-theme="ocean"] { --scene-bg: url("../assets/bg-ocean.svg"); }
+html[data-theme="spooky"] { --scene-bg: url("../assets/bg-spooky.svg"); }
+html[data-theme="xmas"] { --scene-bg: url("../assets/bg-xmas.svg"); }
+:is(html[data-theme="space"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-grid { display: none; }
+/* Eigener Hintergrund: nur ein schwacher Lichtfleck in der Design-Farbe, keine lila-blauen Schleier */
+:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg i:nth-child(n+2) { display: none; }
+:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg i:first-child { opacity: .22; }
+html[data-theme="horror"] .sc-title, html[data-theme="fantasy"] .sc-title { font-family: Georgia, "Times New Roman", serif; text-transform: none; }
+html[data-theme="kawaii"] .sc-title { color: #fff; text-shadow: 0 .06em 0 #ff8fc8, 0 .12em .3em rgba(106, 35, 80, .6); }

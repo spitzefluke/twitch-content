@@ -1,5 +1,6 @@
 // OBS-Overlay: Design fürs ganze Overlay und Stream-Grafiken rundherum.
-//   otheme=standard|neon|glass|gamer|retro|gold|candy|minimal   Design aller Karten (OVERLAY_THEMES)
+//   otheme=standard|neon|glass|gamer|retro|gold|candy|minimal|space|hud|kawaii|horror|forest|fantasy|ocean|spooky|xmas
+//                              Design aller Karten (OVERLAY_THEMES); eigene Szenen-Hintergründe in assets/bg-<design>.svg
 //   scene=start|brb|end|chat   Szenen-Bildschirm über das ganze Bild (liegt hinter allen Karten):
 //                              Start mit Countdown, Pause („Bin gleich zurück“), Ende mit Dank,
 //                              Chatting (große Kamera mit Rahmen, Chat daneben; die Kamera bleibt frei)
@@ -24,6 +25,15 @@ export const OVERLAY_THEMES = [
   { id: 'gold', name: 'Gold', desc: 'Schwarz und Gold, edel' },
   { id: 'candy', name: 'Candy', desc: 'Pastell-Verlauf, sehr rund' },
   { id: 'minimal', name: 'Minimal', desc: 'Kaum Karte, viel Schrift' },
+  { id: 'space', name: 'Weltraum', desc: 'Nachtblau mit Sternen, weiche Leuchtkante' },
+  { id: 'hud', name: 'Sci-Fi-HUD', desc: 'Durchsichtig, feine Linien, Eckklammern' },
+  { id: 'kawaii', name: 'Kawaii', desc: 'Pastellrosa, sehr rund, gepunktet' },
+  { id: 'horror', name: 'Horror', desc: 'Tiefes Rot, harte Kanten, düster' },
+  { id: 'forest', name: 'Wald', desc: 'Dunkelgrün mit Holzkante' },
+  { id: 'fantasy', name: 'Fantasy', desc: 'Dunkles Pergament mit Gold-Doppelrand' },
+  { id: 'ocean', name: 'Ozean', desc: 'Türkis-Verlauf wie unter Wasser' },
+  { id: 'spooky', name: 'Halloween', desc: 'Kürbis-Orange und Lila' },
+  { id: 'xmas', name: 'Weihnachten', desc: 'Tannengrün, Rot und Schnee' },
 ];
 export const SCENES = {
   start: { tag: '● Gleich live', title: 'Gleich geht’s los!', sub: (n) => `${n} startet in Kürze` },

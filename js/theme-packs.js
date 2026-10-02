@@ -1,4 +1,5 @@
-// Theme-Pakete für die Design-Bibliothek (wie die Themes bei StreamElements): Ein Paket stellt
+// Theme-Pakete für die Design-Bibliothek (wie die Themes bei StreamElements und Streamlabs – eigene
+// Entwürfe, keine fremden Grafiken): Ein Paket stellt
 // alles auf einen Look ein – Overlay-Design, Kamera-Rahmen, Alerts, Laufband, Chat und Bingo –
 // und bringt fünf Szenen mit: Gameplay, Gleich live, Pause, Just Chatting und Stream-Ende.
 //   overlay: Werte für die Overlay-Einstellungen (otheme, cfstyle, alook, tstyle, chstyle, bstyle)
@@ -14,9 +15,13 @@ export const THEME_CATEGORIES = [
   { id: 'gaming', name: 'Gaming' },
   { id: 'cozy', name: 'Gemütlich' },
   { id: 'fun', name: 'Bunt & verspielt' },
+  { id: 'scifi', name: 'Sci-Fi' },
+  { id: 'nature', name: 'Natur' },
+  { id: 'fantasy', name: 'Fantasy & Horror' },
   { id: 'retro', name: 'Retro' },
   { id: 'elegant', name: 'Edel' },
   { id: 'minimal', name: 'Minimal' },
+  { id: 'seasonal', name: 'Saisonal' },
 ];
 
 export const THEME_SCENES = [
@@ -112,5 +117,59 @@ export const THEME_PACKS = [
     desc: 'Kaum Karte, viel Schrift: nichts lenkt vom Spiel ab.',
     overlay: { otheme: 'minimal', cfstyle: 'clean', alook: 'minimal', tstyle: 'bar', chstyle: 'clean', bstyle: 'paper' },
     alert: 'clean',
+  },
+  {
+    id: 'kosmos', name: 'Kosmos', cat: 'scifi', color: '#8ea2ff', bg: 'bg-space',
+    desc: 'Unterwegs zwischen den Sternen: nachtblaue Karten mit Sternenstaub, Planeten-Alerts und eine Galaxie als Szene.',
+    overlay: { otheme: 'space', cfstyle: 'glow', alook: 'glass', tstyle: 'neon', chstyle: 'card', bstyle: 'neon' },
+    alert: 'cosmos',
+  },
+  {
+    id: 'mission', name: 'Mission Control', cat: 'scifi', color: '#35f0ff', bg: 'bg-hud',
+    desc: 'Wie ein Cockpit-Display: durchsichtige HUD-Karten mit Eckklammern, Scan-Linien und Helm-Alerts mit Störeffekt.',
+    overlay: { otheme: 'hud', cfstyle: 'corners', alook: 'glitch', tstyle: 'board', chstyle: 'clean', bstyle: 'neon' },
+    alert: 'mission',
+  },
+  {
+    id: 'kawaii', name: 'Kawaii Café', cat: 'fun', color: '#ff8fc8', bg: 'bg-kawaii',
+    desc: 'Zuckersüß: pastellrosa, gepunktete Karten, Wolken und Herzen – und ein Kätzchen, das bei jedem Follow hüpft.',
+    overlay: { otheme: 'kawaii', cfstyle: 'glow', alook: 'bubble', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic' },
+    alert: 'kawaii',
+  },
+  {
+    id: 'bloodmoon', name: 'Blutmond', cat: 'fantasy', color: '#d1162f', bg: 'bg-horror',
+    desc: 'Für Horror-Games: tiefrote Kanten, roter Mond über dem Friedhof und wackelnde Totenkopf-Alerts.',
+    overlay: { otheme: 'horror', cfstyle: 'corners', alook: 'glitch', tstyle: 'bar', chstyle: 'clean', bstyle: 'paper' },
+    alert: 'bloodmoon',
+  },
+  {
+    id: 'heroes', name: 'Heldensaga', cat: 'fantasy', color: '#d8a64a', bg: 'bg-fantasy',
+    desc: 'Für RPG-Abenteuer: Pergament mit Gold-Doppelrand, eine Burg im Abendlicht und Schwert-Alerts, die sich umdrehen.',
+    overlay: { otheme: 'fantasy', cfstyle: 'corners', alook: 'gold', tstyle: 'board', chstyle: 'card', bstyle: 'paper' },
+    alert: 'quest',
+  },
+  {
+    id: 'woods', name: 'Waldlichtung', cat: 'nature', color: '#79c95a', bg: 'bg-forest',
+    desc: 'Ruhig und grün: Karten mit Holzkante, Glühwürmchen im Tannenwald und Blatt-Alerts, die sanft einblenden.',
+    overlay: { otheme: 'forest', cfstyle: 'clean', alook: 'classic', tstyle: 'bar', chstyle: 'bubble', bstyle: 'paper' },
+    alert: 'forest',
+  },
+  {
+    id: 'deepsea', name: 'Tiefsee', cat: 'nature', color: '#2fd3c6', bg: 'bg-ocean',
+    desc: 'Abtauchen: türkise Karten, Lichtstrahlen unter Wasser, Luftblasen und ein Fisch, der zu jedem Abo schwimmt.',
+    overlay: { otheme: 'ocean', cfstyle: 'glow', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic' },
+    alert: 'deepsea',
+  },
+  {
+    id: 'halloween', name: 'Halloween-Nacht', cat: 'seasonal', color: '#ff8a1c', bg: 'bg-spooky',
+    desc: 'Für den Oktober: Kürbis-Orange und Lila, Fledermäuse vor dem Vollmond und ein grinsender Kürbis als Alert.',
+    overlay: { otheme: 'spooky', cfstyle: 'glow', alook: 'banner', tstyle: 'neon', chstyle: 'card', bstyle: 'classic' },
+    alert: 'halloween',
+  },
+  {
+    id: 'winter', name: 'Winterwunder', cat: 'seasonal', color: '#e3283e', bg: 'bg-xmas',
+    desc: 'Für die Weihnachtszeit: Tannengrün mit rotem Rand, Schnee, Geschenke und ein blinkender Tannenbaum als Alert.',
+    overlay: { otheme: 'xmas', cfstyle: 'clean', alook: 'classic', tstyle: 'bar', chstyle: 'card', bstyle: 'classic' },
+    alert: 'xmas',
   },
 ];
