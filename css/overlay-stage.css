@@ -151,6 +151,22 @@ html[data-theme="xmas"] { --accent: #e3283e; }
   animation: sc-in .9s ease both;
 }
 @keyframes sc-in { from { opacity: 0; } }
+/* Szenenwechsel: der Bildschirm öffnet sich als Kreis aus der Mitte (Chatting behält sein Kamera-Loch) */
+.ov-scene:not([data-scene="chat"]) { animation: sc-open .9s cubic-bezier(.7, 0, .2, 1) both; }
+@keyframes sc-open { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
+/* Countdown vorbei: „Jetzt live“ / „Wieder da“ öffnet sich genauso über der Szene */
+.sc-live {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: .3em;
+  clip-path: circle(0% at 50% 50%); pointer-events: none; text-align: center;
+  background: radial-gradient(60% 50% at 35% 40%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 70%), #0b0a14;
+}
+.sc-live.is-open { clip-path: circle(75% at 50% 50%); animation: sc-open .9s cubic-bezier(.7, 0, .2, 1) both; }
+.sc-live b { display: flex; align-items: center; gap: .35em; font-family: var(--font-display); font-weight: 800; font-size: 7vw; line-height: 1; color: #fff; letter-spacing: -.02em; }
+.sc-live b::before { content: ""; width: .28em; height: .28em; border-radius: 50%; background: #ff3b5c; box-shadow: 0 0 .4em #ff3b5c; animation: sc-pulse 1.4s ease-in-out infinite; }
+.sc-live span { font-family: var(--font-mono); font-size: 1.6vw; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .7); }
+.sc-live.is-open b { animation: sc-live-pop .7s var(--ease-spring) .5s both; }
+@keyframes sc-live-pop { from { transform: scale(.6); opacity: 0; } }
+@keyframes sc-pulse { 50% { opacity: .35; } }
 .is-edit .ov-scene { opacity: .45; }
 .sc-bg i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .4; animation: sc-drift 20s ease-in-out infinite alternate; }
 .sc-bg i:nth-child(1) { background: var(--accent); left: -18vmax; top: -22vmax; }

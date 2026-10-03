@@ -879,6 +879,7 @@ function setupPranks(source) {
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
     place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {
+      if (p.item === 'nuke' || p.item === 'flashbang') petReact('hide');
       const b = box();
       // Ziel: Gesichtshöhe, also eher die obere Mitte des Kamerabilds
       say(p);
@@ -1112,6 +1113,7 @@ async function setupPet(source) {
     trickEvery: opt.test ? [5, 9] : [18, 40],
     climbEvery: opt.test ? [20, 30] : [50, 90],
   });
+  addEventListener('sh-pet-react', (e) => dino.react(e.detail));
   source.onPet((row, ev) => {
     if (row) {
       pet = row;
@@ -1367,7 +1369,13 @@ async function setupChallenge(source) {
 // Zwei Karten: Alerts (nur wenn einer kommt) und „Zuletzt“ mit dem letzten
 // Follower und dem letzten Abo (ohne Probe-Alerts). Beide sind einzeln an/aus.
 const VIDEO_MAX_MS = 30000;
-const LETTER_ANIMS = ['wave', 'type'];
+// Das Haustier reagiert auf Alerts und Streiche (setupPet hört zu): tanzt bei Abos,
+// hüpft bei Followern und Bits, versteckt sich bei der Atombombe
+function petReact(what) { dispatchEvent(new CustomEvent('sh-pet-react', { detail: what })); }
+function onAlertShown(kind) { petReact(['sub', 'resub', 'gift'].includes(kind) ? 'dance' : 'jump'); }
+
+// 'none': Buchstaben rollen trotzdem einzeln herein (30 ms versetzt)
+const LETTER_ANIMS = ['wave', 'type', 'none'];
 
 async function setupAlerts(source) {
   const card = $('ov-alert');
@@ -1443,18 +1451,25 @@ async function setupAlerts(source) {
       if (!card || Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
       card.classList.remove('is-still');
       const { d, video } = fill(a);
-      card.classList.remove('is-alert');
+      card.style.setProperty('--dur', `${d.duration}s`);
+      card.classList.remove('is-alert', 'is-out');
       void card.offsetWidth;
       card.classList.add('is-alert');
+      document.body.classList.add('has-alert');
+      onAlertShown(a.kind);
       if (d.confetti) burst(fx, a.kind);
       const choice = d.sound || opt.asound[a.kind];
       const sound = playAlertSound(sfx, a.kind, choice,
         (c) => (c.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(c.slice(2)));
       // Stehen bleiben, bis Zeit, Sound (bis 20 Sekunden) und Video durch sind
       await Promise.all([wait(d.duration * 1000), sound, video ? playVideo(video) : null]);
-      card.classList.remove('is-alert');
+      // Ausgang (360 ms, css/overlay.css .is-out), dann eine kurze Pause bis zum nächsten
+      card.classList.add('is-out');
+      document.body.classList.remove('has-alert');
       setLast(a);
-      await wait(700);
+      await wait(400);
+      card.classList.remove('is-alert', 'is-out');
+      await wait(300);
     }
     playing = false;
     if (opt.edit || opt.apreview) showSample();
@@ -1464,6 +1479,7 @@ async function setupAlerts(source) {
   function showSample() {
     if (!card || playing) return;
     fill(sample);
+    card.classList.remove('is-out');
     card.classList.add('is-alert', 'is-still');
   }
   const enqueue = (a) => {
@@ -1494,14 +1510,18 @@ async function setupAlerts(source) {
       clearTimeout(timer);
       running = true;
       const { d, video } = fill(sample);
-      card.classList.remove('is-alert', 'is-still');
+      card.style.setProperty('--dur', `${d.duration}s`);
+      card.classList.remove('is-alert', 'is-still', 'is-out');
       void card.offsetWidth;
       card.classList.add('is-alert');
       if (d.confetti) burst(fx, sample.kind);
       video?.play().catch(() => {});
       timer = setTimeout(() => {
-        card.classList.remove('is-alert');
-        timer = setTimeout(() => { running = false; showSample(); }, 700);
+        card.classList.add('is-out');
+        timer = setTimeout(() => {
+          card.classList.remove('is-alert', 'is-out');
+          timer = setTimeout(() => { running = false; showSample(); }, 300);
+        }, 400);
       }, d.duration * 1000);
     });
     showSample();

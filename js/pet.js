@@ -976,6 +976,19 @@ export class Dino {
     }
   }
 
+  // Reaktion auf das Overlay: 'dance' (Abo), 'jump' (Follower, Bits), 'hide' (Atombombe)
+  react(what) {
+    if (this.stage === 'egg') { this.wobble(); return; }
+    if (what === 'hide') {
+      this.wake();
+      this.say(pick(['😱', 'Deckung!', 'Aaah!']), 1600);
+      this.flash('is-hide', 2600);
+      return;
+    }
+    if (this.sleeping) this.wake();
+    this.trick(what === 'dance' ? 'dance' : 'hop');
+  }
+
   // Streicheln: Herzchen steigen auf
   cuddle(who) {
     this.wake();

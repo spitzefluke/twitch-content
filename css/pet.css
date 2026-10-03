@@ -466,3 +466,12 @@
 .pet-evo-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pet-evo-nums input { width: 100%; }
 .pet-evo-msg:empty { display: none; }
+
+/* Versteckt sich (Atombombe im Overlay): duckt sich zusammen, zittert, kommt wieder hoch */
+.dino.is-hide .dino-pose { animation: pet-hide 2.6s cubic-bezier(.3, .7, .4, 1) both; transform-origin: 50% 100%; }
+.dino.is-hide .dino-svg { animation: dino-shake .14s linear 6; }
+@keyframes pet-hide {
+  0% { transform: none; }
+  12%, 78% { transform: translateY(18%) scale(1.1, .55); filter: brightness(.7); }
+  100% { transform: none; filter: none; }
+}
