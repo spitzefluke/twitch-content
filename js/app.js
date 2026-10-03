@@ -265,7 +265,7 @@ function showAuth() {
   $('#app').hidden = true;
   $('#landing').hidden = true;
   const auth = $('#auth');
-  auth.classList.remove('is-leaving');
+  auth.classList.remove('is-leaving', 'is-going');
   auth.hidden = false;
   document.body.classList.remove('in-app');
   if (location.hash !== '#login' && !OBS_PAGE) history.replaceState(null, '', `${location.pathname}${location.search}#login`);
@@ -481,7 +481,8 @@ function setupAuthForms() {
     const f = e.currentTarget;
     const email = f.email.value.trim();
     const password = f.password.value;
-    if (!email || !password) return formMsg(f, 'Bitte E-Mail und Passwort eingeben.');
+    if (!email || !password) return authError(f, 'Bitte E-Mail und Passwort eingeben.', email ? 'password' : 'email');
+    setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
       await state.api.signIn(email, password);
     });
@@ -504,10 +505,11 @@ function setupAuthForms() {
     const username = f.username.value.trim();
     const email = f.email.value.trim();
     const password = f.password.value;
-    if (username.length < 3) return formMsg(f, 'Der Benutzername braucht mindestens 3 Zeichen.');
-    if (!/^\S+@\S+\.\S+$/.test(email)) return formMsg(f, 'Bitte eine gültige E-Mail eingeben.');
+    if (username.length < 3) return authError(f, 'Der Benutzername braucht mindestens 3 Zeichen.', 'username');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return authError(f, 'Bitte eine gültige E-Mail eingeben.', 'email');
     const weak = passwordProblem(password, [username, email.split('@')[0]]);
-    if (weak) return formMsg(f, weak);
+    if (weak) return authError(f, weak, 'password');
+    setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
       const { needsConfirmation } = await state.api.signUp(username, email, password);
       if (needsConfirmation) {
@@ -544,13 +546,29 @@ async function setupSocial() {
     btn.addEventListener('click', async () => {
       msg.textContent = '';
       box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = true; });
+      // Der lila Kreis geht vom geklickten Knopf auf, dann geht es zum Anbieter
+      const auth = $('#auth');
+      setWarpOrigin(btn);
+      if (!reducedMotion) {
+        auth.classList.add('is-going');
+        await sleep(480);
+      }
       try {
         await state.api.signInWithProvider(btn.dataset.provider); // leitet weiter
       } catch (err) {
+        auth.classList.remove('is-going');
         msg.textContent = germanError(err);
+        shakeAuth();
         box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = false; });
       }
     });
+  });
+  $('#spotify-note').hidden = !enabled.spotify;
+  // Zurück vom Anbieter (Seite aus dem Browser-Cache): Kreis wieder weg
+  addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    $('#auth').classList.remove('is-going');
+    box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = false; });
   });
   // Der erste sichtbare Button wird groß dargestellt (normalerweise Twitch)
   box.querySelector('[data-provider]:not([hidden])')?.classList.add('is-primary');
@@ -565,11 +583,47 @@ async function withLoading(form, fn) {
   try {
     await fn();
   } catch (err) {
-    formMsg(form, germanError(err));
+    const text = germanError(err);
+    if (form.closest('#auth')) authError(form, text, guessField(form, text));
+    else formMsg(form, text);
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-loading');
   }
+}
+
+// Anmeldeseite: Fehler zeigen – Karte wackelt kurz, das betroffene Feld bekommt eine Akzentlinie
+function authError(form, text, field = null) {
+  formMsg(form, text);
+  form.querySelectorAll('.field.is-invalid').forEach((f) => f.classList.remove('is-invalid'));
+  const input = field && form.elements[field];
+  if (input) {
+    input.closest('.field')?.classList.add('is-invalid');
+    input.addEventListener('input', () => input.closest('.field')?.classList.remove('is-invalid'), { once: true });
+    input.focus({ preventScroll: true });
+  }
+  shakeAuth();
+}
+function shakeAuth() {
+  const card = $('#auth .auth-card');
+  if (!card || reducedMotion) return;
+  card.classList.remove('is-shake');
+  void card.offsetWidth;
+  card.classList.add('is-shake');
+}
+// Welches Feld passt zur Fehlermeldung? Falsche Zugangsdaten → Passwort
+function guessField(form, text) {
+  if (/benutzername|name/i.test(text) && form.elements.username) return 'username';
+  if (/e-?mail/i.test(text) && !/passwort/i.test(text)) return 'email';
+  return form.elements.password ? 'password' : null;
+}
+// Der lila Kreis beim Anmelden startet am geklickten Knopf
+function setWarpOrigin(el) {
+  const warp = $('#auth .auth-warp');
+  if (!warp || !el) return;
+  const r = el.getBoundingClientRect();
+  warp.style.setProperty('--wx', `${Math.round(r.left + r.width / 2)}px`);
+  warp.style.setProperty('--wy', `${Math.round(r.top + r.height / 2)}px`);
 }
 
 function formMsg(form, text, ok = false) {

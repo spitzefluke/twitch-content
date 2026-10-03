@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-+Q6jyEOHwM/HTdYeypGaqHMggRNDX4oPZRf48p2n4UU=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-XBWBbu/3YZwJ+cy5KsFf6W7raAdQ/hPmVnxKuqHCX/E=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/style.css?v=64c7311735">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=26a6d87341">
-  <link rel="stylesheet" href="css/shell.css?v=b44c96ce1c">
+  <link rel="stylesheet" href="css/shell.css?v=f98f40e27f">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -31,7 +31,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ff8db6e602",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=b9e7a5fa41",
-      "./js/app.js": "./js/app.js?v=9823b11e19",
+      "./js/app.js": "./js/app.js?v=f0dd3bba27",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -267,7 +267,6 @@
       <span class="auth-ring auth-ring--1"></span>
       <span class="auth-ring auth-ring--2"></span>
       <span class="auth-ring auth-ring--3"></span>
-      <span class="auth-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
     </div>
     <button class="auth-back" type="button" data-go="landing">← Zur Startseite</button>
 
@@ -282,9 +281,10 @@
             <button type="button" class="social-btn social-btn--twitch" data-provider="twitch"><span class="s-icon" aria-hidden="true"></span>Mit Twitch anmelden</button>
             <button type="button" class="social-btn social-btn--discord" data-provider="discord"><span class="s-icon" aria-hidden="true"></span>Discord</button>
             <button type="button" class="social-btn social-btn--google" data-provider="google"><span class="s-icon" aria-hidden="true"></span>Google</button>
-            <button type="button" class="social-btn social-btn--spotify" data-provider="spotify"><span class="s-icon" aria-hidden="true"></span>Spotify</button>
             <button type="button" class="social-btn social-btn--github" data-provider="github"><span class="s-icon" aria-hidden="true"></span>GitHub</button>
+            <button type="button" class="social-btn social-btn--spotify" data-provider="spotify"><span class="s-icon" aria-hidden="true"></span>Spotify</button>
           </div>
+          <p class="social-note" id="spotify-note" hidden><b>Spotify:</b> klappt nur mit Konten, die der Streamer freigeschaltet hat – die Spotify-App ist noch im Entwicklungsmodus. Sonst lieber Twitch nehmen.</p>
           <p class="social-msg form-msg" role="alert"></p>
           <p class="divider"><span>oder mit E-Mail</span></p>
         </div>

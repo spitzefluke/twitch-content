@@ -95,28 +95,6 @@
   30% { opacity: .9; }
   to { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
 }
-.auth-sparks i {
-  position: absolute; bottom: -10px; width: 4px; height: 4px; border-radius: 50%;
-  background: #fff; box-shadow: 0 0 8px var(--sh-purple-2), 0 0 14px var(--sh-purple);
-  animation: auth-spark 9s linear infinite;
-}
-.auth-sparks i:nth-child(1) { left: 6%; animation-delay: 0s; }
-.auth-sparks i:nth-child(2) { left: 14%; animation-delay: -3s; animation-duration: 11s; }
-.auth-sparks i:nth-child(3) { left: 23%; animation-delay: -6s; }
-.auth-sparks i:nth-child(4) { left: 31%; animation-delay: -1.5s; animation-duration: 12s; }
-.auth-sparks i:nth-child(5) { left: 40%; animation-delay: -7.5s; }
-.auth-sparks i:nth-child(6) { left: 49%; animation-delay: -4s; animation-duration: 10s; }
-.auth-sparks i:nth-child(7) { left: 58%; animation-delay: -8.5s; }
-.auth-sparks i:nth-child(8) { left: 66%; animation-delay: -2.5s; animation-duration: 13s; }
-.auth-sparks i:nth-child(9) { left: 74%; animation-delay: -5.5s; }
-.auth-sparks i:nth-child(10) { left: 82%; animation-delay: -1s; animation-duration: 10.5s; }
-.auth-sparks i:nth-child(11) { left: 90%; animation-delay: -6.8s; }
-.auth-sparks i:nth-child(12) { left: 96%; animation-delay: -3.7s; animation-duration: 12.5s; }
-@keyframes auth-spark {
-  from { transform: translateY(0) scale(1); opacity: 0; }
-  10% { opacity: 1; }
-  to { transform: translateY(-105vh) translateX(30px) scale(.4); opacity: 0; }
-}
 .auth-back {
   position: absolute; left: clamp(12px, 3vw, 32px); top: 18px; z-index: 2;
   min-height: 40px; padding: 0 16px; border-radius: 999px;
@@ -161,16 +139,27 @@
 .auth .social { margin-bottom: 18px; }
 
 /* Nach dem Anmelden: Karte fliegt weg, ein lila Kreis füllt den Bildschirm */
+/* Startpunkt: der geklickte Knopf (--wx/--wy setzt js/app.js) */
 .auth-warp {
-  position: fixed; left: 50%; top: 50%; z-index: 100; width: 40px; height: 40px; border-radius: 50%;
+  position: fixed; left: var(--wx, 50%); top: var(--wy, 50%); z-index: 100; width: 40px; height: 40px; border-radius: 50%;
   background: radial-gradient(circle, #fff 0, var(--sh-purple-2) 18%, var(--sh-purple) 45%, #1a0b36 72%);
   transform: translate(-50%, -50%) scale(0); pointer-events: none;
 }
 .auth.is-leaving .auth-card { animation: auth-card-out .55s cubic-bezier(.5, 0, .75, 0) forwards; }
 .auth.is-leaving .auth-warp { animation: auth-warp .75s .25s cubic-bezier(.6, 0, .2, 1) forwards; }
+/* Social-Login: der Kreis geht auf, bevor die Seite zum Anbieter wechselt */
+.auth.is-going .auth-warp { animation: auth-warp-hold .6s cubic-bezier(.6, 0, .2, 1) forwards; }
+@keyframes auth-warp-hold { to { transform: translate(-50%, -50%) scale(130); } }
+/* Fehler: Karte wackelt kurz, das falsche Feld bekommt eine Akzentlinie */
+.auth-card.is-shake { animation: auth-shake .45s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes auth-shake { 15%, 85% { transform: translateX(-3px); } 30%, 70% { transform: translateX(7px); } 45% { transform: translateX(-9px); } 58% { transform: translateX(9px); } }
+.auth .field.is-invalid input { border-color: var(--red); box-shadow: inset 4px 0 0 var(--red), 0 0 0 3px rgba(255, 90, 78, .16); }
+.auth .field.is-invalid > span { color: #ff8f86; }
+.social-note { margin: 10px 2px 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.social-note b { color: #1ed760; }
 .auth.is-leaving .auth-back { opacity: 0; transition: opacity .2s; }
 @keyframes auth-card-out { to { opacity: 0; transform: perspective(900px) translateZ(-200px) scale(.7) rotateX(-10deg); filter: blur(6px); } }
-@keyframes auth-warp { 70% { opacity: 1; } to { transform: translate(-50%, -50%) scale(90); opacity: 0; } }
+@keyframes auth-warp { 70% { opacity: 1; } to { transform: translate(-50%, -50%) scale(130); opacity: 0; } }
 .app.is-entering { animation: app-in .7s var(--ease-out) both; }
 @keyframes app-in { from { opacity: 0; transform: scale(1.03); filter: blur(6px); } }
 
@@ -415,8 +404,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bg-grid, .auth-orb, .auth-ring, .auth-sparks, .sh-logo::after { animation: none !important; }
-  .auth-sparks, .auth-ring { display: none; }
+  .bg-grid, .auth-orb, .auth-ring, .sh-logo::after { animation: none !important; }
+  .auth-ring { display: none; }
 }
 #guard-slot .x-inline select { flex: 0 1 220px; }
 
