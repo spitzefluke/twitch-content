@@ -6,6 +6,7 @@ import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playA
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
+import { setupLanding } from './landing.js';
 import { COSTUMES, DEFAULT_PET, Dino, costumeName, dinoSvg, hungerOf, isFrenzy, isHungry, isStarving, runDino } from './pet.js';
 import { SPECIES, STAGES, speciesOf, stageName } from './pet-species.js';
 import { DEFAULT_TICKER } from './ticker.js';
@@ -276,6 +277,7 @@ function showLanding() {
   $('#app').hidden = true;
   $('#auth').hidden = true;
   $('#landing').hidden = false;
+  setupLanding($('#landing'));
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
 }
