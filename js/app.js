@@ -4,9 +4,11 @@ import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
-import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
+import { setupLanding } from './landing.js';
 import { COSTUMES, DEFAULT_PET, Dino, costumeName, dinoSvg, hungerOf, isFrenzy, isHungry, isStarving, runDino } from './pet.js';
+import { SPECIES, STAGES, speciesOf, stageName } from './pet-species.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import {
   DEFAULT_SHOP, GOLD, PLAYER_COLORS, catalogFromText, pointsText, catalogToText, chestSvg, coinsLeft, colorOf, itemIcon, priceOf, renderLoadout, renderTug,
@@ -263,7 +265,7 @@ function showAuth() {
   $('#app').hidden = true;
   $('#landing').hidden = true;
   const auth = $('#auth');
-  auth.classList.remove('is-leaving');
+  auth.classList.remove('is-leaving', 'is-going');
   auth.hidden = false;
   document.body.classList.remove('in-app');
   if (location.hash !== '#login' && !OBS_PAGE) history.replaceState(null, '', `${location.pathname}${location.search}#login`);
@@ -275,6 +277,7 @@ function showLanding() {
   $('#app').hidden = true;
   $('#auth').hidden = true;
   $('#landing').hidden = false;
+  setupLanding($('#landing'));
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
 }
@@ -345,7 +348,31 @@ function setupShell() {
   $('#sb-toggle').addEventListener('click', () => setOpen(!app.classList.contains('sb-open')));
   $('#sb-mobile').addEventListener('click', () => setOpen(!app.classList.contains('sb-open'), false));
   $('#sb-scrim').addEventListener('click', () => setOpen(false, false));
+  // Eingeklappt: Tooltip mit Namen und Zähler neben dem Symbol (die Leiste selbst schneidet alles ab)
+  const tip = document.createElement('div');
+  tip.className = 'sb-tip';
+  tip.setAttribute('role', 'tooltip');
+  tip.hidden = true;
+  document.body.append(tip);
+  const showTip = (item) => {
+    if (app.classList.contains('sb-open') || narrow()) return;
+    const label = item.querySelector('.sb-label')?.textContent ?? item.title;
+    const count = sbCount(item.dataset.page);
+    tip.replaceChildren(Object.assign(document.createElement('b'), { textContent: label }));
+    if (count) tip.append(Object.assign(document.createElement('span'), { textContent: count }));
+    const r = item.getBoundingClientRect();
+    tip.style.left = `${Math.round(r.right + 10)}px`;
+    tip.style.top = `${Math.round(r.top + r.height / 2)}px`;
+    tip.classList.toggle('is-mod', app.dataset.view === 'mod');
+    tip.hidden = false;
+  };
+  const hideTip = () => { tip.hidden = true; };
+  $('#sidebar').addEventListener('mouseover', (e) => { const item = e.target.closest('.sb-item'); if (item) showTip(item); });
+  $('#sidebar').addEventListener('mouseleave', hideTip);
+  $('#sidebar').addEventListener('focusin', (e) => { const item = e.target.closest('.sb-item'); if (item) showTip(item); });
+  $('#sidebar').addEventListener('focusout', hideTip);
   $('#sidebar').addEventListener('click', (e) => {
+    hideTip();
     const item = e.target.closest('.sb-item[data-page]');
     if (!item) return;
     setPage(item.dataset.page);
@@ -391,6 +418,17 @@ function setupShell() {
     const btn = e.target.closest('[data-points-open]');
     if (btn) POINTS_OPEN[btn.dataset.pointsOpen]?.();
   });
+}
+
+// Zähler für den Tooltip der eingeklappten Seitenleiste
+function sbCount(page) {
+  const n = (x, one, many) => (x ? `${x} ${x === 1 ? one : many}` : '');
+  if (page === 'ideas') return n(state.tiles.filter((t) => t.kind !== 'countdown' || isPlanned(t)).length, 'Kachel', 'Kacheln');
+  if (page === 'community') return n(state.ideas.length, 'Vorschlag', 'Vorschläge');
+  if (page === 'alerts') { const b = $('#sb-alert-badge'); return b.hidden ? '' : `${b.textContent} Twitch-${b.textContent === '1' ? 'Problem' : 'Probleme'}`; }
+  if (page === 'mods') return n(state.mods.length, 'Mod', 'Mods');
+  if (page === 'twitch') return state.twitch?.connected ? 'verbunden' : 'nicht verbunden';
+  return '';
 }
 
 function closeLandingMenus() {
@@ -478,7 +516,8 @@ function setupAuthForms() {
     const f = e.currentTarget;
     const email = f.email.value.trim();
     const password = f.password.value;
-    if (!email || !password) return formMsg(f, 'Bitte E-Mail und Passwort eingeben.');
+    if (!email || !password) return authError(f, 'Bitte E-Mail und Passwort eingeben.', email ? 'password' : 'email');
+    setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
       await state.api.signIn(email, password);
     });
@@ -501,10 +540,11 @@ function setupAuthForms() {
     const username = f.username.value.trim();
     const email = f.email.value.trim();
     const password = f.password.value;
-    if (username.length < 3) return formMsg(f, 'Der Benutzername braucht mindestens 3 Zeichen.');
-    if (!/^\S+@\S+\.\S+$/.test(email)) return formMsg(f, 'Bitte eine gültige E-Mail eingeben.');
+    if (username.length < 3) return authError(f, 'Der Benutzername braucht mindestens 3 Zeichen.', 'username');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return authError(f, 'Bitte eine gültige E-Mail eingeben.', 'email');
     const weak = passwordProblem(password, [username, email.split('@')[0]]);
-    if (weak) return formMsg(f, weak);
+    if (weak) return authError(f, weak, 'password');
+    setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
       const { needsConfirmation } = await state.api.signUp(username, email, password);
       if (needsConfirmation) {
@@ -541,13 +581,29 @@ async function setupSocial() {
     btn.addEventListener('click', async () => {
       msg.textContent = '';
       box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = true; });
+      // Der lila Kreis geht vom geklickten Knopf auf, dann geht es zum Anbieter
+      const auth = $('#auth');
+      setWarpOrigin(btn);
+      if (!reducedMotion) {
+        auth.classList.add('is-going');
+        await sleep(480);
+      }
       try {
         await state.api.signInWithProvider(btn.dataset.provider); // leitet weiter
       } catch (err) {
+        auth.classList.remove('is-going');
         msg.textContent = germanError(err);
+        shakeAuth();
         box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = false; });
       }
     });
+  });
+  $('#spotify-note').hidden = !enabled.spotify;
+  // Zurück vom Anbieter (Seite aus dem Browser-Cache): Kreis wieder weg
+  addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    $('#auth').classList.remove('is-going');
+    box.querySelectorAll('[data-provider]').forEach((b) => { b.disabled = false; });
   });
   // Der erste sichtbare Button wird groß dargestellt (normalerweise Twitch)
   box.querySelector('[data-provider]:not([hidden])')?.classList.add('is-primary');
@@ -562,11 +618,47 @@ async function withLoading(form, fn) {
   try {
     await fn();
   } catch (err) {
-    formMsg(form, germanError(err));
+    const text = germanError(err);
+    if (form.closest('#auth')) authError(form, text, guessField(form, text));
+    else formMsg(form, text);
   } finally {
     btn.disabled = false;
     btn.classList.remove('is-loading');
   }
+}
+
+// Anmeldeseite: Fehler zeigen – Karte wackelt kurz, das betroffene Feld bekommt eine Akzentlinie
+function authError(form, text, field = null) {
+  formMsg(form, text);
+  form.querySelectorAll('.field.is-invalid').forEach((f) => f.classList.remove('is-invalid'));
+  const input = field && form.elements[field];
+  if (input) {
+    input.closest('.field')?.classList.add('is-invalid');
+    input.addEventListener('input', () => input.closest('.field')?.classList.remove('is-invalid'), { once: true });
+    input.focus({ preventScroll: true });
+  }
+  shakeAuth();
+}
+function shakeAuth() {
+  const card = $('#auth .auth-card');
+  if (!card || reducedMotion) return;
+  card.classList.remove('is-shake');
+  void card.offsetWidth;
+  card.classList.add('is-shake');
+}
+// Welches Feld passt zur Fehlermeldung? Falsche Zugangsdaten → Passwort
+function guessField(form, text) {
+  if (/benutzername|name/i.test(text) && form.elements.username) return 'username';
+  if (/e-?mail/i.test(text) && !/passwort/i.test(text)) return 'email';
+  return form.elements.password ? 'password' : null;
+}
+// Der lila Kreis beim Anmelden startet am geklickten Knopf
+function setWarpOrigin(el) {
+  const warp = $('#auth .auth-warp');
+  if (!warp || !el) return;
+  const r = el.getBoundingClientRect();
+  warp.style.setProperty('--wx', `${Math.round(r.left + r.width / 2)}px`);
+  warp.style.setProperty('--wy', `${Math.round(r.top + r.height / 2)}px`);
 }
 
 function formMsg(form, text, ok = false) {
@@ -1114,6 +1206,10 @@ function renderCountdown(el, targetIso) {
     return;
   }
   el.classList.remove('countdown--done');
+  // Weniger als 24 Stunden: hervorheben (die Kachel leuchtet mit)
+  const soon = secs < 86400;
+  el.classList.toggle('countdown--soon', soon);
+  el.closest('.tile')?.classList.toggle('is-soon', soon);
   if (!el.children.length || el.children.length !== 4) {
     el.replaceChildren(...UNITS.map(([lbl]) => {
       const u = div('cd-unit');
@@ -2302,10 +2398,17 @@ function setupBingo() {
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
   $('#bingo-bet-btn').addEventListener('click', startBingoBet);
   $('#bingo-bet-cancel').addEventListener('click', () => cancelBingoBet());
-  $('#bingo-loot-sync').addEventListener('click', () => syncLootpool(true));
-  $('#bingo-loot-unhide').addEventListener('click', showHiddenLoot);
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
+  // Schnellwahl: Grün bis Gold, Grau bis Gold, keine
+  form.querySelectorAll('[data-rar-preset]').forEach((btn) => btn.addEventListener('click', () => {
+    const [from, to] = btn.dataset.rarPreset.split('-');
+    const ids = RARITIES.map((r) => r.id);
+    form.querySelectorAll('input[name=rar]').forEach((box) => {
+      const i = ids.indexOf(box.value);
+      box.checked = !!from && i >= ids.indexOf(from) && i <= ids.indexOf(to);
+    });
+  }));
   form.files.addEventListener('change', () => {
     const n = form.files.files.length;
     $('.sound-file-text', form).textContent = n ? `🖼️ ${n === 1 ? form.files.files[0].name : `${n} Bilder gewählt`}` : '🖼️ Bilder wählen … (mehrere gehen)';
@@ -2320,11 +2423,11 @@ async function openBingo() {
   if (!state.bingo.on) return;
   // Frisch laden: Bilder und Haken können sich geändert haben.
   try {
-    const [{ items, card, hidden, loot }, mine] = await Promise.all([
+    const [{ items, card }, mine] = await Promise.all([
       state.api.getBingo(),
       state.api.getMyBingo().catch((err) => { console.warn('Eigene Karte:', err); return undefined; }),
     ]);
-    Object.assign(state.bingo, { items, hidden, loot });
+    state.bingo.items = items;
     state.bingo.card = card;
     state.bingo.lines = bingoState(card).count;
     state.bingo.mine = mine ?? null;
@@ -2336,79 +2439,6 @@ async function openBingo() {
   } catch (err) {
     console.warn(err);
   }
-  // Bilder an den aktuellen Lootpool anpassen – die Edge Function gleicht höchstens alle 6 Stunden ab
-  if (Date.now() - (state.bingo.lootCheckedAt ?? 0) > 10 * 60 * 1000) syncLootpool(false);
-}
-
-// ---------- Lootpool: Bingo-Bilder aus dem aktuellen Fortnite-Lootpool (Edge Function bingo-loot) ----------
-async function reloadBingoItems() {
-  const { items, hidden, loot } = await state.api.getBingo();
-  Object.assign(state.bingo, { items, hidden, loot });
-  if ($('#bingo-dialog').open) renderBingoDialog();
-}
-
-async function syncLootpool(force) {
-  if (!state.bingo.on || state.bingo.lootBusy) return;
-  state.bingo.lootCheckedAt = Date.now();
-  state.bingo.lootBusy = true;
-  paintLootpool();
-  try {
-    const res = await state.api.syncLootpool(force);
-    if (res?.state) state.bingo.loot = res.state;
-    if (res?.synced) await reloadBingoItems();
-    if (force) {
-      if (res?.builtin) toast(`Eingebaute Item-Liste geladen: ${res.state?.items ?? 0} Items.`);
-      else if (res?.synced) toast(`Lootpool abgeglichen: ${res.state?.items ?? 0} Items.`);
-      else if (res?.demo) toast('Im Demo-Modus gibt es keinen Lootpool-Abgleich.');
-      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret API_FORTNITE_KEY in Supabase.', 'error', 7000);
-      else if (res?.error) toast(`Lootpool: ${res.error}`, 'error');
-    }
-  } catch (err) {
-    if (force) toast(`Lootpool nicht abgeglichen: ${germanError(err)}`, 'error');
-    else console.warn('Lootpool:', err);
-  } finally {
-    state.bingo.lootBusy = false;
-    paintLootpool();
-  }
-}
-
-async function showHiddenLoot() {
-  try {
-    await state.api.showHiddenLoot();
-    await reloadBingoItems();
-  } catch (err) {
-    toast(`Nicht geklappt: ${germanError(err)}`, 'error');
-  }
-}
-
-const isBuiltinLoot = (item) => item.source === 'lootpool' && String(item.loot_id ?? '').startsWith('builtin:');
-
-function paintLootpool() {
-  const { loot, hidden = 0, items = [], lootBusy } = state.bingo;
-  const box = $('#bingo-loot');
-  if (!box) return;
-  const text = $('#bingo-loot-state');
-  const active = items.filter((i) => i.source === 'lootpool' && i.active !== false).length;
-  const builtin = String(loot?.error ?? '').startsWith('builtin');
-  box.classList.toggle('is-error', !!loot?.error && loot.error !== 'demo' && !builtin);
-  if (lootBusy) text.textContent = 'Lootpool wird abgeglichen …';
-  else if (!loot) text.textContent = 'Einmal nötig: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen – dann kommen die Bilder automatisch aus dem aktuellen Fortnite-Lootpool.';
-  else if (loot.error === 'demo') text.textContent = 'Im Demo-Modus gibt es keinen Abgleich mit dem Fortnite-Lootpool.';
-  else if (loot.error === 'missing_key') text.textContent = 'Die eingebaute Item-Liste kommt, sobald die Function bingo-loot neu hochgeladen ist (passiert beim nächsten Merge automatisch). Dann „Lootpool jetzt abgleichen“ klicken.';
-  else if (loot.error === 'builtin') text.textContent = `Eingebaute Item-Liste: ${active} Items (Waffen in ihren Seltenheiten und Heilung). Den aktuellen Lootpool gibt es nur mit einem Schlüssel von api-fortnite.com (bezahlter Tarif, Secret API_FORTNITE_KEY).`;
-  else if (builtin) text.textContent = `Eingebaute Item-Liste: ${active} Items – der Lootpool ließ sich nicht holen: ${loot.error.slice('builtin:'.length)}`;
-  else {
-    const when = loot.synced_at
-      ? new Date(loot.synced_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-      : 'noch nie';
-    text.textContent = `Lootpool: ${active} Items, zuletzt abgeglichen ${when}.${loot.error ? ` Letzter Versuch: ${loot.error}` : ''}`;
-  }
-  const sync = $('#bingo-loot-sync');
-  sync.disabled = !!lootBusy || !loot;
-  sync.hidden = loot?.error === 'demo';
-  const unhide = $('#bingo-loot-unhide');
-  unhide.hidden = !hidden;
-  unhide.textContent = `${hidden} ausgeblendete wieder zeigen`;
 }
 
 function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
@@ -2462,10 +2492,11 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
     $('#bingo-clear-btn').disabled = !card || !st.done;
     const size = Number($('#bingo-size').value);
     const need = size * size - ($('#bingo-free').checked && size % 2 ? 1 : 0);
-    const usable = items.filter((i) => i.active !== false).length;
-    $('#bingo-count').textContent = `· ${usable} verfügbar${usable < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
+    // Verschiedene Items: gleiche Waffe in anderer Seltenheit zählt einmal, der Tresor gar nicht
+    const usable = distinctCount(items);
+    const vault = items.filter((i) => i.vault).length;
+    $('#bingo-count').textContent = `· ${usable} verschiedene${vault ? `, ${vault} im Tresor` : ''}${usable < need ? ` – für ${size}×${size} braucht es ${need}` : ''}`;
     renderBingoItems();
-    paintLootpool();
   }
   paintBingoTile();
 }
@@ -2480,35 +2511,20 @@ function renderBingoItems() {
     list.replaceChildren(li);
     return;
   }
-  const order = (i) => (i.source !== 'lootpool' ? 0 : i.active !== false ? 1 : 2);
-  // Abgelöste Items der eingebauten Liste nicht zeigen (sie kommen zurück, wenn der Lootpool ausfällt)
-  const sorted = items.filter((i) => !(isBuiltinLoot(i) && i.active === false)).sort((a, b) => order(a) - order(b));
-  list.replaceChildren(...sorted.map((item) => {
+  // Erst alles, was auf Karten kommen kann, dann der Tresor
+  const sorted = [...items].sort((a, b) => Number(!!a.vault) - Number(!!b.vault));
+  const firstVault = sorted.findIndex((i) => i.vault);
+  const rows = sorted.map((item) => {
     const li = document.createElement('li');
-    // Lootpool-Items: Name und Seltenheit kommen von Fortnite (der Abgleich überschreibt sie)
-    const loot = item.source === 'lootpool';
-    const gone = loot && item.active === false;
-    li.classList.toggle('is-loot', loot);
-    li.classList.toggle('is-gone', gone);
+    li.classList.toggle('is-vault', !!item.vault);
     const img = document.createElement('img');
     img.src = item.url;
     img.alt = '';
     img.loading = 'lazy';
-    let thumb = img;
-    if (loot) {
-      thumb = document.createElement('span');
-      thumb.className = 'bingo-thumb';
-      const badge = document.createElement('b');
-      badge.textContent = isBuiltinLoot(item) ? 'Liste' : 'Loot';
-      thumb.title = gone ? 'Nicht mehr im Lootpool – kommt auf keine neue Karte'
-        : isBuiltinLoot(item) ? 'Aus der eingebauten Item-Liste' : 'Aus dem aktuellen Fortnite-Lootpool';
-      thumb.append(img, badge);
-    }
+    const thumb = img;
     const name = document.createElement('input');
     name.value = item.name;
     name.maxLength = 40;
-    name.readOnly = loot;
-    if (loot) name.title = 'Name kommt aus dem Lootpool';
     name.setAttribute('aria-label', 'Name des Items');
     name.addEventListener('change', async () => {
       const value = name.value.trim();
@@ -2526,7 +2542,6 @@ function renderBingoItems() {
     rarity.setAttribute('aria-label', `Seltenheit von „${item.name}“`);
     rarity.append(new Option('– keine –', ''), ...RARITIES.map((r) => new Option(r.name, r.id)));
     rarity.value = item.rarity ?? '';
-    rarity.disabled = loot;
     rarity.addEventListener('change', async () => {
       const value = rarity.value || null;
       try {
@@ -2592,36 +2607,53 @@ function renderBingoItems() {
         toast(`Kopieren fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
+    // Tresor: kommt auf keine neue Karte, bleibt aber gespeichert
+    const vault = document.createElement('button');
+    vault.type = 'button';
+    vault.className = 'prank-try bingo-vault-btn';
+    vault.textContent = item.vault ? '🔓' : '🔒';
+    vault.title = item.vault ? 'Aus dem Tresor holen – kommt wieder auf neue Karten' : 'In den Tresor – kommt auf keine neue Karte, bleibt aber gespeichert';
+    vault.setAttribute('aria-label', `„${item.name}“ ${item.vault ? 'aus dem Tresor holen' : 'in den Tresor legen'}`);
+    vault.addEventListener('click', async () => {
+      vault.disabled = true;
+      try {
+        await state.api.updateBingoItem(item.id, { vault: !item.vault });
+        item.vault = !item.vault;
+        toast(item.vault ? `🔒 „${item.name}“ liegt im Tresor.` : `🔓 „${item.name}“ ist wieder dabei.`, 'ok');
+        renderBingoDialog();
+      } catch (err) {
+        vault.disabled = false;
+        toast(`Tresor: ${germanError(err)}`, 'error', 7000);
+      }
+    });
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
-    del.textContent = loot ? '🙈' : '🗑';
-    del.title = loot ? 'Ausblenden – kommt nicht mehr auf neue Karten' : 'Löschen';
-    del.setAttribute('aria-label', `„${item.name}“ ${loot ? 'ausblenden' : 'löschen'}`);
+    del.textContent = '🗑';
+    del.title = 'Löschen';
+    del.setAttribute('aria-label', `„${item.name}“ löschen`);
     del.addEventListener('click', async () => {
-      const question = loot
-        ? `„${item.name}“ ausblenden? Der Lootpool-Abgleich holt es nicht zurück. Auf der aktuellen Karte bleibt es stehen.`
-        : `„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`;
-      if (!confirm(question)) return;
+      if (!confirm(`„${item.name}“${item.rarity ? ` (${rarityName(item.rarity)})` : ''} löschen? Auf der aktuellen Karte bleibt es stehen. Nur aussortieren? Dann lieber 🔒 in den Tresor.`)) return;
       del.disabled = true;
       try {
         await state.api.deleteBingoItem(item);
         state.bingo.items = state.bingo.items.filter((x) => x.id !== item.id);
-        if (loot) state.bingo.hidden = (state.bingo.hidden ?? 0) + 1;
         renderBingoDialog();
       } catch (err) {
         del.disabled = false;
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    if (gone) {
-      const note = document.createElement('span');
-      note.className = 'bingo-loot-note';
-      note.textContent = 'nicht mehr im Lootpool';
-      li.append(thumb, name, copy, del, note, amount);
-    } else li.append(thumb, name, copy, del, rarity, amount);
+    li.append(thumb, name, copy, vault, del, rarity, amount);
     return li;
-  }));
+  });
+  if (firstVault >= 0) {
+    const head = document.createElement('li');
+    head.className = 'bingo-vault-head';
+    head.textContent = `🔒 Tresor · ${sorted.length - firstVault} – kommt auf keine neue Karte`;
+    rows.splice(firstVault, 0, head);
+  }
+  list.replaceChildren(...rows);
 }
 
 // ---------- Tipprunde: Zuschauer tippen mit Kanalpunkten, welche Reihe zuerst voll wird ----------
@@ -2849,15 +2881,21 @@ async function uploadBingoImages(e) {
   const form = e.currentTarget;
   const files = [...form.files.files];
   if (!files.length) return formMsg(form, 'Bitte zuerst Bilder wählen.');
+  // Seltenheiten angehakt: jedes Bild einmal pro Seltenheit (gleicher Name, gleiches Bild)
+  const rarities = [...form.querySelectorAll('input[name=rar]:checked')].map((b) => b.value);
   await withLoading(form, async () => {
     let done = 0;
+    let made = 0;
     const failed = [];
     for (const file of files) {
       formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
       try {
-        const blob = await shrinkImage(file);
-        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), { rarity: rarityFromFile(file.name), amount: amountFromFile(file.name) });
-        state.bingo.items = [...state.bingo.items, item];
+        const [blob, key] = await Promise.all([shrinkImage(file), imageKey(file)]);
+        const created = await state.api.addBingoItem(blob, nameFromFile(file.name), {
+          rarity: rarityFromFile(file.name), amount: amountFromFile(file.name), imageKey: key, rarities,
+        });
+        state.bingo.items = [...state.bingo.items, ...created];
+        made += created.length;
         done++;
       } catch (err) {
         console.error(err);
@@ -2868,7 +2906,9 @@ async function uploadBingoImages(e) {
     $('.sound-file-text', form).textContent = '🖼️ Bilder wählen … (mehrere gehen)';
     renderBingoDialog();
     if (failed.length) throw new Error(`${done} hochgeladen, ${failed.length} nicht: ${failed.join(' · ')}`);
-    formMsg(form, `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen.`, true);
+    formMsg(form, rarities.length
+      ? `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen – ${made} Items in ${rarities.length} Seltenheiten.`
+      : `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen.`, true);
   });
 }
 
@@ -2931,7 +2971,7 @@ function buildPetTile(tile, i) {
   const el = buildActionTile(tile, i, { cls: 'tile--dino', cta: 'Zum Dino →', onClick: openPet });
   const mini = document.createElement('span');
   mini.className = 'pet-tile-dino';
-  mini.innerHTML = dinoSvg(state.pet.data?.costume);
+  mini.innerHTML = dinoSvg(state.pet.data?.costume, state.pet.data?.species);
   el.querySelector('.tile-body').prepend(mini);
   paintPetTile(el);
   return el;
@@ -2942,12 +2982,18 @@ function paintPetTile(el = $('.tile--pet')) {
   if (!label) return;
   const pet = state.pet.data;
   const hungry = state.pet.on && isHungry(pet);
+  const egg = pet?.stage === 'egg';
   label.textContent = !state.pet.on ? '🦖 Wohnt im Stream'
+    : egg ? `🥚 ${pet.name} ist noch im Ei – ${Math.max(0, (pet.hatch_feeds ?? 50) - (pet.stage_feeds ?? 0))} × füttern`
     : isFrenzy(pet) ? `🔥 ${pet.name} hat Heißhunger!`
       : hungry ? `🍖 ${pet.name} hat Hunger!` : `😊 ${pet.name} ist satt`;
   el.classList.toggle('is-hungry', hungry);
   // Die kleine Zeichnung: Kostüm und rot bei Hunger
-  const svg = el.querySelector('.pet-tile-dino .dino-svg');
+  let svg = el.querySelector('.pet-tile-dino .dino-svg');
+  if (svg && pet?.species && svg.dataset.species !== pet.species) {
+    el.querySelector('.pet-tile-dino').innerHTML = dinoSvg(pet.costume, pet.species);
+    svg = el.querySelector('.pet-tile-dino .dino-svg');
+  }
   if (svg) {
     if (pet?.costume) svg.dataset.costume = pet.costume;
     svg.classList.toggle('is-hungry', hungry);
@@ -4209,6 +4255,11 @@ function setupPet() {
   $('#pet-say-form').addEventListener('submit', petSay);
   $('#pet-settings').addEventListener('submit', savePetSettings);
   $('#pet-costume').addEventListener('change', (e) => setPetCostume(e.currentTarget.value, $('.pet-costume-msg')));
+  // Direkt an den Kästen: im OBS-Fenster stoppt die Haustier-Box input/change (setupObsPet)
+  document.querySelectorAll('[data-pet-evo]').forEach((box) => {
+    box.addEventListener('click', onPetEvoClick);
+    box.addEventListener('change', onPetEvoChange);
+  });
   // Heißhunger und Füttern: dieselben Knöpfe im Dino-Dialog und im OBS-Fenster
   document.addEventListener('click', (e) => {
     const frenzy = e.target.closest('[data-pet-frenzy]');
@@ -4273,7 +4324,8 @@ function startPetStage() {
   state.pet.sfx ??= new Sfx({ volume: 0.6 });
   const stage = $('#pet-stage');
   const size = Math.max(100, Math.min(160, stage.clientWidth * 0.26));
-  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: state.pet.data?.name ?? DEFAULT_PET.name, costume: state.pet.data?.costume, reducedMotion });
+  const d = state.pet.data ?? {};
+  state.pet.dino = new Dino(stage, { size, sfx: state.pet.sfx, name: d.name ?? DEFAULT_PET.name, costume: d.costume, species: d.species, stage: d.stage, reducedMotion });
   // In der Vorschau knabbert er an den Namen, die zuletzt da waren
   state.pet.stopBrain = runDino(state.pet.dino, {
     streamer: streamerName,
@@ -4291,6 +4343,7 @@ function petReact(ev) {
   if (ev.kind === 'feed') dino.eat(ev.who);
   else if (ev.kind === 'pet') dino.cuddle(ev.who);
   else if (ev.kind === 'say') dino.say(ev.text, 5000);
+  else if (ev.kind === 'stage') toast(stageLine(ev), 'ok', 7000);
   else if (ev.kind === 'costume') {
     dino.chatLine(ev.who, ev.text);
     dino.setCostume(ev.text);
@@ -4305,7 +4358,7 @@ function renderPetDialog() {
     ? (state.pet.error || 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20260928000000_questions_pet.sql ausführen.')
     : 'Der Dino ist noch nicht eingezogen. Schau später noch mal vorbei.';
   note.hidden = on;
-  $('#pet-title').textContent = on ? `Stream-Dino: ${data.name}` : 'Stream-Dino';
+  $('#pet-title').textContent = on ? `${speciesOf(data.species).icon} ${data.name}` : 'Das Haustier';
   $('#pet-feed').disabled = !on;
   $('#pet-pet').disabled = !on;
   // Zuschauer füttern hier nur für sich – im Stream über den Twitch-Chat. Admins können beides.
@@ -4323,6 +4376,7 @@ function renderPetDialog() {
     const costume = $('#pet-costume');
     if (document.activeElement !== costume) costume.value = data.costume ?? 'schaffner';
     paintFrenzyButtons();
+    renderPetEvo();
   }
   renderPetLog();
   $('#pet-admin').hidden = !(admin && on);
@@ -4341,8 +4395,19 @@ function renderPetDialog() {
 function paintPetMeter() {
   const pet = state.pet.data;
   if (!pet) return;
-  const h = isFrenzy(pet) ? 2 : hungerOf(pet);
   const fill = $('#pet-meter-fill');
+  // Im Ei: Fortschritt bis zum Schlüpfen statt Hunger
+  if (pet.stage === 'egg') {
+    const need = pet.hatch_feeds ?? 50;
+    const done = Math.min(need, pet.stage_feeds ?? 0);
+    fill.style.width = `${Math.round((done / need) * 100)}%`;
+    fill.classList.remove('is-hungry');
+    $('#pet-meter-label').textContent = 'Schlüpfen';
+    $('#pet-status').textContent = `${pet.name} ist noch im Ei – ${done} von ${need} × gefüttert. Noch ${need - done} × ${pet.feed_command || DEFAULT_PET.feed_command}, dann schlüpft es.`;
+    return;
+  }
+  $('#pet-meter-label').textContent = 'Hunger';
+  const h = isFrenzy(pet) ? 2 : hungerOf(pet);
   fill.style.width = `${Math.round(Math.min(1, h) * 100)}%`;
   fill.classList.toggle('is-hungry', h >= 1);
   const since = pet.last_fed_at ? Math.round((Date.now() - Date.parse(pet.last_fed_at)) / 60000) : null;
@@ -4351,6 +4416,7 @@ function paintPetMeter() {
     : h >= 1
     ? `${pet.name} hat Hunger und knabbert im Stream an den Zuschauern! Schnell füttern.`
     : `${pet.name} ist satt${pet.last_fed_by ? ` – zuletzt gefüttert von ${pet.last_fed_by}` : ''}${since !== null ? (since < 1 ? ' gerade eben' : ` vor ${since} Min`) : ''}. Hunger in etwa ${Math.max(1, Math.round((1 - h) * pet.hungry_after))} Min.`;
+  if (pet.stage === 'baby') $('#pet-status').textContent += ` · Baby: ${pet.good_days ?? 0} von ${pet.grow_days ?? 5} Streams mit guter Laune (heute ${Math.min(3, pet.feed_day === berlinDay() ? pet.day_feeds ?? 0 : 0)}/3 × gefüttert).`;
   state.pet.dino?.setHungry(isHungry(pet));
   state.pet.dino?.setStarving(isStarving(pet));
 }
@@ -4369,12 +4435,13 @@ function renderPetLog() {
     const li = document.createElement('li');
     const icon = document.createElement('span');
     icon.className = 'prank-log-icon';
-    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : ev.kind === 'costume' ? '👕' : '💬';
+    icon.textContent = ev.kind === 'feed' ? '🍖' : ev.kind === 'pet' ? '🤚' : ev.kind === 'costume' ? '👕' : ev.kind === 'stage' ? (ev.text === 'baby' ? '🐣' : '🎉') : '💬';
     const main = document.createElement('span');
     main.className = 'h-main';
     main.textContent = (ev.kind === 'feed' ? `${ev.who} hat gefüttert`
       : ev.kind === 'pet' ? `${ev.who} hat gestreichelt`
         : ev.kind === 'costume' ? `${ev.who} hat das Kostüm gewechselt: ${costumeName(ev.text)}`
+        : ev.kind === 'stage' ? stageLine(ev)
         : `„${ev.text}“`) + (ev.local ? ' (nur hier)' : '');
     const time = document.createElement('time');
     time.dateTime = ev.created_at;
@@ -4446,7 +4513,9 @@ function applyPetRow(row) {
   if (!row) return;
   state.pet.data = { ...state.pet.data, ...row };
   if (row.costume) state.pet.dino?.setCostume(row.costume);
+  if (row.species) state.pet.dino?.setSpecies(row.species);
   paintPetTile();
+  renderPetEvo();
   if ($('#pet-dialog').open) renderPetDialog();
   if ($('#obs-dialog').open) paintObsPet();
 }
@@ -4501,6 +4570,87 @@ async function obsFeedPet(btn) {
   }
 }
 
+const berlinDay = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+const stageLine = (ev) => {
+  const name = state.pet.data?.name ?? 'Das Haustier';
+  const thanks = ev.who ? ` Danke an ${ev.who}!` : '';
+  return ev.text === 'baby' ? `🐣 ${name} ist geschlüpft!${thanks}` : `🎉 ${name} ist erwachsen!${thanks}`;
+};
+
+// Tier & Entwicklung – im Haustier-Dialog und im OBS-Fenster (Ebene „Haustier“). Tierart und
+// Stadium stellt der Streamer ein (Seiten-Admins auch), Mods sehen den Stand.
+function renderPetEvo() {
+  const pet = { ...DEFAULT_PET, ...state.pet.data };
+  const boss = canStreamerView();
+  document.querySelectorAll('[data-pet-evo]').forEach((box) => {
+    if (box.contains(document.activeElement) && document.activeElement.matches('input')) return;
+    const need = pet.hatch_feeds ?? 50;
+    const progress = pet.stage === 'egg'
+      ? `🥚 Im Ei: ${Math.min(need, pet.stage_feeds ?? 0)} von ${need} × gefüttert`
+      : pet.stage === 'baby'
+        ? `🍼 Baby: ${pet.good_days ?? 0} von ${pet.grow_days ?? 5} Streams mit guter Laune (ein Tag mit 3 × Füttern)`
+        : '🌟 Erwachsen';
+    box.innerHTML = `
+      <p class="pet-evo-label">Tier des Kanals${boss ? '' : ' <small>(wählt der Streamer)</small>'}</p>
+      <div class="pet-species-grid" role="radiogroup" aria-label="Tierart">
+        ${SPECIES.map((s) => `<button type="button" class="pet-species" role="radio" data-species="${s.id}" aria-checked="${s.id === pet.species}" ${boss ? '' : 'disabled'}>
+          <span class="pet-species-pic">${dinoSvg(pet.costume, s.id)}</span><b>${s.name}</b><small>${s.pet}</small></button>`).join('')}
+      </div>
+      <p class="pet-evo-label">Entwicklung</p>
+      <div class="pet-stage-seg" role="radiogroup" aria-label="Stadium">
+        ${STAGES.map((st) => `<button type="button" class="pet-stage-btn" role="radio" data-stage="${st.id}" aria-checked="${st.id === pet.stage}" ${boss ? '' : 'disabled'}>${st.id === 'egg' ? '🥚' : st.id === 'baby' ? '🐣' : '🌟'} ${st.name}</button>`).join('')}
+      </div>
+      <p class="pet-evo-progress">${progress}</p>
+      <div class="pet-evo-nums">
+        <label class="field"><span>Schlüpft nach (× Füttern)</span><input type="number" min="5" max="500" step="1" data-pet-num="hatch_feeds" value="${need}" ${boss ? '' : 'disabled'}></label>
+        <label class="field"><span>Wächst nach (Streams)</span><input type="number" min="1" max="30" step="1" data-pet-num="grow_days" value="${pet.grow_days ?? 5}" ${boss ? '' : 'disabled'}></label>
+      </div>
+      <p class="form-msg pet-evo-msg" role="alert"></p>`;
+  });
+}
+
+async function onPetEvoClick(e) {
+  const box = e.target.closest('[data-pet-evo]');
+  if (!box || !canStreamerView()) return;
+  const pet = { ...DEFAULT_PET, ...state.pet.data };
+  const sp = e.target.closest('[data-species]');
+  const st = e.target.closest('.pet-stage-btn');
+  let patch = null;
+  let ok = '';
+  if (sp && sp.dataset.species !== pet.species) {
+    const next = speciesOf(sp.dataset.species);
+    // Hieß das Tier wie das alte Standard-Tier, bekommt es den neuen Standard-Namen
+    const rename = pet.name === speciesOf(pet.species).pet;
+    patch = { species: next.id, ...(rename ? { name: next.pet } : {}) };
+    ok = `✓ Neues Tier im Kanal: ${rename ? next.pet : pet.name} (${next.name}).`;
+  } else if (st && st.dataset.stage !== pet.stage) {
+    const stage = st.dataset.stage;
+    if (stage === 'egg' && !confirm(`Neues Ei legen? ${pet.name} wird wieder zum Ei und schlüpft nach ${pet.hatch_feeds ?? 50} × Füttern im Chat.`)) return;
+    patch = { stage };
+    ok = stage === 'egg' ? '✓ Ein neues Ei liegt im Stream.' : `✓ ${pet.name} ist jetzt ${stageName(stage)}.`;
+  }
+  if (!patch) return;
+  try {
+    applyPetRow(await state.api.updatePet(patch));
+    toast(ok, 'ok');
+  } catch (err) {
+    box.querySelector('.pet-evo-msg').textContent = germanError(err);
+  }
+}
+
+async function onPetEvoChange(e) {
+  const input = e.target.closest('[data-pet-num]');
+  if (!input || !canStreamerView()) return;
+  const box = input.closest('[data-pet-evo]');
+  const key = input.dataset.petNum;
+  const value = Math.round(Number(input.value));
+  try {
+    applyPetRow(await state.api.updatePet({ [key]: value }));
+  } catch (err) {
+    box.querySelector('.pet-evo-msg').textContent = germanError(err);
+  }
+}
+
 function paintFrenzyButtons() {
   const on = isFrenzy(state.pet.data);
   document.querySelectorAll('[data-pet-frenzy]').forEach((b) => {
@@ -4524,6 +4674,7 @@ function paintObsPet() {
   $('#obs-pet-cooldown-out').textContent = `${cd.value} s`;
   cd.disabled = !$('#obs-pet-change').checked;
   paintFrenzyButtons();
+  renderPetEvo();
 }
 
 function setupObsPet() {
@@ -4737,6 +4888,7 @@ function setupObs() {
   $('#obs-cam-source').addEventListener('change', useObsCamera);
   $('#obs-share').addEventListener('click', shareObsWindow);
   setupObsLayers();
+  setupObsTools();
   // Vorschau und Bildabruf beim Schließen beenden – sie liefen sonst im Hintergrund weiter.
   $('#obs-dialog').addEventListener('close', () => {
     clearTimeout(obsPreviewTimer);
@@ -4763,6 +4915,181 @@ function setupObs() {
     if (e.data.key === 'cam') $('#obs-cam-source').value = '';
     updateObs({ fromPreview: true });
   });
+}
+
+// ---------- OBS-Editor-Werkzeuge: Bereiche einklappen, Ebenen suchen, Rückgängig, Testen ----------
+const OBS_COLS_KEY = 'sh_obs_cols';
+// Verlauf: jede Änderung als Parameter-Text (wie obsUrl), höchstens 40 Schritte
+const obsHist = { list: [], at: -1, timer: 0, applying: false };
+
+function setupObsTools() {
+  const dlg = $('#obs-dialog');
+  const body = dlg.querySelector('.obs-body');
+  // Bereiche ein- und ausklappen – nie beide zugleich
+  const setCols = (closed) => {
+    body.classList.toggle('is-closed-left', closed === 'left');
+    body.classList.toggle('is-closed-right', closed === 'right');
+    dlg.querySelectorAll('[data-obs-col]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.obsCol !== closed)));
+    try { localStorage.setItem(OBS_COLS_KEY, closed); } catch { /* egal */ }
+    if (closed !== 'left') fitObsPreview();
+  };
+  let saved = '';
+  try { saved = localStorage.getItem(OBS_COLS_KEY) ?? ''; } catch { /* egal */ }
+  setCols(['left', 'right'].includes(saved) ? saved : '');
+  dlg.querySelectorAll('[data-obs-col]').forEach((btn) => btn.addEventListener('click', () => {
+    const side = btn.dataset.obsCol;
+    setCols(body.classList.contains(`is-closed-${side}`) ? '' : side);
+  }));
+
+  // Ebenen suchen und filtern – die Felder gehören nicht zu den OBS-Einstellungen
+  const tools = $('#obs-layer-tools');
+  for (const type of ['input', 'change']) tools.addEventListener(type, (e) => { e.stopPropagation(); filterObsLayers(); });
+  $('#obs-layer-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+
+  // Rückgängig / Wiederholen
+  $('#obs-undo').addEventListener('click', () => stepObsHistory(-1));
+  $('#obs-redo').addEventListener('click', () => stepObsHistory(1));
+  $('#obs-history-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-hist]');
+    if (btn) gotoObsHistory(Number(btn.dataset.hist));
+  });
+  dlg.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    // In Textfeldern bleibt Strg+Z beim Browser (Text rückgängig)
+    if (e.target.closest('input[type="text"], input[type="search"], input:not([type]), textarea')) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z' && !e.shiftKey) { e.preventDefault(); stepObsHistory(-1); }
+    else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); stepObsHistory(1); }
+  });
+
+  // ▶ Testen: die gewählte Ebene führt in der Vorschau vor, was sie kann
+  $('#obs-insp-test').addEventListener('click', () => {
+    if (!obsSelected) return;
+    const frame = $('#obs-preview iframe');
+    if (!frame) { toast('Die Vorschau ist eingeklappt – erst „Vorschau“ oben einschalten.', 'info'); return; }
+    const row = $(`#obs-dialog .obs-layer[data-layer="${obsSelected}"]`);
+    if (row && !row.classList.contains('is-on')) toast('Die Ebene ist aus – sie erscheint nur in der Vorschau kurz zum Testen, wenn du sie einschaltest.', 'info', 5000);
+    frame.contentWindow?.postMessage({ type: 'stellwerk-test', key: obsSelected }, location.origin);
+  });
+}
+
+function filterObsLayers() {
+  const q = $('#obs-layer-search').value.trim().toLowerCase();
+  const onlyOn = $('#obs-layer-only-on').checked;
+  let shown = 0;
+  $('#obs-dialog').querySelectorAll('.obs-layer').forEach((row) => {
+    const name = `${row.querySelector('.obs-layer-name')?.textContent ?? ''} ${row.dataset.layer}`.toLowerCase();
+    const hide = (q && !name.includes(q)) || (onlyOn && !row.classList.contains('is-on'));
+    row.classList.toggle('is-filtered', !!hide);
+    if (!hide) shown++;
+  });
+  $('#obs-dialog').querySelectorAll('.obs-layers .obs-group').forEach((g) => {
+    g.classList.toggle('is-filtered', !g.querySelector('.obs-layer:not(.is-filtered)'));
+  });
+  $('#obs-layer-none').hidden = shown > 0;
+}
+
+// Was hat sich geändert? Für die Einträge im Verlauf („Bingo verschoben“, „Größe · Alerts“ …)
+function describeObsChange(before, after) {
+  const a = new URLSearchParams(before);
+  const b = new URLSearchParams(after);
+  const keys = [...new Set([...a.keys(), ...b.keys()])].filter((k) => a.get(k) !== b.get(k));
+  if (!keys.length) return 'Änderung';
+  const layerName = (key) => $(`#obs-dialog .obs-layer[data-layer="${key}"] .obs-layer-name`)?.firstChild?.textContent.trim() ?? key;
+  const ownerOf = (el) => {
+    for (const [key, body] of obsBodies) if (body.contains(el)) return layerName(key);
+    return '';
+  };
+  const label = (k) => {
+    if (OBS_PARTS.includes(k)) {
+      if (!a.has(k)) return `${layerName(k)} an`;
+      if (!b.has(k)) return `${layerName(k)} aus`;
+      return `${layerName(k)} verschoben`;
+    }
+    const el = $('#obs-options').elements[k];
+    if (!el || !(el instanceof Element)) return k;
+    if (el.type === 'checkbox' && Object.values(OBS_LAYER_SWITCH).includes(el.name)) {
+      const key = Object.keys(OBS_LAYER_SWITCH).find((x) => OBS_LAYER_SWITCH[x] === el.name);
+      return `${layerName(key)} ${el.checked ? 'an' : 'aus'}`;
+    }
+    const row = el.closest('.obs-row, label');
+    const text = row?.querySelector(':scope > span')?.textContent.trim() || el.getAttribute('aria-label') || k;
+    const owner = ownerOf(el);
+    return owner ? `${text} · ${owner}` : text;
+  };
+  const first = label(keys[0]);
+  return keys.length > 1 ? `${first} (+${keys.length - 1})` : first;
+}
+
+function recordObsHistory({ reset = false } = {}) {
+  clearTimeout(obsHist.timer);
+  const commit = () => {
+    const q = new URL(obsUrl()).search.slice(1);
+    if (reset) {
+      obsHist.list = [{ q, label: 'Geöffnet', at: new Date() }];
+      obsHist.at = 0;
+    } else {
+      const cur = obsHist.list[obsHist.at];
+      if (!cur || cur.q === q) return;
+      obsHist.list = obsHist.list.slice(0, obsHist.at + 1);
+      obsHist.list.push({ q, label: describeObsChange(cur.q, q), at: new Date() });
+      if (obsHist.list.length > 40) obsHist.list.shift();
+      obsHist.at = obsHist.list.length - 1;
+    }
+    paintObsHistory();
+  };
+  if (reset) commit();
+  else obsHist.timer = setTimeout(commit, 500);
+}
+
+function gotoObsHistory(i) {
+  if (i < 0 || i >= obsHist.list.length || i === obsHist.at || obsLocked()) return;
+  clearTimeout(obsHist.timer);
+  obsHist.at = i;
+  obsHist.applying = true;
+  applyObsParams(obsHist.list[i].q);
+  updateObs({ now: true });
+  obsHist.applying = false;
+  scheduleObsSave();
+  paintObsHistory();
+}
+
+function stepObsHistory(step) {
+  const target = obsHist.list[obsHist.at + step];
+  if (!target) return;
+  const label = step < 0 ? obsHist.list[obsHist.at].label : target.label;
+  gotoObsHistory(obsHist.at + step);
+  toast(`${step < 0 ? '↶ Rückgängig' : '↷ Wiederholt'}: ${label}`, 'info', 2200);
+}
+
+function paintObsHistory() {
+  const locked = obsLocked();
+  $('#obs-undo').disabled = locked || obsHist.at <= 0;
+  $('#obs-redo').disabled = locked || obsHist.at >= obsHist.list.length - 1;
+  const list = $('#obs-history-list');
+  if (obsHist.list.length <= 1) {
+    list.innerHTML = '<li class="is-empty">Noch keine Änderungen. Strg+Z macht die letzte rückgängig.</li>';
+    return;
+  }
+  const time = (d) => d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  list.replaceChildren(...obsHist.list.map((h, i) => {
+    const li = document.createElement('li');
+    li.classList.toggle('is-now', i === obsHist.at);
+    li.classList.toggle('is-future', i > obsHist.at);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.hist = String(i);
+    btn.disabled = locked;
+    const n = document.createElement('small');
+    n.textContent = String(i);
+    const t = document.createElement('span');
+    t.textContent = h.label;
+    const at = document.createElement('small');
+    at.textContent = time(h.at);
+    btn.append(n, t, at);
+    li.append(btn);
+    return li;
+  }).reverse());
 }
 
 // ---------- OBS-Fenster v2: Reiter und Ebenen ----------
@@ -5083,7 +5410,10 @@ async function openObsDialog({ page = false } = {}) {
   loadObs();
   if (page) $('#obs-dialog').show();
   else $('#obs-dialog').showModal();
+  // Mods richten nichts in OBS ein – die Anleitungen zum Verbinden bleiben für sie weg
+  $('#obs-dialog').classList.toggle('is-mod', isTeam() && !canStreamerView());
   updateObs({ now: true });
+  recordObsHistory({ reset: true });
   loadTickerTexts();
   fillAlertSounds();
   loadObsLive();
@@ -5125,6 +5455,7 @@ async function loadObsLive() {
   }
   paintObsLive();
   updateObs({ now: true });
+  recordObsHistory({ reset: true });
 }
 
 // Umkehrung von obsUrl(): Parameter → Formular
@@ -5574,6 +5905,8 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   if (obsLocked()) obsFields().forEach((el) => { el.disabled = true; });
   saveObs(values);
   paintObsLayers();
+  filterObsLayers();
+  if (!obsLive.filling && !obsHist.applying) recordObsHistory();
   // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
   $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();
   scheduleObsSave();

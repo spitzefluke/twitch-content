@@ -344,7 +344,7 @@ p { margin: 0; }
 .chat-list { display: flex; flex-direction: column; gap: .35em; padding: .6em 1em .85em; }
 .chat-msg {
   font-size: .98em; line-height: 1.35; color: var(--text); overflow-wrap: anywhere;
-  animation: chat-in .35s var(--ease-out) both;
+  animation: chat-in .5s var(--ease-spring) both; transform-origin: 0 100%;
 }
 .chat-msg.is-out { animation: chat-out .6s ease-in forwards; }
 .chat-msg.is-action .chat-text { color: var(--nc); font-style: italic; }
@@ -391,7 +391,7 @@ p { margin: 0; }
 }
 .chat-style-clean .chat-emote, .chat-style-clean .chat-badge, .chat-style-clean .chat-platform { filter: drop-shadow(0 .05em .15em rgba(0, 0, 0, .9)); }
 .chat-style-clean .chat-msg.is-highlight { background: rgba(145, 70, 255, .35); }
-@keyframes chat-in { from { opacity: 0; transform: translateY(.6em); } to { opacity: 1; transform: none; } }
+@keyframes chat-in { from { opacity: 0; transform: translateY(.9em) scale(.9); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes chat-out { to { opacity: 0; transform: translateX(-.8em); } }
 
 /* ---------- Laufband (immer an) ---------- */
@@ -509,9 +509,20 @@ p { margin: 0; }
 .ov-alert.is-alert {
   opacity: 1; visibility: visible; transform: none;
   transition: opacity .3s var(--ease-out), transform .5s var(--ease-spring), visibility 0s;
-  animation: ov-al-in .7s var(--ease-spring);
+  animation: ov-al-in .56s var(--ease-spring);
   box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 60%, transparent);
 }
+/* Ausgang: 360 ms nach oben weg, leicht unscharf (gilt für alle Looks und Eingänge) */
+.ov-alert.is-alert.is-out { animation: ov-al-out .36s cubic-bezier(.5, 0, .75, 0) both !important; }
+@keyframes ov-al-out { from { opacity: 1; transform: none; filter: none; } to { opacity: 0; transform: translateY(-14px) scale(.94); filter: blur(4px); } }
+/* Zeitleiste unten: läuft in der Alert-Dauer (--dur) von voll auf leer */
+.ov-al-timer {
+  position: absolute; left: 1em; right: 1em; bottom: .4em; height: .2em; border-radius: 1em; pointer-events: none;
+  background: var(--c); opacity: .8; transform: scaleX(0); transform-origin: left;
+}
+.ov-alert.is-alert .ov-al-timer { animation: ov-al-timer var(--dur, 6s) linear both; }
+.ov-alert.is-still .ov-al-timer, body.is-apreview .ov-alert.is-still .ov-al-timer { display: none; }
+@keyframes ov-al-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .ov-al-show { display: grid; justify-items: center; gap: .15em; padding: .9em 1.2em 1.2em; text-align: center; }
 .ov-al-icon { font-size: 3em; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .ov-al-title { font-family: var(--font-mono); font-size: .8em; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--c); }
@@ -538,7 +549,7 @@ p { margin: 0; }
   animation: ov-al-confetti 1.6s cubic-bezier(.15, .7, .3, 1) both;
 }
 .ov-al-fx i.is-round { width: .55em; height: .55em; border-radius: 50%; }
-@keyframes ov-al-in { 0% { transform: scale(.85); } 60% { transform: scale(1.05); } 100% { transform: none; } }
+@keyframes ov-al-in { 0% { transform: scale(.85); filter: blur(6px); } 60% { transform: scale(1.04); filter: blur(0); } 100% { transform: none; filter: none; } }
 @keyframes ov-al-bounce { 0% { transform: scale(0) rotate(-20deg); } 70% { transform: scale(1.2) rotate(8deg); } 100% { transform: none; } }
 @keyframes ov-al-shine { to { transform: translateX(100%); } }
 @keyframes ov-al-confetti {
@@ -747,6 +758,9 @@ p { margin: 0; }
 
 /* Textanimation der großen Zeile */
 .ov-ch { display: inline-block; white-space: pre; }
+/* Ohne eigene Textanimation: Buchstaben rollen 30 ms versetzt herein */
+.ov-alert.is-alert[data-anim="none"] .ov-ch { animation: ov-tx-in .5s var(--ease-spring) calc(.18s + var(--i) * .03s) both; }
+@keyframes ov-tx-in { from { opacity: 0; transform: translateY(.45em) scale(.8); filter: blur(3px); } }
 .ov-alert.is-alert[data-anim="wave"] .ov-ch { animation: ov-tx-wave 1.4s ease-in-out calc(.4s + var(--i) * .06s) infinite; }
 .ov-alert.is-alert[data-anim="type"] .ov-ch { animation: ov-tx-type .01s steps(1) calc(.3s + var(--i) * .07s) both; }
 .ov-alert.ov-alert.is-alert[data-anim="bounce"] .ov-al-name { animation: ov-tx-bounce 1s ease-in-out .5s infinite; }
@@ -770,6 +784,10 @@ p { margin: 0; }
 /* Vorschau im Alert-Designer: nur der Alert, mittig */
 body.is-apreview { display: grid; place-items: center; }
 body.is-apreview .ov-ticker { display: none; }
+/* Während ein Alert läuft: Laufband hält an und tritt zurück */
+.ov-ticker .ticker-view { transition: opacity .5s var(--ease-out), filter .5s var(--ease-out); }
+body.has-alert .ov-ticker .ticker-view { opacity: .35; filter: saturate(.5); }
+body.has-alert .ov-ticker .ticker-track { animation-play-state: paused; }
 body.is-apreview .ov-alert { position: relative; margin: 0; }
 
 /* Verbindungsanzeige im Chat: je Plattform Logo, Punkt und Zustand */
@@ -787,3 +805,25 @@ body.is-apreview .ov-alert { position: relative; margin: 0; }
 .chat-pill[data-state="bad"] i { background: #ff5a4e; box-shadow: 0 0 .5em #ff5a4e; }
 .chat-style-bubble .chat-status, .chat-style-clean .chat-status { padding: 0 0 .45em; }
 .chat-style-clean .chat-pill { background: rgba(0, 0, 0, .45); text-shadow: 0 .05em .2em #000; }
+
+/* Haustier: Banner beim Schlüpfen und Wachsen (js/overlay.js, stageAlert) */
+.ov-pet-stage {
+  position: fixed; left: 50%; top: 22%; z-index: 40; display: grid; justify-items: center; gap: .15em;
+  padding: .7em 1.6em .8em; border-radius: 1.2em; transform: translateX(-50%);
+  background: linear-gradient(160deg, rgba(40, 22, 70, .96), rgba(14, 10, 26, .96)); border: .12em solid #ffd36b;
+  box-shadow: 0 0 2em rgba(255, 211, 107, .45), 0 1em 3em rgba(0, 0, 0, .6); color: #fff; text-align: center;
+  font-size: 30px; animation: ov-pet-stage-in .7s cubic-bezier(.2, .8, .2, 1) both;
+}
+.ov-pet-stage > span { font-size: 2em; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.ov-pet-stage b { font: 800 1.2em/1.05 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.ov-pet-stage small { font: 600 .55em var(--font-body); color: #ffe7a8; }
+.ov-pet-stage.is-out { animation: ov-pet-stage-out .5s cubic-bezier(.5, 0, .75, 0) forwards; }
+@keyframes ov-pet-stage-in { from { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(.85); filter: blur(6px); } 60% { opacity: 1; transform: translateX(-50%) translateY(3px) scale(1.03); filter: blur(0); } to { transform: translateX(-50%); } }
+@keyframes ov-pet-stage-out { to { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(.94); filter: blur(4px); } }
+
+/* OBS-Editor: Hilfslinien beim Ziehen, kurzes Aufblinken bei „▶ Testen“ */
+.ov-guide { position: fixed; z-index: 9999; pointer-events: none; background: #ff3df2; box-shadow: 0 0 6px #ff3df2; }
+.ov-guide.is-v { top: 0; bottom: 0; width: 1px; }
+.ov-guide.is-h { left: 0; right: 0; height: 1px; }
+.is-test-ping { animation: ov-test-ping 1.2s ease-out; }
+@keyframes ov-test-ping { 0% { box-shadow: 0 0 0 0 rgba(61, 220, 132, .9); } 100% { box-shadow: 0 0 0 1.4em rgba(61, 220, 132, 0); } }

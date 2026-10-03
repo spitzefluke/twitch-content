@@ -6,6 +6,7 @@
 // der Rand wieder zu. Kostüme wechseln Zuschauer mit !change. Aussehen in
 // css/pet.css, Sounds in js/rexi-sfx.js.
 import { rexiSound } from './rexi-sfx.js';
+import { DINO_ONLY, SPECIES_LINES, eggSvg, isSpecies, speciesParts } from './pet-species.js';
 
 export const DEFAULT_PET = {
   name: 'Rexi',
@@ -18,6 +19,15 @@ export const DEFAULT_PET = {
   costume_command: true,
   costume_cooldown: 60,
   frenzy_at: null,
+  species: 'dino',
+  stage: 'adult',
+  hatch_feeds: 50,
+  grow_days: 5,
+  stage_feeds: 0,
+  good_days: 0,
+  day_feeds: 0,
+  feed_day: null,
+  stage_helpers: [],
   phrases: [
     'Du Flitzpiepe!',
     'Der Rentner ist älter als mein Dino!',
@@ -146,69 +156,102 @@ export const COSTUMES = [
 ];
 export const costumeName = (id) => COSTUMES.find((c) => c.id === id)?.name ?? COSTUMES[0].name;
 let svgCount = 0;
-export function dinoSvg(costume = 'schaffner') {
+
+// Rexis Teile (wie die anderen Tiere in js/pet-species.js)
+function dinoParts(skin) {
+  return {
+    body: 'M44 80 C42 58 62 44 88 48 C102 50 110 60 111 72 C112 92 100 106 78 106 C58 106 46 96 44 80 Z',
+    tail: `<path class="dn-ln" d="M50 78 C30 80 12 72 3 52 C18 66 34 68 52 64 Z" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
+        <path class="dn-ln dn-f-s3" d="M22 66 l-3 -7 6 3 M34 70 l-2 -7 6 4" stroke-width="1.6" stroke-linejoin="round"/>`,
+    legB: '<path class="dn-ln dn-f-lb" d="M62 94 h14 v19 c0 2 2 3 4 3 h4 c3 0 3 5 0 5 h-18 c-3 0 -4 -2 -4 -4 z" stroke-width="2.5" stroke-linejoin="round"/>',
+    legA: `<path class="dn-ln dn-f-lf" d="M80 94 h14 v19 c0 2 2 3 4 3 h4 c3 0 3 5 0 5 h-18 c-3 0 -4 -2 -4 -4 z" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M101 116 v5 M97 116 v5" stroke="#e9f7df" stroke-width="1.4" stroke-linecap="round"/>`,
+    arm: '<path class="dn-ln dn-f-lf" d="M103 74 q10 2 11 10 q-4 1 -6 -2 q-2 3 -6 1 z" stroke-width="2" stroke-linejoin="round"/>',
+    deco: `<path class="dn-f-bl" d="M60 96 C66 106 88 107 100 96 C106 88 106 78 102 72 C88 78 70 82 60 96 Z"/>
+      <path class="dn-st-bs" d="M66 98 q16 5 32 -4 M72 90 q13 2 27 -7 M82 82 q8 0 17 -6" fill="none" stroke-width="1.4" stroke-linecap="round"/>
+      <path class="dn-ln dn-f-s3" d="M54 54 l3 -9 5 7 M65 48 l4 -10 5 8 M78 46 l5 -9 4 9 M90 48 l5 -8 3 8" stroke-width="2" stroke-linejoin="round"/>
+      <circle class="dn-f-sp" cx="60" cy="66" r="2.2"/><circle class="dn-f-sp" cx="70" cy="59" r="2"/>
+      <circle class="dn-f-sp" cx="74" cy="69" r="1.8"/><circle class="dn-f-sp" cx="55" cy="78" r="1.8"/>
+      <path d="M58 60 C66 52 80 49 92 51" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>`,
+    jaw: `<path class="dn-ln dn-f-jw" d="M102 56 C114 62 136 64 150 58 C150 66 140 72 122 70 C110 69 104 64 102 56 Z" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M120 67 C126 70 136 68 142 64" fill="none" stroke="#e8667a" stroke-width="3" stroke-linecap="round"/>`,
+    head: `<path class="dn-ln" d="M96 50 C98 28 120 16 140 22 C154 27 160 42 154 54 C142 60 116 61 102 58 C98 57 96 54 96 50 Z" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
+        <path class="dn-ln" d="M118 58 l3 4 3 -4 M128 58 l3 4 3 -4 M138 57 l2 4 3 -4" fill="#fff" stroke-width="1.2" stroke-linejoin="round"/>
+        <ellipse cx="133" cy="47" rx="6" ry="3.5" fill="#ff8fa3" opacity=".55"/>
+        <circle class="dn-f-ln" cx="151" cy="37" r="1.8"/>`,
+    eye: { cx: 120, cy: 38, r: 7.5, white: true },
+    brow: 'M111 29 L128 33.5',
+  };
+}
+
+function eyeSvg({ cx, cy, r, white, slit }) {
+  if (!white) {
+    return `<g class="dino-eye"><g class="dino-pupil"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#1d1b2f"/><circle cx="${cx + r * 0.3}" cy="${cy - r * 0.35}" r="${r * 0.32}" fill="#fff"/></g></g>`;
+  }
+  const pupil = slit
+    ? `<ellipse cx="${cx + 2}" cy="${cy}" rx="${r * 0.22}" ry="${r * 0.62}" fill="#1d2b1f"/>`
+    : `<circle cx="${cx + 2}" cy="${cy}" r="${r * 0.48}" fill="#1d2b1f"/>`;
+  return `<g class="dino-eye"><circle class="dn-ln" cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke-width="2"/>
+    <g class="dino-pupil">${pupil}<circle cx="${cx + 3.5}" cy="${cy - 1.5}" r="${r * 0.15}" fill="#fff"/></g></g>`;
+}
+
+// Die Zeichnung eines Tiers (species aus js/pet-species.js, Standard Rexi). Seitlich, schaut nach rechts.
+// Drei Kostüme (data-costume): Kapitän (Mütze + Pfeife), Mechaniker (Streifenmütze +
+// Halstuch), Bauarbeiter (Helm + Warnweste). Die ids bleiben (Datenbank). Farben kommen aus CSS-Variablen (--dn-…),
+// damit es bei Hunger rot wird (css/pet.css). Teile mit Klassen bewegen sich per CSS,
+// Drehpunkte in SVG-Einheiten (viewBox 170 × 140). IDs sind pro Tier eindeutig –
+// sonst zeigen alle auf den Verlauf des ersten.
+export function dinoSvg(costume = 'schaffner', species = 'dino') {
   const id = `dn${++svgCount}${Math.random().toString(36).slice(2, 6)}`;
   const skin = `url(#${id}-skin)`;
-  const body = 'M44 80 C42 58 62 44 88 48 C102 50 110 60 111 72 C112 92 100 106 78 106 C58 106 46 96 44 80 Z';
-  return `<svg class="dino-svg" viewBox="0 0 170 140" aria-hidden="true" data-costume="${COSTUMES.some((c) => c.id === costume) ? costume : 'schaffner'}">
+  const kind = isSpecies(species) ? species : 'dino';
+  const p = speciesParts(kind, skin) ?? dinoParts(skin);
+  const [cx, cy] = p.cap ?? [0, 0];
+  const [nx, ny] = p.neck ?? [0, 0];
+  return `<svg class="dino-svg" viewBox="0 0 170 140" aria-hidden="true" data-species="${kind}" data-costume="${COSTUMES.some((c) => c.id === costume) ? costume : 'schaffner'}" style="--eye-o: ${p.eye.cx}px ${p.eye.cy}px">
     <defs>
-      <clipPath id="${id}-body"><path d="${body}"/></clipPath>
+      <clipPath id="${id}-body"><path d="${p.body}"/></clipPath>
       <pattern id="${id}-stripe" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#2d4f86"/><rect width="1.6" height="4" fill="#dfe8f5"/></pattern>
       <linearGradient id="${id}-skin" x1="0" y1="0" x2="0" y2="1"><stop class="dn-s1" offset="0"/><stop class="dn-s2" offset=".6"/><stop class="dn-s3" offset="1"/></linearGradient>
       <linearGradient id="${id}-cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3e6b"/><stop offset="1" stop-color="#16223f"/></linearGradient>
     </defs>
     <ellipse class="dino-shadow" cx="82" cy="122" rx="36" ry="5" fill="#000"/>
     <g class="dino-bodyg">
-      <g class="dino-tail">
-        <path class="dn-ln" d="M50 78 C30 80 12 72 3 52 C18 66 34 68 52 64 Z" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
-        <path class="dn-ln dn-f-s3" d="M22 66 l-3 -7 6 3 M34 70 l-2 -7 6 4" stroke-width="1.6" stroke-linejoin="round"/>
-      </g>
-      <g class="dino-leg dino-leg-b"><path class="dn-ln dn-f-lb" d="M62 94 h14 v19 c0 2 2 3 4 3 h4 c3 0 3 5 0 5 h-18 c-3 0 -4 -2 -4 -4 z" stroke-width="2.5" stroke-linejoin="round"/></g>
-      <path class="dn-ln" d="${body}" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
-      <path class="dn-f-bl" d="M60 96 C66 106 88 107 100 96 C106 88 106 78 102 72 C88 78 70 82 60 96 Z"/>
-      <path class="dn-st-bs" d="M66 98 q16 5 32 -4 M72 90 q13 2 27 -7 M82 82 q8 0 17 -6" fill="none" stroke-width="1.4" stroke-linecap="round"/>
-      <path class="dn-ln dn-f-s3" d="M54 54 l3 -9 5 7 M65 48 l4 -10 5 8 M78 46 l5 -9 4 9 M90 48 l5 -8 3 8" stroke-width="2" stroke-linejoin="round"/>
-      <circle class="dn-f-sp" cx="60" cy="66" r="2.2"/><circle class="dn-f-sp" cx="70" cy="59" r="2"/>
-      <circle class="dn-f-sp" cx="74" cy="69" r="1.8"/><circle class="dn-f-sp" cx="55" cy="78" r="1.8"/>
-      <path d="M58 60 C66 52 80 49 92 51" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
-      <g class="dino-leg dino-leg-a">
-        <path class="dn-ln dn-f-lf" d="M80 94 h14 v19 c0 2 2 3 4 3 h4 c3 0 3 5 0 5 h-18 c-3 0 -4 -2 -4 -4 z" stroke-width="2.5" stroke-linejoin="round"/>
-        <path d="M101 116 v5 M97 116 v5" stroke="#e9f7df" stroke-width="1.4" stroke-linecap="round"/>
-      </g>
-      <g class="dino-arm"><path class="dn-ln dn-f-lf" d="M103 74 q10 2 11 10 q-4 1 -6 -2 q-2 3 -6 1 z" stroke-width="2" stroke-linejoin="round"/></g>
+      ${p.back ?? ''}
+      <g class="dino-tail">${p.tail}</g>
+      <g class="dino-leg dino-leg-b">${p.legB}</g>
+      <path class="dn-ln" d="${p.body}" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
+      ${p.deco}
+      <g class="dino-leg dino-leg-a">${p.legA}</g>
+      <g class="dino-arm">${p.arm}</g>
       <g class="dn-c dn-c-bau dn-vest" clip-path="url(#${id}-body)">
         <path d="M40 58 H116 V110 H40 Z" fill="#ff7a1a" opacity=".96"/>
         <path d="M40 74 H116 M40 90 H116" stroke="#e6ecf2" stroke-width="4"/>
         <path d="M40 74 H116 M40 90 H116" stroke="#9aa6b4" stroke-width="1" stroke-dasharray="2 3"/>
         <path d="M84 50 V108" stroke="#b34c05" stroke-width="1.6"/>
       </g>
-      <g class="dn-c dn-c-schaffner dn-cord">
-        <path d="M97 60 C100 70 106 76 112 77" fill="none" stroke="#ffb81c" stroke-width="1.8" stroke-linecap="round"/>
-        <g class="dino-whistle">
-          <path d="M110 76 h10 a3.5 3.5 0 0 1 0 7 h-6 l-1 3 h-3 z" fill="#dfe4ec" stroke="#5b6475" stroke-width="1.1" stroke-linejoin="round"/>
-          <circle cx="118" cy="79.5" r="1.4" fill="#5b6475"/>
+      <g transform="translate(${nx} ${ny})">
+        <g class="dn-c dn-c-schaffner dn-cord">
+          <path d="M97 60 C100 70 106 76 112 77" fill="none" stroke="#ffb81c" stroke-width="1.8" stroke-linecap="round"/>
+          <g class="dino-whistle">
+            <path d="M110 76 h10 a3.5 3.5 0 0 1 0 7 h-6 l-1 3 h-3 z" fill="#dfe4ec" stroke="#5b6475" stroke-width="1.1" stroke-linejoin="round"/>
+            <circle cx="118" cy="79.5" r="1.4" fill="#5b6475"/>
+          </g>
         </g>
-      </g>
-      <g class="dn-c dn-c-lok dn-scarf">
-        <path d="M94 56 C101 62 110 63 115 58 L107 78 Z" fill="#e0322a" stroke="#7d0c12" stroke-width="1.6" stroke-linejoin="round"/>
-        <circle cx="104" cy="63" r="1.3" fill="#fff3cf"/><circle cx="109" cy="62" r="1.1" fill="#fff3cf"/><circle cx="106" cy="69" r="1.1" fill="#fff3cf"/>
-        <path d="M95 56 l-6 -3 l1 7 z M95 56 l-7 4 l5 4 z" fill="#c4271f" stroke="#7d0c12" stroke-width="1.2" stroke-linejoin="round"/>
+        <g class="dn-c dn-c-lok dn-scarf">
+          <path d="M94 56 C101 62 110 63 115 58 L107 78 Z" fill="#e0322a" stroke="#7d0c12" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="104" cy="63" r="1.3" fill="#fff3cf"/><circle cx="109" cy="62" r="1.1" fill="#fff3cf"/><circle cx="106" cy="69" r="1.1" fill="#fff3cf"/>
+          <path d="M95 56 l-6 -3 l1 7 z M95 56 l-7 4 l5 4 z" fill="#c4271f" stroke="#7d0c12" stroke-width="1.2" stroke-linejoin="round"/>
+        </g>
       </g>
       <g class="dino-head">
-        <g class="dino-jaw">
-          <path class="dn-ln dn-f-jw" d="M102 56 C114 62 136 64 150 58 C150 66 140 72 122 70 C110 69 104 64 102 56 Z" stroke-width="2.5" stroke-linejoin="round"/>
-          <path d="M120 67 C126 70 136 68 142 64" fill="none" stroke="#e8667a" stroke-width="3" stroke-linecap="round"/>
-        </g>
-        <path class="dn-ln" d="M96 50 C98 28 120 16 140 22 C154 27 160 42 154 54 C142 60 116 61 102 58 C98 57 96 54 96 50 Z" fill="${skin}" stroke-width="2.5" stroke-linejoin="round"/>
-        <path class="dn-ln" d="M118 58 l3 4 3 -4 M128 58 l3 4 3 -4 M138 57 l2 4 3 -4" fill="#fff" stroke-width="1.2" stroke-linejoin="round"/>
-        <ellipse cx="133" cy="47" rx="6" ry="3.5" fill="#ff8fa3" opacity=".55"/>
-        <circle class="dn-f-ln" cx="151" cy="37" r="1.8"/>
-        <g class="dino-eye">
-          <circle class="dn-ln" cx="120" cy="38" r="7.5" fill="#fff" stroke-width="2"/>
-          <g class="dino-pupil"><circle cx="122" cy="38" r="3.6" fill="#1d2b1f"/><circle cx="123.5" cy="36.5" r="1.1" fill="#fff"/></g>
-        </g>
-        <path class="dino-brow dn-ln" d="M111 29 L128 33.5" stroke-width="3" stroke-linecap="round"/>
-        <g class="dino-cap">
+        ${p.headBack ?? ''}
+        <g class="dino-jaw">${p.jaw}</g>
+        ${p.head}
+        ${p.face ?? ''}
+        ${eyeSvg(p.eye)}
+        <path class="dino-brow dn-ln" d="${p.brow}" stroke-width="3" stroke-linecap="round"/>
+        <g class="dino-cap"><g transform="translate(${cx} ${cy})">
           <g class="dn-c dn-c-schaffner dn-hat">
             <path d="M103 28 C102 14 116 6 132 9 C140 11 143 18 141 27 Z" fill="url(#${id}-cap)" stroke="#0c1426" stroke-width="2" stroke-linejoin="round"/>
             <path d="M103 23.5 L141 22.5 L141 27.5 L103 28 Z" fill="#ffb81c" stroke="#8a5a00" stroke-width=".8"/>
@@ -229,22 +272,28 @@ export function dinoSvg(costume = 'schaffner') {
             <path d="M96 26.5 H152 C155 26.5 155 31 152 31 H96 C93 31 93 26.5 96 26.5 Z" fill="#e6700f" stroke="#7a3e00" stroke-width="1.4"/>
             <path d="M106 12 C110 9 114 7 118 6.5" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="2" stroke-linecap="round"/>
           </g>
-        </g>
+        </g></g>
       </g>
     </g>
   </svg>`;
 }
+export const petSvg = dinoSvg;
 
 // Bissen beim Kartenfressen (aus Claude Design): [x %, y %, Radius px bei 400 px Kartenbreite].
 // Er beginnt an der Kante in halber Höhe und frisst sich zur oberen Ecke vor.
 // Am rechten Rand gespiegelt (x = 100 − x) und etwas größer.
 const BITES = [[0, 62, 26], [0, 46, 20], [6, 30, 22], [0, 80, 24], [14, 14, 26], [4, 96, 22], [24, 2, 24], [10, 62, 20], [38, 0, 22]];
 const BITE_EVERY = 650;
+// Brüllen je Tier (Trick „roar“; der Drache spuckt dabei Feuer, css/pet.css)
+const ROARS = {
+  dino: ['RAWR!', 'RAAAWR!!', 'ROOOAAR!'], cat: ['MIAUUU!', 'FAUCH!', 'MRRRAU!'], fox: ['WAU-WAU-WAU!', 'KJAAA!', 'YIP YIP!'],
+  axolotl: ['BLUBB!', 'BLUBBBB!!', '*quiek*'], penguin: ['NOOT!', 'KRAAH!', 'QUÄK!'], dragon: ['FUUUSCH!', 'ROOOAAAR!', 'FEUER!'],
+};
 const CLIMB_MAX = 100_000; // so lange frisst er höchstens am Stück, dann klettert er runter
 
 // Der Dino in einem Behälter (position: relative/fixed). Läuft allein hin und her.
 export class Dino {
-  constructor(container, { size = 150, sfx = null, name = 'Rexi', costume = 'schaffner', reducedMotion = false } = {}) {
+  constructor(container, { size = 150, sfx = null, name = 'Rexi', costume = 'schaffner', species = 'dino', stage = 'adult', reducedMotion = false } = {}) {
     this.container = container;
     this.size = size;
     this.sfx = sfx;
@@ -252,7 +301,11 @@ export class Dino {
     this.el = document.createElement('div');
     this.el.className = 'dino';
     this.el.style.setProperty('--ds', `${size}px`);
-    this.el.innerHTML = `<div class="dino-chat" hidden></div><div class="dino-bubble" hidden></div><div class="dino-pose"><div class="dino-grow"><div class="dino-body">${dinoSvg(costume)}</div></div></div><span class="dino-tag"><i></i><b></b></span>`;
+    this.species = isSpecies(species) ? species : 'dino';
+    this.el.dataset.species = this.species;
+    this.el.innerHTML = `<div class="dino-chat" hidden></div><div class="dino-bubble" hidden></div><div class="dino-pose"><div class="dino-grow"><div class="dino-body">${dinoSvg(costume, this.species)}</div></div><div class="pet-egg">${eggSvg()}</div></div><span class="dino-tag"><i></i><b></b></span>`;
+    this.egg = this.el.querySelector('.pet-egg');
+    this.setStage(stage);
     this.bubble = this.el.querySelector('.dino-bubble');
     this.chat = this.el.querySelector('.dino-chat');
     this.body = this.el.querySelector('.dino-body');
@@ -278,13 +331,122 @@ export class Dino {
   }
 
   width() { return this.container.clientWidth; }
+
+  // ---------- Tierart und Stadium (Ei → Baby → Erwachsen) ----------
+  // Anderes Tier: gleiche Gelenke, neue Zeichnung – Kostüm bleibt
+  setSpecies(id) {
+    if (!isSpecies(id) || id === this.species) return false;
+    this.species = id;
+    this.el.dataset.species = id;
+    this.body.innerHTML = dinoSvg(this.costume, id);
+    this.svg = this.body.querySelector('.dino-svg');
+    if (!this.reducedMotion) this.flash('is-change', 700);
+    return true;
+  }
+
+  // egg | baby | adult. Im Ei läuft und spricht es nicht.
+  setStage(stage) {
+    this.stage = ['egg', 'baby', 'adult'].includes(stage) ? stage : 'adult';
+    this.el.dataset.stage = this.stage;
+    if (this.stage === 'egg') {
+      this.goal?.resolve();
+      this.goal = null;
+      this.target = null;
+      this.el.classList.remove('is-walking', 'is-hungry', 'is-starving');
+    }
+  }
+
+  // Wie weit das Ei ist (0 … 1): ab der Hälfte Risse, kurz vor Schluss schauen Augen heraus
+  setEggProgress(p) {
+    const v = Math.max(0, Math.min(1, Number(p) || 0));
+    this.egg.style.setProperty('--egg-p', v.toFixed(2));
+    this.el.classList.toggle('egg-cracked', v >= 0.5);
+    this.el.classList.toggle('egg-peek', v >= 0.85);
+  }
+
+  // Ei wackelt (beim Füttern im Ei-Stadium)
+  wobble() {
+    if (this.stage !== 'egg') return;
+    this.sound('hop');
+    this.flash('is-wobble', 900);
+  }
+
+  flash(cls, ms) {
+    this.el.classList.remove(cls);
+    void this.el.offsetWidth;
+    this.el.classList.add(cls);
+    clearTimeout(this.flashTimers?.[cls]);
+    (this.flashTimers ??= {})[cls] = setTimeout(() => this.el.classList.remove(cls), ms);
+  }
+
+  // Schlüpfen: Ei zittert, platzt, das Baby hüpft heraus
+  async hatch() {
+    if (this.stage !== 'egg') return;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    this.busy = true;
+    try {
+      this.setEggProgress(1);
+      if (!this.reducedMotion) {
+        this.el.classList.add('is-hatching');
+        this.sound('growl');
+        await wait(1400);
+      }
+      this.sound('hop');
+      this.setStage('baby');
+      this.el.classList.remove('is-hatching');
+      if (!this.reducedMotion) {
+        this.flash('is-hatched', 1200);
+        this.sparkle(10);
+      }
+      this.sound('happy');
+      this.say('Hallo Welt!', 3200);
+    } finally {
+      this.busy = false;
+      this.pauseUntil = performance.now() + 2500;
+    }
+  }
+
+  // Wachsen: leuchtet auf und wird groß
+  async grow() {
+    if (this.stage !== 'baby') return;
+    this.busy = true;
+    try {
+      if (!this.reducedMotion) {
+        this.el.classList.add('is-growing');
+        await new Promise((r) => setTimeout(r, 900));
+      }
+      this.setStage('adult');
+      this.el.classList.remove('is-growing');
+      if (!this.reducedMotion) { this.flash('is-grown', 1200); this.sparkle(14); }
+      this.sound('frenzy');
+      this.say('Ich bin groß!', 3200);
+    } finally {
+      this.busy = false;
+      this.pauseUntil = performance.now() + 2500;
+    }
+  }
+
+  // Funken rund ums Tier (Schlüpfen, Wachsen)
+  sparkle(n = 10) {
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement('span');
+      s.className = 'pet-spark';
+      s.textContent = pick(['✨', '⭐', '💫', '🎉']);
+      s.style.setProperty('--ds', `${this.size}px`);
+      s.style.left = `${this.x + this.size * rand(0.1, 0.9)}px`;
+      s.style.setProperty('--dx', `${rand(-1, 1) * this.size * 0.5}px`);
+      s.style.animationDelay = `${i * 50}ms`;
+      this.container.append(s);
+      setTimeout(() => s.remove(), 1600 + i * 50);
+    }
+  }
   setName(name) { this.tag.textContent = name; }
-  setHungry(on) { this.el.classList.toggle('is-hungry', on); }
+  setHungry(on) { this.el.classList.toggle('is-hungry', !!on && this.stage !== 'egg'); }
   sound(id, big) { rexiSound(this.sfx, id, big); }
 
   // Heißhunger: Rexi wächst (1,3 ×) und brüllt einmal laut, wenn es losgeht
   setStarving(on) {
-    on = !!on;
+    on = !!on && this.stage !== 'egg';
     if (on === !!this.starving) return;
     this.starving = on;
     this.el.classList.toggle('is-starving', on);
@@ -397,7 +559,7 @@ export class Dino {
       this.raf = requestAnimationFrame(this.frame);
       return;
     }
-    if (this.goal || (!this.busy && !this.sleeping && t > this.pauseUntil)) {
+    if (this.goal || (!this.busy && !this.sleeping && this.stage !== 'egg' && t > this.pauseUntil)) {
       if (this.goal) this.target = this.goal.free ? this.goal.x : Math.min(max, Math.max(0, this.goal.x));
       else if (this.target === null) this.target = rand(0, max);
       const dx = this.target - this.x;
@@ -439,6 +601,7 @@ export class Dino {
   // Kurze Einlage zwischendurch: hüpfen, brüllen, umschauen, tanzen, umdrehen
   async trick(kind = pick(['hop', 'roar', 'look', 'dance', 'turn'])) {
     if (this.busy || this.sleeping) return;
+    if (this.stage === 'egg') { this.wobble(); return; }
     this.busy = true;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     try {
@@ -453,7 +616,7 @@ export class Dino {
       } else if (kind === 'roar') {
         this.sound('roar');
         this.el.classList.add('is-roar');
-        this.say(pick(['RAWR!', 'RAAAWR!!', 'ROOOAAR!']), 1800);
+        this.say(pick(ROARS[this.species] ?? ROARS.dino), 1800);
         await wait(1300);
         this.el.classList.remove('is-roar');
       } else if (kind === 'look') {
@@ -486,7 +649,7 @@ export class Dino {
 
   // Nickerchen: Augen zu, Zzz steigen auf, leises Schnarchen. wake() oder jede Aktion weckt ihn.
   sleep(ms = 12000) {
-    if (this.busy || this.sleeping) return;
+    if (this.busy || this.sleeping || this.stage === 'egg') return;
     this.sleeping = true;
     this.el.classList.add('is-sleep');
     this.zzz = setInterval(() => {
@@ -534,7 +697,7 @@ export class Dino {
   // Liefert false, wenn die Karte nicht passt.
   async climb(card, { line = climbLine(), side: prefer = null, hold = () => false } = {}) {
     this.wake();
-    if (this.busy || !card) return false;
+    if (this.busy || !card || this.stage === 'egg') return false;
     const box = this.container.getBoundingClientRect();
     const r = card.getBoundingClientRect();
     // Bei Heißhunger ist er 1,3 × so groß – gewachsen um denselben Drehpunkt wie beim
@@ -613,7 +776,7 @@ export class Dino {
   // solange hold() stimmt – alle paar Sekunden ein neues, größeres Loch. Füttern beendet es.
   async eatScreen(holes, { line = screenLine(), hold = () => false } = {}) {
     this.wake();
-    if (this.busy || !holes) return false;
+    if (this.busy || !holes || this.stage === 'egg') return false;
     const box = this.container.getBoundingClientRect();
     const size = this.size;
     const w = size * (this.starving ? 1.3 : 1);
@@ -714,7 +877,7 @@ export class Dino {
 
   // Sprechblase; mehrere Sätze kommen nacheinander
   say(text, ms = 4200) {
-    if (!text) return;
+    if (!text || this.stage === 'egg') return;
     this.wake();
     if (this.queue.length >= 4) this.queue.shift();
     this.queue.push({ text, ms });
@@ -748,7 +911,7 @@ export class Dino {
   // Läuft zu einem Namensschild, beißt hinein – das Schild fällt runter
   async nibble(name) {
     this.wake();
-    if (this.busy) return;
+    if (this.busy || this.stage === 'egg') return;
     this.busy = true;
     try {
       this.sound('growl');
@@ -780,6 +943,7 @@ export class Dino {
   // Futter fällt vom Himmel, der Dino schnappt es – danach Rülpser und Freude
   async eat(who) {
     this.wake();
+    if (this.stage === 'egg') { this.wobble(); return; }
     // Hängt er gerade an einer Karte: erst runterklettern, dann fressen
     if (this.climbing) {
       this.abortClimb = true;
@@ -810,6 +974,19 @@ export class Dino {
       this.busy = false;
       this.pauseUntil = performance.now() + 2000;
     }
+  }
+
+  // Reaktion auf das Overlay: 'dance' (Abo), 'jump' (Follower, Bits), 'hide' (Atombombe)
+  react(what) {
+    if (this.stage === 'egg') { this.wobble(); return; }
+    if (what === 'hide') {
+      this.wake();
+      this.say(pick(['😱', 'Deckung!', 'Aaah!']), 1600);
+      this.flash('is-hide', 2600);
+      return;
+    }
+    if (this.sleeping) this.wake();
+    this.trick(what === 'dance' ? 'dance' : 'hop');
   }
 
   // Streicheln: Herzchen steigen auf
@@ -867,6 +1044,16 @@ function regrowCard(card) {
 // die erste (die Karte „Als Nächstes“) bevorzugt er, von rechts. screen (ScreenHoles,
 // nur im Overlay): dann frisst er abwechselnd Löcher in den Bildschirm und Karten an.
 // screenOnFrenzy: Bildschirm nur bei Heißhunger per Knopf (Vorschau im OBS-Fenster).
+// Sprüche passend zum Tier: Dino-Sprüche aus der Datenbank nur beim Dino, sonst die des Tiers dazu
+export function petLines(pet) {
+  const base = pet?.phrases?.length ? pet.phrases : DEFAULT_PET.phrases;
+  const species = pet?.species ?? 'dino';
+  if (species === 'dino') return base;
+  const own = SPECIES_LINES[species] ?? [];
+  const rest = base.filter((l) => !DINO_ONLY.test(l));
+  return [...own, ...own, ...rest];
+}
+
 export function runDino(dino, { getPet, names, streamer = null, cards = null, screen = null, screenOnFrenzy = false, idleEvery = [45, 90], nibbleEvery = [40, 75], trickEvery = [18, 40], climbEvery = [50, 90] }) {
   let idleAt = Date.now() + rand(8, 20) * 1000;
   let nibbleAt = Date.now() + rand(10, 25) * 1000;
@@ -879,8 +1066,24 @@ export function runDino(dino, { getPet, names, streamer = null, cards = null, sc
   // {befehl} = Chat-Befehl zum Füttern, {streamer} = Name des Kanals
   const fill = (text, pet) => text.replaceAll('{befehl}', pet?.feed_command || DEFAULT_PET.feed_command)
     .replaceAll('{streamer}', streamer?.() || 'Streamer');
+  let wobbleAt = 0;
   const timer = setInterval(async () => {
     const pet = getPet();
+    // Tierart und Stadium folgen der Datenbank (Wechsel im OBS-Fenster, Schlüpfen per Chat)
+    if (pet?.species) dino.setSpecies(pet.species);
+    if (pet?.stage && pet.stage !== dino.stage && !dino.busy) {
+      if (dino.stage === 'egg' && pet.stage === 'baby') await dino.hatch();
+      else if (dino.stage === 'baby' && pet.stage === 'adult') await dino.grow();
+      else dino.setStage(pet.stage);
+    }
+    // Im Ei: kein Hunger, ab und zu ein Wackler
+    if (dino.stage === 'egg') {
+      dino.setEggProgress((pet?.stage_feeds ?? 0) / Math.max(1, pet?.hatch_feeds ?? 50));
+      dino.setHungry(false);
+      dino.setStarving(false);
+      if (Date.now() > wobbleAt) { wobbleAt = Date.now() + rand(6, 14) * 1000; dino.wobble(); }
+      return;
+    }
     const hungry = isHungry(pet);
     const starving = isStarving(pet);
     dino.setHungry(hungry);
@@ -924,8 +1127,7 @@ export function runDino(dino, { getPet, names, streamer = null, cards = null, sc
     }
     if (now > idleAt) {
       idleAt = now + rand(...idleEvery) * 1000;
-      const lines = pet?.phrases?.length ? pet.phrases : DEFAULT_PET.phrases;
-      dino.say(fill(pick(lines), pet));
+      dino.say(fill(pick(petLines(pet)), pet));
       return;
     }
     if (now > trickAt && !dino.sleeping) {

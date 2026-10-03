@@ -2,8 +2,8 @@
 
 Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen, nur für diesen einen Kanal):
 
-- **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (Designsystem Nocturne, `css/landing.css`, Icons von Phosphor lokal in `assets/fonts/`): „Dein Stream. Eine Zentrale.“, Overlay-Vorschau, Funktionen, Rollen, drei Schritte, Sicherheit. „Mit Twitch anmelden“ springt direkt zu Twitch, wenn der Anbieter in Supabase aktiv ist
-- **Animierte Anmeldeseite**: schwebende Lichter, Ringe und Funken, leuchtender Rand um die Karte – nach dem Anmelden fliegt die Karte weg und ein lila Kreis öffnet das Dashboard
+- **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (`css/landing.css`, `js/landing.js`, Icons von Phosphor lokal in `assets/fonts/`) in den Farben des Logos (Indigo und Grün): „Dein Stream. Eine Zentrale.“ mit **Mit Twitch anmelden** als einzigem Hauptknopf (die anderen Wege stehen klein darunter). Die Overlay-Vorschau ist eine kleine Szene: Alerts kommen und gehen (Abo, Follower, Bits), das Glücksrad holt aus, dreht und bleibt auf einem Ergebnis stehen, der Chat schreibt weiter und das Haustier läuft auf dem Laufband. Die Zahlen im Band zählen hoch, sobald man hinscrollt; die Funktionen stehen nach Rolle (Zuschauer, Mods, Streamer) mit kleiner Vorführung. Beim Scrollen gleiten die Abschnitte herein, die Vorschau bewegt sich langsamer als die Seite (Tiefe), oben zeigt ein Balken, wie weit man ist. Wer „weniger Bewegung“ eingestellt hat, sieht alles ruhig
+- **Animierte Anmeldeseite**: schwebende Lichter und Ringe (keine Funken mehr), leuchtender Rand um die Karte – nach dem Anmelden fliegt die Karte weg und ein lila Kreis geht **vom geklickten Knopf** aus auf (auch bei Twitch, Discord & Co., bevor es zum Anbieter geht). Bei einem Fehler wackelt die Karte kurz und das betroffene Feld bekommt eine rote Akzentlinie. Spotify steht zuletzt und hat einen Hinweis: Im Entwicklungsmodus klappt es nur mit freigeschalteten Konten
 - **Dashboard mit Seitenleiste links**: eingeklappt nur Symbole, zuerst die Kacheln der **Content-Ideen**; ausgeklappt alles – Vorschläge & Archiv, Bot & Chat, Kanalpunkte, Alerts, Overlay & OBS, Raid-Schutz, Mods, Twitch-Verbindung
 - **Streameransicht / Modansicht** oben zum Umschalten, **OBS** oben rechts
 - **Twitch-Gesundheitscheck**: prüft automatisch, ob die Twitch-Verbindung alle Rechte für die neuesten Funktionen hat und die Abos für Alerts, Kanalpunkte und Chat laufen – repariert, was geht, und meldet den Rest Streamer, Mods und Admin
@@ -13,7 +13,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Stream ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
-- **Fortnite-Bingo**: Die Bilder kommen automatisch aus einer eingebauten Item-Liste oder – mit Schlüssel – aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Fortnite-Bingo**: Aus hochgeladenen Item-Bildern (ein Bild lässt sich gleich in mehreren Seltenheiten anlegen, aussortierte Items liegen im Tresor) zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5) – jeder Item-Name und jedes Bild nur einmal. die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
 - **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft „Als Nächstes“ mit Countdown, und ein Alert-Feld zeigt neue Follower, Abos, Bits und Kanalpunkte-Einlösungen. Den Link gibt's im Dashboard unter **OBS** (oben rechts) und **Overlay & OBS**.
@@ -31,7 +31,6 @@ supabase/functions/
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
   youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
-  bingo-loot/                    → Bingo-Bilder: eingebaute Item-Liste oder aktueller Lootpool (api-fortnite.com)
   stream-tools/                  → Bot-Nachrichten verschicken, Kanalpunkte für Vorlesen/Karten, Einlösungen abschließen
 ```
 
@@ -86,7 +85,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_bingo_lootpool.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`, `…_pet_species.sql`, `…_bingo_vault.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -148,7 +147,6 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
 | `HEALTH_CHECK_KEY` *(empfohlen)* | beliebige zufällige Zeichenkette (mindestens 20 Zeichen). Damit prüft die GitHub Action „Twitch-Gesundheitscheck“ alle 30 Minuten die Twitch-Verbindung – denselben Wert als GitHub-Secret `HEALTH_CHECK_KEY` eintragen (siehe „Twitch-Gesundheitscheck“). |
-| `API_FORTNITE_KEY` *(fürs Bingo, optional)* | Schlüssel von [api-fortnite.com](https://api-fortnite.com) (der Lootpool braucht dort einen bezahlten Tarif) – damit holt `bingo-loot` den aktuellen Lootpool statt der eingebauten Item-Liste |
 
 ### 5. Der Streamer verbindet Twitch
 
@@ -245,7 +243,9 @@ Nach dem Anmelden kommt das **Dashboard**. Links die **Seitenleiste** (☰ klapp
 | 👥 **Mods** | Mods von Twitch holen, Freigabe (nur Streamer) |
 | 🟣 **Twitch-Verbindung** | Kanal verbinden, neu verbinden, trennen (nur Streameransicht) |
 
-Oben schaltest du zwischen **🎥 Streameransicht** und **🛡️ Modansicht** um. Die Modansicht zeigt genau das, was freigegebene Mods sehen: alles – auch die **Kanalpunkte-Kosten** und das **Bot-Konto** – außer Twitch verbinden/trennen und der Mod-Freigabe. Mods haben nur die Modansicht. **🎛️ OBS** oben rechts öffnet das OBS-Fenster.
+Eingeklappt zeigt die Seitenleiste beim Drüberfahren den Namen jedes Bereichs mit einem Zähler (z. B. „16 Kacheln“, „3 Vorschläge“, „1 Twitch-Problem“). Countdowns, die in weniger als 24 Stunden ablaufen, leuchten gelb, die Sekunden pulsieren.
+
+Oben schaltest du zwischen **🎥 Streameransicht** und **🛡️ Modansicht** um; in der Modansicht ist die Kopfzeile grün und trägt das Schild „Mod-Ansicht“. Die Modansicht zeigt genau das, was freigegebene Mods sehen: alles – auch die **Kanalpunkte-Kosten** und das **Bot-Konto** – außer Twitch verbinden/trennen und der Mod-Freigabe. Mods haben nur die Modansicht. **🎛️ OBS** oben rechts öffnet das OBS-Fenster.
 
 Wer Twitch verbindet und sich als der Kanal anmeldet, ist der **Streamer** dieser Seite. Der Name des Kanals steht überall (Startseite, Laufband „Mehr von …“ und `{kanal}`, Sprüche des Dinos mit `{streamer}`, Kanalpunkte-Belohnungen „🍅 Wirf was auf ‹Kanal›“).
 
@@ -272,7 +272,7 @@ Im Dashboard oben rechts auf **🎛️ OBS** klicken – das kann jeder, der ang
 
 1. **Mit OBS verbinden:** In OBS unter **Werkzeuge → WebSocket-Servereinstellungen** „WebSocket-Server aktivieren“ anhaken, über „Verbindungsinfo anzeigen“ das Passwort kopieren und im Dialog eintragen (OBS 28 oder neuer). Fragt der Browser nach Zugriff aufs lokale Netzwerk: zulassen.
 2. Die Vorschau zeigt jetzt das **echte OBS-Bild** (etwa jede Sekunde neu). Die Seite erkennt die Kamera des Streamers in der Szene und legt den **roten Rahmen** darauf – dort landen die Würfe. Stimmt die Erkennung nicht, eine andere Quelle wählen oder den Rahmen selbst verschieben und an der Ecke in der Größe ändern.
-3. **Karten verschieben:** Karten in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand und in der Mitte ein. Rechts bei den Ebenen: was zu sehen ist, Größen und die Einstellungen jeder Karte.
+3. **Karten verschieben:** Karten in der Vorschau mit der Maus an ihren Platz ziehen; sie rasten am Rand, in der Mitte und an den Kanten der anderen Karten ein – eine pinke Hilfslinie zeigt, woran. Rechts bei den Ebenen: was zu sehen ist, Größen und die Einstellungen jeder Karte.
 4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„StreamHelp-Overlay“** an (eine alte „Stellwerk-Overlay“-Quelle wird dabei umbenannt) (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
 
 **Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann der Streamer mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
@@ -375,9 +375,19 @@ Zwei eigene Bausteine, im OBS-Dialog einzeln ein- und ausschaltbar, verschiebbar
 - **Texte:** drei Zeilen mit Platzhaltern `{name}`, `{amount}`, `{months}`, `{tier}`, `{message}`, `{reward}` – leer lassen heißt Standardtext. Platzhalter werden in der Farbe hervorgehoben. Namen und Nachrichten von Zuschauern landen nur als Text im Overlay, nie als HTML.
 - **Textanimation** (Welle, Hüpfen, Wackeln, Leuchten, Schreibmaschine, Gummi, Regenbogen), **Einblenden** (Aufploppen, Reinschieben, Von oben fallen, Heranzoomen, Einblenden, Umdrehen, Wirbeln), **Layout** (Bild oben, Bild links, Bild als Hintergrund), **Dauer** (3–30 Sekunden), Bildgröße, Farbe, Konfetti und Sound.
 - **Varianten nach Menge:** Für Bits, verschenkte Abos, Resubs (Monate) und Kanalpunkte eigene Designs ab einer Menge – z. B. ab 1000 Bits ein anderes Bild und ein anderer Sound. Es gilt die Variante mit der größten passenden Menge.
+- **Werkzeuge:** Mit der Maus über einem fertigen Design spielt es sofort in der großen Vorschau (übernommen wird erst beim Klick). Die **Zeitleiste** „Ablauf“ zeigt Ein – Halten – Aus auf einer Skala bis 30 Sekunden; am Balken ziehen ändert die Dauer, beim Abspielen läuft ein gelber Strich mit. Unter dem Sound steht seine **Wellenform** mit Länge. **🎲 Würfeln** stellt ein zufälliges Design zusammen (Look, Layout, Einblenden, Textanimation, Bild, Farbe).
 - **Live-Vorschau** direkt daneben; „▶ Abspielen“ zeigt den Alert mit der eingestellten Menge. Nach **Speichern** gelten die Designs sofort in allen OBS-Quellen, ohne Neuladen.
 
 Die Design-Bibliothek im OBS-Editor (`alook`) ist das **Grund-Design**, das der Designer übernimmt, solange eine Alert-Art „wie im OBS-Fenster“ steht. Gestalten dürfen der Streamer, Admins und freigegebene Mods. Einmal nötig: Migration `20261018000000_overlay_designs.sql` (Tabellen `alert_config` und `alert_media`, Bucket `alert-media`) – ohne sie laufen die Alerts wie bisher.
+
+**Werkzeuge im OBS-Editor:**
+- **🖥️ Vorschau** und **🎛️ Ebenen** oben in der Kopfzeile klappen die Bereiche ein und aus (nie beide zugleich, wird gemerkt).
+- **Ebenen suchen** und **nur aktive** zeigen: Suchfeld über der Ebenenliste.
+- **Rückgängig** mit **Strg+Z**, wiederholen mit **Strg+Umschalt+Z** (oder ↶/↷ oben); **Verlauf** zeigt die letzten 40 Änderungen mit Uhrzeit („Fortnite-Bingo an“, „Größe · Alerts“, „Chat verschoben“) – ein Klick springt dorthin. Rückgängig wird wie jede Änderung live gespeichert.
+- **▶ Testen** im Inspektor jeder Ebene führt sie in der Vorschau vor: Alerts spielen nacheinander jede Art, das Glücksrad dreht, Würfe fliegen, der Chat schreibt, das Haustier tanzt, hüpft oder versteckt sich; andere Karten blinken kurz auf.
+- **Mods** sehen die Anleitungen „So geht das Verbinden“ und „Ohne Verbindung von Hand einrichten“ nicht – OBS richtet der Streamer ein.
+
+**Animationen im Overlay:** Alerts kommen in 560 ms federnd und aus der Unschärfe herein (ohne eigene Textanimation rollen die Buchstaben 30 ms versetzt ein), eine dünne Linie unten läuft als Zeitleiste ab, und sie gehen in 360 ms nach oben unscharf weg. Während ein Alert läuft, hält das Laufband an und tritt zurück. Chat-Nachrichten federn herein. Das Haustier reagiert: Bei Abos tanzt es, bei Followern und Bits hüpft es, bei der Atombombe (und der Blendgranate) aus „Ärgere den Streamer“ duckt es sich weg. Der Szenen-Bildschirm öffnet sich als Kreis aus der Mitte (900 ms); läuft der Countdown von *Gleich geht's los* ab, geht „Jetzt live“ genauso auf (bei *Bin gleich zurück*: „Wieder da“).
 
 Unter **🔔 Alert-Sounds** (im OBS-Dialog) stellst du pro Alert-Art den Ton ein: Standard, kein Ton, ein eigener Alert-Sound, ein Sound vom Soundboard oder ein Sound aus „Ärgere den Streamer“ – mit ▶ zum Anhören. **Eigene Alert-Sounds** laden Admins direkt dort hoch (MP3, OGG, WAV, M4A, höchstens 4 MB und 20 Sekunden, bis zu 30 Stück). Der Alert bleibt stehen, solange sein Sound läuft. Sie liegen getrennt von den Zuschauer-Sounds, Zuschauer können sie also nicht per Kanalpunkte abspielen. Wird ein Sound gelöscht, bekommt die Alert-Art wieder den Standardklang. Admins und Mods schicken im Dashboard unter **🔔 Alerts** Probe-Alerts in alle OBS-Quellen (Probe-Alerts zählen nicht als „letzter Follower“).
 
@@ -430,32 +440,21 @@ Kachel bei den Content-Ideen. Einmal nötig: `supabase/migrations/20260924120000
 2. Rechts unter **Bilder** Bilder der Items wählen – mehrere auf einmal gehen. Der Name kommt aus dem Dateinamen (`chug-jug.png` → „Chug Jug“) und lässt sich danach ändern. Die Bilder werden vor dem Hochladen verkleinert.
    Jedes Bild kann eine **Seltenheit** wie in Fortnite haben – Gewöhnlich (grau), Ungewöhnlich (grün), Selten (blau), Episch (lila), Legendär (gold), **Mythisch** (gold mit Glanz) oder Exotisch. Steht sie im Dateinamen (`scar_legendary.png`, `pump-episch.png`, `mythic_goldfish.png`), wird sie gleich erkannt; sonst in der Liste neben dem Bild wählen. Items ohne Seltenheit (z. B. Heilung) bekommen eine bunte Farbe, die es bei Waffen nicht gibt. Migration `20260925120000_bingo_rarity.sql` nötig.
    Außerdem kann im Icon eine **Zahl** stehen – z. B. das Kill-Symbol mit „5“ für 5 Kills. Aus dem Dateinamen erkannt (`kill_5.png`, `elim x10.png`) oder im Feld „Zahl“ neben dem Bild eintragen. **⧉** kopiert ein Bild mit anderer Zahl, so gibt es das Kill-Symbol für 3, 5 und 10 Kills. Migration `20260926000000_bingo_amount.sql` nötig.
-   **Lootpool:** Die Fortnite-Items kommen von selbst – siehe [Bilder aus dem aktuellen Lootpool](#bilder-aus-dem-aktuellen-lootpool). Hochladen braucht es nur für Eigenes wie Kills oder Siege.
-3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 Bilder, für 4×4 16, für 3×3 8.
+   **Ein Bild → alle Seltenheiten:** Über dem Hochladen-Knopf die Seltenheiten anhaken (Schnellwahl **Grün bis Gold**, **Grau bis Gold**). Dann wird aus jedem gewählten Bild ein Item pro Seltenheit – gleicher Name, gleiches Bild, Rahmen in der passenden Farbe. Ohne Haken kommt die Seltenheit wie bisher aus dem Dateinamen.
+   **🔒 Tresor:** Items, die gerade nicht aufs Bingo sollen (z. B. nicht mehr im Spiel), legt ein Admin mit 🔒 in den Tresor. Sie kommen auf keine neue Karte – weder die Stream-Karte noch die eigenen –, bleiben aber gespeichert und stehen unten in der Liste unter „Tresor“. 🔓 holt sie zurück. Löschen (🗑) entfernt Item und Bild für immer.
+3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 verschiedene Items, für 4×4 16, für 3×3 8.
+   **Keine Dopplungen:** Auf jeder Karte steht jeder Item-Name nur einmal – dieselbe Waffe in einer anderen Seltenheit zählt als dasselbe Item. Und jedes Bild nur einmal: Kopien (⧉) und dieselbe Datei erkennt die Seite an einem Fingerabdruck der Datei (SHA-256, beim Hochladen berechnet). Die Zahl neben „Bilder“ zeigt, wie viele verschiedene Items es gibt.
 4. Im Stream die gefundenen Items auf der Karte anklicken. Eine volle Reihe, Spalte oder Diagonale zeigt „Bingo!“ – auf der Seite und im Overlay, mit Applaus.
 
 Zuschauer sehen die Stream-Karte nur an. Unter **Meine Karte** zieht sich jeder seine eigene Karte aus denselben Bildern und kreuzt selbst ab (gespeichert in `bingo_player_cards`, nur für einen selbst sichtbar). **Im Stream zeigen** blendet die Stream-Karte im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im Overlay: **Klassisch**, **Neon** und **Papier**.
 
-### Bilder aus dem aktuellen Lootpool
+### Lootpool entfernt, Tresor neu
 
-**Eingebaute Item-Liste (Standard):** Ohne Schlüssel füllt `bingo-loot` das Bingo mit einer eingebauten Liste – 17 klassische Fortnite-Items mit eigenen Icons (`assets/bingo/*.svg`): Sturmgewehr, Pump- und Taktische Schrotflinte, MP, Scharfschützen- und Jagdgewehr, Pistole, Revolver, Raketen- und Granatwerfer, Minigun, Granate, Verband, Medikit, kleiner Schildtrank, Schildtrank und Lagerfeuer – Waffen in mehreren Seltenheiten, zusammen 37 Bilder (Abzeichen „Liste“). Die Liste springt auch ein, wenn der Lootpool mit Schlüssel nicht zu holen ist und es noch keine Items von dort gibt; der Grund steht dann im Bingo-Dialog. Klappt der Lootpool später, löst er die Liste ab (und umgekehrt). Liste in `supabase/functions/_shared/lootpool.ts` (`LOOT_CATALOG`).
-
-**Mit Schlüssel:** Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. Die Edge Function `bingo-loot` holt ihn von [api-fortnite.com](https://api-fortnite.com) (`/api/v2/weapons`, Name auf Deutsch, Seltenheit, Bild, „im aktuellen Lootpool“) und gleicht ab. Vorher kam er von fortniteapi.io, das am 31.03.2026 eingestellt wurde.
-
-- **Neu im Lootpool** → kommt als Bild dazu (mit Abzeichen „Loot“ in der Liste).
-- **Aus dem Lootpool geflogen** → bleibt blass in der Liste („nicht mehr im Lootpool“) und kommt auf **keine neue Karte** mehr – weder auf die Stream-Karte noch auf die eigenen Karten. Karten, die schon gezogen sind, behalten ihre Bilder. Kommt das Item zurück, ist es wieder dabei.
-- Abgeglichen wird, sobald jemand den Bingo-Dialog öffnet – aber höchstens alle 6 Stunden. Admins können unter **Bilder** mit **🔄 Lootpool jetzt abgleichen** sofort abgleichen (nach einem Update oder Season-Start).
-- Ein Lootpool-Item, das nicht aufs Bingo soll, blendet ein Admin mit **🙈** aus – der Abgleich holt es nicht zurück. **… ausgeblendete wieder zeigen** holt alle zurück. Name und Seltenheit kommen von Fortnite; die **Zahl** und **⧉** (Kopie mit Zahl) gehen auch bei Lootpool-Items.
-- Eigene hochgeladene Bilder bleiben immer dabei.
-
-Einmal nötig:
-1. Migration `supabase/migrations/20261013000000_bingo_lootpool.sql` im SQL Editor ausführen.
-2. *(Optional, nur für den echten Lootpool)* Bei [api-fortnite.com](https://api-fortnite.com) ein Konto mit einem Tarif anlegen, der den Waffen-Endpunkt enthält (im kostenlosen Tarif antwortet er mit „403: Insufficient plan“), den API-Schlüssel kopieren und in Supabase unter **Edge Functions → Secrets** als `API_FORTNITE_KEY` eintragen. Das alte Secret `FORTNITEAPI_IO_KEY` kann weg.
-3. Die Function `bingo-loot` wird mit dem nächsten Merge automatisch hochgeladen (GitHub Action). Dann im Bingo-Dialog **🔄 Lootpool jetzt abgleichen** klicken.
-
-Ohne Schlüssel läuft das Bingo mit der eingebauten Item-Liste; im Bingo-Dialog steht, welche Quelle gerade aktiv ist.
+Den automatischen Abgleich mit dem Fortnite-Lootpool (api-fortnite.com) und die eingebaute Item-Liste gibt es nicht mehr – ins Bingo kommen nur noch hochgeladene Bilder. Einmal nötig:
+1. Migration `supabase/migrations/20261022000000_bingo_vault.sql` im SQL Editor ausführen. Sie löscht die Lootpool-Items und alles, was dazugehörte (Tabelle `bingo_loot_state`, Spalten `source`, `loot_id`, `active`, `hidden`), und legt den Tresor (`vault`) und den Fingerabdruck (`image_key`) an. Die alte Migration `…_bingo_lootpool.sql` braucht es nicht mehr. Hinweis: Steht auf der aktuellen Stream-Karte noch ein Lootpool-Item, fehlt dort nur das Bild – einfach eine neue Karte ziehen.
+2. Die Edge Function `bingo-loot` löscht die GitHub Action beim nächsten Merge in Supabase. Das Secret `API_FORTNITE_KEY` (und `FORTNITEAPI_IO_KEY`) kann in Supabase unter **Edge Functions → Secrets** weg.
 
 ### Tipprunde mit Kanalpunkten
 
@@ -479,7 +478,15 @@ Zuschauer schreiben auf der Webseite Fragen an den Streamer (höchstens 3 pro Ta
 
 Die Bestrafungen bearbeiten Admins im selben Dialog (eine pro Zeile). Zuschauer sehen nur ihre eigenen Fragen und deren Stand; den echten Namen hinter „Anonym“ sehen nur Admins.
 
-## Stream-Dino
+## Stream-Haustier (Stream-Dino)
+
+**Tier des Kanals:** Rexi bekommt Gesellschaft – der Streamer wählt im Haustier-Dialog (Kachel) oder im OBS-Fenster bei der Ebene **„Haustier“** unter **Tier & Entwicklung** das Tier: **Dino** (Rexi), **Katze** (Mimi, Schnurrhaare, schwingt den Schwanz), **Fuchs** (Fipsi, Buschschwanz), **Axolotl** (Axel, wehende Kiemen), **Pinguin** (Pino, watschelt) oder **Drache** (Funki, schlägt mit den Flügeln und spuckt beim Brüllen Feuer). Alle Tiere nutzen Rexis Gelenke – Laufen, Sprechen, Tricks, Hunger, Heißhunger und die drei Kostüme funktionieren bei allen. Neben den Sprüchen aus dem Dialog hat jedes Tier eigene; Dino-Sprüche sagt nur der Dino. Hieß das Tier wie das alte Standard-Tier, bekommt es beim Wechsel den neuen Standard-Namen. Zeichnungen in `js/pet-species.js`.
+
+**Ei → Baby → Erwachsen:** Mit **🥚 Ei** legt der Streamer ein neues Ei in den Stream. Es wackelt, bekommt beim Füttern Risse, kurz vor Schluss schauen Augen heraus – und nach **50 × Füttern** (einstellbar 5–500) schlüpft das Baby: kleiner, großer Kopf, große Augen. Das Baby wächst nach **5 Streams mit guter Laune** (einstellbar 1–30; ein Stream mit guter Laune ist ein Tag, an dem es mindestens 3 × gefüttert wurde). Jede Stufe erscheint im Overlay als Banner mit Konfetti, der Chat-Bot dankt den Helfern („🐣 Mimi ist geschlüpft! Danke an …“). Gezählt wird in der Datenbank (Trigger), egal ob über den Chat oder die Webseite gefüttert wird. Mods sehen den Stand, ändern kann ihn der Streamer.
+
+Einmal nötig: Migration `supabase/migrations/20261021000000_pet_species.sql` im SQL Editor ausführen.
+
+### Der Dino (Rexi)
 
 Ein kleiner Dino (Standardname „Rexi“, im Kapitän-Kostüm mit Mütze und Pfeife) läuft im OBS-Overlay unten durchs Bild (steht das Laufband unten, läuft er obendrauf – oder mit „Läuft auf: dem Bildrand“ ganz unten) und sagt ab und zu einen von über 40 Sprüchen („Du Flitzpiepe!“, „Der Rentner ist älter als mein Dino!“ …). Zwischendurch hüpft er, brüllt, schaut sich um, tanzt oder macht ein Nickerchen.
 

@@ -141,9 +141,28 @@ function setupScene(o, data, kind) {
     clock.hidden = false;
     const target = new Date();
     target.setHours(Number(time[1]), Number(time[2]), 0, 0);
+    // Countdown läuft ab: „Jetzt live“ öffnet sich als Kreis. War die Zeit beim Laden schon vorbei, bleibt „gleich“ stehen.
+    const late = target <= Date.now();
+    const openLive = () => {
+      if (late) return;
+      const live = document.createElement('div');
+      live.className = 'sc-live';
+      const title = document.createElement('b');
+      title.textContent = kind === 'start' ? 'Jetzt live' : 'Wieder da';
+      const sub = document.createElement('span');
+      sub.textContent = o.streamer.name;
+      live.append(title, sub);
+      el.append(live);
+      requestAnimationFrame(() => live.classList.add('is-open'));
+    };
     const tick = () => {
       const left = Math.round((target - Date.now()) / 1000);
-      if (left <= 0) { clock.textContent = kind === 'start' ? 'gleich!' : 'gleich zurück'; clock.classList.add('is-done'); return; }
+      if (left <= 0) {
+        clock.textContent = kind === 'start' ? 'gleich!' : 'gleich zurück';
+        if (!clock.classList.contains('is-done')) openLive();
+        clock.classList.add('is-done');
+        return;
+      }
       const h = Math.floor(left / 3600);
       clock.textContent = `${h ? `${h}:` : ''}${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`;
     };

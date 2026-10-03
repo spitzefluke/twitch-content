@@ -79,7 +79,7 @@ import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
-import { bingoState, lootImageUrl, renderBingoGrid } from './bingo.js';
+import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
 import { ScreenHoles } from './screen-holes.js';
@@ -426,8 +426,8 @@ async function connect() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
     },
-    // Lootpool-Bilder sind schon eine volle Adresse, eigene liegen im Storage
-    bingoUrl: (path) => (path.startsWith('https://') ? lootImageUrl(path)
+    // Bilder liegen im Storage (alte Karten können noch Lootpool-Adressen haben: ohne Bild)
+    bingoUrl: (path) => (path.startsWith('https://') ? ''
       : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`),
     questionStage: async () => (await rows(sb.from('question_stage').select('*').eq('id', 1).maybeSingle())) ?? null,
     onQuestionStage(cb) {
@@ -540,7 +540,7 @@ function demoSource() {
     onBingo(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_bingo_card') cb(read('bingo_card', null)); });
     },
-    bingoUrl: (path) => (path.startsWith('https://') ? lootImageUrl(path) : read('bingo_items', []).find((i) => i.path === path)?.url ?? ''),
+    bingoUrl: (path) => read('bingo_items', []).find((i) => i.path === path)?.url ?? '',
     questionStage: async () => read('question_stage', null),
     onQuestionStage(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_question_stage') cb(read('question_stage', null)); });
@@ -727,23 +727,24 @@ function setupSpins(source) {
 
   source.onSpin(enqueue);
 
+  editTests.wheel = () => fake();
+  function fake() {
+    if (playing) return;
+    const v = variants[Math.floor(Math.random() * variants.length)];
+    const i = Math.floor(Math.random() * v.segments.length);
+    const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
+    enqueue({
+      id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
+      variant_id: v.id, variant_name: v.name, segment_index: i,
+      result: v.segments[i].label, detail: v.segments[i].detail,
+      ...(v.bonus?.segments?.length ? (() => {
+        const b = Math.floor(Math.random() * v.bonus.segments.length);
+        return { bonus_name: v.bonus.name, bonus_index: b, bonus_result: v.bonus.segments[b].label, bonus_detail: v.bonus.segments[b].detail };
+      })() : {}),
+      requested_by: names[Math.floor(Math.random() * names.length)],
+    });
+  }
   if (opt.test) {
-    const fake = () => {
-      if (playing) return;
-      const v = variants[Math.floor(Math.random() * variants.length)];
-      const i = Math.floor(Math.random() * v.segments.length);
-      const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
-      enqueue({
-        id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
-        variant_id: v.id, variant_name: v.name, segment_index: i,
-        result: v.segments[i].label, detail: v.segments[i].detail,
-        ...(v.bonus?.segments?.length ? (() => {
-          const b = Math.floor(Math.random() * v.bonus.segments.length);
-          return { bonus_name: v.bonus.name, bonus_index: b, bonus_result: v.bonus.segments[b].label, bonus_detail: v.bonus.segments[b].detail };
-        })() : {}),
-        requested_by: names[Math.floor(Math.random() * names.length)],
-      });
-    };
     setTimeout(fake, 1500);
     setInterval(fake, TEST_EVERY_MS);
   }
@@ -879,6 +880,7 @@ function setupPranks(source) {
     if (Date.now() - Date.parse(p.created_at) > STALE_MS) return;
     place(); // der Kamera-Rahmen kann sich beim Einrichten verschoben haben
     if (p.kind === 'throw') {
+      if (p.item === 'nuke' || p.item === 'flashbang') petReact('hide');
       const b = box();
       // Ziel: Gesichtshöhe, also eher die obere Mitte des Kamerabilds
       say(p);
@@ -896,6 +898,9 @@ function setupPranks(source) {
   }
 
   source.onPrank(handle);
+  editTests.prank = () => handle({ id: `edit-${Date.now()}`, created_at: new Date().toISOString(), kind: 'throw',
+    item: ['tomato', 'pie', 'nuke', 'duck', 'snowball'][Math.floor(Math.random() * 5)], requested_by: 'Test' });
+  editTests.camframe = editTests.prank;
 
   if (opt.test) {
     const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke', 'flashbang'];
@@ -1082,7 +1087,7 @@ async function setupPet(source) {
   ground();
   addEventListener('resize', ground);
   new ResizeObserver(ground).observe($('ov-ticker'));
-  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name, costume: pet.costume });
+  const dino = new Dino(layer, { size: Math.round(170 * opt.dsize), sfx, name: pet.name, costume: pet.costume, species: pet.species, stage: pet.stage });
   if (opt.test) {
     // Probe: Sprüche und Knabbern im Schnelldurchlauf
     pet = { ...pet, last_fed_at: new Date(Date.now() - 86400000).toISOString() };
@@ -1112,6 +1117,9 @@ async function setupPet(source) {
     trickEvery: opt.test ? [5, 9] : [18, 40],
     climbEvery: opt.test ? [20, 30] : [50, 90],
   });
+  addEventListener('sh-pet-react', (e) => dino.react(e.detail));
+  let petTest = 0;
+  editTests.pet = () => dino.react(['dance', 'jump', 'hide'][petTest++ % 3]);
   source.onPet((row, ev) => {
     if (row) {
       pet = row;
@@ -1132,8 +1140,29 @@ async function setupPet(source) {
       dino.cuddle(ev.who);
     } else if (ev.kind === 'say') {
       dino.say(ev.text, 5500);
+    } else if (ev.kind === 'stage') {
+      stageAlert(ev);
     }
   });
+
+  // Geschlüpft / erwachsen: Banner mit Konfetti über dem Tier (das Tier selbst zeigt runDino)
+  function stageAlert(ev) {
+    const el = document.createElement('div');
+    el.className = 'ov-pet-stage';
+    const icon = document.createElement('span');
+    icon.textContent = ev.text === 'baby' ? '🐣' : '🎉';
+    const title = document.createElement('b');
+    title.textContent = ev.text === 'baby' ? `${pet.name} ist geschlüpft!` : `${pet.name} ist erwachsen!`;
+    const thanks = document.createElement('small');
+    thanks.textContent = ev.who ? `Danke an ${ev.who}` : 'Danke, Chat!';
+    const fx = document.createElement('div');
+    fx.className = 'ov-al-fx';
+    el.append(fx, icon, title, thanks);
+    document.body.append(el);
+    burst(fx, 'stage');
+    setTimeout(() => el.classList.add('is-out'), 6500);
+    setTimeout(() => el.remove(), 7200);
+  }
 }
 
 // ============================================================
@@ -1346,7 +1375,16 @@ async function setupChallenge(source) {
 // Zwei Karten: Alerts (nur wenn einer kommt) und „Zuletzt“ mit dem letzten
 // Follower und dem letzten Abo (ohne Probe-Alerts). Beide sind einzeln an/aus.
 const VIDEO_MAX_MS = 30000;
-const LETTER_ANIMS = ['wave', 'type'];
+// Das Haustier reagiert auf Alerts und Streiche (setupPet hört zu): tanzt bei Abos,
+// hüpft bei Followern und Bits, versteckt sich bei der Atombombe
+// „▶ Testen“ im OBS-Editor: jede Ebene trägt hier ein, was sie in der Vorschau vorführt
+const editTests = {};
+
+function petReact(what) { dispatchEvent(new CustomEvent('sh-pet-react', { detail: what })); }
+function onAlertShown(kind) { petReact(['sub', 'resub', 'gift'].includes(kind) ? 'dance' : 'jump'); }
+
+// 'none': Buchstaben rollen trotzdem einzeln herein (30 ms versetzt)
+const LETTER_ANIMS = ['wave', 'type', 'none'];
 
 async function setupAlerts(source) {
   const card = $('ov-alert');
@@ -1422,18 +1460,25 @@ async function setupAlerts(source) {
       if (!card || Date.now() - Date.parse(a.created_at) > STALE_MS) { setLast(a); continue; }
       card.classList.remove('is-still');
       const { d, video } = fill(a);
-      card.classList.remove('is-alert');
+      card.style.setProperty('--dur', `${d.duration}s`);
+      card.classList.remove('is-alert', 'is-out');
       void card.offsetWidth;
       card.classList.add('is-alert');
+      document.body.classList.add('has-alert');
+      onAlertShown(a.kind);
       if (d.confetti) burst(fx, a.kind);
       const choice = d.sound || opt.asound[a.kind];
       const sound = playAlertSound(sfx, a.kind, choice,
         (c) => (c.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(c.slice(2)));
       // Stehen bleiben, bis Zeit, Sound (bis 20 Sekunden) und Video durch sind
       await Promise.all([wait(d.duration * 1000), sound, video ? playVideo(video) : null]);
-      card.classList.remove('is-alert');
+      // Ausgang (360 ms, css/overlay.css .is-out), dann eine kurze Pause bis zum nächsten
+      card.classList.add('is-out');
+      document.body.classList.remove('has-alert');
       setLast(a);
-      await wait(700);
+      await wait(400);
+      card.classList.remove('is-alert', 'is-out');
+      await wait(300);
     }
     playing = false;
     if (opt.edit || opt.apreview) showSample();
@@ -1443,6 +1488,7 @@ async function setupAlerts(source) {
   function showSample() {
     if (!card || playing) return;
     fill(sample);
+    card.classList.remove('is-out');
     card.classList.add('is-alert', 'is-still');
   }
   const enqueue = (a) => {
@@ -1451,6 +1497,8 @@ async function setupAlerts(source) {
     queue.push(a);
     if (!playing) play();
   };
+  let alertTest = 0;
+  editTests.alerts = () => enqueue({ ...sampleAlert(ALERT_KINDS[alertTest % ALERT_KINDS.length].kind, alertTest), id: `edit-${Date.now()}`, created_at: new Date().toISOString(), test: true, _n: alertTest++ });
 
   // Alert-Designer: die Seite schickt das Design, das gerade bearbeitet wird. Hier gibt es
   // keine Warteschlange – jede Änderung zeigt sofort den neuen Stand, „Abspielen“ startet neu.
@@ -1473,14 +1521,18 @@ async function setupAlerts(source) {
       clearTimeout(timer);
       running = true;
       const { d, video } = fill(sample);
-      card.classList.remove('is-alert', 'is-still');
+      card.style.setProperty('--dur', `${d.duration}s`);
+      card.classList.remove('is-alert', 'is-still', 'is-out');
       void card.offsetWidth;
       card.classList.add('is-alert');
       if (d.confetti) burst(fx, sample.kind);
       video?.play().catch(() => {});
       timer = setTimeout(() => {
-        card.classList.remove('is-alert');
-        timer = setTimeout(() => { running = false; showSample(); }, 700);
+        card.classList.add('is-out');
+        timer = setTimeout(() => {
+          card.classList.remove('is-alert', 'is-out');
+          timer = setTimeout(() => { running = false; showSample(); }, 300);
+        }, 400);
       }, d.duration * 1000);
     });
     showSample();
@@ -1626,6 +1678,7 @@ function setupChat() {
   if (opt.test || opt.edit) {
     const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
     let n = 0;
+    editTests.chat = () => add(sample(n++));
     // Mit fester Höhe mehr Probe-Nachrichten, damit man sieht, wie voll es wird
     for (; n < Math.min(opt.chh >= 20 ? 30 : 4, max); n++) add(sample(n));
     if (!opt.edit) setInterval(() => add(sample(n++)), 4000);
@@ -1682,6 +1735,21 @@ function setupEdit() {
   // und welche Ebene gerade in der Liste aufgeklappt ist (wird hier markiert).
   addEventListener('message', (e) => {
     if (e.origin !== location.origin) return;
+    if (e.data?.type === 'stellwerk-test') {
+      const key = String(e.data.key ?? '');
+      const run = editTests[key];
+      if (run) run();
+      // Ohne eigene Vorführung: die Karte blinkt kurz auf
+      const card = document.querySelector(`[data-drag="${['prank', 'camframe'].includes(key) ? 'cam' : key}"]`)
+        ?? document.querySelector(`.ov-${key}, #ov-${key}`);
+      if (card) {
+        card.classList.remove('is-test-ping');
+        void card.offsetWidth;
+        card.classList.add('is-test-ping');
+        setTimeout(() => card.classList.remove('is-test-ping'), 1300);
+      }
+      return;
+    }
     if (e.data?.type === 'stellwerk-select') {
       document.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'));
       const key = ['prank', 'camframe'].includes(e.data.key) ? 'cam' : e.data.key;
@@ -1713,6 +1781,20 @@ function startDrag(e) {
   let moved = false;
   el.setPointerCapture(e.pointerId);
   el.classList.add('is-dragging');
+  // Hilfslinien: Rand, Mitte und die Kanten der anderen Karten
+  const others = [...document.querySelectorAll('[data-drag]')]
+    .filter((o) => o !== el && o.offsetParent !== null && getComputedStyle(o).visibility !== 'hidden')
+    .map((o) => o.getBoundingClientRect());
+  const lines = { v: null, h: null };
+  const guide = (axis, pos) => {
+    if (pos === null) { lines[axis]?.remove(); lines[axis] = null; return; }
+    if (!lines[axis]) {
+      lines[axis] = document.createElement('i');
+      lines[axis].className = `ov-guide is-${axis}`;
+      document.body.append(lines[axis]);
+    }
+    lines[axis].style[axis === 'v' ? 'left' : 'top'] = `${Math.round(pos)}px`;
+  };
 
   const move = (ev) => {
     const dx = ev.clientX - e.clientX;
@@ -1725,15 +1807,26 @@ function startDrag(e) {
     }
     let left = clamp(r.left + dx, 0, W - r.width);
     let top = clamp(r.top + dy, 0, H - r.height);
-    // Einrasten am Rand (im eingestellten Abstand) und in der Mitte
-    const snap = (v, size, total) => {
-      for (const t of [opt.margin, (total - size) / 2, total - size - opt.margin, 0, total - size]) {
-        if (Math.abs(v - t) < 18) return t;
+    // Einrasten am Rand (im eingestellten Abstand), in der Mitte und an den anderen Karten –
+    // dabei zeigt eine Linie, woran die Karte gerade ausgerichtet ist
+    const snap = (v, size, total, axis) => {
+      const lo = axis === 'v' ? 'left' : 'top';
+      const hi = axis === 'v' ? 'right' : 'bottom';
+      const span = axis === 'v' ? 'width' : 'height';
+      const targets = [
+        [opt.margin, opt.margin], [(total - size) / 2, total / 2], [total - size - opt.margin, total - opt.margin], [0, 0], [total - size, total],
+        ...others.flatMap((o) => [[o[lo], o[lo]], [o[hi] - size, o[hi]], [o[lo] + o[span] / 2 - size / 2, o[lo] + o[span] / 2], [o[hi], o[hi]], [o[lo] - size, o[lo]]]),
+      ];
+      let best = null;
+      for (const [t, line] of targets) {
+        const d = Math.abs(v - t);
+        if (d < 12 && (!best || d < best.d)) best = { d, t, line };
       }
-      return v;
+      guide(axis, best ? best.line : null);
+      return best ? best.t : v;
     };
-    left = snap(left, r.width, W);
-    top = snap(top, r.height, H);
+    left = snap(left, r.width, W, 'v');
+    top = snap(top, r.height, H, 'h');
     el.classList.remove(...POSITIONS.map((p) => `pos-${p}`));
     el.classList.add('pos-free');
     el.style.left = `${left}px`;
@@ -1743,6 +1836,8 @@ function startDrag(e) {
   const up = () => {
     el.removeEventListener('pointermove', move);
     el.classList.remove('is-dragging');
+    guide('v', null);
+    guide('h', null);
     if (!moved) return;
     const pct = (v, total) => Math.round((v / total) * 1000) / 10;
     const b = el.getBoundingClientRect();

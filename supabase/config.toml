@@ -18,8 +18,5 @@ verify_jwt = false
 [functions.youtube-chat]
 verify_jwt = false
 
-[functions.bingo-loot]
-verify_jwt = false
-
 [functions.stream-tools]
 verify_jwt = false
