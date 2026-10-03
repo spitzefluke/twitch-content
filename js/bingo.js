@@ -12,15 +12,6 @@ export const RARITIES = [
 ];
 export const rarityName = (id) => RARITIES.find((r) => r.id === id)?.name ?? '';
 
-// Eingebaute Item-Liste (Edge Function bingo-loot, LOOT_CATALOG): Der Pfad zeigt auf eine
-// Platzhalter-Adresse, die Icons liegen hier in assets/bingo/.
-const BUILTIN_URL = 'https://builtin.streamhelp.invalid/bingo/';
-export function lootImageUrl(path) {
-  if (!path.startsWith(BUILTIN_URL)) return path;
-  const file = path.slice(BUILTIN_URL.length).split('#')[0];
-  return /^[a-z0-9-]+\.svg$/.test(file) ? new URL(`../assets/bingo/${file}`, import.meta.url).href : '';
-}
-
 // Seltenheit aus dem Dateinamen: "scar_legendary.png", "Pump Episch.png" …
 // "uncommon" vor "common" prüfen, sonst wird Grün zu Grau.
 export function rarityFromFile(fileName) {
@@ -188,25 +179,57 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
   el.replaceChildren(...head, ...rows);
 }
 
-// Zufällige Karte aus den hochgeladenen Bildern (für die eigene Karte).
-// Die Karte des Streamers zieht die Datenbank (bingo_new_card), mit derselben Regel.
-export function drawCard(items, size, free = true) {
-  const withFree = free && size % 2 === 1;
-  const need = size * size - (withFree ? 1 : 0);
-  // Nur was gerade im Lootpool ist (und eigene Bilder)
-  const usable = items.filter((i) => i.active !== false && !i.hidden);
-  if (usable.length < need) {
-    throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – verfügbar sind erst ${usable.length}.`);
-  }
-  const pool = usable.map(cardCell);
+// Kartenregel (wie bingo_new_card in der Datenbank): Items im Tresor kommen nicht auf die Karte,
+// jeder Name nur einmal (gleiche Waffe in anderer Seltenheit zählt als dieselbe) und jedes Bild
+// nur einmal (gleicher Fingerabdruck image_key, sonst gleiche Datei).
+const nameKey = (item) => String(item.name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+const imageOf = (item) => item.image_key || item.path;
+export function pickDistinct(items, need = Infinity) {
+  const pool = items.filter((i) => !i.vault);
   for (let i = pool.length - 1; i > 0; i--) {
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const cells = pool.slice(0, need);
+  const names = new Set();
+  const images = new Set();
+  const out = [];
+  for (const item of pool) {
+    if (out.length >= need) break;
+    if (names.has(nameKey(item)) || images.has(imageOf(item))) continue;
+    names.add(nameKey(item));
+    images.add(imageOf(item));
+    out.push(item);
+  }
+  return out;
+}
+// Wie viele verschiedene Items eine Karte höchstens bekommen kann (Namen außerhalb des Tresors)
+export const distinctCount = (items) => new Set(items.filter((i) => !i.vault).map(nameKey)).size;
+
+export function needError(size, need, have) {
+  return new Error(`Für eine ${size}×${size}-Karte braucht es ${need} verschiedene Items – es gibt erst ${have}. Gleiche Waffe in anderer Seltenheit und gleiche Bilder zählen nur einmal, Items im Tresor gar nicht.`);
+}
+
+// Zufällige Karte aus den hochgeladenen Bildern (für die eigene Karte und den Demo-Modus).
+// Die Karte des Streamers zieht die Datenbank (bingo_new_card), mit derselben Regel.
+export function drawCard(items, size, free = true) {
+  const withFree = free && size % 2 === 1;
+  const need = size * size - (withFree ? 1 : 0);
+  const picked = pickDistinct(items, need);
+  if (picked.length < need) throw needError(size, need, picked.length);
+  const cells = picked.map(cardCell);
   const center = Math.floor((size * size) / 2);
   if (withFree) cells.splice(center, 0, { free: true });
   return { size, cells, marked: withFree ? [center] : [], created_at: new Date().toISOString() };
+}
+
+// Fingerabdruck einer Bilddatei (SHA-256 als Hex) – erkennt dieselbe Datei beim Ziehen der Karte
+export async function imageKey(file) {
+  try {
+    const hash = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
 }
 
 // "chug-jug_legendary.png" → "Chug Jug" (Seltenheit und Zahl stecken extra in rarityFromFile/amountFromFile)

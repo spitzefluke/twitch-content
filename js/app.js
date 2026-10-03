@@ -4,7 +4,7 @@ import { Wheel } from './wheel.js';
 import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
-import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, drawCard, fullBetLines, nameFromFile, rarityFromFile, renderBingoGrid, shrinkImage } from './bingo.js';
+import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { COSTUMES, DEFAULT_PET, Dino, costumeName, dinoSvg, hungerOf, isFrenzy, isHungry, isStarving, runDino } from './pet.js';
 import { SPECIES, STAGES, speciesOf, stageName } from './pet-species.js';
@@ -2303,10 +2303,17 @@ function setupBingo() {
   $('#bingo-free').addEventListener('change', () => renderBingoDialog());
   $('#bingo-bet-btn').addEventListener('click', startBingoBet);
   $('#bingo-bet-cancel').addEventListener('click', () => cancelBingoBet());
-  $('#bingo-loot-sync').addEventListener('click', () => syncLootpool(true));
-  $('#bingo-loot-unhide').addEventListener('click', showHiddenLoot);
   const form = $('#bingo-upload');
   form.addEventListener('submit', uploadBingoImages);
+  // Schnellwahl: Grün bis Gold, Grau bis Gold, keine
+  form.querySelectorAll('[data-rar-preset]').forEach((btn) => btn.addEventListener('click', () => {
+    const [from, to] = btn.dataset.rarPreset.split('-');
+    const ids = RARITIES.map((r) => r.id);
+    form.querySelectorAll('input[name=rar]').forEach((box) => {
+      const i = ids.indexOf(box.value);
+      box.checked = !!from && i >= ids.indexOf(from) && i <= ids.indexOf(to);
+    });
+  }));
   form.files.addEventListener('change', () => {
     const n = form.files.files.length;
     $('.sound-file-text', form).textContent = n ? `🖼️ ${n === 1 ? form.files.files[0].name : `${n} Bilder gewählt`}` : '🖼️ Bilder wählen … (mehrere gehen)';
@@ -2321,11 +2328,11 @@ async function openBingo() {
   if (!state.bingo.on) return;
   // Frisch laden: Bilder und Haken können sich geändert haben.
   try {
-    const [{ items, card, hidden, loot }, mine] = await Promise.all([
+    const [{ items, card }, mine] = await Promise.all([
       state.api.getBingo(),
       state.api.getMyBingo().catch((err) => { console.warn('Eigene Karte:', err); return undefined; }),
     ]);
-    Object.assign(state.bingo, { items, hidden, loot });
+    state.bingo.items = items;
     state.bingo.card = card;
     state.bingo.lines = bingoState(card).count;
     state.bingo.mine = mine ?? null;
@@ -2337,79 +2344,6 @@ async function openBingo() {
   } catch (err) {
     console.warn(err);
   }
-  // Bilder an den aktuellen Lootpool anpassen – die Edge Function gleicht höchstens alle 6 Stunden ab
-  if (Date.now() - (state.bingo.lootCheckedAt ?? 0) > 10 * 60 * 1000) syncLootpool(false);
-}
-
-// ---------- Lootpool: Bingo-Bilder aus dem aktuellen Fortnite-Lootpool (Edge Function bingo-loot) ----------
-async function reloadBingoItems() {
-  const { items, hidden, loot } = await state.api.getBingo();
-  Object.assign(state.bingo, { items, hidden, loot });
-  if ($('#bingo-dialog').open) renderBingoDialog();
-}
-
-async function syncLootpool(force) {
-  if (!state.bingo.on || state.bingo.lootBusy) return;
-  state.bingo.lootCheckedAt = Date.now();
-  state.bingo.lootBusy = true;
-  paintLootpool();
-  try {
-    const res = await state.api.syncLootpool(force);
-    if (res?.state) state.bingo.loot = res.state;
-    if (res?.synced) await reloadBingoItems();
-    if (force) {
-      if (res?.builtin) toast(`Eingebaute Item-Liste geladen: ${res.state?.items ?? 0} Items.`);
-      else if (res?.synced) toast(`Lootpool abgeglichen: ${res.state?.items ?? 0} Items.`);
-      else if (res?.demo) toast('Im Demo-Modus gibt es keinen Lootpool-Abgleich.');
-      else if (res?.missing_key) toast('Für den Lootpool fehlt das Secret API_FORTNITE_KEY in Supabase.', 'error', 7000);
-      else if (res?.error) toast(`Lootpool: ${res.error}`, 'error');
-    }
-  } catch (err) {
-    if (force) toast(`Lootpool nicht abgeglichen: ${germanError(err)}`, 'error');
-    else console.warn('Lootpool:', err);
-  } finally {
-    state.bingo.lootBusy = false;
-    paintLootpool();
-  }
-}
-
-async function showHiddenLoot() {
-  try {
-    await state.api.showHiddenLoot();
-    await reloadBingoItems();
-  } catch (err) {
-    toast(`Nicht geklappt: ${germanError(err)}`, 'error');
-  }
-}
-
-const isBuiltinLoot = (item) => item.source === 'lootpool' && String(item.loot_id ?? '').startsWith('builtin:');
-
-function paintLootpool() {
-  const { loot, hidden = 0, items = [], lootBusy } = state.bingo;
-  const box = $('#bingo-loot');
-  if (!box) return;
-  const text = $('#bingo-loot-state');
-  const active = items.filter((i) => i.source === 'lootpool' && i.active !== false).length;
-  const builtin = String(loot?.error ?? '').startsWith('builtin');
-  box.classList.toggle('is-error', !!loot?.error && loot.error !== 'demo' && !builtin);
-  if (lootBusy) text.textContent = 'Lootpool wird abgeglichen …';
-  else if (!loot) text.textContent = 'Einmal nötig: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen – dann kommen die Bilder automatisch aus dem aktuellen Fortnite-Lootpool.';
-  else if (loot.error === 'demo') text.textContent = 'Im Demo-Modus gibt es keinen Abgleich mit dem Fortnite-Lootpool.';
-  else if (loot.error === 'missing_key') text.textContent = 'Die eingebaute Item-Liste kommt, sobald die Function bingo-loot neu hochgeladen ist (passiert beim nächsten Merge automatisch). Dann „Lootpool jetzt abgleichen“ klicken.';
-  else if (loot.error === 'builtin') text.textContent = `Eingebaute Item-Liste: ${active} Items (Waffen in ihren Seltenheiten und Heilung). Den aktuellen Lootpool gibt es nur mit einem Schlüssel von api-fortnite.com (bezahlter Tarif, Secret API_FORTNITE_KEY).`;
-  else if (builtin) text.textContent = `Eingebaute Item-Liste: ${active} Items – der Lootpool ließ sich nicht holen: ${loot.error.slice('builtin:'.length)}`;
-  else {
-    const when = loot.synced_at
-      ? new Date(loot.synced_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-      : 'noch nie';
-    text.textContent = `Lootpool: ${active} Items, zuletzt abgeglichen ${when}.${loot.error ? ` Letzter Versuch: ${loot.error}` : ''}`;
-  }
-  const sync = $('#bingo-loot-sync');
-  sync.disabled = !!lootBusy || !loot;
-  sync.hidden = loot?.error === 'demo';
-  const unhide = $('#bingo-loot-unhide');
-  unhide.hidden = !hidden;
-  unhide.textContent = `${hidden} ausgeblendete wieder zeigen`;
 }
 
 function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
@@ -2463,10 +2397,11 @@ function renderBingoDialog({ stamped = null, myStamped = null } = {}) {
     $('#bingo-clear-btn').disabled = !card || !st.done;
     const size = Number($('#bingo-size').value);
     const need = size * size - ($('#bingo-free').checked && size % 2 ? 1 : 0);
-    const usable = items.filter((i) => i.active !== false).length;
-    $('#bingo-count').textContent = `· ${usable} verfügbar${usable < need ? `, für ${size}×${size} braucht es ${need}` : ''}`;
+    // Verschiedene Items: gleiche Waffe in anderer Seltenheit zählt einmal, der Tresor gar nicht
+    const usable = distinctCount(items);
+    const vault = items.filter((i) => i.vault).length;
+    $('#bingo-count').textContent = `· ${usable} verschiedene${vault ? `, ${vault} im Tresor` : ''}${usable < need ? ` – für ${size}×${size} braucht es ${need}` : ''}`;
     renderBingoItems();
-    paintLootpool();
   }
   paintBingoTile();
 }
@@ -2481,35 +2416,20 @@ function renderBingoItems() {
     list.replaceChildren(li);
     return;
   }
-  const order = (i) => (i.source !== 'lootpool' ? 0 : i.active !== false ? 1 : 2);
-  // Abgelöste Items der eingebauten Liste nicht zeigen (sie kommen zurück, wenn der Lootpool ausfällt)
-  const sorted = items.filter((i) => !(isBuiltinLoot(i) && i.active === false)).sort((a, b) => order(a) - order(b));
-  list.replaceChildren(...sorted.map((item) => {
+  // Erst alles, was auf Karten kommen kann, dann der Tresor
+  const sorted = [...items].sort((a, b) => Number(!!a.vault) - Number(!!b.vault));
+  const firstVault = sorted.findIndex((i) => i.vault);
+  const rows = sorted.map((item) => {
     const li = document.createElement('li');
-    // Lootpool-Items: Name und Seltenheit kommen von Fortnite (der Abgleich überschreibt sie)
-    const loot = item.source === 'lootpool';
-    const gone = loot && item.active === false;
-    li.classList.toggle('is-loot', loot);
-    li.classList.toggle('is-gone', gone);
+    li.classList.toggle('is-vault', !!item.vault);
     const img = document.createElement('img');
     img.src = item.url;
     img.alt = '';
     img.loading = 'lazy';
-    let thumb = img;
-    if (loot) {
-      thumb = document.createElement('span');
-      thumb.className = 'bingo-thumb';
-      const badge = document.createElement('b');
-      badge.textContent = isBuiltinLoot(item) ? 'Liste' : 'Loot';
-      thumb.title = gone ? 'Nicht mehr im Lootpool – kommt auf keine neue Karte'
-        : isBuiltinLoot(item) ? 'Aus der eingebauten Item-Liste' : 'Aus dem aktuellen Fortnite-Lootpool';
-      thumb.append(img, badge);
-    }
+    const thumb = img;
     const name = document.createElement('input');
     name.value = item.name;
     name.maxLength = 40;
-    name.readOnly = loot;
-    if (loot) name.title = 'Name kommt aus dem Lootpool';
     name.setAttribute('aria-label', 'Name des Items');
     name.addEventListener('change', async () => {
       const value = name.value.trim();
@@ -2527,7 +2447,6 @@ function renderBingoItems() {
     rarity.setAttribute('aria-label', `Seltenheit von „${item.name}“`);
     rarity.append(new Option('– keine –', ''), ...RARITIES.map((r) => new Option(r.name, r.id)));
     rarity.value = item.rarity ?? '';
-    rarity.disabled = loot;
     rarity.addEventListener('change', async () => {
       const value = rarity.value || null;
       try {
@@ -2593,36 +2512,53 @@ function renderBingoItems() {
         toast(`Kopieren fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
+    // Tresor: kommt auf keine neue Karte, bleibt aber gespeichert
+    const vault = document.createElement('button');
+    vault.type = 'button';
+    vault.className = 'prank-try bingo-vault-btn';
+    vault.textContent = item.vault ? '🔓' : '🔒';
+    vault.title = item.vault ? 'Aus dem Tresor holen – kommt wieder auf neue Karten' : 'In den Tresor – kommt auf keine neue Karte, bleibt aber gespeichert';
+    vault.setAttribute('aria-label', `„${item.name}“ ${item.vault ? 'aus dem Tresor holen' : 'in den Tresor legen'}`);
+    vault.addEventListener('click', async () => {
+      vault.disabled = true;
+      try {
+        await state.api.updateBingoItem(item.id, { vault: !item.vault });
+        item.vault = !item.vault;
+        toast(item.vault ? `🔒 „${item.name}“ liegt im Tresor.` : `🔓 „${item.name}“ ist wieder dabei.`, 'ok');
+        renderBingoDialog();
+      } catch (err) {
+        vault.disabled = false;
+        toast(`Tresor: ${germanError(err)}`, 'error', 7000);
+      }
+    });
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'prank-try prank-del';
-    del.textContent = loot ? '🙈' : '🗑';
-    del.title = loot ? 'Ausblenden – kommt nicht mehr auf neue Karten' : 'Löschen';
-    del.setAttribute('aria-label', `„${item.name}“ ${loot ? 'ausblenden' : 'löschen'}`);
+    del.textContent = '🗑';
+    del.title = 'Löschen';
+    del.setAttribute('aria-label', `„${item.name}“ löschen`);
     del.addEventListener('click', async () => {
-      const question = loot
-        ? `„${item.name}“ ausblenden? Der Lootpool-Abgleich holt es nicht zurück. Auf der aktuellen Karte bleibt es stehen.`
-        : `„${item.name}“ löschen? Auf der aktuellen Karte bleibt es stehen.`;
-      if (!confirm(question)) return;
+      if (!confirm(`„${item.name}“${item.rarity ? ` (${rarityName(item.rarity)})` : ''} löschen? Auf der aktuellen Karte bleibt es stehen. Nur aussortieren? Dann lieber 🔒 in den Tresor.`)) return;
       del.disabled = true;
       try {
         await state.api.deleteBingoItem(item);
         state.bingo.items = state.bingo.items.filter((x) => x.id !== item.id);
-        if (loot) state.bingo.hidden = (state.bingo.hidden ?? 0) + 1;
         renderBingoDialog();
       } catch (err) {
         del.disabled = false;
         toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
       }
     });
-    if (gone) {
-      const note = document.createElement('span');
-      note.className = 'bingo-loot-note';
-      note.textContent = 'nicht mehr im Lootpool';
-      li.append(thumb, name, copy, del, note, amount);
-    } else li.append(thumb, name, copy, del, rarity, amount);
+    li.append(thumb, name, copy, vault, del, rarity, amount);
     return li;
-  }));
+  });
+  if (firstVault >= 0) {
+    const head = document.createElement('li');
+    head.className = 'bingo-vault-head';
+    head.textContent = `🔒 Tresor · ${sorted.length - firstVault} – kommt auf keine neue Karte`;
+    rows.splice(firstVault, 0, head);
+  }
+  list.replaceChildren(...rows);
 }
 
 // ---------- Tipprunde: Zuschauer tippen mit Kanalpunkten, welche Reihe zuerst voll wird ----------
@@ -2850,15 +2786,21 @@ async function uploadBingoImages(e) {
   const form = e.currentTarget;
   const files = [...form.files.files];
   if (!files.length) return formMsg(form, 'Bitte zuerst Bilder wählen.');
+  // Seltenheiten angehakt: jedes Bild einmal pro Seltenheit (gleicher Name, gleiches Bild)
+  const rarities = [...form.querySelectorAll('input[name=rar]:checked')].map((b) => b.value);
   await withLoading(form, async () => {
     let done = 0;
+    let made = 0;
     const failed = [];
     for (const file of files) {
       formMsg(form, `Lade ${done + 1} von ${files.length} hoch …`, true);
       try {
-        const blob = await shrinkImage(file);
-        const item = await state.api.addBingoItem(blob, nameFromFile(file.name), { rarity: rarityFromFile(file.name), amount: amountFromFile(file.name) });
-        state.bingo.items = [...state.bingo.items, item];
+        const [blob, key] = await Promise.all([shrinkImage(file), imageKey(file)]);
+        const created = await state.api.addBingoItem(blob, nameFromFile(file.name), {
+          rarity: rarityFromFile(file.name), amount: amountFromFile(file.name), imageKey: key, rarities,
+        });
+        state.bingo.items = [...state.bingo.items, ...created];
+        made += created.length;
         done++;
       } catch (err) {
         console.error(err);
@@ -2869,7 +2811,9 @@ async function uploadBingoImages(e) {
     $('.sound-file-text', form).textContent = '🖼️ Bilder wählen … (mehrere gehen)';
     renderBingoDialog();
     if (failed.length) throw new Error(`${done} hochgeladen, ${failed.length} nicht: ${failed.join(' · ')}`);
-    formMsg(form, `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen.`, true);
+    formMsg(form, rarities.length
+      ? `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen – ${made} Items in ${rarities.length} Seltenheiten.`
+      : `${done} ${done === 1 ? 'Bild' : 'Bilder'} hochgeladen.`, true);
   });
 }
 

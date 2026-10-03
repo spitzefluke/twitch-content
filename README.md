@@ -13,7 +13,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 - **Archiv**: Termine, die mehr als sechs Stunden zurückliegen, mit Link zu den Twitch-Aufzeichnungen
 - **Vorschläge**: Zuschauer reichen Ideen für den Stream ein und stimmen darüber ab
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
-- **Fortnite-Bingo**: Die Bilder kommen automatisch aus einer eingebauten Item-Liste oder – mit Schlüssel – aus dem aktuellen Fortnite-Lootpool (dazu eigene Bilder, z. B. Kills), daraus zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5). die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
+- **Fortnite-Bingo**: Aus hochgeladenen Item-Bildern (ein Bild lässt sich gleich in mehreren Seltenheiten anlegen, aussortierte Items liegen im Tresor) zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5) – jeder Item-Name und jedes Bild nur einmal. die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
 - **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft „Als Nächstes“ mit Countdown, und ein Alert-Feld zeigt neue Follower, Abos, Bits und Kanalpunkte-Einlösungen. Den Link gibt's im Dashboard unter **OBS** (oben rechts) und **Overlay & OBS**.
@@ -31,7 +31,6 @@ supabase/functions/
   spin/                          → Drehung von der Webseite aus
   bingo-bet/                     → Bingo-Tipprunde als Twitch-Vorhersage (starten, auflösen, abbrechen)
   youtube-chat/                  → YouTube-Livechat fürs Overlay (ohne API-Schlüssel)
-  bingo-loot/                    → Bingo-Bilder: eingebaute Item-Liste oder aktueller Lootpool (api-fortnite.com)
   stream-tools/                  → Bot-Nachrichten verschicken, Kanalpunkte für Vorlesen/Karten, Einlösungen abschließen
 ```
 
@@ -86,7 +85,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_bingo_lootpool.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`, `…_pet_species.sql`, `…_bingo_vault.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -148,7 +147,6 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
 | `HEALTH_CHECK_KEY` *(empfohlen)* | beliebige zufällige Zeichenkette (mindestens 20 Zeichen). Damit prüft die GitHub Action „Twitch-Gesundheitscheck“ alle 30 Minuten die Twitch-Verbindung – denselben Wert als GitHub-Secret `HEALTH_CHECK_KEY` eintragen (siehe „Twitch-Gesundheitscheck“). |
-| `API_FORTNITE_KEY` *(fürs Bingo, optional)* | Schlüssel von [api-fortnite.com](https://api-fortnite.com) (der Lootpool braucht dort einen bezahlten Tarif) – damit holt `bingo-loot` den aktuellen Lootpool statt der eingebauten Item-Liste |
 
 ### 5. Der Streamer verbindet Twitch
 
@@ -430,32 +428,21 @@ Kachel bei den Content-Ideen. Einmal nötig: `supabase/migrations/20260924120000
 2. Rechts unter **Bilder** Bilder der Items wählen – mehrere auf einmal gehen. Der Name kommt aus dem Dateinamen (`chug-jug.png` → „Chug Jug“) und lässt sich danach ändern. Die Bilder werden vor dem Hochladen verkleinert.
    Jedes Bild kann eine **Seltenheit** wie in Fortnite haben – Gewöhnlich (grau), Ungewöhnlich (grün), Selten (blau), Episch (lila), Legendär (gold), **Mythisch** (gold mit Glanz) oder Exotisch. Steht sie im Dateinamen (`scar_legendary.png`, `pump-episch.png`, `mythic_goldfish.png`), wird sie gleich erkannt; sonst in der Liste neben dem Bild wählen. Items ohne Seltenheit (z. B. Heilung) bekommen eine bunte Farbe, die es bei Waffen nicht gibt. Migration `20260925120000_bingo_rarity.sql` nötig.
    Außerdem kann im Icon eine **Zahl** stehen – z. B. das Kill-Symbol mit „5“ für 5 Kills. Aus dem Dateinamen erkannt (`kill_5.png`, `elim x10.png`) oder im Feld „Zahl“ neben dem Bild eintragen. **⧉** kopiert ein Bild mit anderer Zahl, so gibt es das Kill-Symbol für 3, 5 und 10 Kills. Migration `20260926000000_bingo_amount.sql` nötig.
-   **Lootpool:** Die Fortnite-Items kommen von selbst – siehe [Bilder aus dem aktuellen Lootpool](#bilder-aus-dem-aktuellen-lootpool). Hochladen braucht es nur für Eigenes wie Kills oder Siege.
-3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 Bilder, für 4×4 16, für 3×3 8.
+   **Ein Bild → alle Seltenheiten:** Über dem Hochladen-Knopf die Seltenheiten anhaken (Schnellwahl **Grün bis Gold**, **Grau bis Gold**). Dann wird aus jedem gewählten Bild ein Item pro Seltenheit – gleicher Name, gleiches Bild, Rahmen in der passenden Farbe. Ohne Haken kommt die Seltenheit wie bisher aus dem Dateinamen.
+   **🔒 Tresor:** Items, die gerade nicht aufs Bingo sollen (z. B. nicht mehr im Spiel), legt ein Admin mit 🔒 in den Tresor. Sie kommen auf keine neue Karte – weder die Stream-Karte noch die eigenen –, bleiben aber gespeichert und stehen unten in der Liste unter „Tresor“. 🔓 holt sie zurück. Löschen (🗑) entfernt Item und Bild für immer.
+3. Größe wählen und **Neue Karte ziehen**. Für 5×5 mit freier Mitte braucht es 24 verschiedene Items, für 4×4 16, für 3×3 8.
+   **Keine Dopplungen:** Auf jeder Karte steht jeder Item-Name nur einmal – dieselbe Waffe in einer anderen Seltenheit zählt als dasselbe Item. Und jedes Bild nur einmal: Kopien (⧉) und dieselbe Datei erkennt die Seite an einem Fingerabdruck der Datei (SHA-256, beim Hochladen berechnet). Die Zahl neben „Bilder“ zeigt, wie viele verschiedene Items es gibt.
 4. Im Stream die gefundenen Items auf der Karte anklicken. Eine volle Reihe, Spalte oder Diagonale zeigt „Bingo!“ – auf der Seite und im Overlay, mit Applaus.
 
 Zuschauer sehen die Stream-Karte nur an. Unter **Meine Karte** zieht sich jeder seine eigene Karte aus denselben Bildern und kreuzt selbst ab (gespeichert in `bingo_player_cards`, nur für einen selbst sichtbar). **Im Stream zeigen** blendet die Stream-Karte im Overlay aus und ein, **Haken entfernen** fängt dieselbe Karte neu an.
 
 Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im Overlay: **Klassisch**, **Neon** und **Papier**.
 
-### Bilder aus dem aktuellen Lootpool
+### Lootpool entfernt, Tresor neu
 
-**Eingebaute Item-Liste (Standard):** Ohne Schlüssel füllt `bingo-loot` das Bingo mit einer eingebauten Liste – 17 klassische Fortnite-Items mit eigenen Icons (`assets/bingo/*.svg`): Sturmgewehr, Pump- und Taktische Schrotflinte, MP, Scharfschützen- und Jagdgewehr, Pistole, Revolver, Raketen- und Granatwerfer, Minigun, Granate, Verband, Medikit, kleiner Schildtrank, Schildtrank und Lagerfeuer – Waffen in mehreren Seltenheiten, zusammen 37 Bilder (Abzeichen „Liste“). Die Liste springt auch ein, wenn der Lootpool mit Schlüssel nicht zu holen ist und es noch keine Items von dort gibt; der Grund steht dann im Bingo-Dialog. Klappt der Lootpool später, löst er die Liste ab (und umgekehrt). Liste in `supabase/functions/_shared/lootpool.ts` (`LOOT_CATALOG`).
-
-**Mit Schlüssel:** Die Bingo-Bilder passen sich von selbst an den aktuellen Fortnite-Lootpool an. Die Edge Function `bingo-loot` holt ihn von [api-fortnite.com](https://api-fortnite.com) (`/api/v2/weapons`, Name auf Deutsch, Seltenheit, Bild, „im aktuellen Lootpool“) und gleicht ab. Vorher kam er von fortniteapi.io, das am 31.03.2026 eingestellt wurde.
-
-- **Neu im Lootpool** → kommt als Bild dazu (mit Abzeichen „Loot“ in der Liste).
-- **Aus dem Lootpool geflogen** → bleibt blass in der Liste („nicht mehr im Lootpool“) und kommt auf **keine neue Karte** mehr – weder auf die Stream-Karte noch auf die eigenen Karten. Karten, die schon gezogen sind, behalten ihre Bilder. Kommt das Item zurück, ist es wieder dabei.
-- Abgeglichen wird, sobald jemand den Bingo-Dialog öffnet – aber höchstens alle 6 Stunden. Admins können unter **Bilder** mit **🔄 Lootpool jetzt abgleichen** sofort abgleichen (nach einem Update oder Season-Start).
-- Ein Lootpool-Item, das nicht aufs Bingo soll, blendet ein Admin mit **🙈** aus – der Abgleich holt es nicht zurück. **… ausgeblendete wieder zeigen** holt alle zurück. Name und Seltenheit kommen von Fortnite; die **Zahl** und **⧉** (Kopie mit Zahl) gehen auch bei Lootpool-Items.
-- Eigene hochgeladene Bilder bleiben immer dabei.
-
-Einmal nötig:
-1. Migration `supabase/migrations/20261013000000_bingo_lootpool.sql` im SQL Editor ausführen.
-2. *(Optional, nur für den echten Lootpool)* Bei [api-fortnite.com](https://api-fortnite.com) ein Konto mit einem Tarif anlegen, der den Waffen-Endpunkt enthält (im kostenlosen Tarif antwortet er mit „403: Insufficient plan“), den API-Schlüssel kopieren und in Supabase unter **Edge Functions → Secrets** als `API_FORTNITE_KEY` eintragen. Das alte Secret `FORTNITEAPI_IO_KEY` kann weg.
-3. Die Function `bingo-loot` wird mit dem nächsten Merge automatisch hochgeladen (GitHub Action). Dann im Bingo-Dialog **🔄 Lootpool jetzt abgleichen** klicken.
-
-Ohne Schlüssel läuft das Bingo mit der eingebauten Item-Liste; im Bingo-Dialog steht, welche Quelle gerade aktiv ist.
+Den automatischen Abgleich mit dem Fortnite-Lootpool (api-fortnite.com) und die eingebaute Item-Liste gibt es nicht mehr – ins Bingo kommen nur noch hochgeladene Bilder. Einmal nötig:
+1. Migration `supabase/migrations/20261022000000_bingo_vault.sql` im SQL Editor ausführen. Sie löscht die Lootpool-Items und alles, was dazugehörte (Tabelle `bingo_loot_state`, Spalten `source`, `loot_id`, `active`, `hidden`), und legt den Tresor (`vault`) und den Fingerabdruck (`image_key`) an. Die alte Migration `…_bingo_lootpool.sql` braucht es nicht mehr. Hinweis: Steht auf der aktuellen Stream-Karte noch ein Lootpool-Item, fehlt dort nur das Bild – einfach eine neue Karte ziehen.
+2. Die Edge Function `bingo-loot` löscht die GitHub Action beim nächsten Merge in Supabase. Das Secret `API_FORTNITE_KEY` (und `FORTNITEAPI_IO_KEY`) kann in Supabase unter **Edge Functions → Secrets** weg.
 
 ### Tipprunde mit Kanalpunkten
 

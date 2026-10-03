@@ -2,7 +2,7 @@
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
-import { betLines, cardCell, fullBetLines, lootImageUrl } from './bingo.js';
+import { betLines, drawCard, fullBetLines } from './bingo.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
 import { advanceStage, isSpecies } from './pet-species.js';
 import { DEFAULT_STAGE } from './questions.js';
@@ -53,7 +53,7 @@ const ERRORS = [
   [/could not find the function '?public\.(streamer_info|my_access|overlay_allow_mods)|relation "public\.channel_mods"|could not find the table '?public\.channel_mods|column [\w.]*"?mods_enabled/i, 'In der Datenbank fehlen Streameransicht und Mods-Freigabe: supabase/migrations/20261012000000_streamer_mods.sql im SQL Editor ausführen.'],
   [/relation "public\.(pet|pet_events)"|could not find the (table|function) '?public\.(pet|pet_events|pet_action|pet_say)\b/i, 'In der Datenbank fehlt der Dino: supabase/migrations/20260928000000_questions_pet.sql im SQL Editor ausführen.'],
   [/column .*bet\b|'bet' column/i, 'In der Datenbank fehlt die Tipprunde: supabase/migrations/20260926120000_bingo_bet.sql im SQL Editor ausführen.'],
-  [/bingo_loot_state|column .*\b(hidden|loot_id)\b|'(hidden|loot_id)' column/i, 'In der Datenbank fehlt der Lootpool fürs Bingo: supabase/migrations/20261013000000_bingo_lootpool.sql im SQL Editor ausführen.'],
+  [/column .*\b(vault|image_key)\b|'(vault|image_key)' column/i, 'In der Datenbank fehlt der Item-Tresor fürs Bingo: supabase/migrations/20261022000000_bingo_vault.sql im SQL Editor ausführen.'],
   [/column .*amount|'amount' column/i, 'In der Datenbank fehlt die Zahl im Icon fürs Bingo: supabase/migrations/20260926000000_bingo_amount.sql im SQL Editor ausführen.'],
   [/column .*rarity|'rarity' column/i, 'In der Datenbank fehlt die Seltenheit fürs Bingo: supabase/migrations/20260925120000_bingo_rarity.sql im SQL Editor ausführen.'],
   [/relation "public\.bingo_(items|card)"|could not find the (table|function) '?public\.bingo_/i, 'In der Datenbank fehlt das Fortnite-Bingo: supabase/migrations/20260924120000_bingo.sql im SQL Editor ausführen.'],
@@ -293,58 +293,47 @@ async function createSupabaseApi() {
     },
 
     // ---------- Fortnite-Bingo ----------
-    // Lootpool-Bilder (bingo-loot) sind schon eine volle Adresse, eigene liegen im Storage
+    // Bilder liegen im Storage (alte Karten können noch Lootpool-Adressen haben: ohne Bild)
     bingoUrl(path) {
-      if (path.startsWith('https://')) return lootImageUrl(path);
+      if (path.startsWith('https://')) return '';
       return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/bingo/${path.split('/').map(encodeURIComponent).join('/')}`;
     },
-    // items: ohne ausgeblendete Lootpool-Items; loot: Stand des Lootpool-Abgleichs (null ohne Migration)
     async getBingo() {
-      const [items, card, loot] = await Promise.all([
+      const [items, card] = await Promise.all([
         sb.from('bingo_items').select('*').order('created_at'),
         sb.from('bingo_card').select('*').eq('id', 1).maybeSingle(),
-        sb.from('bingo_loot_state').select('*').eq('id', 1).maybeSingle(),
       ]);
-      const all = unwrap(items);
       return {
-        items: all.filter((i) => !i.hidden).map((i) => ({ ...i, url: this.bingoUrl(i.path) })),
-        hidden: all.filter((i) => i.hidden).length,
+        items: unwrap(items).filter((i) => !i.path.startsWith('https://')).map((i) => ({ ...i, url: this.bingoUrl(i.path) })),
         card: unwrap(card),
-        loot: loot.error ? null : loot.data,
       };
     },
-    // Bilder an den aktuellen Fortnite-Lootpool anpassen (höchstens alle 6 h, force: Admins sofort)
-    async syncLootpool(force = false) {
-      return invoke('bingo-loot', { force });
-    },
-    async showHiddenLoot() {
-      unwrap(await sb.from('bingo_items').update({ hidden: false }).eq('source', 'lootpool').eq('hidden', true));
-    },
-    async addBingoItem(blob, name, { rarity = null, amount = null } = {}) {
+    // rarities: ein Bild in mehreren Seltenheiten – ein Eintrag je Seltenheit, jeder mit eigener
+    // Datei-Kopie (Löschen des einen nimmt das Bild der anderen nicht mit). Alle teilen den Fingerabdruck.
+    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null } = {}) {
       const ext = blob.type === 'image/webp' ? 'webp' : 'png';
       const path = `${crypto.randomUUID()}.${ext}`;
       unwrap(await sb.storage.from('bingo').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
-      return this.insertBingoItem({ name, path, rarity, amount });
+      const list = rarities?.length ? rarities : [rarity];
+      const first = await this.insertBingoItem({ name, path, rarity: list[0], amount, image_key: imageKey });
+      const made = [first];
+      for (const r of list.slice(1)) made.push(await this.copyBingoItem(first, { rarity: r }));
+      return made;
     },
     // Dasselbe Bild noch einmal, z. B. mit anderer Zahl. Die Datei wird kopiert,
     // damit Löschen des einen Eintrags das Bild des anderen nicht mitnimmt.
     async copyBingoItem(item, patch = {}) {
-      // Lootpool-Bild: nur die Adresse kopieren (eindeutig durch #…)
-      if (item.path.startsWith('https://')) {
-        const path = `${item.path.split('#')[0]}#copy-${crypto.randomUUID()}`;
-        return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, ...patch });
-      }
       const path = `${crypto.randomUUID()}.${item.path.split('.').pop()}`;
       unwrap(await sb.storage.from('bingo').copy(item.path, path));
-      return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, ...patch });
+      return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, image_key: item.image_key ?? null, ...patch });
     },
-    async insertBingoItem({ name, path, rarity, amount }) {
-      // Seltenheit und Zahl nur mitschicken, wenn es sie gibt – so klappt das Hochladen
-      // auch, solange die Migrationen …_bingo_rarity.sql / …_bingo_amount.sql noch fehlen.
-      const row = { name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}) };
+    async insertBingoItem({ name, path, rarity, amount, image_key = null }) {
+      // Leere Felder nicht mitschicken – so klappt das Hochladen auch, solange einzelne
+      // Migrationen (…_bingo_rarity.sql, …_bingo_amount.sql, …_bingo_vault.sql) noch fehlen.
+      const row = { name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}), ...(image_key ? { image_key } : {}) };
       const { data, error } = await sb.from('bingo_items').insert(row).select('*').single();
       if (error) {
-        if (!path.startsWith('https://')) await sb.storage.from('bingo').remove([path]).catch(() => {});
+        await sb.storage.from('bingo').remove([path]).catch(() => {});
         throw error;
       }
       return { ...data, url: this.bingoUrl(path) };
@@ -353,13 +342,7 @@ async function createSupabaseApi() {
       unwrap(await sb.from('bingo_items').update(patch).eq('id', id));
     },
     async deleteBingoItem(item) {
-      // Lootpool-Items nur ausblenden – sonst holt sie der nächste Abgleich zurück
-      if (item.source === 'lootpool') {
-        unwrap(await sb.from('bingo_items').update({ hidden: true }).eq('id', item.id));
-        return;
-      }
       unwrap(await sb.from('bingo_items').delete().eq('id', item.id));
-      if (item.path.startsWith('https://')) return;
       const { error } = await sb.storage.from('bingo').remove([item.path]);
       if (error) console.warn('Bingo-Bild nicht gelöscht:', error);
     },
@@ -1094,28 +1077,15 @@ function createLocalApi() {
     // ---------- Fortnite-Bingo (Demo) ----------
     // Bilder liegen als data:-URL in zd_bingo_items, die Karte in zd_bingo_card.
     bingoUrl(path) {
-      if (path.startsWith('https://')) return lootImageUrl(path);
       return store.get('bingo_items', []).find((i) => i.path === path)?.url ?? '';
     },
     async getBingo() {
-      const all = store.get('bingo_items', []);
       return {
-        items: all.filter((i) => !i.hidden).map((i) => (i.path?.startsWith('https://') ? { ...i, url: lootImageUrl(i.path) } : i)),
-        hidden: all.filter((i) => i.hidden).length,
+        items: store.get('bingo_items', []).filter((i) => i.source !== 'lootpool' && !i.path?.startsWith('https://')),
         card: store.get('bingo_card', null),
-        loot: store.get('bingo_loot_state', { synced_at: null, items: 0, error: 'demo' }),
       };
     },
-    // Im Demo-Modus gibt es keinen Abgleich mit api-fortnite.com
-    async syncLootpool(force = false) {
-      if (force) await requireAdmin();
-      return { synced: false, demo: true, state: store.get('bingo_loot_state', { synced_at: null, items: 0, error: 'demo' }) };
-    },
-    async showHiddenLoot() {
-      await requireAdmin();
-      store.set('bingo_items', store.get('bingo_items', []).map((i) => (i.source === 'lootpool' ? { ...i, hidden: false } : i)));
-    },
-    async addBingoItem(blob, name, { rarity = null, amount = null } = {}) {
+    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null } = {}) {
       await requireAdmin();
       const url = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1123,15 +1093,18 @@ function createLocalApi() {
         reader.onerror = () => reject(new Error('Bild konnte nicht gelesen werden.'));
         reader.readAsDataURL(blob);
       });
-      return this.insertBingoItem({ name, rarity, amount, url });
+      const list = rarities?.length ? rarities : [rarity];
+      const made = [];
+      for (const r of list) made.push(await this.insertBingoItem({ name, rarity: r, amount, url, image_key: imageKey }));
+      return made;
     },
     async copyBingoItem(item, patch = {}) {
       await requireAdmin();
-      return this.insertBingoItem({ name: item.name, rarity: item.rarity, amount: item.amount, url: item.url, ...patch });
+      return this.insertBingoItem({ name: item.name, rarity: item.rarity, amount: item.amount, url: item.url, image_key: item.image_key ?? null, ...patch });
     },
-    async insertBingoItem({ name, rarity = null, amount = null, url }) {
+    async insertBingoItem({ name, rarity = null, amount = null, url, image_key = null }) {
       const id = `demo-${nextId++}`;
-      const item = { id, name, rarity, amount, path: `demo/${id}`, url, created_at: new Date().toISOString() };
+      const item = { id, name, rarity, amount, path: `demo/${id}`, url, image_key, vault: false, created_at: new Date().toISOString() };
       try {
         localStorage.setItem('zd_bingo_items', JSON.stringify([...store.get('bingo_items', []), item]));
       } catch {
@@ -1145,10 +1118,6 @@ function createLocalApi() {
     },
     async deleteBingoItem(item) {
       await requireAdmin();
-      if (item.source === 'lootpool') {
-        store.set('bingo_items', store.get('bingo_items', []).map((i) => (i.id === item.id ? { ...i, hidden: true } : i)));
-        return;
-      }
       store.set('bingo_items', store.get('bingo_items', []).filter((i) => i.id !== item.id));
     },
     async bingoBet(action, seconds = 120) {
@@ -1173,14 +1142,8 @@ function createLocalApi() {
     async newBingoCard(size, free) {
       await requireAdmin();
       if (store.get('bingo_card', null)?.bet?.status === 'active') throw new Error('Es läuft noch eine Tipprunde. Erst beenden oder abbrechen, dann eine neue Karte ziehen.');
-      const items = store.get('bingo_items', []).filter((i) => i.active !== false && !i.hidden);
-      const withFree = free && size % 2 === 1;
-      const need = size * size - (withFree ? 1 : 0);
-      if (items.length < need) throw new Error(`Für eine ${size}×${size}-Karte braucht es ${need} Bilder – verfügbar sind erst ${items.length}.`);
-      const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, need).map(cardCell);
-      const center = Math.floor((size * size) / 2);
-      if (withFree) shuffled.splice(center, 0, { free: true });
-      return saveCard({ id: 1, size, cells: shuffled, marked: withFree ? [center] : [], visible: true, created_at: new Date().toISOString() });
+      const { cells, marked } = drawCard(await this.getBingo().then((b) => b.items), size, free);
+      return saveCard({ id: 1, size, cells, marked, visible: true, created_at: new Date().toISOString() });
     },
     async toggleBingo(index) {
       await requireAdmin();

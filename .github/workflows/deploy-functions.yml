@@ -50,3 +50,7 @@ jobs:
       # --no-verify-jwt: Twitch schickt beim Zurückleiten und beim Webhook keinen Supabase-Login mit.
       - name: Deployen
         run: supabase functions deploy --use-api --no-verify-jwt --project-ref "$PROJECT_REF"
+
+      # Entfernte Functions auch in Supabase löschen (bingo-loot: Lootpool gibt es nicht mehr)
+      - name: Alte Functions löschen
+        run: supabase functions delete bingo-loot --project-ref "$PROJECT_REF" || true
