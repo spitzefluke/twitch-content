@@ -820,3 +820,10 @@ body.is-apreview .ov-alert { position: relative; margin: 0; }
 .ov-pet-stage.is-out { animation: ov-pet-stage-out .5s cubic-bezier(.5, 0, .75, 0) forwards; }
 @keyframes ov-pet-stage-in { from { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(.85); filter: blur(6px); } 60% { opacity: 1; transform: translateX(-50%) translateY(3px) scale(1.03); filter: blur(0); } to { transform: translateX(-50%); } }
 @keyframes ov-pet-stage-out { to { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(.94); filter: blur(4px); } }
+
+/* OBS-Editor: Hilfslinien beim Ziehen, kurzes Aufblinken bei „▶ Testen“ */
+.ov-guide { position: fixed; z-index: 9999; pointer-events: none; background: #ff3df2; box-shadow: 0 0 6px #ff3df2; }
+.ov-guide.is-v { top: 0; bottom: 0; width: 1px; }
+.ov-guide.is-h { left: 0; right: 0; height: 1px; }
+.is-test-ping { animation: ov-test-ping 1.2s ease-out; }
+@keyframes ov-test-ping { 0% { box-shadow: 0 0 0 0 rgba(61, 220, 132, .9); } 100% { box-shadow: 0 0 0 1.4em rgba(61, 220, 132, 0); } }

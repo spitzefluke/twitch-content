@@ -348,7 +348,31 @@ function setupShell() {
   $('#sb-toggle').addEventListener('click', () => setOpen(!app.classList.contains('sb-open')));
   $('#sb-mobile').addEventListener('click', () => setOpen(!app.classList.contains('sb-open'), false));
   $('#sb-scrim').addEventListener('click', () => setOpen(false, false));
+  // Eingeklappt: Tooltip mit Namen und Zähler neben dem Symbol (die Leiste selbst schneidet alles ab)
+  const tip = document.createElement('div');
+  tip.className = 'sb-tip';
+  tip.setAttribute('role', 'tooltip');
+  tip.hidden = true;
+  document.body.append(tip);
+  const showTip = (item) => {
+    if (app.classList.contains('sb-open') || narrow()) return;
+    const label = item.querySelector('.sb-label')?.textContent ?? item.title;
+    const count = sbCount(item.dataset.page);
+    tip.replaceChildren(Object.assign(document.createElement('b'), { textContent: label }));
+    if (count) tip.append(Object.assign(document.createElement('span'), { textContent: count }));
+    const r = item.getBoundingClientRect();
+    tip.style.left = `${Math.round(r.right + 10)}px`;
+    tip.style.top = `${Math.round(r.top + r.height / 2)}px`;
+    tip.classList.toggle('is-mod', app.dataset.view === 'mod');
+    tip.hidden = false;
+  };
+  const hideTip = () => { tip.hidden = true; };
+  $('#sidebar').addEventListener('mouseover', (e) => { const item = e.target.closest('.sb-item'); if (item) showTip(item); });
+  $('#sidebar').addEventListener('mouseleave', hideTip);
+  $('#sidebar').addEventListener('focusin', (e) => { const item = e.target.closest('.sb-item'); if (item) showTip(item); });
+  $('#sidebar').addEventListener('focusout', hideTip);
   $('#sidebar').addEventListener('click', (e) => {
+    hideTip();
     const item = e.target.closest('.sb-item[data-page]');
     if (!item) return;
     setPage(item.dataset.page);
@@ -394,6 +418,17 @@ function setupShell() {
     const btn = e.target.closest('[data-points-open]');
     if (btn) POINTS_OPEN[btn.dataset.pointsOpen]?.();
   });
+}
+
+// Zähler für den Tooltip der eingeklappten Seitenleiste
+function sbCount(page) {
+  const n = (x, one, many) => (x ? `${x} ${x === 1 ? one : many}` : '');
+  if (page === 'ideas') return n(state.tiles.filter((t) => t.kind !== 'countdown' || isPlanned(t)).length, 'Kachel', 'Kacheln');
+  if (page === 'community') return n(state.ideas.length, 'Vorschlag', 'Vorschläge');
+  if (page === 'alerts') { const b = $('#sb-alert-badge'); return b.hidden ? '' : `${b.textContent} Twitch-${b.textContent === '1' ? 'Problem' : 'Probleme'}`; }
+  if (page === 'mods') return n(state.mods.length, 'Mod', 'Mods');
+  if (page === 'twitch') return state.twitch?.connected ? 'verbunden' : 'nicht verbunden';
+  return '';
 }
 
 function closeLandingMenus() {
@@ -1171,6 +1206,10 @@ function renderCountdown(el, targetIso) {
     return;
   }
   el.classList.remove('countdown--done');
+  // Weniger als 24 Stunden: hervorheben (die Kachel leuchtet mit)
+  const soon = secs < 86400;
+  el.classList.toggle('countdown--soon', soon);
+  el.closest('.tile')?.classList.toggle('is-soon', soon);
   if (!el.children.length || el.children.length !== 4) {
     el.replaceChildren(...UNITS.map(([lbl]) => {
       const u = div('cd-unit');
@@ -4849,6 +4888,7 @@ function setupObs() {
   $('#obs-cam-source').addEventListener('change', useObsCamera);
   $('#obs-share').addEventListener('click', shareObsWindow);
   setupObsLayers();
+  setupObsTools();
   // Vorschau und Bildabruf beim Schließen beenden – sie liefen sonst im Hintergrund weiter.
   $('#obs-dialog').addEventListener('close', () => {
     clearTimeout(obsPreviewTimer);
@@ -4875,6 +4915,181 @@ function setupObs() {
     if (e.data.key === 'cam') $('#obs-cam-source').value = '';
     updateObs({ fromPreview: true });
   });
+}
+
+// ---------- OBS-Editor-Werkzeuge: Bereiche einklappen, Ebenen suchen, Rückgängig, Testen ----------
+const OBS_COLS_KEY = 'sh_obs_cols';
+// Verlauf: jede Änderung als Parameter-Text (wie obsUrl), höchstens 40 Schritte
+const obsHist = { list: [], at: -1, timer: 0, applying: false };
+
+function setupObsTools() {
+  const dlg = $('#obs-dialog');
+  const body = dlg.querySelector('.obs-body');
+  // Bereiche ein- und ausklappen – nie beide zugleich
+  const setCols = (closed) => {
+    body.classList.toggle('is-closed-left', closed === 'left');
+    body.classList.toggle('is-closed-right', closed === 'right');
+    dlg.querySelectorAll('[data-obs-col]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.obsCol !== closed)));
+    try { localStorage.setItem(OBS_COLS_KEY, closed); } catch { /* egal */ }
+    if (closed !== 'left') fitObsPreview();
+  };
+  let saved = '';
+  try { saved = localStorage.getItem(OBS_COLS_KEY) ?? ''; } catch { /* egal */ }
+  setCols(['left', 'right'].includes(saved) ? saved : '');
+  dlg.querySelectorAll('[data-obs-col]').forEach((btn) => btn.addEventListener('click', () => {
+    const side = btn.dataset.obsCol;
+    setCols(body.classList.contains(`is-closed-${side}`) ? '' : side);
+  }));
+
+  // Ebenen suchen und filtern – die Felder gehören nicht zu den OBS-Einstellungen
+  const tools = $('#obs-layer-tools');
+  for (const type of ['input', 'change']) tools.addEventListener(type, (e) => { e.stopPropagation(); filterObsLayers(); });
+  $('#obs-layer-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+
+  // Rückgängig / Wiederholen
+  $('#obs-undo').addEventListener('click', () => stepObsHistory(-1));
+  $('#obs-redo').addEventListener('click', () => stepObsHistory(1));
+  $('#obs-history-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-hist]');
+    if (btn) gotoObsHistory(Number(btn.dataset.hist));
+  });
+  dlg.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    // In Textfeldern bleibt Strg+Z beim Browser (Text rückgängig)
+    if (e.target.closest('input[type="text"], input[type="search"], input:not([type]), textarea')) return;
+    const key = e.key.toLowerCase();
+    if (key === 'z' && !e.shiftKey) { e.preventDefault(); stepObsHistory(-1); }
+    else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); stepObsHistory(1); }
+  });
+
+  // ▶ Testen: die gewählte Ebene führt in der Vorschau vor, was sie kann
+  $('#obs-insp-test').addEventListener('click', () => {
+    if (!obsSelected) return;
+    const frame = $('#obs-preview iframe');
+    if (!frame) { toast('Die Vorschau ist eingeklappt – erst „Vorschau“ oben einschalten.', 'info'); return; }
+    const row = $(`#obs-dialog .obs-layer[data-layer="${obsSelected}"]`);
+    if (row && !row.classList.contains('is-on')) toast('Die Ebene ist aus – sie erscheint nur in der Vorschau kurz zum Testen, wenn du sie einschaltest.', 'info', 5000);
+    frame.contentWindow?.postMessage({ type: 'stellwerk-test', key: obsSelected }, location.origin);
+  });
+}
+
+function filterObsLayers() {
+  const q = $('#obs-layer-search').value.trim().toLowerCase();
+  const onlyOn = $('#obs-layer-only-on').checked;
+  let shown = 0;
+  $('#obs-dialog').querySelectorAll('.obs-layer').forEach((row) => {
+    const name = `${row.querySelector('.obs-layer-name')?.textContent ?? ''} ${row.dataset.layer}`.toLowerCase();
+    const hide = (q && !name.includes(q)) || (onlyOn && !row.classList.contains('is-on'));
+    row.classList.toggle('is-filtered', !!hide);
+    if (!hide) shown++;
+  });
+  $('#obs-dialog').querySelectorAll('.obs-layers .obs-group').forEach((g) => {
+    g.classList.toggle('is-filtered', !g.querySelector('.obs-layer:not(.is-filtered)'));
+  });
+  $('#obs-layer-none').hidden = shown > 0;
+}
+
+// Was hat sich geändert? Für die Einträge im Verlauf („Bingo verschoben“, „Größe · Alerts“ …)
+function describeObsChange(before, after) {
+  const a = new URLSearchParams(before);
+  const b = new URLSearchParams(after);
+  const keys = [...new Set([...a.keys(), ...b.keys()])].filter((k) => a.get(k) !== b.get(k));
+  if (!keys.length) return 'Änderung';
+  const layerName = (key) => $(`#obs-dialog .obs-layer[data-layer="${key}"] .obs-layer-name`)?.firstChild?.textContent.trim() ?? key;
+  const ownerOf = (el) => {
+    for (const [key, body] of obsBodies) if (body.contains(el)) return layerName(key);
+    return '';
+  };
+  const label = (k) => {
+    if (OBS_PARTS.includes(k)) {
+      if (!a.has(k)) return `${layerName(k)} an`;
+      if (!b.has(k)) return `${layerName(k)} aus`;
+      return `${layerName(k)} verschoben`;
+    }
+    const el = $('#obs-options').elements[k];
+    if (!el || !(el instanceof Element)) return k;
+    if (el.type === 'checkbox' && Object.values(OBS_LAYER_SWITCH).includes(el.name)) {
+      const key = Object.keys(OBS_LAYER_SWITCH).find((x) => OBS_LAYER_SWITCH[x] === el.name);
+      return `${layerName(key)} ${el.checked ? 'an' : 'aus'}`;
+    }
+    const row = el.closest('.obs-row, label');
+    const text = row?.querySelector(':scope > span')?.textContent.trim() || el.getAttribute('aria-label') || k;
+    const owner = ownerOf(el);
+    return owner ? `${text} · ${owner}` : text;
+  };
+  const first = label(keys[0]);
+  return keys.length > 1 ? `${first} (+${keys.length - 1})` : first;
+}
+
+function recordObsHistory({ reset = false } = {}) {
+  clearTimeout(obsHist.timer);
+  const commit = () => {
+    const q = new URL(obsUrl()).search.slice(1);
+    if (reset) {
+      obsHist.list = [{ q, label: 'Geöffnet', at: new Date() }];
+      obsHist.at = 0;
+    } else {
+      const cur = obsHist.list[obsHist.at];
+      if (!cur || cur.q === q) return;
+      obsHist.list = obsHist.list.slice(0, obsHist.at + 1);
+      obsHist.list.push({ q, label: describeObsChange(cur.q, q), at: new Date() });
+      if (obsHist.list.length > 40) obsHist.list.shift();
+      obsHist.at = obsHist.list.length - 1;
+    }
+    paintObsHistory();
+  };
+  if (reset) commit();
+  else obsHist.timer = setTimeout(commit, 500);
+}
+
+function gotoObsHistory(i) {
+  if (i < 0 || i >= obsHist.list.length || i === obsHist.at || obsLocked()) return;
+  clearTimeout(obsHist.timer);
+  obsHist.at = i;
+  obsHist.applying = true;
+  applyObsParams(obsHist.list[i].q);
+  updateObs({ now: true });
+  obsHist.applying = false;
+  scheduleObsSave();
+  paintObsHistory();
+}
+
+function stepObsHistory(step) {
+  const target = obsHist.list[obsHist.at + step];
+  if (!target) return;
+  const label = step < 0 ? obsHist.list[obsHist.at].label : target.label;
+  gotoObsHistory(obsHist.at + step);
+  toast(`${step < 0 ? '↶ Rückgängig' : '↷ Wiederholt'}: ${label}`, 'info', 2200);
+}
+
+function paintObsHistory() {
+  const locked = obsLocked();
+  $('#obs-undo').disabled = locked || obsHist.at <= 0;
+  $('#obs-redo').disabled = locked || obsHist.at >= obsHist.list.length - 1;
+  const list = $('#obs-history-list');
+  if (obsHist.list.length <= 1) {
+    list.innerHTML = '<li class="is-empty">Noch keine Änderungen. Strg+Z macht die letzte rückgängig.</li>';
+    return;
+  }
+  const time = (d) => d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  list.replaceChildren(...obsHist.list.map((h, i) => {
+    const li = document.createElement('li');
+    li.classList.toggle('is-now', i === obsHist.at);
+    li.classList.toggle('is-future', i > obsHist.at);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.hist = String(i);
+    btn.disabled = locked;
+    const n = document.createElement('small');
+    n.textContent = String(i);
+    const t = document.createElement('span');
+    t.textContent = h.label;
+    const at = document.createElement('small');
+    at.textContent = time(h.at);
+    btn.append(n, t, at);
+    li.append(btn);
+    return li;
+  }).reverse());
 }
 
 // ---------- OBS-Fenster v2: Reiter und Ebenen ----------
@@ -5195,7 +5410,10 @@ async function openObsDialog({ page = false } = {}) {
   loadObs();
   if (page) $('#obs-dialog').show();
   else $('#obs-dialog').showModal();
+  // Mods richten nichts in OBS ein – die Anleitungen zum Verbinden bleiben für sie weg
+  $('#obs-dialog').classList.toggle('is-mod', isTeam() && !canStreamerView());
   updateObs({ now: true });
+  recordObsHistory({ reset: true });
   loadTickerTexts();
   fillAlertSounds();
   loadObsLive();
@@ -5237,6 +5455,7 @@ async function loadObsLive() {
   }
   paintObsLive();
   updateObs({ now: true });
+  recordObsHistory({ reset: true });
 }
 
 // Umkehrung von obsUrl(): Parameter → Formular
@@ -5686,6 +5905,8 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   if (obsLocked()) obsFields().forEach((el) => { el.disabled = true; });
   saveObs(values);
   paintObsLayers();
+  filterObsLayers();
+  if (!obsLive.filling && !obsHist.applying) recordObsHistory();
   // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
   $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();
   scheduleObsSave();

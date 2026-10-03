@@ -727,23 +727,24 @@ function setupSpins(source) {
 
   source.onSpin(enqueue);
 
+  editTests.wheel = () => fake();
+  function fake() {
+    if (playing) return;
+    const v = variants[Math.floor(Math.random() * variants.length)];
+    const i = Math.floor(Math.random() * v.segments.length);
+    const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
+    enqueue({
+      id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
+      variant_id: v.id, variant_name: v.name, segment_index: i,
+      result: v.segments[i].label, detail: v.segments[i].detail,
+      ...(v.bonus?.segments?.length ? (() => {
+        const b = Math.floor(Math.random() * v.bonus.segments.length);
+        return { bonus_name: v.bonus.name, bonus_index: b, bonus_result: v.bonus.segments[b].label, bonus_detail: v.bonus.segments[b].detail };
+      })() : {}),
+      requested_by: names[Math.floor(Math.random() * names.length)],
+    });
+  }
   if (opt.test) {
-    const fake = () => {
-      if (playing) return;
-      const v = variants[Math.floor(Math.random() * variants.length)];
-      const i = Math.floor(Math.random() * v.segments.length);
-      const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl'];
-      enqueue({
-        id: `test-${Date.now()}`, created_at: new Date().toISOString(), source: opt.from === 'web' ? 'web' : 'twitch',
-        variant_id: v.id, variant_name: v.name, segment_index: i,
-        result: v.segments[i].label, detail: v.segments[i].detail,
-        ...(v.bonus?.segments?.length ? (() => {
-          const b = Math.floor(Math.random() * v.bonus.segments.length);
-          return { bonus_name: v.bonus.name, bonus_index: b, bonus_result: v.bonus.segments[b].label, bonus_detail: v.bonus.segments[b].detail };
-        })() : {}),
-        requested_by: names[Math.floor(Math.random() * names.length)],
-      });
-    };
     setTimeout(fake, 1500);
     setInterval(fake, TEST_EVERY_MS);
   }
@@ -897,6 +898,9 @@ function setupPranks(source) {
   }
 
   source.onPrank(handle);
+  editTests.prank = () => handle({ id: `edit-${Date.now()}`, created_at: new Date().toISOString(), kind: 'throw',
+    item: ['tomato', 'pie', 'nuke', 'duck', 'snowball'][Math.floor(Math.random() * 5)], requested_by: 'Test' });
+  editTests.camframe = editTests.prank;
 
   if (opt.test) {
     const items = ['tomato', 'banana', 'pie', 'egg', 'duck', 'flowers', 'snowball', 'sock', 'fish', 'undies', 'nuke', 'flashbang'];
@@ -1114,6 +1118,8 @@ async function setupPet(source) {
     climbEvery: opt.test ? [20, 30] : [50, 90],
   });
   addEventListener('sh-pet-react', (e) => dino.react(e.detail));
+  let petTest = 0;
+  editTests.pet = () => dino.react(['dance', 'jump', 'hide'][petTest++ % 3]);
   source.onPet((row, ev) => {
     if (row) {
       pet = row;
@@ -1371,6 +1377,9 @@ async function setupChallenge(source) {
 const VIDEO_MAX_MS = 30000;
 // Das Haustier reagiert auf Alerts und Streiche (setupPet hört zu): tanzt bei Abos,
 // hüpft bei Followern und Bits, versteckt sich bei der Atombombe
+// „▶ Testen“ im OBS-Editor: jede Ebene trägt hier ein, was sie in der Vorschau vorführt
+const editTests = {};
+
 function petReact(what) { dispatchEvent(new CustomEvent('sh-pet-react', { detail: what })); }
 function onAlertShown(kind) { petReact(['sub', 'resub', 'gift'].includes(kind) ? 'dance' : 'jump'); }
 
@@ -1488,6 +1497,8 @@ async function setupAlerts(source) {
     queue.push(a);
     if (!playing) play();
   };
+  let alertTest = 0;
+  editTests.alerts = () => enqueue({ ...sampleAlert(ALERT_KINDS[alertTest % ALERT_KINDS.length].kind, alertTest), id: `edit-${Date.now()}`, created_at: new Date().toISOString(), test: true, _n: alertTest++ });
 
   // Alert-Designer: die Seite schickt das Design, das gerade bearbeitet wird. Hier gibt es
   // keine Warteschlange – jede Änderung zeigt sofort den neuen Stand, „Abspielen“ startet neu.
@@ -1667,6 +1678,7 @@ function setupChat() {
   if (opt.test || opt.edit) {
     const sample = (n) => sampleMessage(n, { youtube: !!opt.yt });
     let n = 0;
+    editTests.chat = () => add(sample(n++));
     // Mit fester Höhe mehr Probe-Nachrichten, damit man sieht, wie voll es wird
     for (; n < Math.min(opt.chh >= 20 ? 30 : 4, max); n++) add(sample(n));
     if (!opt.edit) setInterval(() => add(sample(n++)), 4000);
@@ -1723,6 +1735,21 @@ function setupEdit() {
   // und welche Ebene gerade in der Liste aufgeklappt ist (wird hier markiert).
   addEventListener('message', (e) => {
     if (e.origin !== location.origin) return;
+    if (e.data?.type === 'stellwerk-test') {
+      const key = String(e.data.key ?? '');
+      const run = editTests[key];
+      if (run) run();
+      // Ohne eigene Vorführung: die Karte blinkt kurz auf
+      const card = document.querySelector(`[data-drag="${['prank', 'camframe'].includes(key) ? 'cam' : key}"]`)
+        ?? document.querySelector(`.ov-${key}, #ov-${key}`);
+      if (card) {
+        card.classList.remove('is-test-ping');
+        void card.offsetWidth;
+        card.classList.add('is-test-ping');
+        setTimeout(() => card.classList.remove('is-test-ping'), 1300);
+      }
+      return;
+    }
     if (e.data?.type === 'stellwerk-select') {
       document.querySelectorAll('.is-selected').forEach((el) => el.classList.remove('is-selected'));
       const key = ['prank', 'camframe'].includes(e.data.key) ? 'cam' : e.data.key;
@@ -1754,6 +1781,20 @@ function startDrag(e) {
   let moved = false;
   el.setPointerCapture(e.pointerId);
   el.classList.add('is-dragging');
+  // Hilfslinien: Rand, Mitte und die Kanten der anderen Karten
+  const others = [...document.querySelectorAll('[data-drag]')]
+    .filter((o) => o !== el && o.offsetParent !== null && getComputedStyle(o).visibility !== 'hidden')
+    .map((o) => o.getBoundingClientRect());
+  const lines = { v: null, h: null };
+  const guide = (axis, pos) => {
+    if (pos === null) { lines[axis]?.remove(); lines[axis] = null; return; }
+    if (!lines[axis]) {
+      lines[axis] = document.createElement('i');
+      lines[axis].className = `ov-guide is-${axis}`;
+      document.body.append(lines[axis]);
+    }
+    lines[axis].style[axis === 'v' ? 'left' : 'top'] = `${Math.round(pos)}px`;
+  };
 
   const move = (ev) => {
     const dx = ev.clientX - e.clientX;
@@ -1766,15 +1807,26 @@ function startDrag(e) {
     }
     let left = clamp(r.left + dx, 0, W - r.width);
     let top = clamp(r.top + dy, 0, H - r.height);
-    // Einrasten am Rand (im eingestellten Abstand) und in der Mitte
-    const snap = (v, size, total) => {
-      for (const t of [opt.margin, (total - size) / 2, total - size - opt.margin, 0, total - size]) {
-        if (Math.abs(v - t) < 18) return t;
+    // Einrasten am Rand (im eingestellten Abstand), in der Mitte und an den anderen Karten –
+    // dabei zeigt eine Linie, woran die Karte gerade ausgerichtet ist
+    const snap = (v, size, total, axis) => {
+      const lo = axis === 'v' ? 'left' : 'top';
+      const hi = axis === 'v' ? 'right' : 'bottom';
+      const span = axis === 'v' ? 'width' : 'height';
+      const targets = [
+        [opt.margin, opt.margin], [(total - size) / 2, total / 2], [total - size - opt.margin, total - opt.margin], [0, 0], [total - size, total],
+        ...others.flatMap((o) => [[o[lo], o[lo]], [o[hi] - size, o[hi]], [o[lo] + o[span] / 2 - size / 2, o[lo] + o[span] / 2], [o[hi], o[hi]], [o[lo] - size, o[lo]]]),
+      ];
+      let best = null;
+      for (const [t, line] of targets) {
+        const d = Math.abs(v - t);
+        if (d < 12 && (!best || d < best.d)) best = { d, t, line };
       }
-      return v;
+      guide(axis, best ? best.line : null);
+      return best ? best.t : v;
     };
-    left = snap(left, r.width, W);
-    top = snap(top, r.height, H);
+    left = snap(left, r.width, W, 'v');
+    top = snap(top, r.height, H, 'h');
     el.classList.remove(...POSITIONS.map((p) => `pos-${p}`));
     el.classList.add('pos-free');
     el.style.left = `${left}px`;
@@ -1784,6 +1836,8 @@ function startDrag(e) {
   const up = () => {
     el.removeEventListener('pointermove', move);
     el.classList.remove('is-dragging');
+    guide('v', null);
+    guide('h', null);
     if (!moved) return;
     const pct = (v, total) => Math.round((v / total) * 1000) / 10;
     const b = el.getBoundingClientRect();

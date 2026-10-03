@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-XBWBbu/3YZwJ+cy5KsFf6W7raAdQ/hPmVnxKuqHCX/E=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-sCa8+9Z36t6URxteEQoCDqQ7DUf9GVu7MqDp9Zgt8FI=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -14,10 +14,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=64c7311735">
+  <link rel="stylesheet" href="css/style.css?v=16dddda6e5">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=26a6d87341">
-  <link rel="stylesheet" href="css/shell.css?v=f98f40e27f">
+  <link rel="stylesheet" href="css/shell.css?v=7d131f05dd">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -31,7 +31,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ff8db6e602",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=b9e7a5fa41",
-      "./js/app.js": "./js/app.js?v=f0dd3bba27",
+      "./js/app.js": "./js/app.js?v=0d9d956876",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
@@ -51,7 +51,7 @@
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=fedf6df0ca",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=baf85126ec",
-      "./js/overlay.js": "./js/overlay.js?v=77d1f0ac9f",
+      "./js/overlay.js": "./js/overlay.js?v=945ae90dce",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=aa8154d614",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
@@ -1540,6 +1540,18 @@
         <span class="obs-pill-text"><b id="obs-pill-title">Nicht mit OBS verbunden</b><small id="obs-pill-detail">Verbinden zeigt das echte Bild und richtet die Quelle ein.</small></span>
       </button>
       <div class="obs-head-actions">
+        <div class="obs-cols" role="group" aria-label="Bereiche zeigen">
+          <button class="obs-col-btn" type="button" data-obs-col="left" aria-pressed="true" title="Vorschau &amp; Verbindung ein- oder ausklappen"><span aria-hidden="true">🖥️</span><span class="obs-col-text">Vorschau</span></button>
+          <button class="obs-col-btn" type="button" data-obs-col="right" aria-pressed="true" title="Ebenen &amp; Einstellungen ein- oder ausklappen"><span aria-hidden="true">🎛️</span><span class="obs-col-text">Ebenen</span></button>
+        </div>
+        <div class="obs-undo-box">
+          <button class="obs-mini-btn obs-undo" type="button" id="obs-undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig" disabled>↶</button>
+          <button class="obs-mini-btn obs-undo" type="button" id="obs-redo" title="Wiederholen (Strg+Umschalt+Z)" aria-label="Wiederholen" disabled>↷</button>
+          <details class="obs-history" id="obs-history">
+            <summary title="Verlauf der Änderungen">Verlauf</summary>
+            <ol class="obs-history-list" id="obs-history-list"></ol>
+          </details>
+        </div>
         <span class="obs-saved" id="obs-saved" data-state="off"></span>
         <button class="btn btn--primary" type="button" id="obs-head-apply" hidden>In OBS übernehmen</button>
         <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
@@ -1627,6 +1639,11 @@
           <!-- Ebenen: im Editor immer links sichtbar -->
           <div class="obs-layers" id="obs-layers">
             <p class="obs-panel-title">Ebenen <small>Schalter = im Stream zeigen</small></p>
+            <div class="obs-layer-tools" id="obs-layer-tools">
+              <input type="search" id="obs-layer-search" placeholder="Ebene suchen …" aria-label="Ebenen durchsuchen" autocomplete="off">
+              <label class="obs-only-on"><input type="checkbox" id="obs-layer-only-on"><span>nur aktive</span></label>
+            </div>
+            <p class="obs-layer-none" id="obs-layer-none" hidden>Keine Ebene passt.</p>
             <section class="obs-group" data-group>
               <p class="obs-group-head"><span>Immer im Bild</span><span class="obs-group-count"></span></p>
               <div class="obs-layer" data-layer="ticker" style="--lc: #ffb81c">
@@ -2043,6 +2060,7 @@
               <span class="obs-layer-dot" aria-hidden="true"></span>
               <b id="obs-insp-name"></b>
               <small id="obs-insp-state"></small>
+              <button class="obs-mini-btn obs-insp-test" type="button" id="obs-insp-test" title="Diese Ebene in der Vorschau vorführen">▶ Testen</button>
               <button class="obs-mini-btn" type="button" id="obs-insp-close" aria-label="Auswahl aufheben">✕</button>
             </header>
             <div class="obs-insp-empty" id="obs-insp-empty">
