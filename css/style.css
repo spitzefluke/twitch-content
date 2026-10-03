@@ -1665,7 +1665,37 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .ad-preset { display: grid; gap: 5px; padding: 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text-2); font: 600 12px var(--font-body); cursor: pointer; transition: transform .15s, border-color .2s; }
 .ad-preset:hover { transform: translateY(-2px); border-color: var(--pc); color: #fff; }
 .ad-preset-thumb { display: grid; place-items: center; height: 58px; border-radius: 8px; background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--pc) 45%, transparent), transparent 70%), #0d0918; border: 1px solid color-mix(in srgb, var(--pc) 50%, transparent); font: 800 20px var(--font-display); color: #fff; }
-.ad-preset-thumb img { width: 46px; height: 46px; }
+.ad-preset-thumb img { width: 46px; height: 46px; transition: transform .3s cubic-bezier(.34, 1.4, .64, 1); }
+/* Maus drauf: das Design spielt in der großen Vorschau, das Vorschaubild hüpft */
+.ad-preset.is-hover { border-color: var(--pc); color: #fff; box-shadow: 0 0 0 1px var(--pc), 0 10px 24px -14px var(--pc); }
+.ad-preset.is-hover .ad-preset-thumb img { transform: scale(1.18) rotate(-6deg); }
+.ad-legend-hint { margin-left: 6px; font-weight: 500; font-size: 11.5px; color: var(--dim); }
+.ad-dice:active { transform: rotate(-12deg) scale(.96); }
+.ad-dice.is-rolling { animation: ad-roll .5s cubic-bezier(.34, 1.4, .64, 1); }
+@keyframes ad-roll { 30% { transform: rotate(-25deg) scale(1.08); } 60% { transform: rotate(15deg); } }
+/* Zeitleiste: Ein – Halten – Aus auf einer Skala von 0 bis 30 Sekunden */
+.ad-row--timeline { align-items: start; }
+.ad-timeline { grid-column: 2 / -1; display: grid; gap: 4px; cursor: ew-resize; user-select: none; touch-action: none; }
+.ad-tl-track {
+  position: relative; height: 42px; border-radius: 10px; border: 1px solid var(--line-2); overflow: hidden;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 6 - 1px), var(--line) calc(100% / 6 - 1px) calc(100% / 6)), var(--bg);
+}
+.ad-tl-block { position: absolute; left: 0; top: 0; bottom: 0; width: var(--tl-w, 25%); display: flex; transition: width .15s var(--ease-out); }
+.ad-timeline.is-dragging .ad-tl-block { transition: none; }
+.ad-tl-seg { display: grid; align-content: center; min-width: 0; padding: 0 6px; overflow: hidden; white-space: nowrap; font-size: 11px; line-height: 1.2; }
+.ad-tl-seg b { font-weight: 800; }
+.ad-tl-seg small { font-size: 10px; opacity: .85; font-variant-numeric: tabular-nums; }
+.ad-tl-seg.is-in { flex: var(--tl-in, 1) 0 0; background: linear-gradient(90deg, rgba(61, 220, 132, .25), rgba(61, 220, 132, .55)); color: #c8ffe0; }
+.ad-tl-seg.is-hold { flex: var(--tl-hold, 6) 0 0; background: color-mix(in srgb, var(--tl-c, #9146ff) 45%, transparent); color: #fff; }
+.ad-tl-seg.is-out { flex: var(--tl-out, .36) 0 0; background: linear-gradient(90deg, rgba(255, 90, 78, .55), rgba(255, 90, 78, .2)); color: #ffd6d2; min-width: 22px; padding: 0 3px; }
+.ad-tl-seg.is-out small { display: none; }
+.ad-tl-grip { position: absolute; right: -1px; top: 6px; bottom: 6px; width: 4px; border-radius: 4px; background: #fff; box-shadow: 0 0 8px rgba(255, 255, 255, .7); }
+.ad-tl-head { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: #ffd23f; box-shadow: 0 0 8px #ffd23f; opacity: 0; pointer-events: none; }
+.ad-tl-scale { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--dim); }
+/* Wellenform des Sounds */
+.ad-wave-box { position: relative; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg); overflow: hidden; }
+.ad-wave { display: block; width: 100%; height: 64px; }
+.ad-wave-info { position: absolute; right: 8px; top: 6px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
 .ad-all { font-size: 13px; }
 .ad-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .ad-mtile-wrap { position: relative; display: grid; }

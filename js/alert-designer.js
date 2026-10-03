@@ -16,12 +16,16 @@ const PREVIEW_W = 820;
 const PREVIEW_H = 440;
 // Vorschlag für die erste Variante und die Probe-Menge
 const VAR_START = { bits: 1000, gift: 5, resub: 12, redeem: 5000 };
+// Länge der Einblende-Animation je Art (wie css/overlay.css), Ausgang immer 0,36 s
+const ENTER_SECONDS = { '': 0.56, pop: 0.7, slide: 0.7, drop: 0.9, zoom: 0.7, fade: 0.9, flip: 0.9, spin: 0.9 };
+const OUT_SECONDS = 0.36;
+const TL_MAX = 30.5;
 
 const ad = {
   api: null, toast: null, germanError: String, canEdit: () => false,
   cfg: normalizeAlertConfig(null), kind: 'follow', varId: null, dirty: false, loaded: false,
   media: [], sounds: [], alertSounds: [], obsParams: new URLSearchParams(), frameReady: false, sfx: null,
-  lastText: null,
+  lastText: null, hoverTimer: 0, waveKey: '', waveJob: 0,
 };
 
 export function setupAlertDesigner({ api, toast, germanError, canEdit }) {
@@ -106,6 +110,70 @@ export function setupAlertDesigner({ api, toast, germanError, canEdit }) {
     paint({ play: true });
   });
 
+  // Maus auf einem fertigen Design: in der großen Vorschau abspielen, ohne etwas zu ändern
+  const presets = $('#ad-presets');
+  const hover = (b) => {
+    clearTimeout(ad.hoverTimer);
+    presets.querySelectorAll('.is-hover').forEach((x) => x.classList.remove('is-hover'));
+    if (!b) { ad.hoverTimer = setTimeout(() => sendPreview(), 120); return; }
+    b.classList.add('is-hover');
+    ad.hoverTimer = setTimeout(() => {
+      const preset = ALERT_PRESETS.find((p) => p.id === b.dataset.preset);
+      if (preset) previewDesign({ ...design(), ...preset.design });
+    }, 140);
+  };
+  presets.addEventListener('pointerover', (e) => { const b = e.target.closest('[data-preset]'); if (b && !b.classList.contains('is-hover')) hover(b); });
+  presets.addEventListener('pointerleave', () => hover(null));
+  presets.addEventListener('focusin', (e) => hover(e.target.closest('[data-preset]')));
+  presets.addEventListener('focusout', (e) => { if (!presets.contains(e.relatedTarget)) hover(null); });
+
+  // 🎲 Würfeln: zufälliges Design für die gewählte Alert-Art
+  $('#ad-dice').addEventListener('click', (e) => {
+    if (!ad.canEdit()) return;
+    const pick = (list) => list[Math.floor(Math.random() * list.length)];
+    const hue = Math.floor(Math.random() * 360);
+    const hex = hslHex(hue, 85, 60);
+    Object.assign(design(), {
+      look: pick(ALERT_LOOKS).id, layout: pick(ALERT_LAYOUTS).id, enter: pick(ENTER_ANIMS).id, anim: pick(TEXT_ANIMS).id,
+      media: Math.random() < 0.85 ? `b:${pick(ALERT_MEDIA).id}` : '', color: hex, confetti: Math.random() < 0.7,
+      msize: pick([80, 100, 120, 140]),
+    });
+    const btn = e.currentTarget;
+    btn.classList.remove('is-rolling');
+    void btn.offsetWidth;
+    btn.classList.add('is-rolling');
+    changed();
+    paint({ play: true });
+  });
+
+  // Zeitleiste: ziehen setzt die Dauer
+  const tl = $('#ad-timeline');
+  const fromX = (x) => {
+    const r = tl.querySelector('.ad-tl-track').getBoundingClientRect();
+    const sec = ((x - r.left) / r.width) * TL_MAX - OUT_SECONDS;
+    return Math.min(30, Math.max(3, Math.round(sec)));
+  };
+  tl.addEventListener('pointerdown', (e) => {
+    if (!ad.canEdit() || e.button !== 0) return;
+    e.preventDefault();
+    tl.setPointerCapture(e.pointerId);
+    tl.classList.add('is-dragging');
+    const set = (ev) => {
+      const el = form.elements.duration;
+      const v = String(fromX(ev.clientX));
+      if (el.value === v) return;
+      el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    set(e);
+    tl.addEventListener('pointermove', set);
+    tl.addEventListener('pointerup', () => {
+      tl.removeEventListener('pointermove', set);
+      tl.classList.remove('is-dragging');
+      sendPreview({ play: true });
+    }, { once: true });
+  });
+
   $('#ad-media').addEventListener('click', async (e) => {
     const del = e.target.closest('[data-del]');
     if (del) { deleteMedia(del.dataset.del); return; }
@@ -148,6 +216,7 @@ export function setupAlertDesigner({ api, toast, germanError, canEdit }) {
     paintOutputs();
     sendPreview({ play: e.type === 'change' && ['anim', 'enter', 'layout', 'look'].includes(el.name) });
   };
+  form.addEventListener('change', (e) => { if (e.target.name === 'sound') paintWave(); });
   form.addEventListener('input', onField);
   form.addEventListener('change', onField);
   form.addEventListener('submit', (e) => e.preventDefault());
@@ -333,6 +402,7 @@ function paint({ play = false } = {}) {
   paintOutputs();
   paintMedia(d);
   paintSave();
+  paintWave();
   sendPreview({ play });
 }
 
@@ -344,6 +414,7 @@ function setValue(select, value) {
 function paintOutputs() {
   const f = $('#ad-form').elements;
   $('#ad-duration-out').textContent = `${f.duration.value} s`;
+  paintTimeline();
   $('#ad-msize-out').textContent = `${f.msize.value} %`;
   f.color.disabled = !f.color_on.checked || !ad.canEdit();
 }
@@ -419,6 +490,138 @@ function sendPreview({ play = false } = {}) {
   if (!frame || !ad.frameReady) return;
   const amount = VARIANT_KINDS[ad.kind] ? Number($('#ad-amount').value) || 0 : 0;
   frame.contentWindow.postMessage({ type: 'sh-alert-preview', config: ad.cfg, kind: ad.kind, amount, play }, location.origin);
+  if (play) runPlayhead(design());
+}
+
+// Vorschau mit einem anderen Design (Maus auf einem fertigen Design) – ad.cfg bleibt unverändert
+function previewDesign(d) {
+  const frame = $('#ad-preview iframe');
+  if (!frame || !ad.frameReady) return;
+  const cfg = structuredClone(ad.cfg);
+  const v = ad.varId && cfg.vars.find((x) => x.id === ad.varId);
+  if (v) v.design = normalizeDesign(d);
+  else cfg.kinds[ad.kind] = normalizeDesign(d);
+  const amount = VARIANT_KINDS[ad.kind] ? Number($('#ad-amount').value) || 0 : 0;
+  frame.contentWindow.postMessage({ type: 'sh-alert-preview', config: cfg, kind: ad.kind, amount, play: true }, location.origin);
+  runPlayhead(normalizeDesign(d));
+}
+
+// ---------- Zeitleiste: Ein – Halten – Aus ----------
+function timing(d) {
+  const enter = ENTER_SECONDS[d.enter] ?? ENTER_SECONDS[''];
+  const total = Number(d.duration) || 7;
+  return { enter, hold: Math.max(0, total - enter), out: OUT_SECONDS, total: total + OUT_SECONDS };
+}
+const sec = (n) => `${n.toLocaleString('de-DE', { maximumFractionDigits: 2 })} s`;
+function paintTimeline() {
+  const f = $('#ad-form').elements;
+  const t = timing({ enter: f.enter.value, duration: f.duration.value });
+  const block = $('#ad-tl-block');
+  block.style.setProperty('--tl-w', `${(t.total / TL_MAX) * 100}%`);
+  block.style.setProperty('--tl-in', t.enter);
+  block.style.setProperty('--tl-hold', t.hold);
+  block.style.setProperty('--tl-out', t.out);
+  block.style.setProperty('--tl-c', f.color_on.checked ? f.color.value : '#9146ff');
+  $('#ad-tl-in').textContent = sec(t.enter);
+  $('#ad-tl-hold').textContent = sec(Math.round(t.hold * 100) / 100);
+}
+function runPlayhead(d) {
+  const head = $('#ad-tl-head');
+  if (!head?.animate) return;
+  const t = timing(d);
+  head.getAnimations().forEach((a) => a.cancel());
+  head.animate([
+    { left: '0%', opacity: 1 }, { left: `${(t.total / TL_MAX) * 100}%`, opacity: 1, offset: 0.98 }, { left: `${(t.total / TL_MAX) * 100}%`, opacity: 0 },
+  ], { duration: t.total * 1000, easing: 'linear' });
+}
+
+// ---------- Wellenform des Sounds ----------
+// Eigene Sounds werden dekodiert, eingebaute (Synthesizer) in einem OfflineAudioContext aufgenommen.
+function soundChoice() {
+  const d = design();
+  const param = ALERT_KINDS.find((k) => k.kind === ad.kind)?.param;
+  return d.sound || ad.obsParams.get(param) || 'default';
+}
+function soundUrl(value) {
+  const [prefix, path] = [value.slice(0, 1), value.slice(2)];
+  return (prefix === 'a' ? ad.alertSounds : ad.sounds).find((x) => x.path === path)?.url;
+}
+async function renderSound(choice) {
+  const OAC = window.OfflineAudioContext ?? window.webkitOfflineAudioContext;
+  if (!OAC || choice === 'none') return null;
+  if (/^[ac]:/.test(choice)) {
+    const url = soundUrl(choice);
+    if (!url) return null;
+    let bytes;
+    if (url.startsWith('data:')) {
+      const b64 = url.slice(url.indexOf(',') + 1);
+      bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
+    } else {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      bytes = await res.arrayBuffer();
+    }
+    return new OAC(1, 44100, 44100).decodeAudioData(bytes);
+  }
+  const ctx = new OAC(1, 44100 * 3, 44100);
+  const rec = new Sfx();
+  rec.ctx = ctx;
+  rec.out = ctx.createGain();
+  rec.out.connect(ctx.destination);
+  rec.get = () => ctx;
+  playAlertSound(rec, ad.kind, choice);
+  return ctx.startRendering();
+}
+async function paintWave() {
+  const canvas = $('#ad-wave');
+  if (!canvas) return;
+  const choice = soundChoice();
+  const color = design().color || '#b57bff';
+  const key = `${ad.kind}|${choice}|${color}`;
+  if (key === ad.waveKey) return;
+  ad.waveKey = key;
+  const job = ++ad.waveJob;
+  const info = $('#ad-wave-info');
+  const g = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  g.clearRect(0, 0, W, H);
+  if (choice === 'none') { info.textContent = 'kein Ton'; return; }
+  info.textContent = '…';
+  let buf = null;
+  try { buf = await renderSound(choice); } catch (err) { console.warn('Wellenform:', err); }
+  if (job !== ad.waveJob) return;
+  if (!buf) { info.textContent = 'Wellenform nicht verfügbar'; return; }
+  const data = buf.getChannelData(0);
+  // Stille am Ende abschneiden (eingebaute Sounds sind kürzer als 3 Sekunden)
+  let end = data.length;
+  while (end > 1 && Math.abs(data[end - 1]) < 0.002) end--;
+  const step = Math.max(1, Math.floor(end / W));
+  let peak = 0.0001;
+  for (let i = 0; i < end; i++) peak = Math.max(peak, Math.abs(data[i]));
+  g.fillStyle = color;
+  g.globalAlpha = 0.9;
+  for (let x = 0; x < W; x++) {
+    let lo = 0;
+    let hi = 0;
+    for (let i = x * step, n = Math.min(end, i + step); i < n; i++) { if (data[i] < lo) lo = data[i]; if (data[i] > hi) hi = data[i]; }
+    const y1 = H / 2 - (hi / peak) * (H / 2 - 3);
+    const y2 = H / 2 - (lo / peak) * (H / 2 - 3);
+    g.fillRect(x, y1, 1, Math.max(1, y2 - y1));
+  }
+  g.globalAlpha = 0.25;
+  g.fillRect(0, H / 2, W, 1);
+  info.textContent = sec(Math.round((end / buf.sampleRate) * 10) / 10);
+}
+
+function hslHex(h, s, l) {
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 // ---------- Sound ----------

@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-sCa8+9Z36t6URxteEQoCDqQ7DUf9GVu7MqDp9Zgt8FI=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WzWyophk/jnKKsh0zFWCbpY3lsAcXa/bZWlB4/uUtA0=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=16dddda6e5">
+  <link rel="stylesheet" href="css/style.css?v=4b53c23261">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=26a6d87341">
   <link rel="stylesheet" href="css/shell.css?v=7d131f05dd">
@@ -28,7 +28,7 @@
   <script type="importmap">{
     "imports": {
       "./js/admin.js": "./js/admin.js?v=ca05db518e",
-      "./js/alert-designer.js": "./js/alert-designer.js?v=ff8db6e602",
+      "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=b9e7a5fa41",
       "./js/app.js": "./js/app.js?v=0d9d956876",
@@ -534,6 +534,7 @@
                   <div class="ad-preview" id="ad-preview"><p class="ad-preview-note">Vorschau lädt …</p></div>
                   <div class="ad-stage-bar">
                     <button class="btn btn--primary btn--sm" type="button" id="ad-play">▶ Abspielen</button>
+                    <button class="btn btn--outline btn--sm ad-dice" type="button" id="ad-dice" title="Zufälliges Design für diese Alert-Art würfeln">🎲 Würfeln</button>
                     <label class="ad-amount" id="ad-amount-wrap" hidden><span id="ad-amount-label">Menge</span><input type="number" id="ad-amount" min="1" max="1000000" value="100"></label>
                     <span class="ad-hint">Vergrößerte Vorschau – im Stream ist der Alert so groß wie im OBS-Fenster eingestellt.</span>
                   </div>
@@ -544,7 +545,7 @@
                 </div>
                 <form class="ad-form" id="ad-form" autocomplete="off">
                   <fieldset class="ad-sec">
-                    <legend>✨ Fertige Designs</legend>
+                    <legend>✨ Fertige Designs <small class="ad-legend-hint">Maus drauf = Vorschau, Klick = übernehmen</small></legend>
                     <div class="ad-presets" id="ad-presets" role="list"></div>
                     <label class="toggle ad-all"><input type="checkbox" id="ad-preset-all"><span class="toggle-ui" aria-hidden="true"></span>Beim Klick für alle Alert-Arten übernehmen</label>
                   </fieldset>
@@ -574,6 +575,20 @@
                     <label class="ad-row"><span>Grund-Design</span><select name="look"></select></label>
                     <label class="ad-row"><span>Layout</span><select name="layout"></select></label>
                     <label class="ad-row"><span>Einblenden</span><select name="enter"></select></label>
+                    <div class="ad-row ad-row--timeline"><span>Ablauf</span>
+                      <div class="ad-timeline" id="ad-timeline" title="Ziehen ändert die Dauer (3–30 Sekunden)">
+                        <div class="ad-tl-track" aria-hidden="true">
+                          <span class="ad-tl-block" id="ad-tl-block">
+                            <span class="ad-tl-seg is-in"><b>Ein</b><small id="ad-tl-in"></small></span>
+                            <span class="ad-tl-seg is-hold"><b>Halten</b><small id="ad-tl-hold"></small></span>
+                            <span class="ad-tl-seg is-out"><b>Aus</b><small>0,36 s</small></span>
+                            <i class="ad-tl-grip"></i>
+                          </span>
+                          <i class="ad-tl-head" id="ad-tl-head"></i>
+                        </div>
+                        <div class="ad-tl-scale" aria-hidden="true"><span>0 s</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30 s</span></div>
+                      </div>
+                    </div>
                     <label class="ad-row"><span>Dauer</span><input type="range" name="duration" min="3" max="30" step="1" value="7"><output id="ad-duration-out">7 s</output></label>
                     <label class="ad-row"><span>Bildgröße</span><input type="range" name="msize" min="50" max="200" step="10" value="100"><output id="ad-msize-out">100 %</output></label>
                     <label class="toggle"><input type="checkbox" name="confetti" checked><span class="toggle-ui" aria-hidden="true"></span>Konfetti</label>
@@ -581,6 +596,10 @@
                   <fieldset class="ad-sec">
                     <legend>🔊 Sound</legend>
                     <label class="ad-row"><span>Sound</span><select name="sound"></select></label>
+                    <div class="ad-wave-box">
+                      <canvas class="ad-wave" id="ad-wave" width="560" height="64" aria-hidden="true"></canvas>
+                      <span class="ad-wave-info" id="ad-wave-info"></span>
+                    </div>
                     <button class="btn btn--ghost btn--sm" type="button" id="ad-sound-test">▶ Anhören</button>
                     <p class="form-hint">„Wie im OBS-Fenster“ nimmt den Sound, der dort für diese Alert-Art eingestellt ist. Eigene Sounds lädst du im OBS-Fenster unter „Aussehen &amp; Ton“ hoch.</p>
                   </fieldset>
