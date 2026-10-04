@@ -15,6 +15,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 - **Ärgere den Streamer**: Zuschauer lösen mit Kanalpunkten „🍅 Wirf was auf ‹Kanal›“ oder „🔊 Sound für ‹Kanal›“ ein und tippen ein, was fliegen bzw. laufen soll – Bananen, Tomaten, Torten & Co. landen auf Kamera des Streamers, Sounds (eingebaute oder selbst hochgeladene) laufen im Stream. Admins stellen Kosten, Abklingzeit und An/Aus ein und können auf der Seite direkt auslösen.
 - **Fortnite-Bingo**: Aus hochgeladenen Item-Bildern (ein Bild lässt sich gleich in mehreren Seltenheiten anlegen, aussortierte Items liegen im Tresor) zieht die Seite eine zufällige Bingo-Karte (3×3, 4×4 oder 5×5) – jeder Item-Name und jedes Bild nur einmal. die Stream-Karte wird im Stream abgehakt und ist im OBS-Overlay zu sehen; dazu kann sich jeder seine eigene Karte ziehen und selbst abkreuzen.
 - **Sieben weitere Ideen**: Verbotenes Wort, Subathon-Timer, Pausen-Bildschirm mit Zahlenraten, Quiz, Mitspieler-Warteschlange, Vorlesen per Kanalpunkte und Sammelkarten – jeweils mit Chat-Befehlen und eigener OBS-Ebene.
+- **Verlosung**: Preis festlegen, Zuschauer machen mit `!verlosung` im Chat mit (nur Follower, jeder einmal), Gewinner ziehen – mit Auslosung im Overlay.
 - **Raid-Schutz**: ein Klick pausiert alle Zuschauer-Aktionen (siehe „Sicherheit“).
 - **OBS-Overlay** (`overlay.html`): Wird das Glücksrad gedreht, erscheint es klein im Stream, dreht sich und zeigt das Ergebnis. Dazu läuft „Als Nächstes“ mit Countdown, und ein Alert-Feld zeigt neue Follower, Abos, Bits und Kanalpunkte-Einlösungen. Den Link gibt's im Dashboard unter **OBS** (oben rechts) und **Overlay & OBS**.
 - **Twitch-Integration**: Der Streamer verbindet seinen Kanal, dann legt die Seite automatisch die Kanalpunkte-Belohnung **„Glücksrad“ (10.000 Punkte, änderbar)** an. Löst ein Zuschauer sie ein, wird **ohne geöffnete Webseite** eine zufällige Variante gedreht, und ein eigener **Chat-Bot** schreibt das Ergebnis in den Twitch-Chat – nie im Namen des Streamers.
@@ -85,7 +86,7 @@ Wer lieber alles von Hand macht, folgt den Schritten 2a–4.
 ### 2a. Supabase-Projekt (manuell)
 
 1. Auf [supabase.com](https://supabase.com) ein Projekt anlegen.
-2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`, `…_pet_species.sql`, `…_bingo_vault.sql`).
+2. **SQL Editor** öffnen und die Dateien aus `supabase/migrations/` nacheinander in der Reihenfolge ihrer Namen einfügen und ausführen (`…_init.sql`, `…_admin.sql`, `…_social_login.sql`, `…_ideas.sql`, `…_overlay.sql`, `…_chat_bot.sql`, `…_pranks.sql`, `…_bingo.sql`, `…_start_dates.sql`, `…_channel_points.sql`, `…_bingo_rarity.sql`, `…_bingo_amount.sql`, `…_bingo_bet.sql`, `…_security.sql`, `…_questions_pet.sql`, `…_ticker.sql`, `…_live_overlay.sql`, `…_loot_shop.sql`, `…_shop_versus.sql`, `…_win_challenge.sql`, `…_challenge_start.sql`, `…_stream_alerts.sql`, `…_wheel_edit.sql`, `…_wheel_bonus.sql`, `…_shop_lobby_access.sql`, `…_alert_bits_sounds.sql`, `…_alert_sound_length.sql`, `…_streamer_mods.sql`, `…_stream_extras.sql`, `…_security_hardening.sql`, `…_streamhelp.sql`, `…_chat_bot_commands.sql`, `…_overlay_designs.sql`, `…_overlay_hack.sql`, `…_channel_anniversary.sql`, `…_pet_species.sql`, `…_bingo_vault.sql`, `…_giveaway.sql`).
 3. **Authentication → URL Configuration**: *Site URL* = deine GitHub-Pages-URL. Dieselbe URL auch bei *Redirect URLs* eintragen.
 4. Optional: Unter **Authentication → Providers → Email** kannst du „Confirm email“ ausschalten. Dann entfällt die Bestätigungsmail bei der Registrierung.
 5. **Project Settings → API**: *Project URL* und den *anon / publishable key* in `js/config.js` eintragen:
@@ -320,6 +321,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `queue=tl` / … · `qusize=120` | Mitspielen: wer dran ist, wer wartet |
 | `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
 | `cards=br` / … · `cdsize=120` | Sammelkarten: epische und legendäre Ziehungen |
+| `giveaway=tc` / … · `gwsize=120` | Verlosung: Preis, Befehl, Zeit, Zahl im Lostopf; beim Ziehen die Auslosung |
 | `pet=1` | Stream-Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
@@ -344,7 +346,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 ### Lautstärke je Ebene
 
-Alles, was im Overlay Töne macht, hat im OBS-Fenster unter **„Aussehen & Ton“ → 🎚️ Lautstärke je Ebene** einen eigenen Regler: Glücksrad, Alerts, Würfe & Sounds, Dino, Fragen, Bingo, Kisten-Shop, Win-Challenge, Vorlesen, Quiz, Verbotenes Wort, Subathon, Pause und Sammelkarten. 100 % = so laut wie die Gesamtlautstärke, 0 % = stumm (🔇), bis 200 % lauter. Regler ausgeschalteter Ebenen sind abgeblendet. Wie alles andere gilt die Änderung nach wenigen Sekunden in OBS (Parameter `vwheel`, `valert`, `vprank`, `vpet`, `vquest`, `vbingo`, `vshop`, `vchal`, `vtts`, `vquiz`, `vforbid`, `vsub`, `vpause`, `vcards`). Keine Migration nötig.
+Alles, was im Overlay Töne macht, hat im OBS-Fenster unter **„Aussehen & Ton“ → 🎚️ Lautstärke je Ebene** einen eigenen Regler: Glücksrad, Alerts, Würfe & Sounds, Dino, Fragen, Bingo, Kisten-Shop, Win-Challenge, Vorlesen, Quiz, Verbotenes Wort, Subathon, Pause, Sammelkarten und Verlosung. 100 % = so laut wie die Gesamtlautstärke, 0 % = stumm (🔇), bis 200 % lauter. Regler ausgeschalteter Ebenen sind abgeblendet. Wie alles andere gilt die Änderung nach wenigen Sekunden in OBS (Parameter `vwheel`, `valert`, `vprank`, `vpet`, `vquest`, `vbingo`, `vshop`, `vchal`, `vtts`, `vquiz`, `vforbid`, `vsub`, `vpause`, `vcards`, `vgive`). Keine Migration nötig.
 
 ### Chat im Overlay (Twitch + YouTube)
 
@@ -561,6 +563,19 @@ Einmal nötig: `supabase/migrations/20261014000000_stream_extras.sql` im SQL Edi
 **Kanalpunkte für Vorlesen und Karten:** im jeweiligen Dialog unter „Kanalpunkte“ Kosten einstellen und **„Speichern & zu Twitch übernehmen“** (nur Admins der Seite, nicht Mods; Twitch-Affiliate/Partner nötig).
 
 **Vorlesen in OBS:** Das Overlay nutzt die Sprachausgabe von Windows/Chrome. Der Ton geht an das Standard-Audiogerät und wird mit **Desktop-Audio** aufgenommen (nicht über „Audio über OBS steuern“).
+
+## Verlosung
+
+Eine Content-Idee mit Chat-Befehl: Der Streamer (oder ein freigegebener Mod) legt einen **Preis** fest und startet die Verlosung, die Zuschauer schreiben **`!verlosung`** in den Chat, am Ende wird **ein Gewinner ausgelost**.
+
+- **Nur Follower, jeder einmal:** Schreibt jemand den Befehl, fragt die Seite bei Twitch nach, ob er dem Kanal folgt (Recht `moderator:read:followers`, das die Verbindung seit den Follower-Alerts hat). Wer nicht folgt, bekommt vom Bot den Hinweis, erst zu folgen. Jeder kommt pro Verlosung nur einmal in den Lostopf – das sichert die Datenbank ab (ein Eintrag pro Twitch-Konto und Runde). „Nur Follower“ lässt sich im Dialog ausschalten.
+- **Starten** im Dialog der Kachel 🎁 *Verlosung*: Preis, Befehl (Standard `!verlosung`), Dauer (bis zum Schließen oder 2–60 Minuten) und ob der Bot jede Teilnahme im Chat bestätigt. Der Bot verkündet Preis und Befehl.
+- **Ziehen:** **🎲 Gewinner ziehen** lost in der Datenbank zufällig aus allen im Lostopf (schließt die Verlosung). Ist der Gewinner nicht da, lost **🔁 Neu ziehen** jemand anderen aus. Der Bot verkündet den Gewinner, Dialog und Overlay zeigen die Auslosung mit durchlaufenden Namen, Konfetti und Fanfare. **Beenden** blendet die Verlosung im Overlay aus.
+- Auf der Seite sehen alle Preis, Stand, Teilnehmer und die letzten Gewinner; wer mit Twitch angemeldet ist, sieht, ob er im Lostopf ist. Die Twitch-IDs der Teilnehmer bleiben in der Datenbank, öffentlich sind nur die Namen.
+- **OBS:** Ebene **Verlosung** unter „Neue Content-Ideen“ (Parameter `giveaway`, Größe `gwsize`, Lautstärke `vgive`). Sie erscheint nur, solange eine Verlosung läuft; neue Teilnehmer ploppen kurz auf. „▶ Testen“ im OBS-Editor führt eine Auslosung vor.
+- Im Demo-Modus füllt **➕ 5 Test-Teilnehmer** den Lostopf (dort gibt es keinen Twitch-Chat).
+
+Einmal nötig: Migration `supabase/migrations/20261023000000_giveaway.sql` ausführen (braucht `…_stream_extras.sql`). Den Chat-Befehl liest der verbundene **Chat-Bot**; die Edge Function `twitch-eventsub` kommt mit dem nächsten Merge automatisch zu Supabase.
 
 ## Sicherheit
 
