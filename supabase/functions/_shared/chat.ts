@@ -1,7 +1,8 @@
 // Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
-// Befehle: den Dino füttern (Standard !füttern) und sein Kostüm wechseln (!change [kostüm]);
-// alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command in der Datenbank.
+// Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
+// Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch); alles andere (auch !watchtime und
+// eigene Befehle) beantwortet chat_command in der Datenbank.
 import { db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
@@ -64,6 +65,11 @@ export async function handleChatMessage(event: ChatMessage) {
   }
   if (!text.startsWith("!")) return;
   const [command, arg = ""] = text.split(/\s+/);
+
+  // Verlosung: eigener Befehl, braucht die Follower-Prüfung bei Twitch (kann SQL nicht)
+  if (!self || event.chatter_user_id !== self.user_id) {
+    if (await handleGiveaway(event, command).catch((e) => { console.warn("Verlosung:", e); return false; })) return;
+  }
 
   // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
   // Zahlenraten, !watchtime, !befehle, eigene Befehle)
@@ -146,4 +152,39 @@ async function changeCostume(event: ChatMessage, arg: string) {
   const { error: upErr } = await db.from("pet").update({ costume: next, costume_changed_at: at }).eq("id", 1);
   if (upErr) throw upErr;
   await db.from("pet_events").insert({ kind: "costume", who, text: next });
+}
+
+// ---------- Verlosung (Migration …_giveaway.sql) ----------
+// Liefert true, wenn der Befehl der Verlosungs-Befehl war (dann nichts weiter tun).
+async function handleGiveaway(event: ChatMessage, command: string) {
+  const { data: g, error } = await db.from("giveaway").select("status, command, followers_only").eq("id", 1).maybeSingle();
+  if (error || !g) return false; // Migration fehlt noch
+  if (command.toLowerCase() !== g.command) return false;
+  if (g.status !== "open") return true;
+  const conn = await getConnection().catch(() => null);
+  if (!conn) return true;
+  // Der Streamer selbst kann seinem Kanal nicht folgen und lost nicht mit
+  if (event.chatter_user_id === conn.broadcaster_id) return true;
+  const who = event.chatter_user_name || event.chatter_user_login;
+  let follower: boolean | null = null;
+  if (g.followers_only) {
+    try {
+      // Recht moderator:read:followers (haben Verbindungen seit den Follower-Alerts)
+      const res = await helix("channels/followers", conn.access_token, {
+        query: { broadcaster_id: conn.broadcaster_id, user_id: event.chatter_user_id },
+      });
+      follower = (res?.data ?? []).length > 0;
+    } catch (e) {
+      // Ohne Prüfung niemanden eintragen – lieber Bescheid geben
+      console.warn("Follower-Prüfung:", (e as Error).message);
+      await sendChat(conn, "⚠️ Die Follower-Prüfung für die Verlosung klappt gerade nicht – Streamer: Twitch einmal neu verbinden.").catch(() => {});
+      return true;
+    }
+  }
+  const { data: res, error: rpcError } = await db.rpc("giveaway_enter", {
+    p_key: `tw:${event.chatter_user_id}`, p_name: who, p_follower: follower,
+  });
+  if (rpcError) throw rpcError;
+  if (res?.reply) await sendChat(conn, String(res.reply)).catch((e) => console.warn("Chat:", (e as Error).message));
+  return true;
 }

@@ -6,8 +6,9 @@ import { forbidden, pause, subathon } from './extras-live.js';
 import { queue, quiz } from './extras-play.js';
 import { cards, tts } from './extras-fun.js';
 import { guard } from './extras-guard.js';
+import { giveaway } from './extras-giveaway.js';
 
-export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards];
+export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards, giveaway];
 export const EXTRA_KINDS = EXTRAS.map((f) => f.kind);
 const byKind = Object.fromEntries(EXTRAS.map((f) => [f.kind, f]));
 

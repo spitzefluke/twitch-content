@@ -18,6 +18,8 @@
 .theme-tts { --tile-glow: rgba(255, 122, 200, .45); }
 .theme-cards .tile-bg { background-image: url("../assets/bg-cards.svg"); }
 .theme-cards { --tile-glow: rgba(255, 211, 107, .5); }
+.theme-giveaway .tile-bg { background-image: url("../assets/bg-giveaway.svg"); }
+.theme-giveaway { --tile-glow: rgba(255, 79, 216, .45); }
 .tile--x-forbidden .prank-cta { background: #ff5a4e; color: #fff; }
 .tile--x-subathon .prank-cta { background: #9146ff; color: #fff; }
 .tile--x-pause .prank-cta { background: #ffb81c; color: #1a1204; }
@@ -25,6 +27,7 @@
 .tile--x-queue .prank-cta { background: #3ddc84; color: #04220f; }
 .tile--x-tts .prank-cta { background: #ff7ac8; color: #2a0619; }
 .tile--x-cards .prank-cta { background: #ffd36b; color: #2a1a00; }
+.tile--x-giveaway .prank-cta { background: #ff4fd8; color: #2a0622; }
 
 /* ---------- Dialog-Grundform ---------- */
 .dialog--extra { width: min(96vw, 1080px); }
@@ -237,3 +240,30 @@ button.xcard:hover { transform: translateY(-3px); }
   background: linear-gradient(90deg, #5a1414, #7a1f1a); color: #ffe1dd; border-bottom: 1px solid #ff5a4e;
 }
 .x-guard-banner[hidden] { display: none; }
+
+/* ---------- Verlosung (js/extras-giveaway.js) ---------- */
+.gw-hero {
+  position: relative; overflow: hidden; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 26px 18px 22px;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(255, 79, 216, .2), transparent 60%), var(--bg-2);
+}
+.gw-gift { font-size: 46px; line-height: 1; animation: gw-bob 3s ease-in-out infinite; }
+@keyframes gw-bob { 50% { transform: translateY(-6px) rotate(-4deg); } }
+.gw-prize { font-family: var(--font-display); font-size: clamp(26px, 4vw, 40px); font-weight: 800; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.gw-state { font-weight: 700; color: var(--text-2); }
+.gw-state.is-open { color: #9ff0c3; }
+.gw-state.is-drawn { color: #ffd36b; }
+.gw-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.gw-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--bg); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gw-chip code { font-family: var(--font-mono); color: #ff9be6; }
+.gw-roll { min-height: 1.3em; font-family: var(--font-display); font-size: clamp(28px, 4.4vw, 44px); font-weight: 800; color: #ffd36b; text-shadow: 0 0 18px rgba(255, 211, 107, .45); }
+.gw-roll.is-rolling { color: #fff; opacity: .85; }
+.gw-roll.is-winner { animation: gw-win .7s var(--ease-spring); }
+@keyframes gw-win { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: none; } }
+.gw-hero .ov-al-fx, .gw-fx { position: absolute; inset: 0; pointer-events: none; }
+.gw-fx i { position: absolute; left: 50%; top: 40%; width: 8px; height: 13px; border-radius: 2px; animation: gw-confetti 1.6s cubic-bezier(.15, .7, .3, 1) both; }
+@keyframes gw-confetti { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)); opacity: 0; } }
+.gw-me { font-weight: 700; }
+.gw-me.is-in { color: #9ff0c3; }
+.gw-list { max-height: 260px; overflow: auto; }
+.gw-list .is-won b { color: #ffd36b; }
+.gw-durations { display: flex; flex-wrap: wrap; gap: 6px; }

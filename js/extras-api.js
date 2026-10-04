@@ -1,5 +1,5 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
-// Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten.
+// Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { TTS_VOICES } from './tts-voice.js';
@@ -120,6 +120,24 @@ function liveExtras({ sb, unwrap, invoke }) {
       },
     },
 
+    // ---------- Verlosung (…_giveaway.sql) ----------
+    giveaway: {
+      get: () => one('giveaway'),
+      // Nur Name und Zeit – die Twitch-ID der Teilnehmer bleibt in der Datenbank
+      entries: async (round) => unwrap(await sb.from('giveaway_entries').select('id, name, won, created_at').eq('round', round).order('id', { ascending: false }).limit(500)),
+      winners: async () => unwrap(await sb.from('giveaway_winners').select('*').order('id', { ascending: false }).limit(10)),
+      me: () => rpc('giveaway_me'),
+      async start({ prize, command, followersOnly, minutes, confirm }) {
+        const r = await rpc('giveaway_start', { p_prize: prize, p_command: command, p_followers_only: followersOnly, p_minutes: minutes, p_confirm: confirm });
+        flush();
+        return r;
+      },
+      async close() { const r = await rpc('giveaway_close'); flush(); return r; },
+      async draw() { const r = await rpc('giveaway_draw'); flush(); return r; },
+      reset: () => rpc('giveaway_reset'),
+      addTest: null, // nur im Demo-Modus – echte Teilnehmer kommen aus dem Twitch-Chat
+    },
+
     // ---------- Vorlesen ----------
     tts: {
       settings: () => one('tts_settings'),
@@ -210,6 +228,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const QS0 = { id: 1, open: false, mode: 'order', sub_priority: true, max_size: 100, squad_size: 3, note: '' };
   const T0 = { id: 1, need_approval: true, max_chars: 200, blocked_words: [] };
   const CS0 = { id: 1, pack_size: 3, daily: true, weights: [55, 25, 12, 6, 2] };
+  const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
 
   const tileOpen = (kind) => {
@@ -578,6 +597,75 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       },
     },
 
+    // Verlosung: Im Demo-Modus gibt es keinen Twitch-Chat – „Test-Teilnehmer“ füllt den Lostopf
+    giveaway: {
+      async get() {
+        const g = oneRow('giveaway', GW0);
+        if (g.status === 'open' && g.ends_at && Date.parse(g.ends_at) <= Date.now()) return put('giveaway', GW0, { status: 'closed' });
+        return g;
+      },
+      entries: async (round) => store.get('giveaway_entries', []).filter((e) => e.round === round).map(({ key: _k, ...e }) => e).reverse(),
+      winners: async () => store.get('giveaway_winners', []).slice(0, 10),
+      me: async () => {
+        const g = oneRow('giveaway', GW0);
+        const mine = store.get('giveaway_entries', []).find((e) => e.round === g.round && e.key === key());
+        return { joined: !!mine, won: !!mine?.won, twitch: false };
+      },
+      async start({ prize, command, followersOnly, minutes, confirm }) {
+        await requireAdmin();
+        const p = String(prize ?? '').trim();
+        if (p.length < 2 || p.length > 100) throw new Error('Bitte einen Preis eintragen (2–100 Zeichen).');
+        let cmd = String(command ?? '').trim().toLowerCase() || '!verlosung';
+        if (!cmd.startsWith('!')) cmd = `!${cmd}`;
+        if (!/^![a-z0-9äöüß_]{2,20}$/.test(cmd)) throw new Error('Der Befehl darf nur Buchstaben, Zahlen und _ haben (2–20 Zeichen), z. B. !verlosung.');
+        const mins = clampInt(minutes, 0, 240, 0);
+        const g = oneRow('giveaway', GW0);
+        const round = g.round + 1;
+        store.set('giveaway_entries', store.get('giveaway_entries', []).filter((e) => e.round >= round - 1));
+        return put('giveaway', GW0, {
+          round, status: 'open', prize: p, command: cmd, followers_only: followersOnly !== false, confirm_in_chat: confirm !== false,
+          entries: 0, opened_at: now(), ends_at: mins ? new Date(Date.now() + mins * 60000).toISOString() : null, winner_name: '', drawn_at: null, draws: 0,
+        });
+      },
+      async close() {
+        await requireAdmin();
+        const g = await this.get();
+        return g.status === 'open' ? put('giveaway', GW0, { status: 'closed', ends_at: now() }) : g;
+      },
+      async draw() {
+        await requireAdmin();
+        const g = await this.get();
+        if (g.status === 'idle' || !g.round) throw new Error('Erst eine Verlosung starten.');
+        const list = store.get('giveaway_entries', []);
+        const pool = list.filter((e) => e.round === g.round && !e.won);
+        if (!pool.length) throw new Error(g.entries ? 'Alle Teilnehmer wurden schon gezogen.' : 'Noch niemand im Lostopf.');
+        const win = pick(pool);
+        win.won = true;
+        store.set('giveaway_entries', list);
+        store.set('giveaway_winners', [{ id: nextId++, round: g.round, prize: g.prize, name: win.name, entries: g.entries, created_at: now() }, ...store.get('giveaway_winners', [])].slice(0, 50));
+        return put('giveaway', GW0, { status: 'drawn', winner_name: win.name, drawn_at: now(), draws: g.draws + 1, ends_at: g.ends_at && Date.parse(g.ends_at) < Date.now() ? g.ends_at : now() });
+      },
+      async reset() { await requireAdmin(); return put('giveaway', GW0, { status: 'idle', ends_at: null }); },
+      // Demo: ein paar Zuschauer „schreiben“ den Befehl in den Chat
+      async addTest(n = 5) {
+        await requireAdmin();
+        const g = await this.get();
+        if (g.status !== 'open') throw new Error('Die Verlosung ist gerade nicht offen.');
+        const NAMES = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia', 'BuildBenno', 'SnipeSina', 'Kartoffel_Kai', 'LamaLeni', 'NoScopeNils', 'VictoryVera'];
+        const list = store.get('giveaway_entries', []);
+        const taken = new Set(list.filter((e) => e.round === g.round).map((e) => e.key));
+        let added = 0;
+        for (const name of NAMES.sort(() => Math.random() - 0.5)) {
+          if (added >= n) break;
+          const k = `demo:${name}`;
+          if (taken.has(k)) continue;
+          list.push({ id: nextId++, round: g.round, key: k, name, won: false, created_at: now() });
+          added++;
+        }
+        store.set('giveaway_entries', list);
+        return put('giveaway', GW0, { entries: g.entries + added });
+      },
+    },
     tts: {
       settings: async () => oneRow('tts_settings', T0),
       state: async () => oneRow('tts_state', { id: 1, skip_n: 0, muted: false }),

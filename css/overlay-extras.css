@@ -141,3 +141,24 @@
 @media (prefers-reduced-motion: reduce) {
   .ov-x, .ov-x-pause, .pzo-bg i, .tto-icon { animation: none !important; }
 }
+
+/* ---------- Verlosung ---------- */
+.ov-x-giveaway { --c: #ff4fd8; position: relative; font-size: calc(16px * var(--gws, 1)); width: 19em; overflow: visible; border-color: rgba(255, 79, 216, .5); }
+.gwo-body { display: grid; justify-items: center; gap: .3em; padding: .8em 1.1em 1em; text-align: center; }
+.gwo-gift { font-size: 2.2em; line-height: 1; animation: gwo-bob 2.6s ease-in-out infinite; }
+@keyframes gwo-bob { 50% { transform: translateY(-.15em) rotate(-5deg); } }
+.gwo-prize { font-family: var(--font-display); font-size: 1.7em; font-weight: 800; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.gwo-join { font-family: var(--font-mono); font-weight: 700; font-size: .95em; color: #ff9be6; }
+.gwo-time { font-family: var(--font-mono); font-size: .9em; color: #c3cadb; font-variant-numeric: tabular-nums; }
+.gwo-roll { font-family: var(--font-display); font-size: 1.9em; font-weight: 800; color: #ffd36b; text-shadow: 0 0 .6em rgba(255, 211, 107, .5); overflow-wrap: anywhere; }
+.ov-x-giveaway.is-rolling .gwo-roll { color: #fff; opacity: .85; }
+.gwo-roll.is-winner { animation: gwo-win .7s var(--ease-spring) both; }
+@keyframes gwo-win { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: none; } }
+.ov-x-giveaway.is-won { animation: gwo-glow 1.6s ease-out; }
+@keyframes gwo-glow { 0% { box-shadow: 0 0 0 0 rgba(255, 211, 107, .9); } 100% { box-shadow: 0 0 0 1.6em rgba(255, 211, 107, 0); } }
+.gwo-last { min-height: 1.2em; font-size: .9em; font-weight: 700; color: #9ff0c3; opacity: 0; }
+.gwo-last.is-in { animation: gwo-pop 2.6s var(--ease-out) both; }
+@keyframes gwo-pop { 0% { opacity: 0; transform: translateY(.5em) scale(.9); } 12%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.gwo-fx { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.gwo-fx i { position: absolute; left: 50%; top: 45%; width: .45em; height: .75em; border-radius: .1em; animation: gwo-confetti 1.7s cubic-bezier(.15, .7, .3, 1) both; }
+@keyframes gwo-confetti { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) rotate(var(--r)); opacity: 0; } }

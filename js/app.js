@@ -4841,11 +4841,11 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws';
-const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'scene', 'labels', 'goal'];
+const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
-  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', labels: 'lbsize', goal: 'gsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', labels: 'lbsize', goal: 'gsize',
 };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
@@ -5096,7 +5096,7 @@ function paintObsHistory() {
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
 const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null,
-  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', pause: 'pause',
+  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', pause: 'pause',
   scene: 'scene_on', camframe: 'camframe', labels: 'labels_on', goal: 'goal_on',
 };
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };

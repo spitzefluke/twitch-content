@@ -238,8 +238,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'giveaway',
     position: 15,
+    kind: 'giveaway',
+    title: 'Verlosung',
+    description: 'Ein Preis, ein Gewinner: Schreib !verlosung in den Chat und sei dabei. Jeder Follower darf einmal mitmachen.',
+    theme: 'giveaway',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 16,
     kind: 'countdown',
     title: 'Late-Night-Marathon',
     description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
@@ -249,7 +259,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 16,
+    position: 17,
     kind: 'countdown',
     title: 'Subathon',
     description: 'Jeder Sub verlängert den Stream. Wie lange geht es diesmal?',

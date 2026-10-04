@@ -6,6 +6,7 @@
 //   queue=tl|…       Mitspielen: wer dran ist, wer wartet         qusize=100
 //   tts=bl|…         Vorlesen: Sprechblase beim Vorlesen – ohne diese Ebene liest das Overlay nichts vor   ttsize=100
 //   cards=br|…       Sammelkarten: seltene Ziehungen (Episch, Legendär) springen auf                        cdsize=100
+//   giveaway=tc|…    Verlosung: Preis, Befehl, Zahl im Lostopf, neue Teilnehmer; beim Ziehen laufen die Namen durch  gwsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { speak, stopSpeaking } from './tts-voice.js';
@@ -23,8 +24,9 @@ export function setupOverlayExtras(o) {
     queue: o.position(o.params.get('queue'), null),
     tts: o.position(o.params.get('tts'), null),
     cards: o.position(o.params.get('cards'), null),
+    giveaway: o.position(o.params.get('giveaway'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -35,6 +37,7 @@ export function setupOverlayExtras(o) {
   if (cfg.queue) setupQueue(ctx, card('ov-x-queue', 'queue', cfg.queue, o));
   if (cfg.tts) setupTts(ctx, card('ov-x-tts', 'tts', cfg.tts, o));
   if (cfg.cards) setupCards(ctx, card('ov-x-cards', 'cards', cfg.cards, o));
+  if (cfg.giveaway) setupGiveaway(ctx, card('ov-x-giveaway', 'giveaway', cfg.giveaway, o));
 }
 
 function card(id, key, pos, o) {
@@ -97,6 +100,8 @@ function liveData(sb) {
   return {
     one: (table) => rows(sb.from(table).select('*').eq('id', 1).maybeSingle()),
     queue: () => rows(sb.from('queue_entries').select('id, name, is_sub, status, joined_at, picked_at').order('joined_at')),
+    // Verlosung: nur Namen (die Twitch-ID bleibt in der Datenbank)
+    giveawayNames: (round, limit) => rows(sb.from('giveaway_entries').select('id, name').eq('round', round).order('id', { ascending: false }).limit(limit)),
     ttsRecent: () => rows(sb.from('tts_messages').select('id, who, text, voice, status, reviewed_at').eq('status', 'approved')
       .gte('reviewed_at', new Date(Date.now() - 90000).toISOString()).order('reviewed_at')),
     on(table, cb) {
@@ -113,6 +118,7 @@ function demoData() {
   return {
     one: async (table) => read(table, null),
     queue: async () => read('queue_entries', []).filter((e) => ['waiting', 'picked'].includes(e.status)),
+    giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
     ttsRecent: async () => [],
     on(table, cb) {
       addEventListener('storage', (e) => {
@@ -520,4 +526,136 @@ async function setupCards({ src, opt }, el) {
     queue.push(p);
     next();
   });
+}
+
+// ============================================================
+// Verlosung
+// ============================================================
+// Zeigt Preis, Befehl, Zeit und wie viele im Lostopf sind; neue Teilnehmer ploppen kurz auf.
+// Wird gezogen, laufen die Namen durch und bleiben beim Gewinner stehen (mit Konfetti und Fanfare).
+async function setupGiveaway({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>Verlosung</span><span class="ov-sep">·</span><span class="ov-who" data-count></span></header>
+    <div class="gwo-body">
+      <span class="gwo-gift" aria-hidden="true">🎁</span>
+      <b class="gwo-prize" data-prize></b>
+      <span class="gwo-join" data-join></span>
+      <span class="gwo-time" data-time></span>
+      <span class="gwo-roll" data-roll hidden></span>
+      <span class="gwo-last" data-last></span>
+    </div>
+    <div class="gwo-fx" data-fx aria-hidden="true"></div>`;
+  const $q = (sel) => el.querySelector(sel);
+  let g = null;
+  let names = [];
+  let rolling = false;
+
+  const paint = () => {
+    const live = g && g.round > 0 && g.status !== 'idle';
+    el.hidden = !(live || opt.edit);
+    if (!g) return;
+    el.dataset.status = g.status;
+    $q('[data-prize]').textContent = live ? g.prize : 'Verlosung';
+    $q('[data-count]').textContent = `${g.entries} im Lostopf`;
+    $q('[data-join]').textContent = g.status === 'open' ? `${g.command} in den Chat${g.followers_only ? ' · nur Follower' : ''}` : g.status === 'closed' ? '🔒 Gleich wird gezogen …' : '';
+    $q('[data-join]').hidden = !['open', 'closed'].includes(g.status);
+    if (!rolling) {
+      const roll = $q('[data-roll]');
+      roll.hidden = g.status !== 'drawn' || !g.winner_name;
+      roll.textContent = g.winner_name ? `🏆 ${g.winner_name}` : '';
+    }
+    tick();
+  };
+  const tick = () => {
+    const left = g?.status === 'open' && g.ends_at ? until(g.ends_at) : 0;
+    $q('[data-time]').textContent = left ? `⏱ ${span(left)}` : '';
+    $q('[data-time]').hidden = !left;
+  };
+  setInterval(tick, 1000);
+
+  const popJoin = (name) => {
+    const last = $q('[data-last]');
+    last.textContent = `+ ${name} ist dabei`;
+    restart(last, 'is-in');
+  };
+  const confetti = () => {
+    const colors = ['#ff4fd8', '#ffd36b', '#3ddc84', '#35c7ff', '#9146ff'];
+    const fx = $q('[data-fx]');
+    fx.replaceChildren(...Array.from({ length: 40 }, (_, n) => {
+      const i = document.createElement('i');
+      const a = (n / 40) * Math.PI * 2;
+      const r = 5 + Math.random() * 7;
+      i.style.background = colors[n % colors.length];
+      i.style.setProperty('--x', `${Math.cos(a) * r}em`);
+      i.style.setProperty('--y', `${Math.sin(a) * r * 0.75}em`);
+      i.style.setProperty('--r', `${Math.random() * 720 - 360}deg`);
+      i.style.animationDelay = `${Math.random() * 150}ms`;
+      return i;
+    }));
+    setTimeout(() => fx.replaceChildren(), 2000);
+  };
+  // Namen laufen durch (immer langsamer), dann der Gewinner
+  const rollTo = async (winner, pool) => {
+    if (rolling) return;
+    rolling = true;
+    const roll = $q('[data-roll]');
+    roll.hidden = false;
+    el.classList.add('is-rolling');
+    roll.classList.remove('is-winner');
+    const list = pool.length ? pool : [winner];
+    for (let delay = 55; delay < 300; delay *= 1.1) {
+      roll.textContent = list[Math.floor(Math.random() * list.length)];
+      beep(opt.vols.giveaway ?? opt.volume, [[660 + Math.random() * 200, 0, 0.05, 'square']]);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    el.classList.remove('is-rolling');
+    roll.textContent = `🏆 ${winner}`;
+    restart(roll, 'is-winner');
+    restart(el, 'is-won');
+    confetti();
+    beep(opt.vols.giveaway ?? opt.volume, [[523, 0, 0.18], [659, 0.15, 0.18], [784, 0.3, 0.18], [1047, 0.45, 0.5]]);
+    rolling = false;
+  };
+
+  // Probe (test=1) und OBS-Editor: Beispiel, „▶ Testen“ zieht einen Gewinner
+  if (opt.test || opt.edit) {
+    const SAMPLE = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia', 'BuildBenno', 'SnipeSina', 'LamaLeni'];
+    g = { round: 1, status: 'open', prize: '1000 V-Bucks', command: '!verlosung', followers_only: true, entries: 37, ends_at: new Date(Date.now() + 299000).toISOString(), winner_name: '' };
+    paint();
+    if (editTests) editTests.giveaway = () => {
+      const winner = SAMPLE[Math.floor(Math.random() * SAMPLE.length)];
+      g = { ...g, status: 'drawn', winner_name: winner };
+      paint();
+      rollTo(winner, SAMPLE);
+      setTimeout(() => { g = { ...g, status: 'open', winner_name: '' }; paint(); }, 9000);
+    };
+    if (opt.test && !opt.edit) {
+      setInterval(() => {
+        if (g.status !== 'open') return;
+        g = { ...g, entries: g.entries + 1 };
+        paint();
+        popJoin(SAMPLE[Math.floor(Math.random() * SAMPLE.length)]);
+      }, 3500);
+    }
+    return;
+  }
+
+  const reload = async (animate) => {
+    const before = g;
+    const fresh = await src.one('giveaway').catch(() => null);
+    if (!fresh) return;
+    g = fresh;
+    // Neue Runde oder neue Teilnehmer: Namen nachladen (für das Durchlaufen und „+ Name ist dabei“)
+    if (g.round && (g.round !== before?.round || g.entries !== before?.entries || g.draws !== before?.draws)) {
+      names = (await src.giveawayNames(g.round, 60).catch(() => [])).map((e) => e.name);
+    }
+    paint();
+    if (!animate || !before) return;
+    if (g.round === before.round && g.entries > before.entries && names[0]) popJoin(names[0]);
+    if (g.status === 'drawn' && g.draws > (before.draws ?? 0) && g.winner_name) rollTo(g.winner_name, names);
+  };
+  await reload(false);
+  let timer = 0;
+  src.on('giveaway', () => { clearTimeout(timer); timer = setTimeout(() => reload(true), 150); });
+  setInterval(() => reload(true), 20000);
 }

@@ -67,7 +67,7 @@
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
-//   forbid, subathon, pause, quiz, queue, tts, cards (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize)
+//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize)
 //                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   otheme, scene, camframe, labels, goal (+ sctitle, scsub, sctime, cfstyle, cflabel, lbitems, lbsize,
 //   gtype, gtarget, gtitle, gsince, gsize)
@@ -227,7 +227,7 @@ const opt = {
 // Lautstärke je Ebene: Parameter → Schlüssel in opt.vols
 const MIX = {
   vwheel: 'wheel', vprank: 'prank', valert: 'alerts', vbingo: 'bingo', vquest: 'quest', vpet: 'pet', vshop: 'shop',
-  vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards',
+  vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards', vgive: 'giveaway',
 };
 for (const [param, key] of Object.entries(MIX)) opt.vols[key] = opt.volume * number(param, 100, 0, 200) / 100;
 
@@ -338,7 +338,7 @@ async function start() {
   if (opt.alerts || opt.recent) setupAlerts(source);
   setupTicker(source);
   if (opt.chat) setupChat();
-  setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null });
+  setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
   if (LIVE) watchOverlayConfig(source);
   startWatchtime();
