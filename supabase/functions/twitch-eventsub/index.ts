@@ -4,12 +4,13 @@
 // und bei Follows und Abos für das Alert-Feld, siehe _shared/alerts.ts):
 //   „Glücksrad“            → Rad drehen, Ergebnis in den Chat
 //   „🍅 Wirf was auf ‹Kanal›“ → Wurf im OBS-Overlay (eingetippt: was fliegt)
-//   „🔊 Sound für ‹Kanal›“ → Sound im OBS-Overlay (eingetippt: welcher)
+//   „🔊 Sound für ‹Kanal›“ → Sound im OBS-Overlay (eingetippt: Nummer, Name oder „zufall“)
+//   „🔊 ‹Sound›“             → genau dieser Sound, ohne Tippen (eine Belohnung pro Sound)
 // Funktioniert also auch, wenn niemand die Website offen hat.
 import {
   chatText, CodedError, db, env, getConnection, helix, performSpin, sendChat, type Connection,
 } from "../_shared/twitch.ts";
-import { BOARD_SOUNDS, matchBoardSound, matchCustomSound, matchThrow, prankState, THROW_ITEMS } from "../_shared/pranks.ts";
+import { matchThrow, pickSound, prankState, type SoundEntry, soundForReward, soundList, THROW_ITEMS } from "../_shared/pranks.ts";
 import { handleChatMessage } from "../_shared/chat.ts";
 import { handleAlert, isAlertType } from "../_shared/alerts.ts";
 import { handleExtraRedemption } from "../_shared/extras.ts";
@@ -119,8 +120,12 @@ type Redemption = {
 async function handleRedemption(event: Redemption) {
   const conn = await getConnection();
   if (!conn) return;
+  // Eine Belohnung pro Sound (Migration …_sound_rewards.sql)
+  const fixed = [conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id].includes(event.reward.id)
+    ? null
+    : await soundForReward(conn, event.reward.id).catch((e) => { console.warn("Sound-Belohnung:", e); return null; });
   // Raid-Schutz: Glücksrad und Ärgern pausiert → Punkte zurück (Vorlesen/Karten prüft die Datenbank selbst)
-  if ([conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id].includes(event.reward.id)) {
+  if (fixed || [conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id].includes(event.reward.id)) {
     const { data: paused } = await db.rpc("viewer_paused");
     if (paused === true) {
       await setStatus(conn, event, "CANCELED").catch(console.error);
@@ -130,6 +135,7 @@ async function handleRedemption(event: Redemption) {
   }
   if (event.reward.id === conn.prank_throw_reward_id) return handlePrank(conn, event, "throw");
   if (event.reward.id === conn.prank_sound_reward_id) return handlePrank(conn, event, "sound");
+  if (fixed) return handlePrank(conn, event, "sound", fixed);
   // Vorlesen (Text-to-Speech) und Karten-Packs (Migration …_stream_extras.sql)
   if (await handleExtraRedemption(conn, event)) return;
   if (event.reward.id !== conn.reward_id) return; // andere Belohnungen gehen uns nichts an
@@ -160,7 +166,10 @@ function setStatus(conn: Connection, event: Redemption, status: "FULFILLED" | "C
 }
 
 // ---------- Ärgern (Würfe und Sounds im Stream) ----------
-async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | "sound") {
+async function handlePrank(
+  conn: Connection, event: Redemption, kind: "throw" | "sound",
+  fixed?: { gone: true } | { gone: false; entry: SoundEntry },
+) {
   const input = (event.user_input ?? "").slice(0, 100);
   const refund = async (message: string) => {
     await setStatus(conn, event, "CANCELED").catch(console.error); // Punkte zurück
@@ -186,13 +195,15 @@ async function handlePrank(conn: Connection, event: Redemption, kind: "throw" | 
     row = { kind: "throw", item: item.id };
     text = item.id === "flowers" ? `💐 ${event.user_name} schenkt ${conn.display_name} Blumen!` : `🎯 ${event.user_name} wirft: ${item.name}!`;
   } else {
-    const board = matchBoardSound(input);
-    const custom = board ? null : await matchCustomSound(input);
-    if (!board && !custom) {
-      return refund(`Diesen Sound gibt es nicht. Zum Beispiel: ${BOARD_SOUNDS.map((b) => b.name).join(", ")} – eigene Sounds stehen auf der Webseite.`);
+    if (fixed?.gone) return refund("Diesen Sound gibt es nicht mehr.");
+    const sound = fixed ? fixed.entry : pickSound(input, await soundList());
+    if (!sound) {
+      return refund("Diesen Sound kenne ich nicht. Tipp eine Nummer oder einen Namen ein – die Liste zeigt !sounds im Chat, „zufall“ nimmt irgendeinen.");
     }
-    row = board ? { kind: "sound", item: board.id } : { kind: "sound", item: "custom", sound_path: custom!.path, label: custom!.name };
-    text = `🔊 ${event.user_name} spielt „${board?.name ?? custom!.name}“`;
+    row = sound.board
+      ? { kind: "sound", item: sound.board.id }
+      : { kind: "sound", item: "custom", sound_path: sound.custom!.path, label: sound.custom!.name };
+    text = `🔊 ${event.user_name} spielt Nr. ${sound.no} „${sound.name}“`;
   }
 
   const { error } = await db.from("pranks").insert({ ...row, requested_by: event.user_name, redemption_id: event.id });

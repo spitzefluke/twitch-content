@@ -63,6 +63,7 @@ const state = {
     on: false,          // Migration …_pranks.sql eingespielt?
     settings: { enabled: true, cooldown_seconds: 20, allow_uploads: true },
     sounds: [],
+    rewards: null,      // Sounds mit eigener Belohnung (…_sound_rewards.sql); null = Migration fehlt
     log: [],
     seen: new Set(),    // eigene Aktionen kommen auch über Realtime – nicht doppelt zeigen
     until: 0,           // Ende der Pause bis zur nächsten Aktion
@@ -1907,15 +1908,18 @@ function setupPrank() {
   }));
 
   // Eingebaute Sounds: großer Knopf = im Stream abspielen, 🎧 = nur hier probehören
-  $('#prank-board').replaceChildren(...BOARD.map((sound) => {
+  // Die Nummer tippen Zuschauer auf Twitch ein (1–9, eigene Sounds ab 10)
+  $('#prank-board').replaceChildren(...BOARD.map((sound, i) => {
     const wrap = div('prank-sfx');
+    wrap.dataset.board = sound.id;
     const main = document.createElement('button');
     main.type = 'button';
     main.className = 'prank-sfx-main';
     main.dataset.prankAction = '';
-    main.innerHTML = '<span aria-hidden="true"></span><b></b>';
-    main.firstElementChild.textContent = sound.emoji;
-    main.lastElementChild.textContent = sound.name;
+    main.innerHTML = '<i class="prank-no"></i><span aria-hidden="true"></span><b></b>';
+    main.querySelector('.prank-no').textContent = String(i + 1);
+    main.querySelector('span').textContent = sound.emoji;
+    main.querySelector('b').textContent = sound.name;
     main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
     main.addEventListener('click', () => prankClick('sound', sound));
     const tryBtn = document.createElement('button');
@@ -1956,7 +1960,8 @@ function setupPrank() {
     }
   });
 
-  $('#prank-admin').addEventListener('change', savePrankSettings);
+  // Die Liste „Sounds mit eigener Belohnung“ speichert selbst (soundRewardChange)
+  $('#prank-admin').addEventListener('change', (e) => { if (!e.target.closest('#prank-direct')) savePrankSettings(); });
   $('#prank-hack-start').addEventListener('click', () => sendPrank('hack', 'start'));
   $('#prank-hack-stop').addEventListener('click', () => sendPrank('hack', 'firewall'));
   $('#prank-anniv-start').addEventListener('click', startAnniversaryShow);
@@ -2033,17 +2038,34 @@ function renderPrankDialog() {
 }
 
 async function loadSounds() {
-  try {
-    state.prank.sounds = await state.api.getSounds();
-  } catch (err) {
-    console.warn('Sounds nicht geladen:', err);
-  }
+  const [sounds, rewards] = await Promise.all([
+    state.api.getSounds().catch((err) => { console.warn('Sounds nicht geladen:', err); return null; }),
+    state.api.getSoundRewards().catch(() => null),
+  ]);
+  if (sounds) state.prank.sounds = sounds;
+  state.prank.rewards = rewards;
   renderSounds();
+  renderPrankHowTo();
+}
+
+// Nummer eines Sounds (wie in der Edge Function): eingebaut 1–9, eigene ab 10
+const soundNo = (kind, entry) => (kind === 'custom' ? entry.no : BOARD.findIndex((b) => b.id === entry.id) + 1);
+// Hat der Sound eine eigene Belohnung auf Twitch (angelegt und an)?
+function directReward(kind, entry) {
+  const key = kind === 'custom' ? 'sound_id' : 'board';
+  return (state.prank.rewards ?? []).find((r) => r.enabled && r.reward_id && r[key] === entry.id) ?? null;
 }
 
 function renderSounds() {
   const list = $('#prank-sounds');
   const { sounds } = state.prank;
+  // Eingebaute Sounds mit eigener Belohnung markieren
+  document.querySelectorAll('#prank-board .prank-sfx').forEach((el) => {
+    const on = !!directReward('sound', { id: el.dataset.board });
+    el.classList.toggle('is-direct', on);
+    el.title = on ? 'Hat auf Twitch eine eigene Belohnung – einlösen, ohne zu tippen' : '';
+  });
+  renderSoundRewards();
   if (!sounds.length) {
     const li = document.createElement('li');
     li.className = 'empty';
@@ -2058,8 +2080,13 @@ function renderSounds() {
     main.type = 'button';
     main.className = 'prank-sound-main';
     main.dataset.prankAction = '';
-    main.innerHTML = '<b></b><small></small>';
-    main.querySelector('b').textContent = `🔊 ${sound.name}`;
+    main.innerHTML = '<b><i class="prank-no"></i> <span></span></b><small></small>';
+    main.querySelector('.prank-no').textContent = String(sound.no ?? '');
+    main.querySelector('b span').textContent = sound.name;
+    if (directReward('custom', sound)) {
+      li.classList.add('is-direct');
+      main.title = 'Hat auf Twitch eine eigene Belohnung – einlösen, ohne zu tippen';
+    }
     main.querySelector('small').textContent = `von ${sound.author || 'anonym'} · ${Number(sound.duration).toLocaleString('de-DE', { maximumFractionDigits: 1 })} s`;
     main.setAttribute('aria-label', `„${sound.name}“ im Stream abspielen`);
     main.addEventListener('click', () => prankClick('custom', sound));
@@ -2088,6 +2115,81 @@ function renderSounds() {
   paintPrankButtons();
 }
 
+const directCount = () => (state.prank.rewards ?? []).filter((r) => r.enabled && r.reward_id).length;
+
+// ---------- Sounds mit eigener Belohnung (Admins) ----------
+// Haken = auf Twitch gibt es „🔊 Name“ als eigene Belohnung; Zuschauer lösen ein, ohne zu tippen.
+const SOUND_REWARD_MAX = 20;
+function renderSoundRewards() {
+  const box = $('#prank-direct');
+  if (!box) return;
+  const { rewards, sounds, settings } = state.prank;
+  box.hidden = !state.profile?.is_admin || !state.prank.on;
+  if (box.hidden) return;
+  const list = $('#prank-direct-list');
+  const note = $('#prank-direct-note');
+  if (rewards === null) {
+    note.textContent = 'Einmal nötig: In Supabase im SQL Editor die Datei supabase/migrations/20261024000000_sound_rewards.sql ausführen.';
+    list.replaceChildren();
+    return;
+  }
+  const on = rewards.filter((r) => r.enabled).length;
+  note.textContent = `${on} von höchstens ${SOUND_REWARD_MAX} an. Twitch erlaubt insgesamt 50 Belohnungen pro Kanal.`;
+  const entries = [
+    ...BOARD.map((b, i) => ({ key: { board: b.id }, no: i + 1, name: b.name, emoji: b.emoji, row: rewards.find((r) => r.board === b.id) })),
+    ...[...sounds].sort((a, b) => a.no - b.no).map((x) => ({ key: { sound_id: x.id }, no: x.no, name: x.name, emoji: '🔊', row: rewards.find((r) => r.sound_id === x.id) })),
+  ];
+  list.replaceChildren(...entries.map((e) => {
+    const li = document.createElement('li');
+    li.className = 'prank-direct-row';
+    const label = document.createElement('label');
+    label.className = 'prank-direct-name';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = !!e.row?.enabled;
+    check.disabled = !check.checked && on >= SOUND_REWARD_MAX;
+    check.setAttribute('aria-label', `„${e.name}“ bekommt eine eigene Belohnung`);
+    const text = document.createElement('span');
+    text.innerHTML = '<i class="prank-no"></i> <span aria-hidden="true"></span> <b></b>';
+    text.querySelector('.prank-no').textContent = String(e.no);
+    text.querySelector('span').textContent = e.emoji;
+    text.querySelector('b').textContent = e.name;
+    label.append(check, text);
+    const cost = document.createElement('input');
+    cost.type = 'number';
+    cost.min = '1';
+    cost.max = '1000000';
+    cost.inputMode = 'numeric';
+    cost.value = String(e.row?.cost ?? settings.sound_cost ?? 300);
+    cost.disabled = !check.checked;
+    cost.setAttribute('aria-label', `Kanalpunkte für „${e.name}“`);
+    check.addEventListener('change', () => soundRewardChange(e.key, { enabled: check.checked, cost: clampPoints(cost.value) }, li));
+    cost.addEventListener('change', () => soundRewardChange(e.key, { cost: clampPoints(cost.value) }, li));
+    li.append(label, cost);
+    if (e.row?.enabled) {
+      const st = document.createElement('small');
+      st.className = e.row.error ? 'prank-direct-err' : 'prank-direct-ok';
+      st.textContent = e.row.error ? `✕ ${e.row.error}` : e.row.reward_id ? '✓ auf Twitch' : 'noch nicht auf Twitch';
+      li.append(st);
+    }
+    return li;
+  }));
+}
+
+const clampPoints = (v) => Math.min(1000000, Math.max(1, Math.round(Number(v)) || 300));
+
+async function soundRewardChange(key, patch, li) {
+  li.querySelectorAll('input').forEach((el) => { el.disabled = true; });
+  try {
+    await state.api.setSoundReward(key, patch);
+    state.prank.rewards = await state.api.getSoundRewards();
+    if (state.twitch.connected) await syncPrankRewards();
+  } catch (err) {
+    toast(germanError(err), 'error', 6000);
+  }
+  renderSounds();
+}
+
 // Admins lösen direkt im Stream aus. Zuschauer bezahlen mit Kanalpunkten auf
 // Twitch – hier kopiert ein Klick den Namen zum Eintippen und zeigt eine Vorschau.
 function prankClick(kind, entry) {
@@ -2096,9 +2198,17 @@ function prankClick(kind, entry) {
     else sendPrank(kind, entry.id);
     return;
   }
-  const reward = kind === 'throw' ? `🍅 Wirf was auf ${streamerName()}` : `🔊 Sound für ${streamerName()}`;
-  navigator.clipboard?.writeText(entry.name).catch(() => {});
-  toast(`„${entry.name}“ kopiert – auf Twitch bei „${reward}“ einfügen.`, 'ok', 4500);
+  if (kind === 'throw') {
+    navigator.clipboard?.writeText(entry.name).catch(() => {});
+    toast(`„${entry.name}“ kopiert – auf Twitch bei „🍅 Wirf was auf ${streamerName()}“ einfügen.`, 'ok', 4500);
+  } else if (directReward(kind, entry)) {
+    toast(`Auf Twitch einfach „🔊 ${entry.name}“ bei den Kanalpunkten einlösen – ohne Tippen.`, 'ok', 5000);
+  } else {
+    // Die Nummer ist kürzer und eindeutig – der Name geht auf Twitch genauso
+    const no = soundNo(kind, entry);
+    navigator.clipboard?.writeText(String(no)).catch(() => {});
+    toast(`Nr. ${no} („${entry.name}“) kopiert – auf Twitch bei „🔊 Sound für ${streamerName()}“ einfügen.`, 'ok', 5000);
+  }
   const preview = { id: `preview-${Date.now()}`, created_at: new Date().toISOString(), requested_by: 'Du' };
   if (kind === 'throw') showPrank({ ...preview, kind: 'throw', item: entry.id }, true);
   else if (kind === 'custom') showPrank({ ...preview, kind: 'sound', item: 'custom', sound_path: entry.path, label: entry.name }, true);
@@ -2157,10 +2267,14 @@ function renderPrankHowTo() {
       : twitch.prank_rewards_active ? '' : 'Die Belohnungen sind auf Twitch gerade ausgeschaltet.';
   box.innerHTML = state.profile?.is_admin
     ? `<b>Du bist Admin:</b> Ein Klick löst direkt im Stream aus – ohne Kanalpunkte, z. B. zum Testen.
-       Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf ${escapeHtml(streamerName())}“ (${cost(settings.throw_cost)}) und „🔊 Sound für ${escapeHtml(streamerName())}“ (${cost(settings.sound_cost)}).`
+       Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf ${escapeHtml(streamerName())}“ (${cost(settings.throw_cost)}) und „🔊 Sound für ${escapeHtml(streamerName())}“ (${cost(settings.sound_cost)}) –
+       beim Sound reicht die Nummer, Tippfehler sind egal, „zufall“ nimmt irgendeinen, <b>!sounds</b> im Chat zeigt die Liste.
+       Einzelnen Sounds kannst du unten eine eigene Belohnung geben (⚡, ohne Tippen).`
     : `<b>So ärgerst du den Streamer:</b> Im Twitch-Chat von ${escapeHtml(streamerName())} auf das Kanalpunkte-Symbol klicken und
        <b>„🍅 Wirf was auf ${escapeHtml(streamerName())}“</b> (${cost(settings.throw_cost)}) oder <b>„🔊 Sound für ${escapeHtml(streamerName())}“</b> (${cost(settings.sound_cost)}) einlösen –
-       dann eintippen, was fliegen bzw. welcher Sound laufen soll. Ein Klick hier kopiert den Namen und zeigt eine Vorschau.
+       dann eintippen, was fliegen bzw. welcher Sound laufen soll. Beim Sound reicht die <b>Nummer</b> (z. B. <b>3</b>), Tippfehler sind egal,
+       <b>zufall</b> nimmt irgendeinen und <b>!sounds</b> im Chat zeigt die Liste.${directCount() ? ` Sounds mit ⚡ haben eine eigene Belohnung „🔊 Name“ – einlösen, ohne zu tippen.` : ''}
+       Ein Klick hier kopiert die Nummer bzw. den Namen und zeigt eine Vorschau.
        <a class="prank-twitch-link" target="_blank" rel="noopener" href="https://www.twitch.tv/${encodeURIComponent(streamerLogin())}">Zum Twitch-Kanal ↗</a>`;
   if (status) {
     const p = document.createElement('small');
@@ -2269,7 +2383,7 @@ function paintPrankButtons() {
     : 'Das kannst du auf den Streamer werfen. Klick = Name kopieren und Vorschau.';
   $('#prank-lead-sound').textContent = admin
     ? 'Klick spielt den Sound im Stream. 🎧 hört nur hier probe.'
-    : 'Diese Sounds gibt es. Klick = Name kopieren, 🎧 = probehören.';
+    : 'Diese Sounds gibt es. Klick = Nummer kopieren, 🎧 = probehören. ⚡ = eigene Belohnung auf Twitch, ohne Tippen.';
 }
 
 // ---------- Eigene Sounds ----------
@@ -2289,7 +2403,9 @@ async function uploadSound(e) {
       throw new Error(`Der Sound ist ${duration.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Sekunden lang – erlaubt sind höchstens ${MAX_SOUND_SECONDS}.`);
     }
     const sound = await state.api.uploadSound(file, name, Math.round(Math.min(duration, MAX_SOUND_SECONDS) * 10) / 10);
-    state.prank.sounds = [sound, ...state.prank.sounds];
+    // Nummer: nach dem bisher neuesten eigenen Sound (genauer Stand kommt mit loadSounds)
+    const top = Math.max(BOARD.length, ...state.prank.sounds.map((x) => x.no ?? 0));
+    state.prank.sounds = [{ ...sound, no: sound.no ?? top + 1 }, ...state.prank.sounds];
     renderSounds();
     form.reset();
     $('.sound-file-text', form).textContent = '🎵 Sound-Datei wählen …';
@@ -2312,9 +2428,12 @@ async function deleteSound(sound, btn) {
   if (!confirm(`„${sound.name}“ wirklich löschen?`)) return;
   btn.disabled = true;
   try {
+    const hadReward = !!directReward('custom', sound);
     await state.api.deleteSound(sound);
     state.prank.sounds = state.prank.sounds.filter((x) => x.id !== sound.id);
     renderSounds();
+    // Eigene Belohnung des Sounds auf Twitch gleich mit wegräumen (sonst beim nächsten Abgleich)
+    if (hadReward && state.profile?.is_admin && state.twitch.connected) syncPrankRewards();
   } catch (err) {
     btn.disabled = false;
     toast(`Löschen fehlgeschlagen: ${germanError(err)}`, 'error');
@@ -2337,7 +2456,13 @@ async function syncPrankRewards({ loud = false } = {}) {
       : r.started === false && r.starts_at
         ? `✓ Auf Twitch angelegt, aber aus bis ${startLabel(r.starts_at)}. Danach hier einmal „Auf Twitch übernehmen“.`
         : '✓ Auf Twitch angelegt, aber ausgeschaltet.';
-    if (loud) toast('Belohnungen auf Twitch aktualisiert.', 'ok');
+    const failed = r.sound_rewards?.errors ?? [];
+    if (failed.length) status.textContent += ` Sound-Belohnungen: ${failed.join(' · ')}`;
+    if (loud) toast(failed.length ? `Twitch: ${failed[0]}` : 'Belohnungen auf Twitch aktualisiert.', failed.length ? 'error' : 'ok', failed.length ? 7000 : 3000);
+    if (r.sound_rewards) {
+      state.prank.rewards = await state.api.getSoundRewards().catch(() => state.prank.rewards);
+      renderSounds();
+    }
     renderPrankHowTo();
   } catch (err) {
     status.textContent = `✕ ${germanError(err)}`;

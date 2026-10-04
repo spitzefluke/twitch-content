@@ -16,7 +16,7 @@ import {
   CodedError, corsHeaders, db, env, getAppToken, getConnection, getUserFromRequest,
   helix, HelixError, isAdminUser, json, oauthRedirectUri, startTwitchLogin, twitchToken,
 } from "../_shared/twitch.ts";
-import { ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
+import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
 import { ensureAlertSubscriptions } from "../_shared/alerts.ts";
 import { runHealthCheck } from "../_shared/health.ts";
@@ -376,6 +376,7 @@ async function disconnect(userId: string) {
         .catch((e) => console.warn(e));
     }
     // Belohnungen deaktivieren statt löschen – beim erneuten Verbinden werden sie wieder aktiviert
+    await disableSoundRewards(conn).catch((e) => console.warn(e));
     for (const rewardId of [conn.reward_id, conn.prank_throw_reward_id, conn.prank_sound_reward_id]) {
       if (!rewardId) continue;
       await helix("channel_points/custom_rewards", conn.access_token, {

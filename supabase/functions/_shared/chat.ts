@@ -1,10 +1,10 @@
 // Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
-// Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch); alles andere (auch !watchtime und
+// Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds); alles andere (auch !watchtime und
 // eigene Befehle) beantwortet chat_command in der Datenbank.
 import { db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
-import { normalize } from "./pranks.ts";
+import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
 
@@ -69,6 +69,11 @@ export async function handleChatMessage(event: ChatMessage) {
   // Verlosung: eigener Befehl, braucht die Follower-Prüfung bei Twitch (kann SQL nicht)
   if (!self || event.chatter_user_id !== self.user_id) {
     if (await handleGiveaway(event, command).catch((e) => { console.warn("Verlosung:", e); return false; })) return;
+  }
+
+  // !sounds: nummerierte Liste für die Belohnung „🔊 Sound für …“
+  if ((!self || event.chatter_user_id !== self.user_id) && normalize(command) === "sounds") {
+    if (await handleSoundList().catch((e) => { console.warn("!sounds:", e); return false; })) return;
   }
 
   // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
@@ -186,5 +191,32 @@ async function handleGiveaway(event: ChatMessage, command: string) {
   });
   if (rpcError) throw rpcError;
   if (res?.reply) await sendChat(conn, String(res.reply)).catch((e) => console.warn("Chat:", (e as Error).message));
+  return true;
+}
+
+// ---------- !sounds (Ärgern, Migration …_pranks.sql) ----------
+// Schreibt die Sounds mit Nummer in den Chat – höchstens alle 30 Sekunden (für alle zusammen).
+// Liefert false, wenn das Ärgern gerade aus ist: Dann darf ein eigener Befehl !sounds antworten.
+const SOUNDS_COOLDOWN_MS = 30_000;
+async function handleSoundList() {
+  const { active } = await prankState();
+  if (!active) return false;
+  const conn = await getConnection();
+  if (!conn) return false;
+  const { data: cd } = await db.from("chat_cooldowns").select("at").eq("slot", "sounds").maybeSingle();
+  if (cd && Date.now() - Date.parse(cd.at) < SOUNDS_COOLDOWN_MS) return true;
+  await db.from("chat_cooldowns").upsert({ slot: "sounds", at: new Date().toISOString() });
+
+  const list = await soundList();
+  const who = (conn.display_name || "den Streamer").slice(0, 25);
+  const lines = soundListMessages(list, `🔊 Bei „🔊 Sound für ${who}“ Nummer oder Name eintippen („zufall“ geht auch):`);
+  // Sounds mit eigener Belohnung (Migration …_sound_rewards.sql): einfach anklicken
+  const { data: own } = await db.from("prank_sound_rewards").select("board, sound_id").eq("enabled", true).not("reward_id", "is", null);
+  const direct = (own ?? [])
+    .map((r: { board: string | null; sound_id: string | null }) => list.find((s) => (r.board ? s.board?.id === r.board : s.custom?.id === r.sound_id)))
+    .filter(Boolean)
+    .map((s) => soundRewardTitle(s!.name));
+  if (direct.length) lines.push(`Ohne Tippen, direkt bei den Kanalpunkten: ${direct.join(" · ")}`.slice(0, 480));
+  for (const line of lines) await sendChat(conn, line);
   return true;
 }

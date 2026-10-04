@@ -1,6 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
+import { BOARD } from './prank-fx.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, drawCard, fullBetLines } from './bingo.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
@@ -282,11 +283,28 @@ async function createSupabaseApi() {
     async getSounds() {
       const { data: session } = await sb.auth.getSession();
       const uid = session.session?.user?.id;
+      // Nummern wie in der Edge Function (pranks.ts, soundList): 1–9 eingebaut, ab 10 der älteste eigene Sound
       const rows = unwrap(await sb.from('sounds')
         .select('id, name, path, duration, author, user_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(80));
-      return rows.map((r) => ({ ...r, mine: r.user_id === uid, url: this.soundUrl(r.path) }));
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(500));
+      return rows.map((r, i) => ({ ...r, no: BOARD.length + 1 + i, mine: r.user_id === uid, url: this.soundUrl(r.path) })).reverse();
+    },
+    // Sounds mit eigener Belohnung auf Twitch (Migration …_sound_rewards.sql; fehlt sie: leer)
+    async getSoundRewards() {
+      const { data, error } = await sb.from('prank_sound_rewards').select('id, board, sound_id, enabled, cost, reward_id, error').order('id');
+      if (error) return null;
+      return data;
+    },
+    async setSoundReward(target, patch) {
+      const col = target.board ? 'board' : 'sound_id';
+      const key = target.board ?? target.sound_id;
+      const { data: found } = await sb.from('prank_sound_rewards').select('id').eq(col, key).maybeSingle();
+      if (found) {
+        return unwrap(await sb.from('prank_sound_rewards').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', found.id).select('*').single());
+      }
+      return unwrap(await sb.from('prank_sound_rewards').insert({ [col]: key, ...patch }).select('*').single());
     },
     async uploadSound(file, name, duration) {
       const { data: session } = await sb.auth.getSession();
@@ -1070,7 +1088,21 @@ function createLocalApi() {
     onPrank(cb) { prankListeners.push(cb); },
     soundUrl(path) { return store.get('sounds', []).find((x) => x.path === path)?.url ?? ''; },
     async getSounds() {
-      return store.get('sounds', []).map((x) => ({ ...x, mine: x.user_id === current?.email }));
+      const all = store.get('sounds', []);
+      return all.map((x, i) => ({ ...x, no: BOARD.length + all.length - i, mine: x.user_id === current?.email }));
+    },
+    async getSoundRewards() { return store.get('sound_rewards', []); },
+    async setSoundReward(target, patch) {
+      const list = store.get('sound_rewards', []);
+      const key = target.board ? 'board' : 'sound_id';
+      let row = list.find((r) => r[key] === (target.board ?? target.sound_id));
+      if (patch.enabled && !row?.enabled && list.filter((r) => r.enabled).length >= 20) {
+        throw new Error('Höchstens 20 Sounds mit eigener Belohnung – Twitch erlaubt nur 50 Belohnungen pro Kanal. Schalte erst einen anderen aus.');
+      }
+      if (row) Object.assign(row, patch);
+      else list.push(row = { id: nextId++, board: target.board ?? null, sound_id: target.sound_id ?? null, enabled: true, cost: 300, reward_id: null, error: '', ...patch });
+      store.set('sound_rewards', list);
+      return row;
     },
     // Demo: Die Datei landet als data:-URL im localStorage – der ist klein, daher höchstens 400 KB.
     async uploadSound(file, name, duration) {
@@ -1095,6 +1127,7 @@ function createLocalApi() {
     },
     async deleteSound(sound) {
       store.set('sounds', store.get('sounds', []).filter((x) => x.id !== sound.id));
+      store.set('sound_rewards', store.get('sound_rewards', []).filter((r) => r.sound_id !== sound.id));
     },
 
     // ---------- Fortnite-Bingo (Demo) ----------

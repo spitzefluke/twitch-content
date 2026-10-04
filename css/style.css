@@ -965,6 +965,33 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .prank-admin[hidden] { display: none; }
 .prank-admin .prank-h3 { margin: 0; color: var(--amber-2); }
 
+/* Sound-Nummern (auf Twitch eintippen) und Sounds mit eigener Belohnung (⚡) */
+.prank-no {
+  display: inline-grid; place-items: center; min-width: 1.7em; height: 1.7em; padding: 0 .35em; border-radius: 999px;
+  font: 700 11px/1 var(--font-mono); font-style: normal; color: #e9ddff; background: rgba(145, 70, 255, .28);
+}
+.prank-sfx-main .prank-no { position: absolute; top: 6px; left: 6px; }
+.prank-sfx.is-direct .prank-sfx-main, .prank-sounds li.is-direct .prank-sound-main { border-color: rgba(255, 196, 0, .55); }
+.prank-sfx.is-direct .prank-sfx-main::after, .prank-sounds li.is-direct .prank-sound-main b::after {
+  content: "⚡"; font-size: 12px; margin-left: 4px;
+}
+.prank-sfx.is-direct .prank-sfx-main::after { position: absolute; bottom: 6px; right: 8px; margin: 0; }
+.prank-direct { display: grid; gap: 8px; margin: 0; padding: 12px; border: 1px dashed var(--line-2); border-radius: 12px; min-width: 0; }
+.prank-direct[hidden] { display: none; }
+.prank-direct legend { padding: 0 6px; font-size: 15px; }
+.prank-direct-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow: auto; }
+.prank-direct-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 4px 8px; }
+.prank-direct-name { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; font-size: 14px; }
+.prank-direct-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prank-direct-name input { width: 18px; height: 18px; accent-color: var(--twitch); flex: none; }
+.prank-direct-row input[type="number"] {
+  width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); font: inherit; font-size: 13px;
+}
+.prank-direct-row input[type="number"]:disabled { opacity: .45; }
+.prank-direct-row small { grid-column: 1 / -1; font-size: 12px; padding-left: 26px; }
+.prank-direct-ok { color: var(--green); }
+.prank-direct-err { color: #ff8a80; }
+
 @media (max-width: 860px) {
   .prank-layout { grid-template-columns: minmax(0, 1fr); padding-left: 16px; padding-right: 16px; }
   .prank-note { margin-left: 16px; margin-right: 16px; }
