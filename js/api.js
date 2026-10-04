@@ -32,7 +32,8 @@ const ERRORS = [
   [/email not confirmed/i, 'Bitte bestätige zuerst den Link in deiner E-Mail.'],
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
-  [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
+  [/function ?not ?found|function \S+ not found|\bnot found\b.*function/i, 'Die Edge Function gibt es in Supabase (noch) nicht. Sie wird beim Merge automatisch hochgeladen (GitHub → Actions → „Edge Functions deployen“).'],
+  [/failed to send a request to the edge function/i, 'Keine Antwort von der Edge Function. Bitte gleich noch einmal versuchen; bleibt es dabei, Werbeblocker ausschalten und in Supabase die Logs der Function ansehen.'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Streamer“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
@@ -78,14 +79,36 @@ async function createSupabaseApi() {
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const unwrap = ({ data, error }) => { if (error) throw error; return data; };
 
+  // Edge Function aufrufen. Kommt gar keine Antwort (Netzwerk, Kaltstart-Aussetzer, Werbeblocker),
+  // versucht es die Seite bei twitch-oauth (nur Einstellungen und Prüfungen) einmal von selbst neu –
+  // nicht bei spin oder bingo-bet, die würden sonst doppelt drehen bzw. starten.
+  const RETRY_ON_NO_ANSWER = new Set(['twitch-oauth', 'stream-tools']);
   async function invoke(name, body) {
-    const { data, error } = await sb.functions.invoke(name, { body });
-    if (error) {
-      let message = error.message;
-      try { message = (await error.context.json()).error ?? message; } catch { /* keine JSON-Antwort */ }
-      throw new Error(message);
+    let { data, error } = await sb.functions.invoke(name, { body });
+    if (error?.name === 'FunctionsFetchError' && RETRY_ON_NO_ANSWER.has(name)) {
+      await new Promise((r) => setTimeout(r, 1200));
+      ({ data, error } = await sb.functions.invoke(name, { body }));
     }
-    return data;
+    if (!error) return data;
+    if (error.name === 'FunctionsFetchError') {
+      throw new Error(`Keine Antwort von der Edge Function „${name}“. Meist ein kurzer Aussetzer bei Supabase – bitte gleich noch einmal versuchen. `
+        + `Bleibt es dabei: Werbeblocker für diese Seite ausschalten und in Supabase unter Edge Functions → ${name} → Logs nachsehen.`);
+    }
+    if (error.name === 'FunctionsRelayError') {
+      throw new Error(`Supabase konnte die Edge Function „${name}“ gerade nicht erreichen. Bitte gleich noch einmal versuchen.`);
+    }
+    // Antwort mit Fehlercode: unsere Functions schicken {error}, Supabase selbst {message} oder {msg}
+    let message = error.message;
+    const status = error.context?.status;
+    try {
+      const j = await error.context.json();
+      message = j.error ?? j.message ?? j.msg ?? message;
+    } catch { /* keine JSON-Antwort */ }
+    if (status === 404 && /not found/i.test(message)) message = `Function ${name} not found`;
+    else if ([502, 503, 504, 546].includes(status) && message === error.message) {
+      message = `Die Edge Function „${name}“ hat nicht rechtzeitig geantwortet (Status ${status}). Bitte gleich noch einmal versuchen; sonst in Supabase unter Edge Functions → ${name} → Logs nachsehen.`;
+    }
+    throw new Error(message);
   }
 
   return {
