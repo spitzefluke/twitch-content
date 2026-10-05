@@ -7,6 +7,7 @@
 //   tts=bl|…         Vorlesen: Sprechblase beim Vorlesen – ohne diese Ebene liest das Overlay nichts vor   ttsize=100
 //   cards=br|…       Sammelkarten: seltene Ziehungen (Episch, Legendär) springen auf                        cdsize=100
 //   giveaway=tc|…    Verlosung: Preis, Befehl, Zahl im Lostopf, neue Teilnehmer; beim Ziehen laufen die Namen durch  gwsize=100
+//   hotwords=tl|…    Hot Words: die häufigsten Wörter im Chat mit Zähler (nur solange es welche gibt)   hwsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { speak, stopSpeaking } from './tts-voice.js';
@@ -25,8 +26,9 @@ export function setupOverlayExtras(o) {
     tts: o.position(o.params.get('tts'), null),
     cards: o.position(o.params.get('cards'), null),
     giveaway: o.position(o.params.get('giveaway'), null),
+    hotwords: o.position(o.params.get('hotwords'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -38,6 +40,7 @@ export function setupOverlayExtras(o) {
   if (cfg.tts) setupTts(ctx, card('ov-x-tts', 'tts', cfg.tts, o));
   if (cfg.cards) setupCards(ctx, card('ov-x-cards', 'cards', cfg.cards, o));
   if (cfg.giveaway) setupGiveaway(ctx, card('ov-x-giveaway', 'giveaway', cfg.giveaway, o));
+  if (cfg.hotwords) setupHotwords(ctx, card('ov-x-hotwords', 'hotwords', cfg.hotwords, o));
 }
 
 function card(id, key, pos, o) {
@@ -664,4 +667,61 @@ async function setupGiveaway({ src, opt, editTests }, el) {
   let timer = 0;
   src.on('giveaway', () => { clearTimeout(timer); timer = setTimeout(() => reload(true), 150); });
   setInterval(() => reload(true), 20000);
+}
+
+// ============================================================
+// Hot Words: die häufigsten Wörter im Chat (…_hotwords.sql) – zählt die Edge Function twitch-eventsub
+// ============================================================
+async function setupHotwords({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🔥 Hot Words</span></header>
+    <ol class="hwo-list" data-list></ol>`;
+  const list = el.querySelector('[data-list]');
+  let hw = null;
+  let before = new Map();
+
+  const paint = () => {
+    const top = hw?.enabled === false ? [] : (hw?.top ?? []);
+    el.hidden = !(top.length || opt.edit);
+    const max = Math.max(1, ...top.map((t) => t.n));
+    const next = new Map();
+    list.replaceChildren(...top.map((t, i) => {
+      const key = String(t.w).toLowerCase();
+      next.set(key, t.n);
+      const li = document.createElement('li');
+      li.className = 'hwo-row';
+      li.style.setProperty('--p', (t.n / max).toFixed(3));
+      li.innerHTML = `<span class="hwo-rank">${i + 1}</span><b class="hwo-word">${esc(t.w)}</b><span class="hwo-n">${t.n}</span>`;
+      // Neu dabei: reinrutschen, mehr geworden: Zahl hüpft
+      if (!before.has(key)) li.classList.add('is-new');
+      else if (before.get(key) < t.n) li.querySelector('.hwo-n').classList.add('is-bump');
+      return li;
+    }));
+    before = next;
+  };
+
+  if (opt.test || opt.edit) {
+    hw = { enabled: true, top: [{ w: 'KEKW', n: 42 }, { w: 'Sniper', n: 31 }, { w: 'GG', n: 18 }, { w: 'Clutch', n: 12 }, { w: 'Pizza', n: 7 }] };
+    paint();
+    const bump = () => {
+      const top = hw.top.map((t) => ({ ...t }));
+      top[Math.floor(Math.random() * top.length)].n += 1 + Math.floor(Math.random() * 3);
+      hw = { ...hw, top: top.sort((a, b) => b.n - a.n) };
+      paint();
+    };
+    if (editTests) editTests.hotwords = () => { for (let i = 0; i < 4; i++) setTimeout(bump, i * 450); };
+    if (opt.test && !opt.edit) setInterval(bump, 2500);
+    return;
+  }
+
+  const reload = async () => {
+    const fresh = await src.one('hotwords').catch(() => null);
+    if (!fresh) return;
+    hw = fresh;
+    paint();
+  };
+  await reload();
+  let timer = 0;
+  src.on('hotwords', () => { clearTimeout(timer); timer = setTimeout(reload, 150); });
+  setInterval(reload, 30000);
 }

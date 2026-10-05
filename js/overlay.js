@@ -67,7 +67,7 @@
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
-//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize)
+//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize, hwsize)
 //                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   otheme, scene, camframe, labels, goal (+ sctitle, scsub, sctime, cfstyle, cflabel, lbitems, lbsize,
 //   gtype, gtarget, gtitle, gsince, gsize)
@@ -114,7 +114,7 @@ const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
 if (LIVE) for (const key of ['test', 'edit', 'scene']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
 // Chatting-Szene (scene=chat): große Kamera links, Chat rechts – Spiel-Ebenen bleiben weg
 if (params.get('scene') === 'chat') {
-  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'recent', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'goal']) params.delete(key);
+  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'recent', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'hotwords', 'goal']) params.delete(key);
   params.set('camframe', '1');
   params.set('cam', '3,7,62,76');
   params.set('chat', 'tr');
