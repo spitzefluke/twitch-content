@@ -577,6 +577,8 @@ Eine Content-Idee mit Chat-Befehl: Der Streamer (oder ein freigegebener Mod) leg
 - **OBS:** Ebene **Verlosung** unter „Neue Content-Ideen“ (Parameter `giveaway`, Größe `gwsize`, Lautstärke `vgive`). Sie erscheint nur, solange eine Verlosung läuft; neue Teilnehmer ploppen kurz auf. „▶ Testen“ im OBS-Editor führt eine Auslosung vor.
 - Im Demo-Modus füllt **➕ 5 Test-Teilnehmer** den Lostopf (dort gibt es keinen Twitch-Chat).
 
+**Rauswerfen:** Streamer und Mods sehen in der Liste „Im Lostopf“ neben jedem Namen ein **✕**. Wer rausfliegt, ist aus dem Lostopf, wird nicht gezogen und kann sich in dieser Verlosung nicht neu eintragen (der Bot antwortet dann nur, dass Mitmachen nicht mehr geht). Unter „🚫 Rausgeworfen“ holt **↩ Zurückholen** jemanden wieder rein. Fliegt der gerade gezogene Gewinner raus, ist die Verlosung wieder „geschlossen“, er verschwindet aus „Letzte Gewinner“ und **🔁 Neu ziehen** lost jemand anderen aus. Einmal nötig: Migration `supabase/migrations/20261025000000_giveaway_kick.sql` ausführen.
+
 Einmal nötig: Migration `supabase/migrations/20261023000000_giveaway.sql` ausführen (braucht `…_stream_extras.sql`). Den Chat-Befehl liest der verbundene **Chat-Bot**; die Edge Function `twitch-eventsub` kommt mit dem nächsten Merge automatisch zu Supabase.
 
 ## Sicherheit

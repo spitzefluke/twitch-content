@@ -1,6 +1,7 @@
 // Verlosung: Der Streamer legt einen Preis fest, Zuschauer schreiben den Befehl (Standard !verlosung)
 // in den Chat – nur Follower, jeder einmal. „Gewinner ziehen“ lost in der Datenbank (giveaway_draw).
 // Die Follower-Prüfung macht die Edge Function twitch-eventsub (Migration …_giveaway.sql).
+// Streamer und Mods können Teilnehmer rauswerfen und zurückholen (…_giveaway_kick.sql).
 import { $, X, act, fill, h, isAdmin, makeDialog, onSubmit, onTick, openFeature, paintTile, secondsUntil, clock, timeOf, toast } from './extras-core.js';
 
 const DURATIONS = [0, 2, 5, 10, 15, 30, 60];
@@ -30,6 +31,10 @@ export const giveaway = {
           </section>
           <h3 class="prank-h3">🍀 Im Lostopf <small data-total></small></h3>
           <ul class="x-list gw-list" data-entries></ul>
+          <div data-kicked-box hidden>
+            <h3 class="prank-h3">🚫 Rausgeworfen <small>sehen nur Streamer und Mods</small></h3>
+            <ul class="x-list x-list--compact gw-list" data-kicked></ul>
+          </div>
           <h3 class="prank-h3">🏆 Letzte Gewinner</h3>
           <ul class="x-list" data-winners></ul>
         </div>
@@ -72,7 +77,7 @@ export const giveaway = {
       await reload();
     });
     $('[data-draw]', d).addEventListener('click', (e) => act(e.currentTarget, async () => {
-      const before = this.entries.map((x) => x.name);
+      const before = this.entries.filter((x) => !x.kicked).map((x) => x.name);
       const g = await X.api.giveaway.draw();
       this.g = g;
       await this.load();
@@ -112,7 +117,7 @@ export const giveaway = {
           await this.load();
           if (!this.dialog.open) return;
           // Hat jemand anderes gezogen (Mod im anderen Fenster)? Dann hier auch die Auslosung zeigen
-          if (this.g?.draws > (was?.draws ?? 0) && !this.rolling) await this.roll(this.entries.map((x) => x.name), this.g.winner_name);
+          if (this.g?.draws > (was?.draws ?? 0) && !this.rolling) await this.roll(this.entries.filter((x) => !x.kicked).map((x) => x.name), this.g.winner_name);
           this.render();
         }, 250);
       });
@@ -205,6 +210,7 @@ export const giveaway = {
     const meEl = $('[data-me]', d);
     meEl.classList.toggle('is-in', !!me?.joined);
     meEl.textContent = !live ? 'Gerade läuft keine Verlosung.'
+      : me?.kicked ? '🚫 Du wurdest aus dieser Verlosung genommen.'
       : me?.won ? '🏆 Du hast gewonnen! Der Streamer meldet sich bei dir.'
         : me?.joined ? '✅ Du bist im Lostopf. Viel Glück!'
           : g.status !== 'open' ? 'Mitmachen geht gerade nicht mehr.'
@@ -214,15 +220,34 @@ export const giveaway = {
                 : `Schreib ${g.command} in den Twitch-Chat, um mitzumachen${g.followers_only ? ' – nur Follower' : ''}. Jeder einmal.`;
 
     $('[data-total]', d).textContent = live ? `· ${g.entries}` : '';
-    fill($('[data-entries]', d), live ? this.entries.slice(0, 200) : [], (e) => h('li', { class: `x-item${e.won ? ' is-won' : ''}` },
-      h('b', {}, `${e.won ? '🏆 ' : ''}${e.name}`), h('small', {}, timeOf(e.created_at))),
+    // Streamer und Mods: ✕ wirft raus (nicht mehr ziehbar, kein neues Mitmachen in dieser Verlosung)
+    const canKick = admin && live && !!X.api.giveaway.kick;
+    const inPot = this.entries.filter((e) => !e.kicked);
+    const kicked = this.entries.filter((e) => e.kicked);
+    fill($('[data-entries]', d), live ? inPot.slice(0, 200) : [], (e) => h('li', { class: `x-item${e.won ? ' is-won' : ''}` },
+      h('b', {}, `${e.won ? '🏆 ' : ''}${e.name}`),
+      h('span', { class: 'x-item-actions' },
+        h('small', {}, timeOf(e.created_at)),
+        canKick && h('button', {
+          type: 'button', class: 'btn btn--ghost btn--sm gw-kick', title: `${e.name} rauswerfen`, 'aria-label': `${e.name} rauswerfen`,
+          onclick: (ev) => this.kick(ev.currentTarget, e, true),
+        }, '✕'))),
     g.status === 'open' ? 'Noch niemand dabei – der Erste kriegt kein Extra-Los, aber Ruhm.' : 'Niemand im Lostopf.');
+    $('[data-kicked-box]', d).hidden = !(canKick && kicked.length);
+    if (canKick) {
+      fill($('[data-kicked]', d), kicked, (e) => h('li', { class: 'x-item is-off' },
+        h('b', {}, e.name),
+        h('button', {
+          type: 'button', class: 'btn btn--ghost btn--sm', title: `${e.name} wieder in den Lostopf`,
+          onclick: (ev) => this.kick(ev.currentTarget, e, false),
+        }, '↩ Zurückholen')));
+    }
     fill($('[data-winners]', d), this.winners, (w) => h('li', { class: 'x-item' },
       h('span', { class: 'x-item-main' }, h('b', {}, w.name), h('small', {}, w.prize)),
       h('small', {}, `${new Date(w.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} · ${w.entries} Lose`)), 'Noch keine Gewinner.');
 
     if (!admin) return;
-    const pool = this.entries.filter((e) => !e.won).length;
+    const pool = this.entries.filter((e) => !e.won && !e.kicked).length;
     const draw = $('[data-draw]', d);
     draw.textContent = g.draws ? '🔁 Neu ziehen' : '🎲 Gewinner ziehen';
     draw.disabled = !live || !pool;
@@ -241,6 +266,19 @@ export const giveaway = {
       form.confirm.checked = g.confirm_in_chat;
     }
     form.querySelector('[type=submit]').textContent = g.status === 'open' ? '🎁 Neu starten' : '🎁 Verlosung starten';
+  },
+
+  async kick(btn, entry, kick) {
+    const winner = kick && entry.won && this.g?.status === 'drawn' && this.g.winner_name === entry.name;
+    if (kick && !confirm(winner
+      ? `${entry.name} hat gerade gewonnen. Trotzdem rauswerfen? Dann kannst du neu ziehen.`
+      : `${entry.name} aus der Verlosung werfen? Wer rausfliegt, kann in dieser Runde nicht mehr mitmachen.`)) return;
+    await act(btn, async () => {
+      this.g = await X.api.giveaway.kick(entry.id, kick);
+      await this.load();
+      this.render();
+      toast(kick ? `${entry.name} ist raus.${winner ? ' Jetzt „Neu ziehen“.' : ''}` : `${entry.name} ist wieder im Lostopf.`, 'ok');
+    });
   },
 
   tileStatus() {
