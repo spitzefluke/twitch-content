@@ -2,11 +2,12 @@
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds); alles andere (auch !watchtime und
-// eigene Befehle) beantwortet chat_command in der Datenbank.
+// eigene Befehle) beantwortet chat_command in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
 import { db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
+import { noteHotwords } from "./hotwords.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const FEED_COOLDOWN_MS = 10 * 60_000; // pro Zuschauer
@@ -62,6 +63,8 @@ export async function handleChatMessage(event: ChatMessage) {
   // Watchtime: wer schreibt, ist da (zählt, falls Twitch die Chatters-Liste nicht herausgibt)
   if (!self || event.chatter_user_id !== self.user_id) {
     await noteChatter(event.chatter_user_id, event.chatter_user_login, event.chatter_user_name).catch(() => {});
+    // Hot Words: Wörter zählen (Befehle nicht)
+    await noteHotwords(event.chatter_user_id, text).catch((e) => console.warn("Hot Words:", e));
   }
   if (!text.startsWith("!")) return;
   const [command, arg = ""] = text.split(/\s+/);

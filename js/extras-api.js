@@ -1,5 +1,6 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
-// Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql).
+// Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
+// und Hot Words (…_hotwords.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { TTS_VOICES } from './tts-voice.js';
@@ -145,6 +146,18 @@ function liveExtras({ sb, unwrap, invoke }) {
       addTest: null, // nur im Demo-Modus – echte Teilnehmer kommen aus dem Twitch-Chat
     },
 
+    // ---------- Hot Words (…_hotwords.sql) ----------
+    // Gezählt wird im Twitch-Chat (Edge Function twitch-eventsub → hotwords_note)
+    hotwords: {
+      get: () => one('hotwords'),
+      counts: async (limit = 40) => unwrap(await sb.from('hotword_counts').select('word, label, n, last_at').order('n', { ascending: false }).order('last_at', { ascending: false }).limit(limit)),
+      blocks: async () => unwrap(await sb.from('hotword_blocks').select('word, created_at').order('created_at', { ascending: false })),
+      settings: ({ enabled = null, maxWords = null, minLength = null }) => rpc('hotwords_settings', { p_enabled: enabled, p_max_words: maxWords, p_min_length: minLength }),
+      reset: () => rpc('hotwords_reset'),
+      block: (word, block = true) => rpc('hotwords_block', { p_word: word, p_block: block }),
+      addTest: null, // nur im Demo-Modus
+    },
+
     // ---------- Vorlesen ----------
     tts: {
       settings: () => one('tts_settings'),
@@ -235,6 +248,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const QS0 = { id: 1, open: false, mode: 'order', sub_priority: true, max_size: 100, squad_size: 3, note: '' };
   const T0 = { id: 1, need_approval: true, max_chars: 200, blocked_words: [] };
   const CS0 = { id: 1, pack_size: 3, daily: true, weights: [55, 25, 12, 6, 2] };
+  const HW0 = { id: 1, enabled: true, max_words: 5, min_length: 3, round: 1, top: [], started_at: now(), updated_at: now() };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
 
@@ -693,6 +707,65 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         }
         store.set('giveaway_entries', list);
         return put('giveaway', GW0, { entries: g.entries + added });
+      },
+    },
+    // Hot Words: wie hotwords_note/-refresh in der Migration (ohne Spam-Schutz)
+    hotwords: {
+      get: async () => oneRow('hotwords', HW0),
+      counts: async (limit = 40) => [...store.get('hotword_counts', [])].sort((a, b) => b.n - a.n || Date.parse(b.last_at) - Date.parse(a.last_at)).slice(0, limit),
+      blocks: async () => store.get('hotword_blocks', []),
+      refresh() {
+        const h = oneRow('hotwords', HW0);
+        const top = [...store.get('hotword_counts', [])].filter((c) => c.n > 0)
+          .sort((a, b) => b.n - a.n || Date.parse(b.last_at) - Date.parse(a.last_at)).slice(0, h.max_words).map((c) => ({ w: c.label, n: c.n }));
+        return JSON.stringify(top) === JSON.stringify(h.top) ? h : put('hotwords', HW0, { top });
+      },
+      async settings({ enabled = null, maxWords = null, minLength = null }) {
+        await requireAdmin();
+        if (maxWords !== null && (maxWords < 1 || maxWords > 5)) throw new Error('Es können 1 bis 5 Wörter angezeigt werden.');
+        if (minLength !== null && (minLength < 2 || minLength > 10)) throw new Error('Die Mindestlänge kann 2 bis 10 Buchstaben sein.');
+        const h = oneRow('hotwords', HW0);
+        put('hotwords', HW0, { enabled: enabled ?? h.enabled, max_words: maxWords ?? h.max_words, min_length: minLength ?? h.min_length });
+        return this.refresh();
+      },
+      async reset() {
+        await requireAdmin();
+        store.set('hotword_counts', []);
+        const h = oneRow('hotwords', HW0);
+        return put('hotwords', HW0, { round: h.round + 1, top: [], started_at: now() });
+      },
+      async block(word, block = true) {
+        await requireAdmin();
+        const w = String(word ?? '').trim().toLowerCase().slice(0, 30);
+        if (!w) throw new Error('Kein Wort angegeben.');
+        const blocks = store.get('hotword_blocks', []).filter((b) => b.word !== w);
+        if (block) {
+          blocks.unshift({ word: w, created_at: now() });
+          store.set('hotword_counts', store.get('hotword_counts', []).filter((c) => c.word !== w));
+        }
+        store.set('hotword_blocks', blocks);
+        return this.refresh();
+      },
+      // Demo: der „Chat“ schreibt ein paar Nachrichten
+      async addTest(n = 8) {
+        await requireAdmin();
+        const h = oneRow('hotwords', HW0);
+        if (!h.enabled) throw new Error('Hot Words sind gerade aus.');
+        const POOL = ['KEKW', 'Sniper', 'GG', 'Pog', 'Clutch', 'Lag', 'Victory', 'Bruder', 'Zone', 'Pizza', 'Lama', 'Noob', 'Sweaty', 'W', 'OMEGALUL'];
+        const weights = POOL.map((_, i) => 1 / (i + 1));
+        const sum = weights.reduce((a, b) => a + b, 0);
+        const blocked = new Set(store.get('hotword_blocks', []).map((b) => b.word));
+        const counts = store.get('hotword_counts', []);
+        for (let i = 0; i < n; i++) {
+          let roll = Math.random() * sum;
+          const label = POOL[weights.findIndex((w) => (roll -= w) < 0)] ?? POOL[0];
+          const w = label.toLowerCase();
+          if (w.length < h.min_length || blocked.has(w)) continue;
+          const row = counts.find((c) => c.word === w);
+          if (row) { row.n += 1; row.last_at = now(); } else counts.push({ word: w, label, n: 1, last_at: now() });
+        }
+        store.set('hotword_counts', counts);
+        return this.refresh();
       },
     },
     tts: {

@@ -581,6 +581,17 @@ Eine Content-Idee mit Chat-Befehl: Der Streamer (oder ein freigegebener Mod) leg
 
 Einmal nötig: Migration `supabase/migrations/20261023000000_giveaway.sql` ausführen (braucht `…_stream_extras.sql`). Den Chat-Befehl liest der verbundene **Chat-Bot**; die Edge Function `twitch-eventsub` kommt mit dem nächsten Merge automatisch zu Supabase.
 
+## Hot Words
+
+Die (höchstens) **5 Wörter, die im Twitch-Chat am häufigsten geschrieben werden**, stehen live im Stream – mit Zähler. Kachel „Hot Words“ im Dashboard, im OBS-Fenster die Ebene **Hot Words** (unsichtbar, solange noch nichts gezählt ist).
+
+- **Gezählt** wird jede Chat-Nachricht, die der **Chat-Bot** mitliest (Edge Function `twitch-eventsub`). Füllwörter wie „und“, „ich“, „the“, Befehle (`!…`), Links, `@Namen` und reine Zahlen zählen nicht. Gegen Spam zählt dasselbe Wort pro Person höchstens **einmal pro Minute**.
+- **Streamer und Mods** stellen im Dialog ein: Zählen an/aus, wie viele Wörter zu sehen sind (1–5) und ab wie vielen Buchstaben ein Wort zählt (Standard 3). **🔄 Neu anfangen** setzt alle Zähler auf 0.
+- **Sperren:** 🚫 neben einem Wort (oder unter „Gesperrt“ eintippen) – es verschwindet sofort aus Stream und Liste und zählt nie wieder. Die Sperrliste sehen nur Streamer und Mods; „↩ Freigeben“ hebt die Sperre auf.
+- Im Demo-Modus füllt **💬 Test-Chat** die Liste mit Beispielwörtern.
+
+Einmal nötig: Migration `supabase/migrations/20261026000000_hotwords.sql` ausführen (braucht `…_stream_extras.sql`). Die Edge Function `twitch-eventsub` kommt mit dem nächsten Merge automatisch zu Supabase.
+
 ## Sicherheit
 
 Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.

@@ -248,8 +248,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'hotwords',
     position: 16,
+    kind: 'hotwords',
+    title: 'Hot Words',
+    description: 'Was schreibt der Chat am meisten? Die fünf heißesten Wörter stehen live im Stream – mit Zähler.',
+    theme: 'hotwords',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 17,
     kind: 'countdown',
     title: 'Late-Night-Marathon',
     description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
@@ -259,7 +269,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 17,
+    position: 18,
     kind: 'countdown',
     title: 'Subathon',
     description: 'Jeder Sub verlängert den Stream. Wie lange geht es diesmal?',

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26100a"/><stop offset="1" stop-color="#0a0506"/></linearGradient>
+<radialGradient id="glow" cx=".64" cy=".62" r=".55"><stop offset="0" stop-color="#ff6a1a" stop-opacity=".5"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+<linearGradient id="fire" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff3d1f"/><stop offset=".55" stop-color="#ff8a1f"/><stop offset="1" stop-color="#ffd36b"/></linearGradient>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<path d="M515 440 C430 440 395 370 420 300 C435 258 470 240 470 190 C505 220 515 250 512 280 C540 250 548 205 535 150 C610 200 650 280 625 360 C610 410 570 440 515 440 Z" fill="url(#fire)"/>
+<path d="M515 440 C480 440 462 410 470 378 C478 350 500 340 502 310 C530 330 540 360 532 385 C548 372 556 352 552 330 C580 360 585 400 565 422 C552 435 535 440 515 440 Z" fill="#ffe7a8" opacity=".9"/>
+<g font-family="Arial, sans-serif" font-weight="900" fill="#ffb36b">
+<rect x="96" y="96" width="210" height="46" rx="12" fill="#ff7a28" opacity=".22"/><text x="116" y="130" font-size="28" fill="#ffd36b">KEKW 42×</text>
+<rect x="128" y="160" width="170" height="40" rx="12" fill="#ff7a28" opacity=".16"/><text x="146" y="189" font-size="24">Sniper 31×</text>
+<rect x="160" y="218" width="140" height="36" rx="12" fill="#ff7a28" opacity=".12"/><text x="176" y="243" font-size="20" opacity=".8">GG 18×</text>
+</g>
+<g fill="#ffd36b"><circle cx="660" cy="120" r="5" opacity=".8"/><circle cx="700" cy="230" r="4" opacity=".6"/><circle cx="380" cy="420" r="3" opacity=".5"/><circle cx="600" cy="80" r="3" opacity=".7"/></g>
+</svg>
