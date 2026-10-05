@@ -266,4 +266,8 @@ button.xcard:hover { transform: translateY(-3px); }
 .gw-me.is-in { color: #9ff0c3; }
 .gw-list { max-height: 260px; overflow: auto; }
 .gw-list .is-won b { color: #ffd36b; }
+.gw-kick { min-height: 28px !important; width: 28px; padding: 0 !important; color: var(--muted); }
+.gw-kick:hover { color: #ff8a80; background: rgba(255, 90, 78, .14); }
+[data-kicked-box][hidden] { display: none; }
+[data-kicked-box] .x-item b { text-decoration: line-through; }
 .gw-durations { display: flex; flex-wrap: wrap; gap: 6px; }

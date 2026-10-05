@@ -1,6 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
+import { BOARD } from './prank-fx.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, drawCard, fullBetLines } from './bingo.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
@@ -32,7 +33,8 @@ const ERRORS = [
   [/email not confirmed/i, 'Bitte bestätige zuerst den Link in deiner E-Mail.'],
   [/rate limit|too many/i, 'Zu viele Versuche. Bitte kurz warten.'],
   [/unable to validate email|invalid.*email/i, 'Diese E-Mail-Adresse ist ungültig.'],
-  [/failed to send a request to the edge function|function ?not ?found|\bnot found\b.*function/i, 'Die Edge Function ist nicht erreichbar. Wurde sie schon zu Supabase hochgeladen? (siehe README, Schritt „Edge Functions“)'],
+  [/function ?not ?found|function \S+ not found|\bnot found\b.*function/i, 'Die Edge Function gibt es in Supabase (noch) nicht. Sie wird beim Merge automatisch hochgeladen (GitHub → Actions → „Edge Functions deployen“).'],
+  [/failed to send a request to the edge function/i, 'Keine Antwort von der Edge Function. Bitte gleich noch einmal versuchen; bleibt es dabei, Werbeblocker ausschalten und in Supabase die Logs der Function ansehen.'],
   [/column "kind"|twitch_bot/i, 'In der Datenbank fehlt die Erweiterung für den Chat-Bot: supabase/migrations/20260923120000_chat_bot.sql im SQL Editor ausführen.'],
   [/relation "public\.(pranks|sounds|prank_settings)"|could not find the (table|function) '?public\.(pranks|sounds|prank_settings|send_prank)|bucket not found/i, 'In der Datenbank fehlt „Ärgere den Streamer“: supabase/migrations/20260924000000_pranks.sql im SQL Editor ausführen.'],
   [/bingo_player_cards/i, 'In der Datenbank fehlen die eigenen Bingo-Karten: supabase/migrations/20260925000000_channel_points.sql im SQL Editor ausführen.'],
@@ -78,14 +80,36 @@ async function createSupabaseApi() {
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const unwrap = ({ data, error }) => { if (error) throw error; return data; };
 
+  // Edge Function aufrufen. Kommt gar keine Antwort (Netzwerk, Kaltstart-Aussetzer, Werbeblocker),
+  // versucht es die Seite bei twitch-oauth (nur Einstellungen und Prüfungen) einmal von selbst neu –
+  // nicht bei spin oder bingo-bet, die würden sonst doppelt drehen bzw. starten.
+  const RETRY_ON_NO_ANSWER = new Set(['twitch-oauth', 'stream-tools']);
   async function invoke(name, body) {
-    const { data, error } = await sb.functions.invoke(name, { body });
-    if (error) {
-      let message = error.message;
-      try { message = (await error.context.json()).error ?? message; } catch { /* keine JSON-Antwort */ }
-      throw new Error(message);
+    let { data, error } = await sb.functions.invoke(name, { body });
+    if (error?.name === 'FunctionsFetchError' && RETRY_ON_NO_ANSWER.has(name)) {
+      await new Promise((r) => setTimeout(r, 1200));
+      ({ data, error } = await sb.functions.invoke(name, { body }));
     }
-    return data;
+    if (!error) return data;
+    if (error.name === 'FunctionsFetchError') {
+      throw new Error(`Keine Antwort von der Edge Function „${name}“. Meist ein kurzer Aussetzer bei Supabase – bitte gleich noch einmal versuchen. `
+        + `Bleibt es dabei: Werbeblocker für diese Seite ausschalten und in Supabase unter Edge Functions → ${name} → Logs nachsehen.`);
+    }
+    if (error.name === 'FunctionsRelayError') {
+      throw new Error(`Supabase konnte die Edge Function „${name}“ gerade nicht erreichen. Bitte gleich noch einmal versuchen.`);
+    }
+    // Antwort mit Fehlercode: unsere Functions schicken {error}, Supabase selbst {message} oder {msg}
+    let message = error.message;
+    const status = error.context?.status;
+    try {
+      const j = await error.context.json();
+      message = j.error ?? j.message ?? j.msg ?? message;
+    } catch { /* keine JSON-Antwort */ }
+    if (status === 404 && /not found/i.test(message)) message = `Function ${name} not found`;
+    else if ([502, 503, 504, 546].includes(status) && message === error.message) {
+      message = `Die Edge Function „${name}“ hat nicht rechtzeitig geantwortet (Status ${status}). Bitte gleich noch einmal versuchen; sonst in Supabase unter Edge Functions → ${name} → Logs nachsehen.`;
+    }
+    throw new Error(message);
   }
 
   return {
@@ -259,11 +283,28 @@ async function createSupabaseApi() {
     async getSounds() {
       const { data: session } = await sb.auth.getSession();
       const uid = session.session?.user?.id;
+      // Nummern wie in der Edge Function (pranks.ts, soundList): 1–9 eingebaut, ab 10 der älteste eigene Sound
       const rows = unwrap(await sb.from('sounds')
         .select('id, name, path, duration, author, user_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(80));
-      return rows.map((r) => ({ ...r, mine: r.user_id === uid, url: this.soundUrl(r.path) }));
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(500));
+      return rows.map((r, i) => ({ ...r, no: BOARD.length + 1 + i, mine: r.user_id === uid, url: this.soundUrl(r.path) })).reverse();
+    },
+    // Sounds mit eigener Belohnung auf Twitch (Migration …_sound_rewards.sql; fehlt sie: leer)
+    async getSoundRewards() {
+      const { data, error } = await sb.from('prank_sound_rewards').select('id, board, sound_id, enabled, cost, reward_id, error').order('id');
+      if (error) return null;
+      return data;
+    },
+    async setSoundReward(target, patch) {
+      const col = target.board ? 'board' : 'sound_id';
+      const key = target.board ?? target.sound_id;
+      const { data: found } = await sb.from('prank_sound_rewards').select('id').eq(col, key).maybeSingle();
+      if (found) {
+        return unwrap(await sb.from('prank_sound_rewards').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', found.id).select('*').single());
+      }
+      return unwrap(await sb.from('prank_sound_rewards').insert({ [col]: key, ...patch }).select('*').single());
     },
     async uploadSound(file, name, duration) {
       const { data: session } = await sb.auth.getSession();
@@ -1047,7 +1088,21 @@ function createLocalApi() {
     onPrank(cb) { prankListeners.push(cb); },
     soundUrl(path) { return store.get('sounds', []).find((x) => x.path === path)?.url ?? ''; },
     async getSounds() {
-      return store.get('sounds', []).map((x) => ({ ...x, mine: x.user_id === current?.email }));
+      const all = store.get('sounds', []);
+      return all.map((x, i) => ({ ...x, no: BOARD.length + all.length - i, mine: x.user_id === current?.email }));
+    },
+    async getSoundRewards() { return store.get('sound_rewards', []); },
+    async setSoundReward(target, patch) {
+      const list = store.get('sound_rewards', []);
+      const key = target.board ? 'board' : 'sound_id';
+      let row = list.find((r) => r[key] === (target.board ?? target.sound_id));
+      if (patch.enabled && !row?.enabled && list.filter((r) => r.enabled).length >= 20) {
+        throw new Error('Höchstens 20 Sounds mit eigener Belohnung – Twitch erlaubt nur 50 Belohnungen pro Kanal. Schalte erst einen anderen aus.');
+      }
+      if (row) Object.assign(row, patch);
+      else list.push(row = { id: nextId++, board: target.board ?? null, sound_id: target.sound_id ?? null, enabled: true, cost: 300, reward_id: null, error: '', ...patch });
+      store.set('sound_rewards', list);
+      return row;
     },
     // Demo: Die Datei landet als data:-URL im localStorage – der ist klein, daher höchstens 400 KB.
     async uploadSound(file, name, duration) {
@@ -1072,6 +1127,7 @@ function createLocalApi() {
     },
     async deleteSound(sound) {
       store.set('sounds', store.get('sounds', []).filter((x) => x.id !== sound.id));
+      store.set('sound_rewards', store.get('sound_rewards', []).filter((r) => r.sound_id !== sound.id));
     },
 
     // ---------- Fortnite-Bingo (Demo) ----------

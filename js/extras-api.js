@@ -124,7 +124,12 @@ function liveExtras({ sb, unwrap, invoke }) {
     giveaway: {
       get: () => one('giveaway'),
       // Nur Name und Zeit – die Twitch-ID der Teilnehmer bleibt in der Datenbank
-      entries: async (round) => unwrap(await sb.from('giveaway_entries').select('id, name, won, created_at').eq('round', round).order('id', { ascending: false }).limit(500)),
+      entries: async (round) => {
+        const q = (cols) => sb.from('giveaway_entries').select(cols).eq('round', round).order('id', { ascending: false }).limit(500);
+        const r = await q('id, name, won, kicked, created_at');
+        // Spalte kicked kommt mit …_giveaway_kick.sql – fehlt sie noch, ohne
+        return r.error ? unwrap(await q('id, name, won, created_at')) : unwrap(r);
+      },
       winners: async () => unwrap(await sb.from('giveaway_winners').select('*').order('id', { ascending: false }).limit(10)),
       me: () => rpc('giveaway_me'),
       async start({ prize, command, followersOnly, minutes, confirm }) {
@@ -135,6 +140,8 @@ function liveExtras({ sb, unwrap, invoke }) {
       async close() { const r = await rpc('giveaway_close'); flush(); return r; },
       async draw() { const r = await rpc('giveaway_draw'); flush(); return r; },
       reset: () => rpc('giveaway_reset'),
+      // Rauswerfen (kick = true) oder zurückholen (false) – Migration …_giveaway_kick.sql
+      kick: (id, kick = true) => rpc('giveaway_kick', { p_entry: id, p_kick: kick }),
       addTest: null, // nur im Demo-Modus – echte Teilnehmer kommen aus dem Twitch-Chat
     },
 
@@ -609,7 +616,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       me: async () => {
         const g = oneRow('giveaway', GW0);
         const mine = store.get('giveaway_entries', []).find((e) => e.round === g.round && e.key === key());
-        return { joined: !!mine, won: !!mine?.won, twitch: false };
+        return { joined: !!mine && !mine.kicked, won: !!mine?.won && !mine.kicked, kicked: !!mine?.kicked, twitch: false };
       },
       async start({ prize, command, followersOnly, minutes, confirm }) {
         await requireAdmin();
@@ -637,7 +644,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const g = await this.get();
         if (g.status === 'idle' || !g.round) throw new Error('Erst eine Verlosung starten.');
         const list = store.get('giveaway_entries', []);
-        const pool = list.filter((e) => e.round === g.round && !e.won);
+        const pool = list.filter((e) => e.round === g.round && !e.won && !e.kicked);
         if (!pool.length) throw new Error(g.entries ? 'Alle Teilnehmer wurden schon gezogen.' : 'Noch niemand im Lostopf.');
         const win = pick(pool);
         win.won = true;
@@ -646,6 +653,28 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         return put('giveaway', GW0, { status: 'drawn', winner_name: win.name, drawn_at: now(), draws: g.draws + 1, ends_at: g.ends_at && Date.parse(g.ends_at) < Date.now() ? g.ends_at : now() });
       },
       async reset() { await requireAdmin(); return put('giveaway', GW0, { status: 'idle', ends_at: null }); },
+      // wie giveaway_kick: aus dem Lostopf, nicht mehr ziehbar; war es der Gewinner, wieder „geschlossen“
+      async kick(id, kick = true) {
+        await requireAdmin();
+        const g = await this.get();
+        const list = store.get('giveaway_entries', []);
+        const e = list.find((x) => x.id === id && x.round === g.round);
+        if (!e) throw new Error('Diesen Teilnehmer gibt es in der aktuellen Verlosung nicht (mehr).');
+        if (!!e.kicked === kick) return g;
+        const wasWinner = kick && e.won && g.status === 'drawn' && g.winner_name === e.name;
+        if (kick && e.won) {
+          const wins = store.get('giveaway_winners', []);
+          const i = wins.findIndex((w) => w.round === g.round && w.name === e.name);
+          if (i >= 0) { wins.splice(i, 1); store.set('giveaway_winners', wins); }
+        }
+        e.kicked = kick;
+        if (kick) e.won = false;
+        store.set('giveaway_entries', list);
+        return put('giveaway', GW0, {
+          entries: Math.max(0, g.entries + (kick ? -1 : 1)),
+          ...(wasWinner ? { status: 'closed', winner_name: '', drawn_at: null } : {}),
+        });
+      },
       // Demo: ein paar Zuschauer „schreiben“ den Befehl in den Chat
       async addTest(n = 5) {
         await requireAdmin();

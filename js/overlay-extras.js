@@ -101,7 +101,11 @@ function liveData(sb) {
     one: (table) => rows(sb.from(table).select('*').eq('id', 1).maybeSingle()),
     queue: () => rows(sb.from('queue_entries').select('id, name, is_sub, status, joined_at, picked_at').order('joined_at')),
     // Verlosung: nur Namen (die Twitch-ID bleibt in der Datenbank)
-    giveawayNames: (round, limit) => rows(sb.from('giveaway_entries').select('id, name').eq('round', round).order('id', { ascending: false }).limit(limit)),
+    // Rausgeworfene nicht (Spalte kicked kommt mit …_giveaway_kick.sql – fehlt sie, alle)
+    giveawayNames: async (round, limit) => {
+      const q = () => sb.from('giveaway_entries').select('id, name').eq('round', round).order('id', { ascending: false }).limit(limit);
+      return rows(q().eq('kicked', false)).catch(() => rows(q()));
+    },
     ttsRecent: () => rows(sb.from('tts_messages').select('id, who, text, voice, status, reviewed_at').eq('status', 'approved')
       .gte('reviewed_at', new Date(Date.now() - 90000).toISOString()).order('reviewed_at')),
     on(table, cb) {
@@ -118,7 +122,7 @@ function demoData() {
   return {
     one: async (table) => read(table, null),
     queue: async () => read('queue_entries', []).filter((e) => ['waiting', 'picked'].includes(e.status)),
-    giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
+    giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round && !e.kicked).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
     ttsRecent: async () => [],
     on(table, cb) {
       addEventListener('storage', (e) => {
@@ -642,6 +646,7 @@ async function setupGiveaway({ src, opt, editTests }, el) {
 
   const reload = async (animate) => {
     const before = g;
+    const top = names[0];
     const fresh = await src.one('giveaway').catch(() => null);
     if (!fresh) return;
     g = fresh;
@@ -651,7 +656,8 @@ async function setupGiveaway({ src, opt, editTests }, el) {
     }
     paint();
     if (!animate || !before) return;
-    if (g.round === before.round && g.entries > before.entries && names[0]) popJoin(names[0]);
+    // Nur wirklich Neue zeigen (nicht, wenn ein Mod jemanden zurückholt)
+    if (g.round === before.round && g.entries > before.entries && names[0] && names[0] !== top) popJoin(names[0]);
     if (g.status === 'drawn' && g.draws > (before.draws ?? 0) && g.winner_name) rollTo(g.winner_name, names);
   };
   await reload(false);
