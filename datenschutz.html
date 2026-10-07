@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Datenschutz · StreamHelp</title>
+  <meta name="description" content="Datenschutzhinweise für StreamHelp: Webseite, OBS-Overlay, Chat-Bot, Aufnahme-Studio und Twitch-Panel.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- Datenschutzhinweise (auch für die Twitch-Erweiterung: Versionsdetails → Datenschutzrichtlinie-URL).
+       Bewusst ohne Skripte und ohne Google Fonts – die Seite selbst lädt nichts von Dritten. -->
+  <style>
+    :root { --bg: #0b0714; --card: #161027; --text: #eef1f7; --muted: #a7b0c2; --line: #2c2244; --accent: #b186ff; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { width: min(100% - 32px, 760px); margin: 0 auto; padding: 40px 0 64px; }
+    a { color: var(--accent); }
+    h1 { margin: 0 0 6px; font-size: clamp(28px, 5vw, 38px); line-height: 1.15; }
+    h2 { margin: 36px 0 8px; font-size: 21px; line-height: 1.3; }
+    h3 { margin: 20px 0 4px; font-size: 17px; }
+    p, ul { margin: 8px 0; }
+    ul { padding-left: 22px; }
+    li { margin: 4px 0; }
+    .lead { color: var(--muted); }
+    .box { margin: 18px 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    .back { display: inline-block; margin-bottom: 24px; text-decoration: none; }
+    small { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="./">← Zu StreamHelp</a>
+    <h1>Datenschutz bei StreamHelp</h1>
+    <p class="lead">StreamHelp ist eine Werkzeugkiste für Twitch-Streamer: Webseite mit Content-Ideen, OBS-Overlay, Chat-Bot, Aufnahme-Studio und ein Panel unter dem Stream. Hier steht, welche Daten dabei anfallen, wofür, und welche Rechte du hast.</p>
+
+    <div class="box">
+      <p><b>Verantwortlich:</b> der Betreiber von StreamHelp. Kontakt für alle Datenschutzfragen und Löschwünsche: über
+        <a href="https://github.com/spitzefluke/twitch-content/issues" rel="noopener noreferrer">GitHub</a>.</p>
+      <p><b>Kurz:</b> Wir verkaufen keine Daten, zeigen keine Werbung und setzen keine Tracker ein.</p>
+    </div>
+
+    <h2>1. Twitch-Panel (Erweiterung unter dem Stream)</h2>
+    <p>Das Panel zeigt das aktuelle Game des Streamers, passende Content-Ideen und Termine. Auf Wunsch kannst du über das Panel bei einer Verlosung mitmachen oder dich in die Mitspieler-Warteschlange stellen.</p>
+    <h3>Ohne Mitmachen</h3>
+    <ul>
+      <li>Twitch übermittelt dem Panel nur einen Ausweis mit der Kanal-ID und einer anonymen Zuschauer-Kennung (keine Twitch-ID, kein Name).</li>
+      <li>Damit holt das Panel die öffentlichen Infos des Kanals. Wir speichern dabei nichts über dich.</li>
+    </ul>
+    <h3>Mit „Mitmachen“ (nur nach deiner Freigabe)</h3>
+    <ul>
+      <li>Erst wenn du bei Twitch ausdrücklich „ID freigeben“ bestätigst, erhalten wir deine <b>Twitch-ID</b>. Deinen <b>Anzeigenamen</b> lesen wir dann über die Twitch-Schnittstelle.</li>
+      <li><b>Verlosung:</b> gespeichert werden Twitch-ID, Anzeigename, Zeitpunkt und – wenn die Verlosung nur für Follower ist – ob du dem Kanal folgst (von Twitch abgefragt). Der Chat-Bot kann deine Teilnahme im Chat bestätigen.</li>
+      <li><b>Warteschlange:</b> Twitch-ID, Anzeigename, dein Epic-Name (wenn du ihn einträgst) und dein Platz.</li>
+      <li>Zweck: deine Teilnahme durchführen und dem Streamer anzeigen. Rechtsgrundlage: deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Twitch-Einstellungen widerrufen kannst.</li>
+      <li>Die Freigabe kannst du bei Twitch unter Einstellungen → Verbindungen → Erweiterungen wieder entziehen.</li>
+    </ul>
+
+    <h2>2. Webseite und Konto</h2>
+    <ul>
+      <li><b>Hosting:</b> Die Seite liegt bei GitHub Pages (GitHub Inc.). GitHub verarbeitet beim Aufruf technisch nötige Daten wie die IP-Adresse.</li>
+      <li><b>Konto:</b> Wenn du dich anmeldest (E-Mail oder Twitch), speichern wir E-Mail-Adresse bzw. Twitch-Kennung und deinen Benutzernamen. Datenbank und Anmeldung laufen über Supabase.</li>
+      <li><b>Was du selbst eingibst:</b> z. B. Ideen-Vorschläge, Fragen, Bingo-Karten, Tipps – mit deinem Benutzernamen, damit der Streamer sie sieht.</li>
+      <li><b>Im Browser gespeichert:</b> Einstellungen wie Ansicht oder Seitenleiste (localStorage). Keine Werbe- oder Analyse-Cookies.</li>
+      <li><b>Schriften:</b> Die Seiten der Anwendung laden Schriftarten von Google Fonts; dabei erhält Google deine IP-Adresse.</li>
+      <li>Rechtsgrundlage: Bereitstellung des Dienstes (Art. 6 Abs. 1 lit. b DSGVO) und berechtigtes Interesse an einem sicheren Betrieb (lit. f).</li>
+    </ul>
+
+    <h2>3. Chat-Bot und OBS-Overlay</h2>
+    <ul>
+      <li>Der Bot liest den Chat der verbundenen Kanäle, um Befehle wie <code>!watchtime</code>, <code>!mitmachen</code> oder Hot Words zu verarbeiten.</li>
+      <li><b>Watchtime:</b> Für <code>!watchtime</code> zählen wir je Zuschauer Twitch-ID, Name und die zugeschaute Zeit.</li>
+      <li><b>Hot Words:</b> gezählt werden nur die Wörter, die der Streamer festlegt – nicht ganze Nachrichten.</li>
+      <li>Das Overlay zeigt Ereignisse aus dem Stream (z. B. Follows, Abos, Bits) mit dem öffentlichen Namen.</li>
+    </ul>
+
+    <h2>4. Aufnahme-Studio</h2>
+    <p>Das Aufnahme-Studio nimmt Bildschirm, Kamera und Mikrofon nur in deinem Browser auf. Die Videos werden auf deinem PC gespeichert und nicht an uns übertragen.</p>
+
+    <h2>5. Wie lange wir Daten speichern</h2>
+    <ul>
+      <li>Verlosungs- und Warteschlangen-Einträge: bis der Streamer die Runde bzw. Liste leert, höchstens so lange, wie der Kanal StreamHelp nutzt.</li>
+      <li>Konto- und Watchtime-Daten: bis du die Löschung verlangst oder der Kanal StreamHelp nicht mehr nutzt.</li>
+    </ul>
+
+    <h2>6. Empfänger</h2>
+    <ul>
+      <li>Supabase (Datenbank und Server-Funktionen), GitHub (Webseite), Twitch (Anmeldung, Chat, Erweiterung).</li>
+      <li>Der Streamer des jeweiligen Kanals und seine freigegebenen Mods sehen die Einträge in ihrem Kanal.</li>
+      <li>Wo Anbieter außerhalb der EU sitzen, erfolgt die Übermittlung auf Grundlage der EU-Standardvertragsklauseln bzw. des EU-US Data Privacy Framework.</li>
+    </ul>
+
+    <h2>7. Deine Rechte</h2>
+    <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch sowie auf Widerruf einer Einwilligung mit Wirkung für die Zukunft. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren. Schreib uns über den Kontakt oben – wir löschen deine Daten auf Anfrage.</p>
+
+    <p><small>Stand: Oktober 2026</small></p>
+  </main>
+</body>
+</html>

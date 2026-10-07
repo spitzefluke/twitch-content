@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-qRgO5Gcukoeg/y6jwKPXCnVPrVHtW1ZqpXCNwwGdy84=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-YiY1ik91HMPKO0vAlFwtPzjG9mifxYJtJOHEap18fdc=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp</title>
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/style.css?v=c984ff8222">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=a20855c40f">
-  <link rel="stylesheet" href="css/shell.css?v=deed340cd1">
+  <link rel="stylesheet" href="css/shell.css?v=6355d16a40">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -31,7 +31,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=bdfa8cbcc5",
-      "./js/app.js": "./js/app.js?v=453b1acd95",
+      "./js/app.js": "./js/app.js?v=73c37c519a",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
@@ -55,11 +55,12 @@
       "./js/overlay-extras.js": "./js/overlay-extras.js?v=b550517afc",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
-      "./js/overlay.js": "./js/overlay.js?v=2000b80a98",
+      "./js/overlay.js": "./js/overlay.js?v=5fe344dc49",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
+      "./js/record.js": "./js/record.js?v=d11f0b361f",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
@@ -274,7 +275,7 @@
     <footer class="nc-foot">
       <div class="nc-wrap nc-foot-inner">
         <span class="nc-foot-brand"><img class="nc-logo" src="assets/favicon.svg" width="18" height="18" alt="">StreamHelp</span>
-        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="admin.html">Admin-Zugang</a></div>
+        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="datenschutz.html">Datenschutz</a><a href="admin.html">Admin-Zugang</a></div>
       </div>
     </footer>
   </div>
@@ -368,6 +369,7 @@
         <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><span class="sb-ico" aria-hidden="true">🎟️</span><span class="sb-label">Kanalpunkte</span></button>
         <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><span class="sb-ico" aria-hidden="true">🔔</span><span class="sb-label">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
         <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><span class="sb-ico" aria-hidden="true">🎛️</span><span class="sb-label">Overlay &amp; OBS</span></button>
+        <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Video aufnehmen</span></button>
         <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><span class="sb-ico" aria-hidden="true">📚</span><span class="sb-label">Design-Bibliothek</span></button>
         <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz"><span class="sb-ico" aria-hidden="true">🛡️</span><span class="sb-label">Raid-Schutz</span></button>
         <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><span class="sb-ico" aria-hidden="true">👥</span><span class="sb-label">Mods</span></button>
@@ -678,6 +680,25 @@
                 <button class="btn btn--primary" type="button" data-open-obs>🎛️ OBS-Fenster öffnen</button>
               </div>
               <p class="form-hint">In OBS: Quellen → + → Browser → Adresse einfügen, 1920 × 1080. Ebenen, Größen, Farben, Laufband und Alerts stellst du im OBS-Fenster ein.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- Video aufnehmen (record.html, js/record.js) -->
+        <section class="page" data-page="record" hidden>
+          <div class="dash-cards">
+            <article class="dash-card dash-card--wide">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🎬</span><div><h2>Aufnahme-Studio</h2><p class="dash-status">Videos für YouTube, Shorts und TikTok – neben dem Stream</p></div></header>
+              <ul class="rec-points">
+                <li><b>Ohne Overlay:</b> Im Stream sehen alle Alerts, Chat und Laufband – dein Video bleibt sauber.</li>
+                <li><b>Mit Overlay, wenn du willst:</b> einzelne Elemente anhaken, z. B. nur Alerts und Kamera-Rahmen.</li>
+                <li><b>Kamera, Mikrofon, Spielton</b> dazu, im Quer- (16:9) oder Hochformat (9:16).</li>
+                <li>Läuft im Browser auf deinem PC – nichts wird hochgeladen. OBS streamt weiter wie immer.</li>
+              </ul>
+              <div class="dash-actions">
+                <button class="btn btn--primary" type="button" id="open-record">🎬 Aufnahme-Studio öffnen</button>
+              </div>
+              <p class="form-hint">Am besten in Chrome oder Edge am PC. Das Studio öffnet sich in einem eigenen Fenster.</p>
             </article>
           </div>
         </section>

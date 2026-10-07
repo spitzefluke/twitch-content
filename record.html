@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-YiY1ik91HMPKO0vAlFwtPzjG9mifxYJtJOHEap18fdc=' 'sha256-3M0suPL89iWsWaE5OwDpMufWF64e4spmQFZru0SPBVs='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Aufnahme-Studio · StreamHelp</title>
+  <meta name="theme-color" content="#0b0714">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=c984ff8222">
+  <link rel="stylesheet" href="css/record.css?v=60134a9e2a">
+  <!-- versions:start (node tools/stamp-versions.mjs) -->
+  <script type="importmap">{
+    "imports": {
+      "./js/admin.js": "./js/admin.js?v=9d676ff62d",
+      "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
+      "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
+      "./js/api.js": "./js/api.js?v=bdfa8cbcc5",
+      "./js/app.js": "./js/app.js?v=73c37c519a",
+      "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
+      "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
+      "./js/channel.js": "./js/channel.js?v=550327c428",
+      "./js/config.js": "./js/config.js?v=ffb743d9ae",
+      "./js/defaults.js": "./js/defaults.js?v=d43c86eeb2",
+      "./js/extras-api.js": "./js/extras-api.js?v=964f8a40b5",
+      "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
+      "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
+      "./js/extras-giveaway.js": "./js/extras-giveaway.js?v=107cd80a12",
+      "./js/extras-guard.js": "./js/extras-guard.js?v=6ef5d043e0",
+      "./js/extras-hotwords.js": "./js/extras-hotwords.js?v=fea8926ca1",
+      "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
+      "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
+      "./js/extras.js": "./js/extras.js?v=d16d5d0cf2",
+      "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
+      "./js/games.js": "./js/games.js?v=f051a4c3f0",
+      "./js/landing.js": "./js/landing.js?v=ef49302aad",
+      "./js/library.js": "./js/library.js?v=0290fc401c",
+      "./js/obs-ws.js": "./js/obs-ws.js?v=b2a626829a",
+      "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=b550517afc",
+      "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
+      "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
+      "./js/overlay.js": "./js/overlay.js?v=5fe344dc49",
+      "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
+      "./js/pet.js": "./js/pet.js?v=d40129fa2c",
+      "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
+      "./js/questions.js": "./js/questions.js?v=9749040be0",
+      "./js/record.js": "./js/record.js?v=d11f0b361f",
+      "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
+      "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
+      "./js/shop.js": "./js/shop.js?v=fcc50151a8",
+      "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
+      "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
+      "./js/theme-gallery.js": "./js/theme-gallery.js?v=22a898e75a",
+      "./js/theme-packs.js": "./js/theme-packs.js?v=2d69f01c89",
+      "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
+      "./js/tour.js": "./js/tour.js?v=05108ee50f",
+      "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
+      "./js/twitch-chat.js": "./js/twitch-chat.js?v=bc5184bc16",
+      "./js/wheel.js": "./js/wheel.js?v=d81e65a827",
+      "./js/youtube-chat.js": "./js/youtube-chat.js?v=794cbfe644"
+    }
+  }</script>
+  <script type="module">import './js/record.js';</script>
+  <!-- versions:end -->
+</head>
+<body class="rec-page">
+  <header class="rec-top">
+    <a class="rec-brand" href="./" data-back><img src="assets/favicon.svg" alt="" width="28" height="28"><span>Stream<b>Help</b></span></a>
+    <h1>Aufnahme-Studio</h1>
+    <p class="rec-state" id="rec-state" data-state="idle"><span class="rec-dot" aria-hidden="true"></span><span id="rec-state-text">Bereit</span></p>
+    <a class="btn btn--ghost btn--sm" href="./" data-back>← Zur Webseite</a>
+  </header>
+
+  <p class="rec-unsupported" id="rec-unsupported" hidden>
+    Dieser Browser kann den Bildschirm nicht aufnehmen. Bitte am PC <b>Chrome</b> oder <b>Edge</b> nutzen (Firefox geht auch, ohne Overlay).
+  </p>
+
+  <main class="rec-main" id="rec-main">
+    <section class="rec-stage-col" aria-label="Vorschau">
+      <div class="rec-stage-wrap">
+        <div class="rec-stage" id="rec-stage" data-format="16:9">
+          <video id="rec-game" class="rec-layer rec-game" muted playsinline autoplay></video>
+          <video id="rec-cam" class="rec-layer rec-cam" muted playsinline autoplay hidden></video>
+          <div class="rec-overlay" id="rec-overlay" hidden><iframe id="rec-overlay-frame" title="Overlay im Video" tabindex="-1"></iframe></div>
+          <div class="rec-empty" id="rec-empty">
+            <p class="rec-empty-ico" aria-hidden="true">🎬</p>
+            <p><b>Was soll ins Video?</b></p>
+            <p>Wähle rechts dein Spiel oder deinen Bildschirm aus.</p>
+          </div>
+        </div>
+      </div>
+      <p class="rec-note" id="rec-stage-note">Das ist genau das Bild deines Videos. Das Overlay im Stream bleibt davon unberührt – OBS streamt weiter wie immer.</p>
+
+      <div class="rec-bar">
+        <button class="btn btn--primary btn--lg rec-go" id="rec-start" type="button" disabled><span class="rec-go-dot" aria-hidden="true"></span>Aufnahme starten</button>
+        <button class="btn btn--ghost btn--lg" id="rec-pause" type="button" hidden>❚❚ Pause</button>
+        <button class="btn btn--ghost btn--lg rec-stop" id="rec-stop" type="button" hidden>■ Stopp</button>
+        <div class="rec-meter">
+          <span class="rec-time" id="rec-time">00:00</span>
+          <span class="rec-size" id="rec-size"></span>
+        </div>
+      </div>
+      <p class="form-msg" id="rec-msg" role="alert"></p>
+
+      <section class="rec-files" id="rec-files" hidden aria-labelledby="rec-files-title">
+        <h2 id="rec-files-title">Deine Aufnahmen</h2>
+        <ul id="rec-file-list"></ul>
+        <p class="form-hint">Hochladen: <a href="https://studio.youtube.com" target="_blank" rel="noopener noreferrer">YouTube Studio</a> → Erstellen → Videos hochladen. Die Aufnahmen bleiben nur auf deinem PC.</p>
+      </section>
+    </section>
+
+    <aside class="rec-panel" aria-label="Einstellungen">
+      <form id="rec-form" class="rec-form" novalidate>
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">🖥️</span> Bild</legend>
+          <button class="btn btn--primary btn--block" id="rec-pick" type="button">Spiel oder Bildschirm wählen</button>
+          <p class="rec-picked" id="rec-picked" hidden></p>
+          <p class="form-hint">Am besten den <b>ganzen Bildschirm</b> wählen und das Spiel im Fenster- oder randlosen Modus laufen lassen. Für den Spielton „Systemaudio teilen“ anhaken.</p>
+        </fieldset>
+
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">📷</span> Kamera</legend>
+          <label class="field"><span>Kamera</span>
+            <select name="cam" id="rec-cam-select"><option value="">Aus</option><option value="ask">Kamera wählen …</option></select>
+          </label>
+          <div class="rec-cam-opts" id="rec-cam-opts" hidden>
+            <div class="field"><span>Position</span>
+              <div class="rec-seg" role="radiogroup" aria-label="Position der Kamera" id="rec-cam-pos">
+                <label><input type="radio" name="campos" value="tl"><span>↖</span></label>
+                <label><input type="radio" name="campos" value="tr"><span>↗</span></label>
+                <label><input type="radio" name="campos" value="bl"><span>↙</span></label>
+                <label><input type="radio" name="campos" value="br" checked><span>↘</span></label>
+                <label id="rec-cam-stream" hidden><input type="radio" name="campos" value="stream"><span>wie im Stream</span></label>
+              </div>
+            </div>
+            <label class="field"><span>Größe <output id="rec-cam-size-out">28 %</output></span>
+              <input type="range" name="camsize" min="12" max="50" value="28">
+            </label>
+            <label class="rec-check"><input type="checkbox" name="camround" checked><span>Runde Ecken</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">🎙️</span> Ton</legend>
+          <label class="field"><span>Spielton <output id="rec-game-vol-out">100 %</output></span>
+            <input type="range" name="gamevol" min="0" max="150" value="100">
+          </label>
+          <p class="form-hint" id="rec-game-audio-hint">Kommt aus der Bildschirm-Freigabe (Systemaudio).</p>
+          <label class="field"><span>Mikrofon</span>
+            <select name="mic" id="rec-mic-select"><option value="">Aus</option><option value="ask">Mikrofon wählen …</option></select>
+          </label>
+          <label class="field" id="rec-mic-vol" hidden><span>Mikrofon-Lautstärke <output id="rec-mic-vol-out">100 %</output></span>
+            <input type="range" name="micvol" min="0" max="200" value="100">
+          </label>
+          <div class="rec-levels" aria-hidden="true">
+            <span>Spiel</span><i><b id="rec-lvl-game"></b></i>
+            <span>Mikro</span><i><b id="rec-lvl-mic"></b></i>
+          </div>
+        </fieldset>
+
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">📐</span> Format</legend>
+          <div class="rec-formats" role="radiogroup" aria-label="Format">
+            <label class="rec-format"><input type="radio" name="format" value="16:9" checked><span class="rec-format-shape rec-format-shape--wide" aria-hidden="true"></span><span><b>YouTube</b><small>16:9 · Querformat</small></span></label>
+            <label class="rec-format"><input type="radio" name="format" value="9:16"><span class="rec-format-shape rec-format-shape--tall" aria-hidden="true"></span><span><b>Shorts / TikTok</b><small>9:16 · Hochformat</small></span></label>
+          </div>
+          <div class="rec-row">
+            <label class="field"><span>Qualität</span>
+              <select name="quality"><option value="1080" selected>1080p (Full HD)</option><option value="720">720p</option></select>
+            </label>
+            <label class="field"><span>Bilder pro Sekunde</span>
+              <select name="fps"><option value="30">30</option><option value="60" selected>60</option></select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">✨</span> Overlay im Video</legend>
+          <label class="rec-switch"><input type="checkbox" name="overlay" id="rec-overlay-on"><span class="rec-switch-ui" aria-hidden="true"></span><span>Overlay-Elemente mit aufnehmen</span></label>
+          <p class="form-hint" id="rec-overlay-hint">Aus: Dein Video ist sauber – ohne Alerts, Chat, Laufband & Co. Im Stream sind sie trotzdem zu sehen.</p>
+          <div class="rec-layers" id="rec-layers" hidden>
+            <div class="rec-layers-head"><span>Diese Elemente kommen ins Video:</span><button type="button" class="link-btn" id="rec-layers-all">alle</button><button type="button" class="link-btn" id="rec-layers-none">keine</button></div>
+            <div class="rec-layer-list" id="rec-layer-list"></div>
+            <p class="form-hint">Mit Overlay nimmt der Browser das Studio-Fenster selbst auf (fragt einmal nach „Diesen Tab teilen“). Für die beste Qualität das Fenster groß ziehen. Geht in Chrome und Edge.</p>
+          </div>
+        </fieldset>
+
+        <fieldset class="rec-sec">
+          <legend><span aria-hidden="true">💾</span> Speichern</legend>
+          <label class="rec-check" id="rec-disk-wrap"><input type="checkbox" name="disk" checked><span>Direkt in eine Datei auf dem PC schreiben (empfohlen bei langen Videos)</span></label>
+          <p class="form-hint" id="rec-format-hint"></p>
+        </fieldset>
+      </form>
+    </aside>
+  </main>
+
+</body>
+</html>

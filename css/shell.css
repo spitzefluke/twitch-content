@@ -344,6 +344,8 @@
 .dash-ico { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; font-size: 22px; background: rgba(145, 70, 255, .16); border: 1px solid rgba(145, 70, 255, .35); }
 .dash-status { margin-top: 3px; color: var(--muted); font-size: 14px; }
 .dash-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.rec-points { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--text-2); }
+.rec-points b { color: var(--text); }
 .dash-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--text-2); }
 .dash-url { margin: 0; }
 .dash-card .obs-card-form, #guard-slot .x-guard { border: 0; background: none; padding: 0; }
