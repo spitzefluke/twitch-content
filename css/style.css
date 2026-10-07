@@ -665,7 +665,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
 
 /* 2. Vorschau: Karten lassen sich dort verschieben */
 .obs-preview {
-  position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
+  position: relative; aspect-ratio: 16 / 9; flex-shrink: 0; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(7, 9, 15, .15), rgba(7, 9, 15, .55)),
     url("../assets/bg-storm.svg") center / cover;
@@ -1553,7 +1553,8 @@ body.obs-page .obs-left {
     repeating-conic-gradient(#0f0a1b 0 25%, #110c1f 0 50%) 0 0 / 28px 28px;
 }
 body.obs-page .obs-preview {
-  width: 100%; max-width: 1280px; margin: 0 auto; border-radius: 10px; border-color: #3b2f5a;
+  /* ganzes 16:9-Bild sichtbar: so breit, dass es auch in der Höhe auf den Bildschirm passt */
+  width: 100%; max-width: min(1280px, calc((100dvh - 150px) * 16 / 9)); margin: 0 auto; border-radius: 10px; border-color: #3b2f5a;
   box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .95), 0 0 0 1px rgba(145, 70, 255, .15);
 }
 body.obs-page .obs-left > :not(.obs-preview) { width: 100%; max-width: 1280px; margin-left: auto; margin-right: auto; }
@@ -1979,3 +1980,8 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .games-check:has(input:checked) { border-color: rgba(169, 112, 255, .6); background: rgba(145, 70, 255, .1); }
 .games-check b { display: block; font-size: 14px; }
 .games-check small { color: #8f99ad; font-size: 12px; }
+
+/* Anleitung zum Verbinden: nach dem ersten Mal hinter dem Knopf „❓ Anleitung“ */
+#obs-dialog.guide-hidden .obs-help, #obs-dialog.guide-hidden .obs-manual { display: none; }
+.obs-connect-head .obs-guide-btn { margin-left: auto; align-self: flex-start; flex: none; }
+#obs-dialog.is-mod .obs-guide-btn { display: none; }

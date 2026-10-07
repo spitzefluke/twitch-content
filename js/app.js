@@ -5453,6 +5453,7 @@ const obsLocked = () => obsLive.ready && !obsLive.access.can_edit;
 function setupObs() {
   const form = $('#obs-options');
   $('#obs-btn').addEventListener('click', openObsWindow);
+  $('#obs-guide-btn').addEventListener('click', () => showObsGuide($('#obs-dialog').classList.contains('guide-hidden')));
   form.addEventListener('input', () => updateObs());
   form.addEventListener('change', () => updateObs());
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
@@ -6217,6 +6218,26 @@ function leaveObsPage() {
   location.href = `${location.pathname}${c ? `#/c/${c}` : ''}`;
 }
 
+// Anleitung zum Verbinden: beim ersten Mal offen, danach eingeklappt hinter „❓ Anleitung“
+const OBS_GUIDE_KEY = 'sh_obs_guide_seen';
+function applyObsGuide() {
+  let seen = false;
+  try { seen = localStorage.getItem(OBS_GUIDE_KEY) === '1'; } catch { /* ohne Speicher: immer zeigen */ }
+  showObsGuide(!seen);
+  $('#obs-guide-btn').hidden = !seen;
+  if (!seen) {
+    $('#obs-help').open = true;
+    try { localStorage.setItem(OBS_GUIDE_KEY, '1'); } catch { /* egal */ }
+  }
+}
+function showObsGuide(on) {
+  $('#obs-dialog').classList.toggle('guide-hidden', !on);
+  const btn = $('#obs-guide-btn');
+  btn.setAttribute('aria-expanded', String(on));
+  btn.textContent = on ? '✕ Anleitung ausblenden' : '❓ Anleitung';
+  if (on) $('#obs-help').open = true;
+}
+
 async function openObsDialog({ page = false } = {}) {
   obsLive.ready = false; // erst frisch laden, sonst würde der alte Stand gespeichert
   loadObs();
@@ -6224,6 +6245,7 @@ async function openObsDialog({ page = false } = {}) {
   else $('#obs-dialog').showModal();
   // Mods richten nichts in OBS ein – die Anleitungen zum Verbinden bleiben für sie weg
   $('#obs-dialog').classList.toggle('is-mod', isTeam() && !canStreamerView());
+  applyObsGuide();
   updateObs({ now: true });
   recordObsHistory({ reset: true });
   loadTickerTexts();
