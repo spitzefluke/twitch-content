@@ -252,6 +252,12 @@ async function createSupabaseApi() {
       const { data, error } = await sb.rpc('channels_list');
       return error ? [] : data ?? [];
     },
+    // Zahlen für den Balken auf der Startseite (Summen über alle Kanäle); null = Migration fehlt
+    async platformStats() {
+      const { data, error } = await sb.rpc('platform_stats');
+      if (error) { if (missingFunction(error)) return null; throw error; }
+      return data && typeof data === 'object' && 'streamers' in data ? data : null;
+    },
     // Mein eigener Kanal (auch wenn er noch auf die Freischaltung wartet) oder null
     async channelMine() {
       const { data, error } = await sb.rpc('channel_mine');
@@ -1099,6 +1105,29 @@ function createLocalApi() {
       return { platform: true, channel: c ? demoChannelPublic(c) : null };
     },
     async channelsList() { return demoChannels().filter((c) => c.status === 'active').map(demoChannelPublic); },
+    // Beispielzahlen, die langsam weiterwachsen (plus was im Demo-Modus selbst passiert ist)
+    async platformStats() {
+      const k = Math.max(0, (Date.now() - Date.UTC(2026, 9, 1)) / 60000);
+      const grow = (base, every) => base + Math.floor(k / every);
+      const today = (list) => list.filter((x) => new Date(x.created_at).toDateString() === new Date().toDateString()).length;
+      const spins = store.get('spins', []);
+      const pranks = store.get('pranks', []);
+      const alerts = store.get('stream_alerts', []).filter((a) => !a.test);
+      const streamers = demoChannels().filter((c) => c.status === 'active').length;
+      const live = Math.min(streamers, 1 + Math.floor(k / 7) % 3);
+      return {
+        streamers,
+        live, viewers_now: live * 37 + Math.floor(k) % 23,
+        watch_hours: grow(1840, 3), viewers_total: grow(612, 40),
+        spins: grow(1284, 7) + spins.length, spins_today: 18 + Math.floor(k / 7) % 40 + today(spins),
+        pranks: grow(731, 11) + pranks.length, pranks_today: 9 + Math.floor(k / 11) % 25 + today(pranks),
+        questions: grow(214, 60) + store.get('questions', []).length, ideas: store.get('ideas', DEFAULT_IDEAS).length + 40,
+        winners: grow(37, 900), alerts: grow(2650, 5) + alerts.length, alerts_today: 31 + Math.floor(k / 5) % 60 + today(alerts),
+        pet_moments: grow(3920, 2) + store.get('pet_events', []).length, tts: grow(402, 30), cards: grow(1555, 9),
+        quiz_answers: grow(980, 15), hotwords: grow(5230, 1), players: grow(148, 120),
+        at: new Date().toISOString(),
+      };
+    },
     async channelMine() {
       const c = demoChannels().find((x) => x.owner && x.owner === current?.email);
       return c ? { ...demoChannelPublic(c), note: c.note ?? '', admin_note: '', created_at: c.created_at } : null;
