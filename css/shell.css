@@ -534,3 +534,27 @@
   .health-banner, .channel-banner { flex-wrap: wrap; }
   .health-banner-text, .channel-banner-text { flex: 1 1 calc(100% - 40px); }
 }
+
+/* ---------- Einführung (js/tour.js) ---------- */
+.tour { position: fixed; inset: 0; z-index: 1000; pointer-events: auto; }
+.tour-hole {
+  position: fixed; border-radius: 16px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(4, 3, 10, .74), 0 0 0 2px var(--sh-purple-2), 0 0 30px rgba(145, 70, 255, .6);
+  transition: left .35s var(--ease-out), top .35s var(--ease-out), width .35s var(--ease-out), height .35s var(--ease-out);
+}
+.tour.is-center { background: rgba(4, 3, 10, .74); }
+.tour.is-center .tour-hole { display: none; }
+.tour-card {
+  position: fixed; width: min(380px, calc(100vw - 24px)); padding: 20px 20px 16px; border-radius: 18px;
+  background: #15111f; border: 1px solid var(--line-2); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8);
+  transition: left .35s var(--ease-out), top .35s var(--ease-out); animation: sh-fade .3s var(--ease-out);
+}
+.tour.is-center .tour-card { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); }
+.tour-title { margin: 0 28px 8px 0; font-size: 20px; }
+.tour-text { margin: 0 0 16px; color: var(--text-2); line-height: 1.55; font-size: 15px; }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-count { font-family: var(--font-mono); font-size: 12px; color: var(--dim); }
+.tour-btns { display: flex; gap: 8px; }
+.tour-close { position: absolute; top: 10px; right: 12px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .06); color: inherit; font-size: 18px; cursor: pointer; }
+.tour-close:hover, .tour-close:focus-visible { background: rgba(255, 255, 255, .14); outline: none; }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition: none; animation: none; } }

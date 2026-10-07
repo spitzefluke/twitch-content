@@ -5,6 +5,7 @@
 // Wer im Chat ist, sagt Twitch („Get Chatters“, Recht moderator:read:chatters des Streamers).
 // Fehlt das Recht, zählen alle, die in den letzten 10 Minuten geschrieben haben.
 import { db, getAppToken, getBot, getConnection, helix } from "./twitch.ts";
+import { noteLiveCategory } from "./games.ts";
 
 type Viewer = { id: string; login: string; name: string };
 const CHAT_WINDOW_MS = 10 * 60_000;
@@ -26,6 +27,8 @@ export async function watchTick() {
   const live = stream.data[0];
   await db.rpc("watch_stream_info", { p_viewers: live.viewer_count ?? 0, p_started_at: live.started_at ?? null })
     .then(() => {}, () => {});
+  // Games (…_games.sql): In welcher Twitch-Kategorie läuft der Stream? Das passende Game geht an.
+  await noteLiveCategory(String(live.game_name ?? "")).catch(() => {});
 
   // Gutgeschrieben wird die echte Zeit seit dem letzten Durchgang (1–10 Minuten),
   // beim ersten Durchgang eines Streams 5 Minuten.
