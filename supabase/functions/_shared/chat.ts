@@ -3,7 +3,7 @@
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds); alles andere (auch !watchtime und
 // eigene Befehle) beantwortet chat_command in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
-import { db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
+import { channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
@@ -110,7 +110,7 @@ export async function handleChatMessage(event: ChatMessage) {
 
   const at = new Date(now).toISOString();
   const who = event.chatter_user_name || event.chatter_user_login;
-  await db.from("pet_chat_cooldowns").upsert({ twitch_user_id: event.chatter_user_id, last_at: at });
+  await db.from("pet_chat_cooldowns").upsert({ twitch_user_id: event.chatter_user_id, last_at: at }, { onConflict: await channelKey("twitch_user_id") });
   const { data: fed, error } = await db.from("pet")
     .update({ last_fed_at: at, last_fed_by: who, fed_count: (pet.fed_count ?? 0) + 1 })
     .eq("id", 1).select("*").single();
@@ -208,7 +208,7 @@ async function handleSoundList() {
   if (!conn) return false;
   const { data: cd } = await db.from("chat_cooldowns").select("at").eq("slot", "sounds").maybeSingle();
   if (cd && Date.now() - Date.parse(cd.at) < SOUNDS_COOLDOWN_MS) return true;
-  await db.from("chat_cooldowns").upsert({ slot: "sounds", at: new Date().toISOString() });
+  await db.from("chat_cooldowns").upsert({ slot: "sounds", at: new Date().toISOString() }, { onConflict: await channelKey("slot") });
 
   const list = await soundList();
   const who = (conn.display_name || "den Streamer").slice(0, 25);

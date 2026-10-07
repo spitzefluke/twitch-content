@@ -1,9 +1,10 @@
 // Gemeinsame Helfer für alle Edge Functions.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-channel",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -13,9 +14,111 @@ export function env(name: string, fallback?: string): string {
   return value;
 }
 
-export const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
-  auth: { persistSession: false, autoRefreshToken: false },
+// ---------- Kanal (Migration …_platform.sql) ----------
+// Jede Anfrage gehört zu einem Kanal: Die Webseite und das Overlay schicken ihn im Header
+// x-channel (Kanal-ID oder Twitch-Login), EventSub über die Twitch-ID des Streamers.
+// Alles, was währenddessen über db läuft, schickt den Kanal mit – die Datenbank zeigt dann nur
+// dessen Zeilen. Ohne Kanal: der Standard-Kanal (wie vor der Plattform).
+type ChannelCtx = { channel: string | null; id?: Promise<string | null> };
+const channelStore = new AsyncLocalStorage<ChannelCtx>();
+const makeClient = (channel: string | null) =>
+  createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: channel ? { headers: { "x-channel": channel } } : undefined,
+  });
+type Db = ReturnType<typeof makeClient>;
+const clients = new Map<string, Db>();
+
+function clientFor(channel: string | null): Db {
+  const key = channel ?? "";
+  let client = clients.get(key);
+  if (!client) {
+    client = makeClient(channel);
+    clients.set(key, client);
+  }
+  return client;
+}
+
+// Service-Client für den Kanal der laufenden Anfrage
+export const db: Db = new Proxy({} as Db, {
+  get(_target, prop) {
+    const client = clientFor(channelStore.getStore()?.channel ?? null);
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
 });
+
+const CHANNEL_RE = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[a-z0-9_]{1,25})$/;
+export function cleanChannel(raw: unknown): string | null {
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return CHANNEL_RE.test(v) ? v : null;
+}
+
+export function withChannel<T>(channel: string | null, fn: () => Promise<T>): Promise<T> {
+  return channelStore.run({ channel: cleanChannel(channel) }, fn);
+}
+
+// Deno.serve(channelServe(handler)): Kanal aus dem Header x-channel
+export function channelServe(handler: (req: Request) => Response | Promise<Response>) {
+  return (req: Request) => withChannel(req.headers.get("x-channel"), async () => await handler(req));
+}
+
+// ID des Kanals dieser Anfrage (null: Plattform-Migration fehlt noch oder Kanal unbekannt)
+export function currentChannelId(): Promise<string | null> {
+  const store = channelStore.getStore();
+  const load = async () => {
+    const { data, error } = await db.rpc("current_channel");
+    return error ? null : (data as string | null);
+  };
+  if (!store) return load();
+  return store.id ??= load();
+}
+
+export type Channel = {
+  id: string; login: string | null; twitch_id: string | null; display_name: string;
+  owner_id: string | null; status: string; is_default: boolean;
+};
+
+export async function currentChannel(): Promise<Channel | null> {
+  const id = await currentChannelId();
+  if (!id) return null;
+  const { data } = await db.from("channels").select("id, login, twitch_id, display_name, owner_id, status, is_default")
+    .eq("id", id).maybeSingle();
+  return data as Channel | null;
+}
+
+// Gibt es die Plattform (Migration …_platform.sql) schon?
+let platformReady: Promise<boolean> | null = null;
+export function hasPlatform(): Promise<boolean> {
+  return platformReady ??= (async () => {
+    const { error } = await clientFor(null).from("channels").select("id").limit(1);
+    if (error) platformReady = null; // später noch einmal fragen
+    return !error;
+  })();
+}
+
+// Schlüssel für upsert: Mit der Plattform gelten sie je Kanal (channel_id kommt automatisch dazu)
+export async function channelKey(cols: string): Promise<string> {
+  return (await hasPlatform()) ? `channel_id,${cols}` : cols;
+}
+
+// Alle freigeschalteten Kanäle (für Zeitpläne und den gemeinsamen Bot)
+export async function activeChannels(): Promise<Channel[]> {
+  if (!(await hasPlatform())) return [];
+  const { data, error } = await clientFor(null).from("channels")
+    .select("id, login, twitch_id, display_name, owner_id, status, is_default").eq("status", "active");
+  if (error) throw error;
+  return (data ?? []) as Channel[];
+}
+
+// Kanal zu einer Twitch-ID (EventSub). Ohne Plattform: der Standard-Kanal (null).
+export async function channelForTwitch(twitchId: string | undefined): Promise<{ known: boolean; id: string | null }> {
+  if (!(await hasPlatform())) return { known: true, id: null };
+  if (!twitchId) return { known: false, id: null };
+  const { data, error } = await clientFor(null).rpc("channel_by_twitch", { p_twitch_id: twitchId });
+  if (error) throw error;
+  return data ? { known: true, id: data as string } : { known: false, id: null };
+}
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -30,11 +133,33 @@ export class CodedError extends Error {
   }
 }
 
-// Admin für die Inhalte: Admin-Häkchen oder vom Streamer freigegebener Mod
-// (is_admin_user, Migration …_streamer_mods.sql). Fehlt die Funktion noch, zählt nur das Häkchen.
+// Admin für die Inhalte des Kanals: Inhaber, Plattform-Admin, Admin-Häkchen (nur Standard-Kanal)
+// oder vom Streamer freigegebener Mod (is_admin_user). Fehlt die Funktion noch, zählt nur das Häkchen.
 export async function isAdminUser(userId: string): Promise<boolean> {
   const { data, error } = await db.rpc("is_admin_user", { p_user: userId });
   if (!error) return data === true;
+  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
+  return !!profile?.is_admin;
+}
+
+// Plattform-Admin (das StreamHelp-Admin-Konto aus dem Admin-Bereich). Vor der Plattform-Migration
+// gab es nur einen Kanal – dann reicht Admin wie bisher.
+export async function isPlatformAdmin(userId: string): Promise<boolean> {
+  if (!(await hasPlatform())) return isAdminUser(userId);
+  const { data, error } = await db.rpc("is_site_admin_user", { p_user: userId });
+  if (error) throw error;
+  return data === true;
+}
+
+// Inhaber des Kanals: wer ihn angemeldet oder Twitch verbunden hat, der Plattform-Admin
+// und – nur im Standard-Kanal – das Admin-Häkchen von früher.
+export async function isChannelOwner(userId: string): Promise<boolean> {
+  const channel = await currentChannel();
+  if (channel?.owner_id === userId) return true;
+  const { data: conn } = await db.from("twitch_connection").select("connected_by").eq("id", 1).maybeSingle();
+  if (conn?.connected_by === userId) return true;
+  if (channel && (await isPlatformAdmin(userId))) return true;
+  if (channel && !channel.is_default) return false;
   const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
   return !!profile?.is_admin;
 }
@@ -68,7 +193,10 @@ export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bo
   const state = crypto.randomUUID() + crypto.randomUUID();
   // "kind" nur beim Bot mitschicken: So klappt das Verbinden des Streamers auch, solange
   // die Migration …_chat_bot.sql (Spalte kind) noch nicht eingespielt ist.
-  const row = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  const row: Record<string, string> = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  // Für welchen Kanal verbunden wird (der Rückweg von Twitch kennt keinen Header)
+  const channelId = kind === "broadcaster" ? await currentChannelId() : null;
+  if (channelId) row.channel_id = channelId;
   const { error } = await db.from("oauth_states").insert(row);
   if (error) throw error;
   // alte, nicht abgeschlossene Anfragen aufräumen

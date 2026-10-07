@@ -1,6 +1,8 @@
 # StreamHelp
 
-Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen, nur für diesen einen Kanal):
+Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen). Seit der **Plattform** (siehe „Plattform: viele Streamer“) hat jeder Streamer seinen eigenen Kanal mit eigenen Inhalten; alle teilen sich den StreamHelp-Bot:
+
+- **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
 - **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (`css/landing.css`, `js/landing.js`, Icons von Phosphor lokal in `assets/fonts/`) in den Farben des Logos (Indigo und Grün): „Dein Stream. Eine Zentrale.“ mit **Mit Twitch anmelden** als einzigem Hauptknopf (die anderen Wege stehen klein darunter). Die Overlay-Vorschau ist eine kleine Szene: Alerts kommen und gehen (Abo, Follower, Bits), das Glücksrad holt aus, dreht und bleibt auf einem Ergebnis stehen, der Chat schreibt weiter und das Haustier läuft auf dem Laufband. Die Zahlen im Band zählen hoch, sobald man hinscrollt; die Funktionen stehen nach Rolle (Zuschauer, Mods, Streamer) mit kleiner Vorführung. Beim Scrollen gleiten die Abschnitte herein, die Vorschau bewegt sich langsamer als die Seite (Tiefe), oben zeigt ein Balken, wie weit man ist. Wer „weniger Bewegung“ eingestellt hat, sieht alles ruhig
 - **Animierte Anmeldeseite**: schwebende Lichter und Ringe (keine Funken mehr), leuchtender Rand um die Karte – nach dem Anmelden fliegt die Karte weg und ein lila Kreis geht **vom geklickten Knopf** aus auf (auch bei Twitch, Discord & Co., bevor es zum Anbieter geht). Bei einem Fehler wackelt die Karte kurz und das betroffene Feld bekommt eine rote Akzentlinie. Spotify steht zuletzt und hat einen Hinweis: Im Entwicklungsmodus klappt es nur mit freigeschalteten Konten
@@ -25,6 +27,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 ```
 index.html, css/, js/, assets/   → statische Seite für GitHub Pages
 overlay.html                     → OBS-Browserquelle (alle Ebenen, live eingestellt)
+404.html                         → eigene Fehlerseite („Dieser Stream ist offline“) für falsche Adressen
 supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Vorschläge, Twitch-Tokens)
 supabase/functions/
   twitch-oauth/                  → Twitch-Login für Streamer und Bot, Belohnungen, EventSub-Abos, Gesundheitscheck
@@ -153,7 +156,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 
 1. Der Streamer registriert sich auf der Webseite und meldet sich an.
 2. In der Seitenleiste auf **🟣 Twitch-Verbindung** (nur in der Streameransicht) und **„Mit Twitch verbinden“** klicken.
-3. Auf Twitch mit dem Kanal aus `BROADCASTER_LOGIN` anmelden und den Zugriff erlauben:
+3. Auf Twitch mit dem eigenen Kanal anmelden (Standard-Kanal: der aus `BROADCASTER_LOGIN`; jeder andere Kanal: das Twitch-Konto, mit dem er angemeldet wurde) und den Zugriff erlauben:
    - `channel:manage:redemptions` (Belohnung anlegen, Einlösungen erledigen)
    - `channel:read:redemptions` (Einlösungen empfangen)
    - `channel:bot` (der Chat-Bot darf in seinem Chat schreiben)
@@ -277,6 +280,20 @@ Im Dashboard oben rechts auf **🎛️ OBS** klicken – das kann jeder, der ang
 4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„StreamHelp-Overlay“** an (eine alte „Stellwerk-Overlay“-Quelle wird dabei umbenannt) (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
 
 **Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann der Streamer mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
+
+**Ton im Stream:** Der Ton des Overlays (Glücksrad, Alerts, Sounds …) kommt in den Stream, wenn bei der Browserquelle **„Audio über OBS steuern“** an ist – „In OBS übernehmen“ stellt das automatisch ein, im OBS-Mixer steht dann „StreamHelp-Overlay“. Mit OBS verbunden prüft **🔊 Ton prüfen** im OBS-Fenster alles auf einmal: Die Seite schickt dem Overlay in OBS einen Test-Ton (über das Browserquellen-Ereignis `streamhelpSoundTest`), liest dabei die Pegelanzeige in OBS mit und meldet, ob der Ton ankommt – oder warum nicht (Ton nicht über OBS, Quelle stumm, sehr leise). **🛠 Beheben** schaltet „Audio über OBS steuern“ ein und die Stummschaltung aus. **Vorlesen** nutzt die Windows-Stimme des PCs; die kann eine Browserquelle technisch nicht an OBS geben, sie läuft über **Desktop-Audio** – die Prüfung zeigt, ob OBS Desktop-Audio aufnimmt.
+
+**Ton anpassen:** Unter *Aussehen & Ton* gibt es die Gesamtlautstärke und einen Regler je Ebene (0–200 %), dazu **🔇** (stumm/zurück) und **▶** (Ton der Ebene in der Vorschau anhören – schaltet „🔈 Ton in der Vorschau“ ein; sonst ist die Vorschau stumm).
+
+**Aussehen je Ebene:** Jede Karte hat unter *Ebene → 🎨 Aussehen* eine eigene **Farbe** (Design-Farbe, 9 Farben oder frei gewählt), eine **Schrift** (Barlow, Inter, JetBrains Mono, Georgia, Comic, Impact …) und – außer Glücksrad, Alerts und Laufband, die eigene Effekte haben – wie sie **einblendet** (von unten/oben/rechts/links, zoomen, aufploppen, aufklappen, nur einblenden oder ohne) samt **Tempo**. Das **Laufband** lässt sich jetzt wie alle Ebenen ausschalten.
+
+**Vorlagen:** Unter *Aussehen & Ton → 💾 Vorlagen* speichert ihr die kompletten Overlay-Einstellungen unter einem Namen (z. B. „Fortnite-Abend“) und holt sie mit **Laden** zurück (Strg+Z macht es rückgängig). Speichern/Löschen darf, wer das Overlay anpassen darf. Einmal nötig: Migration `supabase/migrations/20261027000000_overlay_presets.sql`.
+
+**Leistung – keine Lags im Stream:** Das Overlay ist darauf ausgelegt, OBS möglichst wenig zu belasten. Bewegung läuft auf der Grafikkarte (transform/opacity statt Neuzeichnen), das Glücksrad zeichnet seine Scheibe nur einmal und dreht dann das fertige Bild, das Haustier misst nicht in jedem Bild neu, und es gibt keine Unschärfe-Filter über großen Flächen. Gemessen mit allen Ebenen an: ca. 190 % → 40 % Rechenzeit (Software-Grafik), Pausen-Bildschirm 200 % → 15 %. Für OBS empfohlen:
+- Browserquelle **1920 × 1080** (wie die Leinwand), **„Benutzerdefinierte Bildrate“ 30** statt 60 – halbiert die Arbeit, sieht für Karten und Laufband gleich aus.
+- In OBS unter *Einstellungen → Erweitert* **„Browserquellen-Hardwarebeschleunigung“ an** lassen.
+- **„Quelle herunterfahren, wenn nicht sichtbar“** nur für Quellen, die ihr nicht braucht – das Overlay selbst sollte laufen bleiben (sonst fehlen Alerts).
+- Nur die Ebenen einschalten, die ihr im Stream wirklich zeigt; jede ausgeschaltete Ebene kostet nichts.
 
 Das Passwort bleibt nur in diesem Browser; die Verbindung geht direkt an OBS auf `127.0.0.1:4455`, nicht ins Internet. Ohne Verbindung geht es auch: „OBS-Fenster teilen“ zeigt ein geteiltes Fenster (z. B. einen Fenster-Projektor) als Hintergrund der Vorschau, und die Adresse lässt sich kopieren und von Hand als Browserquelle (Breite 1920, Höhe 1080) einfügen.
 
@@ -617,6 +634,40 @@ Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQ
 
 „Ärgere den Streamer“, das Fortnite-Bingo, die Unangenehmen Fragen, Stream-Dino, der Kisten-Shop und die Win-Challenge können einen Starttermin haben (Migration `20260924180000_start_dates.sql`, Standard: 01.10.2026, 20 Uhr). Bis dahin sehen Zuschauer auf der Kachel einen Countdown und können nichts werfen – das prüft auch die Datenbank. Admins benutzen beides schon vorher und sehen auf der Kachel „🔒 Zuschauer ab …“. Den Termin ändert ein Admin im jeweiligen Dialog unter „Für Zuschauer freigeschaltet ab“; leer lassen heißt: sofort für alle.
 
+## Plattform: viele Streamer
+
+StreamHelp läuft für beliebig viele Streamer. Jeder Kanal hat **eigene** Kacheln, Glücksräder, Sounds, Bingo-Items, Overlay-Einstellungen, Verlosungen, Hot Words, Mods, Befehle … – nur Konten (Anmeldung) und der **Chat-Bot** sind gemeinsam.
+
+**So läuft es ab**
+
+1. **Startseite** – mit Liste aller freigeschalteten Streamer. Ein Klick auf einen Kanal merkt ihn sich für nach dem Anmelden.
+2. **Anmelden** – mit Twitch (oder E-Mail). Nach der ersten Anmeldung kommt einmal die Frage **„Bist du Streamer?“**
+   - **Nein** → Zuschauer: Mitmachen in jedem Kanal (oben über den Knopf **Kanal** wechseln).
+   - **Ja** → Streamer melden sich mit **Twitch** an (so ist sicher, dass der Kanal ihnen gehört; wer mit E-Mail angemeldet ist, wird zu Twitch geschickt). Kurze Nachricht dazu, absenden – der Kanal **wartet auf Freischaltung**. Oben im Dashboard steht solange ein Hinweis.
+3. **Freischalten** – im Admin-Bereich unter **Streamer-Kanäle**: **Freischalten**, **Sperren** (mit Grund, den der Streamer sieht) oder **Zurückstellen**. Beim Freischalten bekommt der Kanal seine Grundeinstellungen und als Vorlage die Kacheln, Glücksräder, Quizfragen und Sammelkarten (ohne Bilder) des Standard-Kanals.
+4. Der Streamer landet nach dem Anmelden automatisch in **seinem** Kanal, verbindet unter **🟣 Twitch-Verbindung** seinen Twitch-Kanal (nur genau das Twitch-Konto, mit dem er sich beworben hat) und richtet OBS ein.
+
+**Links**
+
+- Webseite eines Kanals: `https://<deine-seite>/#/c/<twitch-name>` – steht im Dashboard unter **Kanal → Dein Kanal** zum Kopieren (gut fürs Twitch-Panel oder einen Chat-Befehl).
+- OBS-Overlay eines Kanals: `overlay.html?live=1&c=<twitch-name>` – der Link im OBS-Fenster enthält das automatisch. **Ohne `c`** zeigt das Overlay den **Standard-Kanal** – bestehende OBS-Quellen laufen also unverändert weiter.
+
+**Einrichten (einmal)**
+
+1. **Backup machen** (Supabase → Database → Backups). Der Umbau lässt sich nicht einfach rückgängig machen.
+2. Alle älteren Migrationen müssen gelaufen sein (zuletzt `20261027000000_overlay_presets.sql`). Dann im SQL Editor **`supabase/migrations/20261028000000_platform.sql`** ausführen. Die bisherigen Daten werden dem **Standard-Kanal** zugeordnet (dein bisheriger Kanal) – alles bleibt, wie es war.
+3. Die Edge Functions gehen beim Merge automatisch raus (GitHub Action). Neue Secrets braucht es nicht; `BROADCASTER_LOGIN` gilt nur noch für den Standard-Kanal, solange der noch keine Twitch-ID hat.
+4. **Danach ältere Migrationen nicht mehr erneut ausführen** – sie kennen die neue Struktur nicht. Neue Migrationen ändern Tabellen in `core` und rufen danach `select public.channel_view('tabelle');` auf (siehe Kommentar in der Migration).
+
+**Technik in Kürze**
+
+- Alle Tabellen eines Kanals liegen im Schema `core` mit Spalte `channel_id`. Unter dem alten Namen in `public` steht eine Sicht, die nur den aktuellen Kanal zeigt – so laufen alle bisherigen Datenbank-Funktionen unverändert, nur je Kanal.
+- Welcher Kanal gemeint ist, sagt der Header `x-channel` (Kanal-ID oder Twitch-Login). Webseite, Overlay und Edge Functions schicken ihn mit (`js/channel.js`, `withChannel` in `supabase/functions/_shared/twitch.ts`); Twitch-Ereignisse (EventSub) ordnet die Funktion über die Twitch-ID des Streamers zu. Ohne Header gilt der Standard-Kanal.
+- Rechte: Admin eines Kanals sind sein Inhaber, freigegebene Mods dieses Kanals und der Plattform-Admin (das StreamHelp-Admin-Konto). Das alte Admin-Häkchen gilt nur noch im Standard-Kanal.
+- Live-Updates kommen aus den Tabellen in `core`, gefiltert nach `channel_id`.
+- Den Chat-Bot verbindet und trennt nur noch der Plattform-Admin (Admin-Bereich) – er liest danach den Chat aller verbundenen Kanäle.
+- Der Twitch-Gesundheitscheck (GitHub Action) prüft alle freigeschalteten Kanäle mit Twitch-Verbindung.
+
 ## Admin-Bereich
 
 Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen Admin-Zugang **ohne Registrierung**, nur mit Passwort. Er zeigt Live-Daten und aktualisiert sich alle 5 Sekunden:
@@ -626,7 +677,8 @@ Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen A
 - Live-Feed der letzten 40 Drehungen
 - Verteilung auf die drei Glücksrad-Varianten
 - Twitch-Status (Verbindung, Belohnung, Webhook, Token) mit Button „Live bei Twitch prüfen“
-- Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf.
+- **Streamer-Kanäle**: Bewerbungen neuer Streamer mit Nachricht – **Freischalten**, **Sperren** oder **Zurückstellen** (siehe „Plattform: viele Streamer“)
+- Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf (gilt nur im Standard-Kanal; in den anderen Kanälen sind es Inhaber und freigegebene Mods).
 
 Mit **„Webseite als Admin öffnen“** (oben rechts) landest du direkt auf der Webseite, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
 

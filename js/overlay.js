@@ -76,6 +76,7 @@
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
 import { CONFIG } from './config.js';
+import { channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
@@ -104,6 +105,23 @@ const TILES_REFRESH_MS = 15000;
 const CONFIG_POLL_MS = 3000; // Live-Einstellungen aus dem OBS-Fenster
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
 
+// Kanal (Plattform, js/channel.js): overlay.html?c=<Twitch-Login>; ohne c der Standard-Kanal.
+// Muss vor allem anderen feststehen – jede Abfrage schickt ihn mit.
+await useChannel(channelFromUrl());
+async function useChannel(key) {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return;
+  try {
+    const { platform, channel } = await lookupChannel(CONFIG, key);
+    if (!platform) return; // Plattform-Migration fehlt noch: wie bisher
+    if (!channel) console.warn(`Overlay: Kanal „${key}“ gibt es nicht oder er ist noch nicht freigeschaltet.`);
+    // Unbekannter Kanal: trotzdem mitschicken – dann zeigt das Overlay nichts statt eines fremden Kanals
+    setChannel(channel ?? { id: key, login: key, is_default: false });
+  } catch (err) {
+    console.warn('Overlay: Kanal nicht lesbar', err);
+    if (key) setChannel({ id: key, login: key, is_default: false });
+  }
+}
+
 // live=1: Einstellungen aus der Datenbank (overlay_config). test/edit aus der Adresse gelten weiter.
 const urlParams = new URLSearchParams(location.search);
 const LIVE = urlParams.get('live') === '1';
@@ -129,7 +147,7 @@ async function readStreamer() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return null;
   const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/streamer_info`, {
     method: 'POST',
-    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
     body: '{}',
     cache: 'no-store',
   });
@@ -143,7 +161,7 @@ async function readOverlayConfig() {
     try { return JSON.parse(localStorage.getItem('zd_overlay_config'))?.params ?? ''; } catch { return ''; }
   }
   const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/overlay_config?id=eq.1&select=params`, {
-    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` },
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, ...channelHeaders() },
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`overlay_config: ${res.status}`);
@@ -217,6 +235,7 @@ const opt = {
   chstat: flag('chstat', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
+  tickerOn: flag('ticker_show', true), // Laufband abschaltbar (OBS-Fenster: Schalter in der Ebene)
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
   tsize: number('tsize', 100, 50, 200) / 100,
   tspeed: number('tspeed', 70, 20, 300),
@@ -230,6 +249,86 @@ const MIX = {
   vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards', vgive: 'giveaway',
 };
 for (const [param, key] of Object.entries(MIX)) opt.vols[key] = opt.volume * number(param, 100, 0, 200) / 100;
+
+// ---------- Aussehen je Ebene (OBS-Fenster → Ebene → „Aussehen“) ----------
+//   lc_<ebene>=ff4fd8     eigene Akzentfarbe der Karte (Hex ohne #; custom = Farbe aus lcc_<ebene>)
+//   lf_<ebene>=inter      Schrift: display, barlow, inter, mono, serif, comic, impact
+//   la_<ebene>=pop        Einblenden: fade, up, down, left, right, zoom, pop, flip, none
+//   ls_<ebene>=fast       Tempo des Einblendens: slow, fast (Standard: normal)
+// Als ein <style>-Block: gilt auch für Karten, die erst später erscheinen. Farbe/Schrift über die ID
+// (gewinnt sicher), das Einblenden über die Klasse – Effekte wie „Neu!“ oder Wackeln behalten Vorrang.
+const LAYER_LOOK = {
+  wheel: ['#ov-spin', null], next: ['#ov-next', '.ov-next'], bingo: ['#ov-bingo', '.ov-bingo'], quest: ['#ov-quest', '.ov-quest'],
+  shop: ['#ov-shop', '.ov-shop'], challenge: ['#ov-challenge', '.ov-challenge'], alerts: ['#ov-alert', null], recent: ['#ov-recent', '.ov-recent'],
+  chat: ['#ov-chat', '.ov-chat'], ticker: ['#ov-ticker', null], forbid: ['#ov-x-forbid', '.ov-x-forbid'], subathon: ['#ov-x-subathon', '.ov-x-subathon'],
+  quiz: ['#ov-x-quiz', '.ov-x-quiz'], queue: ['#ov-x-queue', '.ov-x-queue'], tts: ['#ov-x-tts', '.ov-x-tts'], cards: ['#ov-x-cards', '.ov-x-cards'],
+  giveaway: ['#ov-x-giveaway', '.ov-x-giveaway'], hotwords: ['#ov-x-hotwords', '.ov-x-hotwords'], labels: ['.ov-labels', '.ov-labels'], goal: ['.ov-goal', '.ov-goal'],
+};
+const LOOK_FONTS = {
+  display: '"Barlow Condensed", "Arial Narrow", sans-serif', barlow: '"Barlow", system-ui, sans-serif', inter: '"Inter", system-ui, sans-serif',
+  mono: '"JetBrains Mono", ui-monospace, Consolas, monospace', serif: 'Georgia, "Times New Roman", serif',
+  comic: '"Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive', impact: 'Impact, "Arial Black", sans-serif',
+};
+const LOOK_ANIMS = ['fade', 'up', 'down', 'left', 'right', 'zoom', 'pop', 'flip', 'none'];
+const LOOK_SPEED = { slow: 1.1, fast: 0.3 };
+function layerLooks() {
+  const css = [];
+  for (const [key, [idSel, animSel]] of Object.entries(LAYER_LOOK)) {
+    const pick = params.get(`lc_${key}`) ?? '';
+    const raw = pick === 'custom' ? (params.get(`lcc_${key}`) ?? 'ffb81c') : pick;
+    const color = /^[0-9a-f]{6}$/i.test(raw) ? `#${raw}` : null;
+    const font = LOOK_FONTS[params.get(`lf_${key}`)] ?? null;
+    if (color || font) {
+      const decl = [];
+      if (color) decl.push(`--accent: ${color}`, `--c: ${color}`, `border-color: color-mix(in srgb, ${color} 60%, transparent)`);
+      if (font) decl.push(`--font-display: ${font}`, `--font-body: ${font}`, `font-family: ${font}`);
+      // Variablen erben alle Kinder der Karte (Überschriften, Zahlen, Texte)
+      css.push(`${idSel} { ${decl.join('; ')}; }`);
+    }
+    const anim = params.get(`la_${key}`);
+    if (animSel && LOOK_ANIMS.includes(anim)) {
+      const dur = LOOK_SPEED[params.get(`ls_${key}`)] ?? 0.6;
+      css.push(anim === 'none'
+        ? `${animSel} { animation: none; }`
+        : `${animSel} { animation: ova-${anim} ${dur}s ${anim === 'pop' ? 'var(--ease-spring, cubic-bezier(.34, 1.56, .64, 1))' : 'cubic-bezier(.2, .8, .2, 1)'} both; }`);
+    }
+  }
+  if (!css.length) return;
+  const style = document.createElement('style');
+  style.id = 'ov-looks';
+  style.textContent = css.join('\n');
+  document.head.append(style);
+}
+layerLooks();
+
+// Ton-Test aus dem OBS-Fenster (Dashboard → obs-websocket → obs-browser „emit_event“):
+// ein kurzer Dreiklang über die Gesamtlautstärke; mit tts zusätzlich die Vorlese-Stimme.
+// Das Dashboard liest dabei die Pegelanzeige der Quelle in OBS mit.
+addEventListener('streamhelpSoundTest', async (e) => {
+  try {
+    const ac = new (window.AudioContext ?? window.webkitAudioContext)();
+    if (ac.state === 'suspended') await ac.resume().catch(() => {});
+    const vol = Math.max(0.15, opt.volume || 0);
+    [[523, 0], [659, 0.18], [784, 0.36]].forEach(([f, at]) => {
+      const t = ac.currentTime + at;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.3 * vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g).connect(ac.destination);
+      o.start(t);
+      o.stop(t + 0.55);
+    });
+    setTimeout(() => ac.close().catch(() => {}), 1500);
+  } catch { /* ohne WebAudio kein Test-Ton */ }
+  if (e.detail?.tts) {
+    const { speak } = await import('./tts-voice.js');
+    speak('Ton-Test vom StreamHelp-Overlay.', 'normal', { volume: opt.vols.tts ?? opt.volume });
+  }
+});
 
 // Kamera-Bereich "links,oben,Breite,Höhe" in Prozent des Bildes
 function camera(value) {
@@ -336,7 +435,8 @@ async function start() {
   if (opt.shop) setupShop(source);
   if (opt.challenge) setupChallenge(source);
   if (opt.alerts || opt.recent) setupAlerts(source);
-  setupTicker(source);
+  if (opt.tickerOn) setupTicker(source);
+  else { $('ov-ticker').hidden = true; $('ov-ticker').style.display = 'none'; }
   if (opt.chat) setupChat();
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
@@ -372,7 +472,7 @@ function startWatchtime() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test) return;
   const tick = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
     method: 'POST',
-    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
     body: JSON.stringify({ action: 'watch_tick' }),
   }).catch(() => {});
   setTimeout(tick, 60_000);
@@ -401,6 +501,7 @@ async function connect() {
   const { createClient } = await import('./supabase-js.js');
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: channelFetch },
   });
   const rows = async (query) => { const { data, error } = await query; if (error) throw error; return data; };
   return {
@@ -409,21 +510,21 @@ async function connect() {
     tiles: () => rows(sb.from('tiles').select('*').order('position')),
     onSpin(cb) {
       sb.channel('overlay-feed')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'overlay_spins' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('overlay_spins', 'INSERT'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fehlgeschlagen'); });
     },
     onPrank(cb) {
       sb.channel('overlay-pranks')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pranks' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('pranks', 'INSERT'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Würfe fehlgeschlagen'); });
     },
     soundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
-    alertSoundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`,
+    alertSoundUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${path.split('/').map(encodeURIComponent).join('/')}`,
     bingoCard: async () => (await rows(sb.from('bingo_card').select('*').eq('id', 1).maybeSingle())) ?? null,
     bingoItems: () => rows(sb.from('bingo_items').select('*')),
     onBingo(cb) {
       sb.channel('overlay-bingo')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('bingo_card', '*'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Bingo fehlgeschlagen'); });
     },
     // Bilder liegen im Storage (alte Karten können noch Lootpool-Adressen haben: ohne Bild)
@@ -432,7 +533,7 @@ async function connect() {
     questionStage: async () => (await rows(sb.from('question_stage').select('*').eq('id', 1).maybeSingle())) ?? null,
     onQuestionStage(cb) {
       sb.channel('overlay-question')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('question_stage', 'UPDATE'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Fragen fehlgeschlagen'); });
     },
     pet: async () => {
@@ -442,8 +543,8 @@ async function connect() {
     },
     onPet(cb) {
       sb.channel('overlay-pet')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(null, p.new))
+        .on('postgres_changes', rtSpec('pet', 'UPDATE'), (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('pet_events', 'INSERT'), (p) => cb(null, p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Dino fehlgeschlagen'); });
     },
     // Ohne user_id: die Konto-ID bekommt OBS nicht zu sehen (…_security_hardening.sql)
@@ -451,7 +552,7 @@ async function connect() {
     shopLobbyRuns: (lobbyId) => rows(sb.from('shop_runs').select(SHOP_RUN_COLS).eq('lobby_id', lobbyId)),
     onShopRuns(cb) {
       sb.channel('overlay-shop')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('shop_runs', '*'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für den Kisten-Shop fehlgeschlagen'); });
     },
     async shopImages() {
@@ -463,29 +564,29 @@ async function connect() {
     alertConfig: async () => (await rows(sb.from('alert_config').select('config').eq('id', 1).maybeSingle()))?.config ?? null,
     onAlertConfig(cb) {
       sb.channel('overlay-alert-config')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alert_config' }, (p) => cb(p.new.config))
+        .on('postgres_changes', rtSpec('alert_config', 'UPDATE'), (p) => cb(p.new.config))
         .subscribe();
     },
-    alertMediaUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${encodeURIComponent(path)}`,
+    alertMediaUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${path.split('/').map(encodeURIComponent).join('/')}`,
     onAlert(cb) {
       sb.channel('overlay-alerts')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stream_alerts' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('stream_alerts', 'INSERT'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Alerts fehlgeschlagen'); });
     },
     onChallenge(cb) {
       sb.channel('overlay-challenge')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'win_challenge' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('win_challenge', 'UPDATE'), (p) => cb(p.new))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für die Win-Challenge fehlgeschlagen'); });
     },
     onOverlayConfig(cb) {
       sb.channel('overlay-config')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'overlay_config' }, (p) => cb(p.new.params))
+        .on('postgres_changes', rtSpec('overlay_config', 'UPDATE'), (p) => cb(p.new.params))
         .subscribe();
     },
     ticker: async () => (await rows(sb.from('ticker').select('items').eq('id', 1).maybeSingle()))?.items ?? null,
     onTicker(cb) {
       sb.channel('overlay-ticker')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ticker' }, (p) => cb(p.new.items))
+        .on('postgres_changes', rtSpec('ticker', 'UPDATE'), (p) => cb(p.new.items))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal fürs Laufband fehlgeschlagen'); });
     },
     // An wem darf der Dino knabbern? Wer zuletzt gefüttert, geworfen oder gedreht hat.

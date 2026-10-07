@@ -10,6 +10,7 @@
 //   hotwords=tl|…    Hot Words: die häufigsten Wörter im Chat mit Zähler (nur solange es welche gibt)   hwsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
+import { rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
 
 const RARITY = { common: 'Gewöhnlich', uncommon: 'Ungewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
@@ -113,10 +114,10 @@ function liveData(sb) {
       .gte('reviewed_at', new Date(Date.now() - 90000).toISOString()).order('reviewed_at')),
     on(table, cb) {
       sb.channel(`ov-x-${table}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table }, (p) => cb(p.new, p.eventType))
+        .on('postgres_changes', rtSpec(table), (p) => cb(p.new, p.eventType))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error(`Overlay: Realtime für ${table} fehlgeschlagen`); });
     },
-    cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${encodeURIComponent(path)}` : ''),
+    cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
 }
 
@@ -249,7 +250,7 @@ async function setupPause({ src, opt }) {
   el.className = 'ov-x-pause';
   el.hidden = true;
   el.innerHTML = `
-    <div class="pzo-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="pzo-bg" aria-hidden="true"></div>
     <div class="pzo-center">
       <span class="pzo-tag">☕ Kurze Pause</span>
       <b class="pzo-title" data-title></b>
@@ -318,7 +319,8 @@ async function setupQuiz({ src, opt }, el) {
     if (!r || r.status !== 'open') return;
     const l = until(r.closes_at);
     el.querySelector('[data-time]').textContent = l ? `${l} s` : 'Zeit um';
-    el.querySelector('[data-bar]').style.width = `${(l / r.seconds) * 100}%`;
+    // scaleX statt width: läuft auf der Grafikkarte, ohne Layout pro Bild
+    el.querySelector('[data-bar]').style.transform = `scaleX(${Math.max(0, Math.min(1, l / r.seconds)).toFixed(3)})`;
     el.classList.toggle('is-closed', !l);
   };
   const paint = (next, { effects = true } = {}) => {
@@ -333,7 +335,7 @@ async function setupQuiz({ src, opt }, el) {
     const revealed = r.status === 'revealed';
     el.classList.toggle('is-revealed', revealed);
     el.querySelector('[data-answers]').innerHTML = r.answers.map((a, i) => `
-      <span class="qzo-a${revealed && r.correct === i ? ' is-right' : revealed ? ' is-wrong' : ''}" style="--p:${revealed ? Math.round((r.counts[i] / total) * 100) : 0}%">
+      <span class="qzo-a${revealed && r.correct === i ? ' is-right' : revealed ? ' is-wrong' : ''}" style="--p:${revealed ? (r.counts[i] / total).toFixed(3) : 0}">
         <b>${LETTERS[i]}</b><span>${esc(a)}</span>${revealed ? `<small>${Math.round((r.counts[i] / total) * 100)} %</small>` : ''}
       </span>`).join('');
     el.querySelector('[data-foot]').textContent = revealed
@@ -341,7 +343,7 @@ async function setupQuiz({ src, opt }, el) {
       : `Antworte im Chat mit ${r.answers.map((_, i) => `!${LETTERS[i].toLowerCase()}`).join(' ')} · ${r.answered} ${r.answered === 1 ? 'Antwort' : 'Antworten'}`;
     if (revealed) {
       el.querySelector('[data-time]').textContent = 'Auflösung';
-      el.querySelector('[data-bar]').style.width = '0%';
+      el.querySelector('[data-bar]').style.transform = 'scaleX(0)';
       if (!opt.edit && !opt.test) hideTimer = setTimeout(() => { el.hidden = true; }, 20000);
     } else tick();
     if (!effects || !before) return;

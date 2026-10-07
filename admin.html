@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-sc8lLIP/isEqawY4ksP205HS5v+7GJNGQCEYiNuVe2s=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NKjjmy7m1QGMmKwm8EKkILcmLrmJtVIY1RMmm6JsWEQ=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
@@ -14,21 +14,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=49ccd1f684">
-  <link rel="stylesheet" href="css/admin.css?v=8e91cec748">
+  <link rel="stylesheet" href="css/style.css?v=02aae481de">
+  <link rel="stylesheet" href="css/admin.css?v=e3a3a4b1dc">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=ca05db518e",
+      "./js/admin.js": "./js/admin.js?v=9d676ff62d",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=8d7d814860",
-      "./js/app.js": "./js/app.js?v=bbb93b447d",
+      "./js/api.js": "./js/api.js?v=c10a667372",
+      "./js/app.js": "./js/app.js?v=45b58415ed",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
+      "./js/channel.js": "./js/channel.js?v=550327c428",
       "./js/config.js": "./js/config.js?v=ffb743d9ae",
       "./js/defaults.js": "./js/defaults.js?v=d43c86eeb2",
-      "./js/extras-api.js": "./js/extras-api.js?v=3760e15690",
+      "./js/extras-api.js": "./js/extras-api.js?v=964f8a40b5",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
       "./js/extras-giveaway.js": "./js/extras-giveaway.js?v=107cd80a12",
@@ -40,14 +41,14 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/landing.js": "./js/landing.js?v=c63d21aea9",
       "./js/library.js": "./js/library.js?v=0290fc401c",
-      "./js/obs-ws.js": "./js/obs-ws.js?v=f6387d91ef",
+      "./js/obs-ws.js": "./js/obs-ws.js?v=b2a626829a",
       "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
-      "./js/overlay-extras.js": "./js/overlay-extras.js?v=d51bf38ed9",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=b550517afc",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
-      "./js/overlay-stage.js": "./js/overlay-stage.js?v=baf85126ec",
-      "./js/overlay.js": "./js/overlay.js?v=346baf26b0",
+      "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
+      "./js/overlay.js": "./js/overlay.js?v=2000b80a98",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
-      "./js/pet.js": "./js/pet.js?v=aa8154d614",
+      "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
@@ -60,7 +61,7 @@
       "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
       "./js/twitch-chat.js": "./js/twitch-chat.js?v=bc5184bc16",
-      "./js/wheel.js": "./js/wheel.js?v=30a4f67816",
+      "./js/wheel.js": "./js/wheel.js?v=d81e65a827",
       "./js/youtube-chat.js": "./js/youtube-chat.js?v=794cbfe644"
     }
   }</script>
@@ -163,6 +164,24 @@
             </div>
           </div>
           <div id="variants" class="hbars"></div>
+        </section>
+
+        <section class="panel panel--wide" aria-labelledby="channels-title" id="channels-panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="channels-title">Streamer-Kanäle <span id="channels-count" class="count"></span></h2>
+              <p class="panel-sub">Neue Streamer melden sich mit Twitch an und warten, bis du sie hier freischaltest.</p>
+            </div>
+          </div>
+          <p id="channels-note" class="check-result" role="status"></p>
+          <div class="table-wrap">
+            <table class="users channels">
+              <thead>
+                <tr><th>Kanal</th><th>Status</th><th>Nachricht</th><th>Angemeldet</th><th>Twitch</th><th>Aktion</th></tr>
+              </thead>
+              <tbody id="channels"></tbody>
+            </table>
+          </div>
         </section>
 
         <section class="panel panel--wide" aria-labelledby="providers-title">

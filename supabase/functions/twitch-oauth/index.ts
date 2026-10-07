@@ -7,14 +7,17 @@
 //   POST {action:"sync_mods"}      → die Mods des Kanals von Twitch holen (Streamer und Admins)
 //   POST {action:"health", force}  → Twitch-Gesundheitscheck (Rechte, Abos, Bot) inkl. Reparatur (Admins, freigegebene Mods);
 //                                    ohne Anmeldung mit Header x-health-key = Secret HEALTH_CHECK_KEY (für den Zeitplan)
-//   POST {action:"bot_start"}      → Twitch-Login für den Chat-Bot (Admins, freigegebene Mods)
-//   POST {action:"bot_disconnect"} → Chat-Bot trennen (Admins, freigegebene Mods)
+//   POST {action:"bot_start"}      → Twitch-Login für den Chat-Bot (nur Plattform-Admin: alle Kanäle teilen sich den Bot)
+//   POST {action:"bot_disconnect"} → Chat-Bot trennen (nur Plattform-Admin)
 //   GET  ?code=…&state=…           → OAuth-Callback von Twitch – für den Streamer-Kanal und
 //                                    für den Chat-Bot (den startet nur der Admin-Bereich,
 //                                    siehe admin/index.ts, Aktion "bot_start")
+// Alles gilt für den Kanal aus dem Header x-channel (Migration …_platform.sql); der
+// Twitch-Rückweg merkt sich den Kanal im state.
 import {
-  CodedError, corsHeaders, db, env, getAppToken, getConnection, getUserFromRequest,
-  helix, HelixError, isAdminUser, json, oauthRedirectUri, startTwitchLogin, twitchToken,
+  activeChannels, channelKey, channelServe, CodedError, corsHeaders, currentChannel, db, env, getAppToken, getConnection,
+  getUserFromRequest, helix, HelixError, isAdminUser, isChannelOwner, isPlatformAdmin, json, oauthRedirectUri,
+  startTwitchLogin, twitchToken, withChannel,
 } from "../_shared/twitch.ts";
 import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
@@ -23,7 +26,7 @@ import { runHealthCheck } from "../_shared/health.ts";
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
-Deno.serve(async (req) => {
+Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
 
@@ -32,17 +35,18 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     const body = await req.json().catch(() => ({}));
     const { action, cost } = body;
-    // Zeitplan (GitHub Action): Gesundheitscheck ohne Anmeldung, nur mit dem geheimen Schlüssel
+    // Zeitplan (GitHub Action): Gesundheitscheck ohne Anmeldung, nur mit dem geheimen Schlüssel –
+    // für jeden freigeschalteten Kanal mit Twitch-Verbindung
     const key = Deno.env.get("HEALTH_CHECK_KEY");
     if (action === "health" && key && key.length >= 20 && req.headers.get("x-health-key") === key) {
-      return json(await runHealthCheck({ repair: true }));
+      return json(await healthAllChannels());
     }
     const user = await getUserFromRequest(req);
     if (!user) return json({ error: "Nicht angemeldet" }, 401);
     try {
       if (action === "health") return await health(user.id, body.force === true);
       if (action === "bot_start") {
-        if (!(await isAdminUser(user.id))) return json({ error: "Den Bot verbinden der Streamer, Admins und freigegebene Mods." }, 403);
+        if (!(await isPlatformAdmin(user.id))) return json({ error: "Den Chat-Bot teilen sich alle Kanäle – verbinden kann ihn nur der Plattform-Admin." }, 403);
         return json({ url: await startTwitchLogin(user.id, "bot") });
       }
       if (action === "bot_disconnect") return await botDisconnect(user.id);
@@ -59,7 +63,23 @@ Deno.serve(async (req) => {
     }
   }
   return json({ error: "Methode nicht erlaubt" }, 405);
-});
+}));
+
+// Zeitplan: jeden Kanal prüfen. Ohne Plattform-Migration nur den einen Kanal wie bisher.
+async function healthAllChannels() {
+  const channels = await activeChannels();
+  if (!channels.length) return await runHealthCheck({ repair: true });
+  const results: Record<string, unknown>[] = [];
+  for (const ch of channels) {
+    const r = await withChannel(ch.id, async () => {
+      const { data: conn } = await db.from("twitch_connection").select("id").eq("id", 1).maybeSingle();
+      if (!conn) return null; // nicht mit Twitch verbunden – nichts zu prüfen
+      return await runHealthCheck({ repair: true }).catch((e) => ({ ok: false, error: String((e as Error)?.message ?? e) }));
+    });
+    if (r) results.push({ channel: ch.login ?? ch.id, ...(r as Record<string, unknown>) });
+  }
+  return { ok: results.every((r) => r.ok !== false), channels: results };
+}
 
 // Der Streamer-Kanal kommt zurück auf die Webseite, der Chat-Bot in den Admin-Bereich.
 function backToSite(params: Record<string, string>, page = "") {
@@ -83,11 +103,16 @@ function backToSite(params: Record<string, string>, page = "") {
 
 async function handleCallback(url: URL) {
   // Erst den state einlösen: Er sagt, wohin es zurückgeht – auch wenn auf
-  // Twitch abgebrochen wurde (dann kommt ?error=… mit dem state zurück).
+  // Twitch abgebrochen wurde (dann kommt ?error=… mit dem state zurück) – und für welchen Kanal.
   const state = url.searchParams.get("state");
   const { data: st } = state
     ? await db.from("oauth_states").delete().eq("state", state).select().maybeSingle()
     : { data: null };
+  return await withChannel(st?.channel_id ?? null, () => finishCallback(url, st));
+}
+
+// deno-lint-ignore no-explicit-any
+async function finishCallback(url: URL, st: any) {
   // Beides kommt aufs Dashboard zurück (vom Admin-Bereich aus leitet die Seite dorthin weiter)
   const page = "";
   const back = (params: Record<string, string>) => backToSite(params, page);
@@ -105,16 +130,22 @@ async function handleCallback(url: URL) {
     const me = (await helix("users", tok.access_token)).data[0];
     if (st.kind === "bot") return await saveBot(me, st.user_id, tok.scope ?? []);
 
-    // Wer den Streamer-Kanal verbindet, wird Admin – also streng prüfen, wer das darf:
-    //   · Mit BROADCASTER_LOGIN nur genau dieser Twitch-Kanal.
-    //   · Ohne das Secret nur, wer schon Admin ist (sonst könnte sich jeder
-    //     Zuschauer mit seinem eigenen Kanal verbinden und Admin werden).
+    // Wer den Streamer-Kanal verbindet, steuert ihn – also streng prüfen, wer das darf:
+    //   · Kanal mit Twitch-ID (jeder angemeldete Streamer): nur genau dieses Twitch-Konto.
+    //   · Standard-Kanal ohne Twitch-ID (wie vor der Plattform): mit BROADCASTER_LOGIN nur
+    //     genau dieser Twitch-Kanal, ohne das Secret nur, wer schon Admin ist.
     //   · Einen anderen Kanal an Stelle des bisherigen setzen darf nur ein Admin.
-    const expected = Deno.env.get("BROADCASTER_LOGIN")?.trim().toLowerCase();
-    if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
+    const channel = await currentChannel();
     const { data: starter } = await db.from("profiles").select("is_admin").eq("id", st.user_id).maybeSingle();
-    const starterIsAdmin = !!starter?.is_admin;
-    if (!expected && !starterIsAdmin) throw new CodedError("no_broadcaster_login");
+    const starterIsAdmin = !!starter?.is_admin && (!channel || channel.is_default);
+    if (channel?.twitch_id) {
+      if (channel.twitch_id !== me.id) throw new CodedError("wrong_account");
+    } else {
+      if (channel && !channel.is_default) throw new CodedError("wrong_account");
+      const expected = Deno.env.get("BROADCASTER_LOGIN")?.trim().toLowerCase();
+      if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
+      if (!expected && !starterIsAdmin) throw new CodedError("no_broadcaster_login");
+    }
 
     const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
     if (previous && previous.broadcaster_id !== me.id && !starterIsAdmin) throw new CodedError("wrong_account");
@@ -137,12 +168,24 @@ async function handleCallback(url: URL) {
       updated_at: new Date().toISOString(),
     };
     // Verbindung zuerst speichern, damit eingehende Events sie schon finden
-    const { error: upsertError } = await db.from("twitch_connection").upsert({ ...base, subscription_id: null });
+    const { error: upsertError } = await db.from("twitch_connection")
+      .upsert({ ...base, subscription_id: null }, { onConflict: await channelKey("id") });
     if (upsertError) throw upsertError;
     // Wer hier ankommt, hat sich als der richtige Twitch-Kanal ausgewiesen:
     // gleich zum Admin machen (Kacheln bearbeiten, OBS-Link) – auch wenn
-    // danach das Einrichten des Webhooks noch scheitern sollte.
-    await db.from("profiles").update({ is_admin: true }).eq("id", st.user_id);
+    // danach das Einrichten des Webhooks noch scheitern sollte. Im Standard-Kanal über das
+    // Admin-Häkchen (gilt nur dort), sonst ist der Inhaber des Kanals ohnehin Admin.
+    if (!channel || channel.is_default) {
+      await db.from("profiles").update({ is_admin: true }).eq("id", st.user_id);
+    }
+    if (channel) {
+      await db.from("channels").update({
+        twitch_id: me.id,
+        login: channel.login ?? me.login.toLowerCase(),
+        display_name: me.display_name.slice(0, 40),
+        ...(channel.owner_id ? {} : { owner_id: st.user_id }),
+      }).eq("id", channel.id);
+    }
 
     // Belohnungen fürs Ärgern: Scheitert das, bleibt das Glücksrad trotzdem verbunden.
     try {
@@ -195,8 +238,14 @@ async function saveBot(me: { id: string; login: string; display_name: string }, 
   // Spalte scopes fehlt noch (Migration …_live_overlay.sql)? Dann ohne.
   if (error && /scopes/i.test(error.message)) ({ error } = await db.from("twitch_bot").upsert(row));
   if (error) throw error;
-  const conn = await getConnection().catch(() => null);
-  if (conn) await chatSubscription(conn.broadcaster_id);
+  // Den Chat aller verbundenen Kanäle mitlesen (ein Bot für alle)
+  const channels = await activeChannels().catch(() => []);
+  for (const ch of channels.length ? channels.map((c) => c.id) : [null]) {
+    await withChannel(ch, async () => {
+      const conn = await getConnection().catch(() => null);
+      if (conn) await chatSubscription(conn.broadcaster_id);
+    });
+  }
   return backToSite({ twitch: "bot_connected", bot: me.display_name });
 }
 
@@ -239,7 +288,7 @@ async function syncMods(broadcasterId: string, token: string, scopes: string[]) 
   }
   const ids = mods.map((m) => m.twitch_user_id);
   if (mods.length) {
-    const { error } = await db.from("channel_mods").upsert(mods);
+    const { error } = await db.from("channel_mods").upsert(mods, { onConflict: await channelKey("twitch_user_id") });
     if (error) throw error;
   }
   // Wer bei Twitch kein Mod mehr ist, fällt raus
@@ -250,9 +299,7 @@ async function syncMods(broadcasterId: string, token: string, scopes: string[]) 
 }
 
 async function syncModsAction(userId: string) {
-  const { data: owner } = await db.from("twitch_connection").select("connected_by").eq("id", 1).maybeSingle();
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (owner?.connected_by !== userId && !profile?.is_admin) {
+  if (!(await isChannelOwner(userId))) {
     return json({ error: "Die Mods holen dürfen nur der Streamer und Admins." }, 403);
   }
   const conn = await getConnection();
@@ -365,8 +412,7 @@ async function setWheelCost(userId: string, raw: unknown) {
 }
 
 async function disconnect(userId: string) {
-  const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
-  if (!profile?.is_admin) return json({ error: "Nur der Streamer darf Twitch trennen." }, 403);
+  if (!(await isChannelOwner(userId))) return json({ error: "Nur der Streamer darf Twitch trennen." }, 403);
 
   const conn = await getConnection();
   if (conn) {
@@ -403,14 +449,11 @@ async function health(userId: string, force: boolean) {
   return json(await runHealthCheck({ repair: true }));
 }
 
-async function isOwnerUser(userId: string) {
-  const { data } = await db.from("twitch_connection").select("connected_by").eq("id", 1).maybeSingle();
-  return data?.connected_by === userId;
-}
+const isOwnerUser = isChannelOwner;
 
-// Chat-Bot trennen (Streamer, Admins, freigegebene Mods)
+// Chat-Bot trennen – nur der Plattform-Admin, denn alle Kanäle teilen sich den Bot
 async function botDisconnect(userId: string) {
-  if (!(await isAdminUser(userId))) return json({ error: "Den Bot trennen der Streamer, Admins und freigegebene Mods." }, 403);
+  if (!(await isPlatformAdmin(userId))) return json({ error: "Den Chat-Bot teilen sich alle Kanäle – trennen kann ihn nur der Plattform-Admin." }, 403);
   const appToken = await getAppToken().catch(() => null);
   if (appToken) {
     const existing = await helix("eventsub/subscriptions", appToken, { query: { type: "channel.chat.message" } }).catch(() => ({ data: [] }));

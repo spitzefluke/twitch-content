@@ -14,8 +14,9 @@ html[data-theme="neon"] { --accent: #ff4fd8; }
 :where(html[data-theme="neon"]) .ov-head { background: transparent; color: #fff; text-shadow: 0 0 .4em var(--c, var(--accent)), 0 0 1em var(--c, var(--accent)); border-bottom-color: color-mix(in srgb, var(--c, var(--accent)) 35%, transparent); }
 
 :where(html[data-theme="glass"]) .ov-card {
-  background: rgba(255, 255, 255, calc(.1 * var(--bga) + .03)); border: 1px solid rgba(255, 255, 255, .28); border-radius: 1.8em;
-  backdrop-filter: blur(1.2em) saturate(1.4); -webkit-backdrop-filter: blur(1.2em) saturate(1.4);
+  /* Ohne backdrop-filter: In OBS ist hinter dem Overlay nichts (durchsichtig) – die Unschärfe sähe man nicht,
+     kostet aber bei jeder Bewegung einen zusätzlichen Durchgang. Dafür etwas mehr Deckkraft. */
+  background: rgba(255, 255, 255, calc(.14 * var(--bga) + .05)); border: 1px solid rgba(255, 255, 255, .28); border-radius: 1.8em;
   box-shadow: 0 1.4em 3em -1em rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .35);
 }
 :where(html[data-theme="glass"]) .ov-head { background: rgba(255, 255, 255, .06); color: #f1ecff; border-bottom-color: rgba(255, 255, 255, .14); }
@@ -152,7 +153,9 @@ html[data-theme="xmas"] { --accent: #e3283e; }
 }
 @keyframes sc-in { from { opacity: 0; } }
 /* Szenenwechsel: der Bildschirm öffnet sich als Kreis aus der Mitte (Chatting behält sein Kamera-Loch) */
-.ov-scene:not([data-scene="chat"]) { animation: sc-open .9s cubic-bezier(.7, 0, .2, 1) both; }
+/* backwards statt both: Danach bleibt kein clip-path stehen – sonst schneidet der Browser den ganzen Bildschirm
+   in jedem Bild neu aus, obwohl der Kreis längst alles abdeckt */
+.ov-scene:not([data-scene="chat"]) { animation: sc-open .9s cubic-bezier(.7, 0, .2, 1) backwards; }
 @keyframes sc-open { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
 /* Countdown vorbei: „Jetzt live“ / „Wieder da“ öffnet sich genauso über der Szene */
 .sc-live {
@@ -168,19 +171,24 @@ html[data-theme="xmas"] { --accent: #e3283e; }
 @keyframes sc-live-pop { from { transform: scale(.6); opacity: 0; } }
 @keyframes sc-pulse { 50% { opacity: .35; } }
 .is-edit .ov-scene { opacity: .45; }
-.sc-bg i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .4; animation: sc-drift 20s ease-in-out infinite alternate; }
-.sc-bg i:nth-child(1) { background: var(--accent); left: -18vmax; top: -22vmax; }
-.sc-bg i:nth-child(2) { background: #9146ff; right: -22vmax; bottom: -26vmax; animation-delay: -7s; }
-.sc-bg i:nth-child(3) { background: #35c7ff; left: 35vw; top: 45vh; width: 38vmax; height: 38vmax; animation-delay: -13s; opacity: .25; }
+/* Lichtflecken: ein ruhiger Hintergrund aus drei Verläufen, einmal gezeichnet. Früher drei riesige, weich
+   gezeichnete Kreise, die ständig wanderten – das kostete OBS pro Bild mehr als alles andere zusammen. */
+.sc-bg {
+  position: absolute; inset: 0; pointer-events: none; --a1: .4;
+  background:
+    radial-gradient(circle 36vmax at 12vmax 8vmax, color-mix(in srgb, var(--accent) calc(var(--a1) * 150%), transparent), color-mix(in srgb, var(--accent) calc(var(--a1) * 75%), transparent) 50%, transparent),
+    var(--l2, radial-gradient(circle 36vmax at calc(100vw - 8vmax) calc(100vh - 4vmax), rgb(145 70 255 / .6), rgb(145 70 255 / .3) 50%, transparent)),
+    var(--l3, radial-gradient(circle 24vmax at calc(35vw + 19vmax) calc(45vh + 19vmax), rgb(53 199 255 / .38), rgb(53 199 255 / .18) 50%, transparent));
+}
 .sc-grid {
   position: absolute; inset: -50% -10% 0; transform: perspective(600px) rotateX(62deg); transform-origin: 50% 100%;
   background: linear-gradient(transparent 0 96%, color-mix(in srgb, var(--accent) 45%, transparent) 96%) 0 0 / 100% 80px,
     linear-gradient(90deg, transparent 0 97%, color-mix(in srgb, var(--accent) 35%, transparent) 97%) 0 0 / 80px 100%;
   mask-image: linear-gradient(transparent 40%, #000 90%); -webkit-mask-image: linear-gradient(transparent 40%, #000 90%);
-  animation: sc-grid 3s linear infinite; opacity: .5;
+  animation: sc-grid 3s linear infinite; opacity: .5; will-change: transform;
 }
-@keyframes sc-drift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
-@keyframes sc-grid { to { background-position: 0 80px, 0 0; } }
+/* Das Gitter rückt per transform (Grafikkarte) eine Linie weiter statt per background-position (Neuzeichnen pro Bild) */
+@keyframes sc-grid { from { transform: perspective(600px) rotateX(62deg) translateY(0); } to { transform: perspective(600px) rotateX(62deg) translateY(80px); } }
 .sc-center { position: relative; display: grid; justify-items: center; gap: 20px; text-align: center; padding: 40px; max-width: 1500px; }
 .sc-tag { font-family: var(--font-mono); font-size: 26px; letter-spacing: .24em; text-transform: uppercase; color: var(--accent); animation: sc-pulse 2s ease-in-out infinite; }
 .sc-title { font-family: var(--font-display); font-size: 140px; font-weight: 800; text-transform: uppercase; line-height: .92; color: #fff; text-shadow: 0 .05em .3em rgba(0, 0, 0, .6), 0 0 .6em color-mix(in srgb, var(--accent) 40%, transparent); animation: sc-rise 1s var(--ease-out) .2s both; }
@@ -247,7 +255,7 @@ html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radi
   box-shadow: 0 0 1em color-mix(in srgb, var(--c) 60%, transparent);
   transition: width 1.2s cubic-bezier(.2, .9, .3, 1.05);
 }
-.gl-fill::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .18) 0 .5em, transparent .5em 1em); background-size: 1.414em 1.414em; animation: gl-stripes 1s linear infinite; }
+.gl-fill::before { content: ""; position: absolute; inset: 0 0 0 -1.414em; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .18) 0 .5em, transparent .5em 1em); background-size: 1.414em 1.414em; animation: gl-stripes 1s linear infinite; will-change: transform; }
 .gl-shine { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .5) 50%, transparent 70%); transform: translateX(-100%); }
 .ov-goal.is-up .gl-shine { animation: ov-al-shine 1.2s ease-out .3s; }
 .ov-goal.is-up .gl-count { animation: ov-pop .6s var(--ease-spring); color: #fff; }
@@ -255,7 +263,7 @@ html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radi
 .ov-goal.is-done { box-shadow: 0 0 0 .14em var(--c), 0 0 2.4em color-mix(in srgb, var(--c) 55%, transparent); }
 .ov-goal.is-done .gl-title::after { content: " ✓ Geschafft!"; color: var(--c); }
 .ov-goal.is-celebrate { animation: gl-party 1s var(--ease-spring) 2; }
-@keyframes gl-stripes { to { background-position: 1.414em 0; } }
+@keyframes gl-stripes { to { transform: translateX(1.414em); } }
 @keyframes gl-party { 30% { transform: scale(1.06) rotate(-1deg); } 60% { transform: scale(.98) rotate(1deg); } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -280,7 +288,6 @@ html[data-theme="spooky"] { --scene-bg: url("../assets/bg-spooky.svg"); }
 html[data-theme="xmas"] { --scene-bg: url("../assets/bg-xmas.svg"); }
 :is(html[data-theme="space"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-grid { display: none; }
 /* Eigener Hintergrund: nur ein schwacher Lichtfleck in der Design-Farbe, keine lila-blauen Schleier */
-:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg i:nth-child(n+2) { display: none; }
-:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg i:first-child { opacity: .22; }
+:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg { --l2: none; --l3: none; --a1: .22; }
 html[data-theme="horror"] .sc-title, html[data-theme="fantasy"] .sc-title { font-family: Georgia, "Times New Roman", serif; text-transform: none; }
 html[data-theme="kawaii"] .sc-title { color: #fff; text-shadow: 0 .06em 0 #ff8fc8, 0 .12em .3em rgba(106, 35, 80, .6); }

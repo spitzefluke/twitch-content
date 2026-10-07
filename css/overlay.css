@@ -411,7 +411,9 @@ p { margin: 0; }
   mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
 }
 .ticker-track { display: flex; width: max-content; white-space: nowrap; animation: ov-ticker 30s linear infinite; will-change: transform; }
-@keyframes ov-ticker { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--tdist, 0px))); } }
+/* Die Spur besteht aus zwei gleichen Hälften: -50 % ist genau eine Runde. Ohne CSS-Variable im Keyframe
+   läuft das Laufband ganz auf der Grafikkarte (Compositor) statt 60-mal pro Sekunde im Hauptthread. */
+@keyframes ov-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .ticker-group { display: flex; align-items: center; flex: none; }
 .ticker-item { padding: .55em 0 .55em 1.1em; font-weight: 700; font-size: 1.05em; color: #fff; }
 .ticker-sep { padding-left: 1.1em; font-size: .6em; color: var(--accent); }
@@ -646,7 +648,8 @@ p { margin: 0; }
 @keyframes ov-bubble-in { 0% { transform: scale(0) rotate(-12deg); } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: none; } }
 
 /* Glas: Milchglas, ruhig */
-.ov-alert[data-look="glass"] { border-radius: 1.6em; background: rgba(255, 255, 255, calc(.12 * var(--bga) + .04)); border: 1px solid rgba(255, 255, 255, .28); backdrop-filter: blur(1.2em) saturate(1.4); -webkit-backdrop-filter: blur(1.2em) saturate(1.4); }
+/* ohne backdrop-filter: hinter dem Overlay ist in OBS nichts zu verwischen, es kostet nur Rechenzeit */
+.ov-alert[data-look="glass"] { border-radius: 1.6em; background: rgba(255, 255, 255, calc(.16 * var(--bga) + .06)); border: 1px solid rgba(255, 255, 255, .28); }
 .ov-alert[data-look="glass"] .ov-head { display: none; }
 .ov-alert[data-look="glass"].is-alert { animation: ov-glass-in .9s var(--ease-out) both; box-shadow: 0 1.4em 3em -1em rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .4); }
 .ov-alert[data-look="glass"] .ov-al-name { text-shadow: 0 .1em .6em rgba(0, 0, 0, .45); }
@@ -827,3 +830,13 @@ body.is-apreview .ov-alert { position: relative; margin: 0; }
 .ov-guide.is-h { left: 0; right: 0; height: 1px; }
 .is-test-ping { animation: ov-test-ping 1.2s ease-out; }
 @keyframes ov-test-ping { 0% { box-shadow: 0 0 0 0 rgba(61, 220, 132, .9); } 100% { box-shadow: 0 0 0 1.4em rgba(61, 220, 132, 0); } }
+
+/* ---------- Einblenden je Ebene (OBS-Fenster → Ebene → Aussehen, js/overlay.js layerLooks) ---------- */
+@keyframes ova-fade { from { opacity: 0; } }
+@keyframes ova-up { from { opacity: 0; transform: translateY(1.4em); } }
+@keyframes ova-down { from { opacity: 0; transform: translateY(-1.4em); } }
+@keyframes ova-left { from { opacity: 0; transform: translateX(2.5em); } }
+@keyframes ova-right { from { opacity: 0; transform: translateX(-2.5em); } }
+@keyframes ova-zoom { from { opacity: 0; transform: scale(.6); } }
+@keyframes ova-pop { 0% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }
+@keyframes ova-flip { from { opacity: 0; transform: perspective(700px) rotateX(-75deg); transform-origin: 50% 0; } }

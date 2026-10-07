@@ -3,6 +3,7 @@
 // und Hot Words (…_hotwords.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
+import { rtSpec, storageFolder } from './channel.js';
 import { TTS_VOICES } from './tts-voice.js';
 
 export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -30,7 +31,7 @@ function liveExtras({ sb, unwrap, invoke }) {
         const list = [];
         channels.set(table, list);
         sb.channel(`extras-${table}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table }, (p) => list.forEach((fn) => fn(p.new, p)))
+          .on('postgres_changes', rtSpec(table), (p) => list.forEach((fn) => fn(p.new, p)))
           .subscribe();
       }
       channels.get(table).push(cb);
@@ -195,11 +196,11 @@ function liveExtras({ sb, unwrap, invoke }) {
       },
       saveSettings: ({ size, daily, weights }) => rpc('cards_save_settings', { p_size: size, p_daily: daily, p_weights: weights }),
       async upload(blob) {
-        const path = `${crypto.randomUUID()}.${blob.type === 'image/webp' ? 'webp' : 'png'}`;
+        const path = `${storageFolder()}${crypto.randomUUID()}.${blob.type === 'image/webp' ? 'webp' : 'png'}`;
         unwrap(await sb.storage.from('cards').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
         return path;
       },
-      imageUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${encodeURIComponent(path)}` : ''),
+      imageUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
     },
 
     // ---------- Raid-Schutz ----------

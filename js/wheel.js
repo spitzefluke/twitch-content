@@ -20,7 +20,7 @@ export class Wheel {
     this.lastIndex = -1;
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     new ResizeObserver(() => this.resize()).observe(canvas);
-    document.fonts?.ready.then(() => this.draw());
+    document.fonts?.ready.then(() => { this.cacheKey = null; this.draw(); });
   }
 
   get busy() { return this.mode !== 'idle'; }
@@ -127,76 +127,106 @@ export class Wheel {
     }
   }
 
-  draw() {
-    const { ctx, size, segments } = this;
-    if (!size || !segments.length) return;
+  // Gezeichnet wird in zwei Puffer-Bildern, die nur neu entstehen, wenn sich Felder, Farbe oder Größe
+  // ändern: die Scheibe (Felder + Beschriftung) und der Rand mit den Glühbirnen (zwei Muster).
+  // Pro Bild beim Drehen bleibt dann nur: Rand kopieren, Scheibe gedreht kopieren – schont OBS.
+  cache() {
+    const { size, segments, dpr } = this;
+    const key = `${size}|${dpr}|${this.color}|${segments.map((s) => `${s.label}:${s.color ?? ''}`).join(';')}`;
+    if (this.cacheKey === key) return this.buffers;
+    this.cacheKey = key;
+    const px = Math.round(size * dpr);
+    const make = () => {
+      const cv = document.createElement('canvas');
+      cv.width = px;
+      cv.height = px;
+      const g = cv.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return [cv, g];
+    };
     const n = segments.length;
     const arc = TAU / n;
     const c = size / 2;
     const rim = size * 0.045;
     const r = c - rim - 2;
 
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.clearRect(0, 0, size, size);
-
-    // Rand mit Lichtern
-    ctx.beginPath();
-    ctx.arc(c, c, c - 2, 0, TAU);
-    ctx.fillStyle = '#0c0f17';
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = this.color;
-    ctx.stroke();
-
+    // Scheibe (Mitte im Ursprung gezeichnet, gedreht wird beim Kopieren)
+    const [disc, d] = make();
     const fills = [this.color, '#161b28', shade(this.color, -0.45)];
-    ctx.save();
-    ctx.translate(c, c);
-    ctx.rotate(this.angle);
+    d.translate(c, c);
     for (let i = 0; i < n; i++) {
       // Eigene Farbe je Feld (z. B. Seltenheit), sonst abwechselnd in der Variantenfarbe
       const fill = segments[i].color || (n % 2 === 1 && i === n - 1 ? fills[2] : fills[i % 2]);
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, r, i * arc, (i + 1) * arc);
-      ctx.closePath();
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'rgba(0,0,0,.45)';
-      ctx.stroke();
+      d.beginPath();
+      d.moveTo(0, 0);
+      d.arc(0, 0, r, i * arc, (i + 1) * arc);
+      d.closePath();
+      d.fillStyle = fill;
+      d.fill();
+      d.lineWidth = 1.5;
+      d.strokeStyle = 'rgba(0,0,0,.45)';
+      d.stroke();
 
-      ctx.save();
-      ctx.rotate((i + 0.5) * arc);
-      ctx.fillStyle = isLight(fill) ? '#17110a' : '#f2f4f8';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
+      d.save();
+      d.rotate((i + 0.5) * arc);
+      d.fillStyle = isLight(fill) ? '#17110a' : '#f2f4f8';
+      d.textAlign = 'right';
+      d.textBaseline = 'middle';
       const label = segments[i].label.toUpperCase();
       const maxW = r * 0.64;
       let fs = size * 0.052;
-      ctx.font = `700 ${fs}px "Barlow Condensed", sans-serif`;
-      while (ctx.measureText(label).width > maxW && fs > 9) {
+      d.font = `700 ${fs}px "Barlow Condensed", sans-serif`;
+      while (d.measureText(label).width > maxW && fs > 9) {
         fs -= 0.5;
-        ctx.font = `700 ${fs}px "Barlow Condensed", sans-serif`;
+        d.font = `700 ${fs}px "Barlow Condensed", sans-serif`;
       }
-      ctx.fillText(label, r - size * 0.04, 0);
-      ctx.restore();
+      d.fillText(label, r - size * 0.04, 0);
+      d.restore();
     }
-    ctx.restore();
 
-    // Glühbirnen
-    const bulbs = 24;
-    for (let i = 0; i < bulbs; i++) {
-      const a = (i / bulbs) * TAU;
-      const x = c + Math.cos(a) * (c - rim / 2 - 2);
-      const y = c + Math.sin(a) * (c - rim / 2 - 2);
-      const on = (i + (this.mode === 'idle' ? 0 : Math.floor(performance.now() / 120))) % 2 === 0;
-      ctx.beginPath();
-      ctx.arc(x, y, size * 0.009, 0, TAU);
-      ctx.fillStyle = on ? '#fff3cf' : 'rgba(255,255,255,.18)';
-      if (on) { ctx.shadowColor = this.color; ctx.shadowBlur = 10; }
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
+    // Rand mit Glühbirnen: Muster 0 und 1 (beim Drehen blinken sie im Wechsel)
+    const rims = [0, 1].map((phase) => {
+      const [cv, g] = make();
+      g.beginPath();
+      g.arc(c, c, c - 2, 0, TAU);
+      g.fillStyle = '#0c0f17';
+      g.fill();
+      g.lineWidth = 2;
+      g.strokeStyle = this.color;
+      g.stroke();
+      const bulbs = 24;
+      for (let i = 0; i < bulbs; i++) {
+        const a = (i / bulbs) * TAU;
+        const x = c + Math.cos(a) * (c - rim / 2 - 2);
+        const y = c + Math.sin(a) * (c - rim / 2 - 2);
+        const on = (i + phase) % 2 === 0;
+        g.beginPath();
+        g.arc(x, y, size * 0.009, 0, TAU);
+        g.fillStyle = on ? '#fff3cf' : 'rgba(255,255,255,.18)';
+        if (on) { g.shadowColor = this.color; g.shadowBlur = 10; }
+        g.fill();
+        g.shadowBlur = 0;
+      }
+      return cv;
+    });
+    this.buffers = { disc, rims };
+    return this.buffers;
+  }
+
+  draw() {
+    const { ctx, size, segments } = this;
+    if (!size || !segments.length) return;
+    const { disc, rims } = this.cache();
+    const c = size / 2;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    const phase = this.mode === 'idle' ? 0 : Math.floor(performance.now() / 120) % 2;
+    ctx.drawImage(rims[phase], 0, 0, size, size);
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(this.angle);
+    ctx.drawImage(disc, -c, -c, size, size);
+    ctx.restore();
   }
 }
 

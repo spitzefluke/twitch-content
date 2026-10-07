@@ -7,6 +7,9 @@
 //   POST {action:"site_session", token}     → Einmal-Code, mit dem admin.html auf der Webseite anmeldet
 //   POST {action:"bot_start", token}        → Twitch-Login-URL für den Chat-Bot (zurück nach admin.html)
 //   POST {action:"bot_disconnect", token}   → Chat-Bot trennen
+//   POST {action:"channels", token}         → alle Streamer-Kanäle mit Bewerbungen (Migration …_platform.sql)
+//   POST {action:"channel_status", token, channel_id, status, note?} → freischalten (active), sperren (blocked)
+//                                              oder zurück auf „wartet“ (pending)
 import { corsHeaders, db, env, getAppToken, helix, json, startTwitchLogin } from "../_shared/twitch.ts";
 
 const SESSION_HOURS = 12;
@@ -79,6 +82,8 @@ Deno.serve(async (req) => {
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
     if (body.action === "site_session") return json(await siteSession());
     if (body.action === "bot_start") return json({ url: await startTwitchLogin(await ensureSiteAdmin(), "bot") });
+    if (body.action === "channels") return await channels();
+    if (body.action === "channel_status") return await channelStatus(body.channel_id, body.status, body.note);
     if (body.action === "bot_disconnect") {
       const { error } = await db.from("twitch_bot").delete().eq("id", 1);
       if (error) throw error;
@@ -233,4 +238,31 @@ async function setAdmin(userId: unknown, isAdmin: unknown) {
   const { error } = await db.from("profiles").update({ is_admin: isAdmin }).eq("id", userId);
   if (error) throw error;
   return json({ ok: true });
+}
+
+// ---------- Streamer-Kanäle (Plattform) ----------
+const PLATFORM_MISSING = "Die Plattform ist noch nicht eingerichtet: In Supabase im SQL Editor die Datei supabase/migrations/20261028000000_platform.sql ausführen.";
+
+async function channels() {
+  const { data, error } = await db.rpc("channels_admin");
+  if (error) {
+    if (/channels_admin/.test(error.message)) return json({ error: PLATFORM_MISSING, missing: true }, 400);
+    throw error;
+  }
+  return json({ channels: data });
+}
+
+async function channelStatus(channelId: unknown, status: unknown, note: unknown) {
+  if (typeof channelId !== "string" || !/^[0-9a-f-]{36}$/i.test(channelId)) return json({ error: "Ungültiger Kanal" }, 400);
+  if (status !== "active" && status !== "blocked" && status !== "pending") return json({ error: "Ungültiger Status" }, 400);
+  const { data, error } = await db.rpc("channel_set_status", {
+    p_channel: channelId,
+    p_status: status,
+    p_admin_note: typeof note === "string" ? note.slice(0, 300) : null,
+  });
+  if (error) {
+    if (/channel_set_status/.test(error.message)) return json({ error: PLATFORM_MISSING, missing: true }, 400);
+    return json({ error: error.message }, 400);
+  }
+  return json({ channels: data });
 }

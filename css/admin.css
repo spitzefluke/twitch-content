@@ -200,3 +200,7 @@
   .chart-grid { left: 30px; }
   .chart-cols { left: 30px; }
 }
+
+/* Streamer-Kanäle */
+.channels .channel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.channels small { font-weight: 400; }

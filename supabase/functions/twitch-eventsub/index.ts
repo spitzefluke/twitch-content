@@ -8,7 +8,7 @@
 //   „🔊 ‹Sound›“             → genau dieser Sound, ohne Tippen (eine Belohnung pro Sound)
 // Funktioniert also auch, wenn niemand die Website offen hat.
 import {
-  chatText, CodedError, db, env, getConnection, helix, performSpin, sendChat, type Connection,
+  channelForTwitch, chatText, CodedError, db, env, getConnection, helix, performSpin, sendChat, type Connection, withChannel,
 } from "../_shared/twitch.ts";
 import { matchThrow, pickSound, prankState, type SoundEntry, soundForReward, soundList, THROW_ITEMS } from "../_shared/pranks.ts";
 import { handleChatMessage } from "../_shared/chat.ts";
@@ -54,6 +54,24 @@ Deno.serve(async (req) => {
     return new Response(payload.challenge, { status: 200, headers: { "Content-Type": "text/plain" } });
   }
 
+  // Zu welchem StreamHelp-Kanal gehört das? (alle Kanäle teilen sich diesen Webhook)
+  const broadcaster = payload.subscription?.condition?.broadcaster_user_id ?? payload.event?.broadcaster_user_id;
+  let channel: { known: boolean; id: string | null };
+  try {
+    channel = await channelForTwitch(broadcaster);
+  } catch (e) {
+    console.error("Kanal nicht ermittelt:", e);
+    return new Response("Kanal nicht ermittelt", { status: 500 }); // Twitch stellt erneut zu
+  }
+  if (!channel.known) {
+    console.warn("EventSub für unbekannten oder gesperrten Kanal:", broadcaster, payload.subscription?.type);
+    return new Response(null, { status: 204 });
+  }
+  return await withChannel(channel.id, () => handle(req, type, payload));
+});
+
+// deno-lint-ignore no-explicit-any
+async function handle(req: Request, type: string | null, payload: any): Promise<Response> {
   if (type === "revocation") {
     console.warn("EventSub widerrufen:", payload.subscription?.status);
     await db.from("twitch_connection").update({ subscription_id: null }).eq("subscription_id", payload.subscription.id);
@@ -92,7 +110,7 @@ Deno.serve(async (req) => {
     else await task;
   }
   return new Response(null, { status: 204 });
-});
+}
 
 // Jede Kanalpunkte-Einlösung (egal welche Belohnung) als Alert im Overlay – ohne den eingetippten Text
 async function redemptionAlert(event: Redemption, messageId: string | null) {
