@@ -463,6 +463,19 @@ async function createSupabaseApi() {
         .select('size, cells, marked, created_at')
         .single());
     },
+    // ---------- Games (Migration …_games.sql) – null, solange die Migration fehlt ----------
+    async getStreamGames() {
+      const { data, error } = await sb.from('stream_games').select('active, current, auto, live_category, live_game, live_at').eq('id', 1).maybeSingle();
+      return error ? null : data ?? {};
+    },
+    async saveStreamGames({ active, current, auto }) {
+      return unwrap(await sb.rpc('games_save', { p_active: active, p_current: current ?? '', p_auto: !!auto }));
+    },
+    onStreamGames(cb) {
+      sb.channel('stream-games')
+        .on('postgres_changes', rtSpec('stream_games', '*'), (p) => { if (p.new) cb(p.new); })
+        .subscribe();
+    },
     onBingo(cb) {
       sb.channel('bingo-feed')
         .on('postgres_changes', rtSpec('bingo_card', '*'), (p) => cb(p.new))
@@ -1320,6 +1333,16 @@ function createLocalApi() {
       return saveCard({ ...store.get('bingo_card', null), ...patch });
     },
     onBingo(cb) { bingoListeners.push(cb); },
+    // ---------- Games (Demo) ----------
+    async getStreamGames() { return store.get('stream_games', {}); },
+    async saveStreamGames({ active, current, auto }) {
+      await requireAdmin();
+      const next = { ...store.get('stream_games', {}), active: [...new Set(active)], current: current ?? '', auto: !!auto };
+      store.set('stream_games', next);
+      emitDemo('stream_games', next);
+      return next;
+    },
+    onStreamGames(cb) { (demoListeners.stream_games ??= []).push(cb); },
     // ---------- Unangenehme Fragen (Demo) ----------
     async getQuestions() {
       const all = store.get('questions', []);

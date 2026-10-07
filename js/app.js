@@ -26,6 +26,8 @@ import {
   channelFromUrl, channelParam, cleanChannel, rememberChannel, rememberedChannel, setChannel, withChannelParam,
 } from './channel.js';
 import { h } from './extras-core.js';
+import { startTour } from './tour.js';
+import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -736,7 +738,7 @@ async function enterApp(user, { animate = false } = {}) {
   renderHeader();
   renderChannelBar();
   loadStreamer().then(channelNameFallback);
-  maybeAskAccountType();
+  maybeAskAccountType().finally(() => setTimeout(maybeAskTour, 700));
   let view = null;
   try { view = localStorage.getItem(VIEW_KEY); } catch { /* egal */ }
   applyView(view);
@@ -744,6 +746,7 @@ async function enterApp(user, { animate = false } = {}) {
   state.pendingPage = null;
   renderHero();
   renderGrid();
+  loadGames();
   renderArchive();
   renderIdeas();
   renderWheelPanel();
@@ -1297,11 +1300,204 @@ function renderGrid() {
     ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
   };
   const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
-  grid.replaceChildren(...shown.map((tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)));
+  const make = (tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i);
+  // Games: je Game erst die passenden Ideen, dann was zu jedem Game passt
+  const game = gameById(selectedGame());
+  $('#grid-title').textContent = game ? `Content-Ideen für ${game.name}` : 'Alle Content-Ideen';
+  $('#wheel-card').hidden = !!game && !game.ideas.includes('wheel');
+  if (!game) {
+    grid.replaceChildren(...shown.map(make));
+  } else {
+    const planned = shown.filter(isPlanned);
+    const { mine, general } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
+    let i = 0;
+    grid.replaceChildren(
+      ...planned.map((t) => make(t, i++)),
+      gridHead(`${game.icon} Passt zu ${game.name}`),
+      ...(mine.length ? mine.map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
+      ...(general.length ? [gridHead('🎮 Passt zu jedem Game'), ...general.map((t) => make(t, i++))] : []),
+    );
+  }
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
   state.unlockAt = Math.min(...shown.filter(isLocked).map((t) => Date.parse(t.target_at)), Infinity);
   updateCountdowns();  // Streameransicht offen? Dann die Content-Liste mitziehen
   if ($('#obs-dialog')?.open && state.profile?.is_admin) renderObsContent();
+}
+
+// ============================================================
+// Einführung (js/tour.js): einmal fragen, danach jederzeit links unter „Einführung“
+// ============================================================
+const tourKey = () => `sh_tour_${state.user?.id ?? ''}`;
+
+function tourSteps() {
+  const team = isTeam();
+  return [
+    { title: 'Willkommen bei StreamHelp 👋', text: `In einer Minute zeigen wir dir das Wichtigste. Mit „Weiter“ geht es zum nächsten Schritt, mit Esc ist jederzeit Schluss.` },
+    { target: '#games-section', title: '🎮 Games', text: 'Wähle das Game – darunter stehen die passenden Content-Ideen. Ist der Stream live, ist das richtige Game schon ausgewählt.' },
+    { target: '#next-departure', title: '⏰ Als Nächstes', text: 'Hier steht, was als Nächstes im Stream passiert – mit Countdown.' },
+    { target: '#grid .tile', title: '🎬 Content-Ideen', text: 'Klick auf eine Kachel und mach mit: Glücksrad, Bingo, Verlosung, Hot Words und vieles mehr.' },
+    { target: '#channel-btn', title: '📺 Kanal', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp. Streamer finden hier auch den Link zu ihrem eigenen Kanal.' },
+    team && { target: '#sidebar', title: '🧰 Stream-Werkzeuge', text: 'In der Leiste links: Bot & Chat, Kanalpunkte, Alerts, Overlay, Design-Bibliothek, Raid-Schutz und Mods.' },
+    team && { target: '#games-edit', title: '⚙️ Games verwalten', text: 'Welche Games bei dir zur Auswahl stehen, stellst du hier ein – auf Wunsch automatisch nach der Twitch-Kategorie.' },
+    team && { target: '#obs-btn', title: '🎛️ OBS', text: 'Hier richtest du das Overlay für OBS ein: eine Browserquelle für alles, Änderungen sind nach Sekunden live.' },
+    { title: 'Fertig! 🎉', text: 'Die Einführung findest du jederzeit wieder links unter „❓ Einführung“. Viel Spaß im Stream!' },
+  ].filter(Boolean);
+}
+
+function runTour() {
+  // Handy: offene Leiste erst schließen, sonst liegt sie über der Seite
+  if (!$('#sb-scrim').hidden) $('#sb-scrim').click();
+  setPage('ideas');
+  try { localStorage.setItem(tourKey(), 'done'); } catch { /* egal */ }
+  setTimeout(() => startTour(tourSteps()), 250);
+}
+
+function maybeAskTour() {
+  if (OBS_PAGE || !state.user) return;
+  let asked = null;
+  try { asked = localStorage.getItem(tourKey()); } catch { return; }
+  if (asked) return;
+  const account = $('#account-dialog');
+  if (account.open) {
+    account.addEventListener('close', () => setTimeout(maybeAskTour, 400), { once: true });
+    return;
+  }
+  const dlg = $('#tour-ask');
+  if (!dlg.open) dlg.showModal();
+}
+
+function setupTour() {
+  const dlg = $('#tour-ask');
+  dlg.addEventListener('click', (e) => {
+    const pick = e.target.closest('[data-tour]');
+    if (!pick) return;
+    closeDialog(dlg);
+    if (pick.dataset.tour === 'yes') runTour();
+  });
+  // Wie auch immer geschlossen: gefragt ist gefragt
+  dlg.addEventListener('close', () => {
+    try { if (!localStorage.getItem(tourKey())) localStorage.setItem(tourKey(), 'no'); } catch { /* egal */ }
+  });
+  $('#tour-btn').addEventListener('click', runTour);
+}
+
+// ============================================================
+// Games (js/games.js, Migration …_games.sql)
+// ============================================================
+const gameKey = () => `sh_game_${state.channel?.id ?? 'default'}`;
+
+async function loadGames() {
+  const g = state.games ??= { data: null, on: false, selected: null, subscribed: false };
+  const data = await state.api.getStreamGames().catch(() => null);
+  g.on = data !== null;
+  g.data = { ...DEFAULT_GAMES, ...(data ?? {}) };
+  if (g.on && !g.subscribed) {
+    g.subscribed = true;
+    state.api.onStreamGames((row) => {
+      g.data = { ...DEFAULT_GAMES, ...row };
+      renderGames();
+      renderGrid();
+    });
+  }
+  renderGames();
+  renderGrid();
+}
+
+// Angezeigtes Game: hier gewählt → gerade live → zuletzt gewählt → Standard-Game → erstes Game
+function selectedGame() {
+  const g = state.games;
+  if (!g?.on) return 'all';
+  const ids = activeGames(g.data).map((x) => x.id);
+  const ok = (id) => id === 'all' || ids.includes(id);
+  if (g.selected && ok(g.selected)) return g.selected;
+  const live = liveGameId(g.data);
+  if (live && ids.includes(live)) return live;
+  let stored = null;
+  try { stored = localStorage.getItem(gameKey()); } catch { /* egal */ }
+  if (stored && ok(stored)) return stored;
+  if (g.data.current && ids.includes(g.data.current)) return g.data.current;
+  return ids[0] ?? 'all';
+}
+
+function selectGame(id) {
+  state.games.selected = id;
+  try { localStorage.setItem(gameKey(), id); } catch { /* egal */ }
+  renderGames();
+  renderGrid();
+}
+
+function renderGames() {
+  const g = state.games;
+  const section = $('#games-section');
+  section.hidden = !g?.on;
+  if (section.hidden) return;
+  $('#games-edit').hidden = !state.profile?.is_admin;
+  const sel = selectedGame();
+  const live = liveGameId(g.data);
+  const items = [{ id: 'all', name: 'Alle Ideen', icon: '✨' }, ...activeGames(g.data)];
+  $('#games-strip').replaceChildren(...items.map((game) => h('button', {
+    type: 'button', role: 'tab', class: 'game-chip', 'aria-selected': String(game.id === sel), onclick: () => selectGame(game.id),
+  }, h('span', { class: 'game-chip-ico', 'aria-hidden': 'true' }, game.icon), h('span', { class: 'game-chip-name' }, game.name),
+  game.id === live && h('span', { class: 'game-chip-live' }, 'Live'))));
+  const liveText = $('#games-live');
+  const recent = g.data.live_at && Date.now() - Date.parse(g.data.live_at) < 15 * 60_000;
+  liveText.hidden = !recent || !g.data.live_category;
+  if (!liveText.hidden) {
+    liveText.textContent = live
+      ? `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“.`
+      : `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“ – für dieses Game gibt es noch keine eigene Auswahl.`;
+  }
+}
+
+function gridHead(text) {
+  return h('div', { class: 'grid-head' }, h('h3', {}, text));
+}
+
+function buildGamePlaceholder(game) {
+  return h('div', { class: 'tile tile--placeholder' },
+    h('div', { class: 'tile-body' },
+      h('span', { class: 'tile-placeholder-ico', 'aria-hidden': 'true' }, game.icon),
+      h('h3', { class: 'tile-title' }, 'Wir arbeiten an einer Content-Idee für dieses Game'),
+      h('p', { class: 'tile-desc' }, `Für ${game.name} gibt es noch keine eigene Idee. Bis dahin passen die Ideen unten zu jedem Game – und wer eine Idee hat, schlägt sie unter „Vorschläge“ vor.`),
+      h('button', { type: 'button', class: 'btn btn--ghost btn--sm', 'data-goto': 'community' }, '💡 Idee vorschlagen')));
+}
+
+function openGamesDialog() {
+  const dlg = $('#games-dialog');
+  const data = state.games.data;
+  const on = new Set(data.active);
+  $('#games-list').replaceChildren(...GAME_GROUPS.map(([group, label]) => h('section', { class: 'games-group' },
+    h('h3', { class: 'prank-h3' }, label),
+    h('div', { class: 'games-checks' }, ...GAMES.filter((g) => g.group === group).map((g) => h('label', { class: 'games-check' },
+      h('input', { type: 'checkbox', name: 'game', value: g.id, checked: on.has(g.id) }),
+      h('span', { class: 'game-chip-ico', 'aria-hidden': 'true' }, g.icon),
+      h('span', {}, h('b', {}, g.name), h('small', {}, g.ideas.length ? `${g.ideas.length} passende Ideen` : 'Content-Idee in Arbeit'))))))));
+  const form = $('#games-form');
+  form.auto.checked = data.auto !== false;
+  form.current.replaceChildren(h('option', { value: '' }, 'Erstes Game der Liste'),
+    ...GAMES.map((g) => h('option', { value: g.id, selected: g.id === data.current }, `${g.icon} ${g.name}`)));
+  dlg.showModal();
+}
+
+async function saveGames(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const active = [...form.querySelectorAll('input[name="game"]:checked')].map((i) => i.value);
+  if (!active.length) { toast('Mindestens ein Game anhaken.', 'error'); return; }
+  const btn = e.submitter;
+  btn.disabled = true;
+  try {
+    const row = await state.api.saveStreamGames({ active, current: form.current.value, auto: form.auto.checked });
+    state.games.data = { ...DEFAULT_GAMES, ...state.games.data, ...row };
+    closeDialog($('#games-dialog'));
+    renderGames();
+    renderGrid();
+    toast('Games gespeichert.', 'ok', 2500);
+  } catch (err) {
+    toast(germanError(err), 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // „Ärgere den Streamer“: kein Termin, geht jederzeit – statt Countdown die Wurfgeschosse.
@@ -1531,6 +1727,9 @@ function setupDialogs() {
 
   $('#logout-btn').addEventListener('click', () => state.api.signOut());
   setupChannelUi();
+  $('#games-edit').addEventListener('click', openGamesDialog);
+  setupTour();
+  $('#games-form').addEventListener('submit', saveGames);
   $('#wheel-card').addEventListener('click', openWheel);
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();

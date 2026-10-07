@@ -1945,3 +1945,37 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .obs-preset-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg-2); }
 .obs-preset-list li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .obs-preset-list .obs-preset-empty { display: block; color: var(--muted); font-size: 13px; border-style: dashed; }
+
+/* ---------- Games (js/games.js) ---------- */
+.dash-hero:has(.wheel-card[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.games-strip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: thin; }
+.game-chip {
+  flex: none; display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px 8px 10px;
+  border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-weight: 700;
+  cursor: pointer; transition: border-color .2s, background-color .2s, transform .2s var(--ease-out);
+}
+.game-chip:hover, .game-chip:focus-visible { border-color: rgba(169, 112, 255, .55); transform: translateY(-2px); outline: none; }
+.game-chip[aria-selected="true"] { border-color: var(--amber); background: linear-gradient(135deg, rgba(145, 70, 255, .28), rgba(145, 70, 255, .08)); }
+.game-chip-ico { font-size: 22px; line-height: 1; }
+.game-chip-live {
+  padding: 2px 7px; border-radius: 999px; background: var(--red); color: #fff;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+}
+.games-live { margin: 6px 0 0; color: var(--text-2, #b9c0cf); font-size: 14px; }
+.grid-head { grid-column: 1 / -1; padding-top: 6px; }
+.grid-head h3 { font-size: 15px; font-family: var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: #9aa4b8; }
+.tile--placeholder { min-height: 240px; border-style: dashed; background: rgba(255, 255, 255, .02); animation: tile-in .7s var(--ease-out) both; }
+.tile--placeholder .tile-title { font-size: clamp(20px, 1.8vw, 26px); }
+.tile--placeholder .tile-desc { display: block; -webkit-line-clamp: unset; overflow: visible; margin-bottom: 14px; }
+.tile-placeholder-ico { font-size: 34px; margin-bottom: 10px; display: block; }
+.dialog--games { width: min(680px, calc(100vw - 32px)); }
+.games-form { display: grid; gap: 16px; padding: 4px 24px 24px; }
+.games-group { display: grid; gap: 8px; }
+.games-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.games-check {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: 14px; border: 1px solid var(--line); cursor: pointer;
+}
+.games-check:has(input:checked) { border-color: rgba(169, 112, 255, .6); background: rgba(145, 70, 255, .1); }
+.games-check b { display: block; font-size: 14px; }
+.games-check small { color: #8f99ad; font-size: 12px; }

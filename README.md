@@ -2,6 +2,7 @@
 
 Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen). Seit der **Plattform** (siehe „Plattform: viele Streamer“) hat jeder Streamer seinen eigenen Kanal mit eigenen Inhalten; alle teilen sich den StreamHelp-Bot:
 
+- **Games im Dashboard**: Fortnite, Minecraft, Just Chatting und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
 - **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
 - **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (`css/landing.css`, `js/landing.js`, Icons von Phosphor lokal in `assets/fonts/`) in den Farben des Logos (Indigo und Grün): „Dein Stream. Eine Zentrale.“ mit **Mit Twitch anmelden** als einzigem Hauptknopf (die anderen Wege stehen klein darunter). Die Overlay-Vorschau ist eine kleine Szene: Alerts kommen und gehen (Abo, Follower, Bits), das Glücksrad holt aus, dreht und bleibt auf einem Ergebnis stehen, der Chat schreibt weiter und das Haustier läuft auf dem Laufband. Die Zahlen im Band zählen hoch, sobald man hinscrollt; die Funktionen stehen nach Rolle (Zuschauer, Mods, Streamer) mit kleiner Vorführung. Beim Scrollen gleiten die Abschnitte herein, die Vorschau bewegt sich langsamer als die Seite (Tiefe), oben zeigt ein Balken, wie weit man ist. Wer „weniger Bewegung“ eingestellt hat, sieht alles ruhig
@@ -667,6 +668,19 @@ StreamHelp läuft für beliebig viele Streamer. Jeder Kanal hat **eigene** Kache
 - Live-Updates kommen aus den Tabellen in `core`, gefiltert nach `channel_id`.
 - Den Chat-Bot verbindet und trennt nur noch der Plattform-Admin (Admin-Bereich) – er liest danach den Chat aller verbundenen Kanäle.
 - Der Twitch-Gesundheitscheck (GitHub Action) prüft alle freigeschalteten Kanäle mit Twitch-Verbindung.
+
+## Games im Dashboard
+
+Oben bei den **Content-Ideen** stehen die Games des Kanals (z. B. Fortnite, Minecraft, Just Chatting). Ein Klick auf ein Game zeigt zuerst die **passenden Ideen** (Fortnite: Glücksrad, Bingo, Kisten-Shop, Quiz, Win-Challenge; Just Chatting: Unangenehme Fragen, Hot Words, Vorlesen, Dino), darunter alles, was **zu jedem Game** passt. Games ohne eigene Idee zeigen „**Wir arbeiten an einer Content-Idee für dieses Game**“ – mit Knopf zu den Vorschlägen. „Alle Ideen“ zeigt alles wie bisher.
+
+- **Games verwalten** (Streamer, freigegebene Mods): Games anhaken – Fortnite, Minecraft, Just Chatting und Retro-Games (Super Mario 64, Super Mario World, Mario Kart 64, Zelda: Ocarina of Time, Pokémon Rot/Blau, Tetris, Sonic, Crash Bandicoot, GoldenEye 007, Street Fighter II, „Retro“). Dazu ein Standard-Game für die Zeit ohne Stream.
+- **Automatisch**: Läuft das OBS-Overlay, liest StreamHelp alle 5 Minuten die **Twitch-Kategorie** des Streams. Passt sie zu einem Game, wird es angeschaltet und für alle Zuschauer vorausgewählt (mit „Live“-Plakette). Ausschaltbar in „Games verwalten“.
+- Neue Games: in `js/games.js` (Name, Symbol, passende Ideen) **und** in `supabase/functions/_shared/games.ts` (Twitch-Kategorie) eintragen.
+- Einmal nötig: Migration **`supabase/migrations/20261029000000_games.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt die Seite die Content-Ideen wie bisher ohne Games.
+
+## Einführung
+
+Nach der ersten Anmeldung (und nach „Bist du Streamer?“) fragt die Seite einmal: **„Willst du eine kurze Einführung?“** Bei **Ja** führt eine kurze Tour durch die Seite (Games, Als Nächstes, Content-Ideen, Kanal – für Streamer und Mods zusätzlich Stream-Werkzeuge, Games verwalten und OBS). Bei **Nein** kommt die Frage nicht wieder. Starten lässt sich die Tour jederzeit links unter **❓ Einführung**; Esc beendet sie.
 
 ## Admin-Bereich
 
