@@ -1,8 +1,8 @@
 import { CONFIG } from './config.js';
 import { createApi, germanError } from './api.js';
 import { Wheel } from './wheel.js';
-import { RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
-import { ALERT_KINDS, ALERT_LOOKS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
+import { DEFAULT_TILES, RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
+import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
@@ -22,6 +22,7 @@ import { guardFrame } from './frame-guard.js';
 import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
 import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
+import { THEME_PACKS } from './theme-packs.js';
 import {
   channelFromUrl, channelParam, cleanChannel, rememberChannel, rememberedChannel, setChannel, withChannelParam,
 } from './channel.js';
@@ -284,11 +285,25 @@ function showAuth() {
   $('#form-login input[name="email"]')?.focus({ preventScroll: true });
 }
 
+// Was in StreamHelp steckt – für den Balken auf der Startseite, direkt aus den Listen im Code
+function landingFacts() {
+  const ideas = new Set(DEFAULT_TILES.map((t) => t.kind).filter((k) => k !== 'countdown')).size;
+  return [
+    { key: 'ideas', n: ideas, label: 'Content-Ideen zum Mitmachen' },
+    { key: 'packs', n: THEME_PACKS.length, label: 'Theme-Pakete zum Installieren' },
+    { key: 'pets', n: SPECIES.length, label: 'Tiere fürs Stream-Haustier' },
+    { key: 'health', n: 30, unit: 'Min', label: 'Twitch-Gesundheitscheck' },
+    { key: 'games', n: GAMES.length, label: 'Games mit eigenem Bereich' },
+    { key: 'alert-looks', n: ALERT_PRESETS.length, label: 'Alert-Designs' },
+    { key: 'themes', n: OVERLAY_THEMES.length, label: 'Overlay-Designs' },
+  ];
+}
+
 function showLanding() {
   $('#app').hidden = true;
   $('#auth').hidden = true;
   $('#landing').hidden = false;
-  setupLanding($('#landing'));
+  setupLanding($('#landing'), { stats: () => state.api.platformStats(), facts: landingFacts() });
   renderLandingChannels();
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);

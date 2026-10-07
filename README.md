@@ -679,6 +679,15 @@ Oben bei den **Content-Ideen** stehen die Games des Kanals (z. B. Fortnite, Mine
 - Neue Games: in `js/games.js` (Name, Symbol, passende Ideen) **und** in `supabase/functions/_shared/games.ts` (Twitch-Kategorie) eintragen.
 - Einmal nötig: Migration **`supabase/migrations/20261029000000_games.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt die Seite die Content-Ideen wie bisher ohne Games.
 
+## Startseite: Balken „Auf einen Blick“
+
+Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt alle 30 Sekunden neu nach (nur solange die Startseite offen ist). Neue Werte zählen vom alten zum neuen Wert hoch, „+… heute“ zeigt, was seit Mitternacht dazukam, ein roter Punkt, wer gerade live ist.
+
+- Gezeigt werden die ersten acht Zahlen, die schon etwas zählen: Streamer (und wie viele gerade live sind), Zuschauer gerade live, Watchtime, Alerts, Glücksrad-Drehungen, Streiche, Haustier-Momente, Hot Words, Fragen & Ideen, Sammelkarten, Quiz-Antworten, vorgelesene Nachrichten, Mitspieler, Verlosungs-Gewinner, gezählte Zuschauer.
+- Darunter, was in StreamHelp steckt (Content-Ideen, Theme-Pakete, Tiere, Games, Alert- und Overlay-Designs) – direkt aus den Listen im Code, also immer aktuell.
+- Die Zahlen kommen aus `public.platform_stats()`: nur Summen über alle freigeschalteten Kanäle, keine Namen; für 20 Sekunden zwischengespeichert, damit viele Besucher die Datenbank nicht ständig zählen lassen.
+- Einmal nötig: Migration **`supabase/migrations/20261030000000_platform_stats.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt der Balken nur, was in StreamHelp steckt.
+
 ## Twitch-Panel (Erweiterung unter dem Stream)
 
 Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`):
