@@ -53,11 +53,14 @@
 }
 @keyframes pzo-in { from { opacity: 0; } }
 .is-edit .ov-x-pause { opacity: .35; }
-.pzo-bg i { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(80px); opacity: .45; animation: pzo-drift 18s ease-in-out infinite alternate; }
-.pzo-bg i:nth-child(1) { background: #9146ff; left: -15vmax; top: -20vmax; }
-.pzo-bg i:nth-child(2) { background: #ffb81c; right: -20vmax; bottom: -25vmax; animation-delay: -6s; }
-.pzo-bg i:nth-child(3) { background: #35c7ff; left: 30vw; top: 40vh; width: 40vmax; height: 40vmax; animation-delay: -12s; }
-@keyframes pzo-drift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
+/* Lichtflecken als ein ruhiger Hintergrund (einmal gezeichnet) statt drei wandernder, weich gezeichneter Kreise */
+.pzo-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(circle 36vmax at 15vmax 10vmax, rgb(145 70 255 / .6), rgb(145 70 255 / .3) 50%, transparent),
+    radial-gradient(circle 36vmax at calc(100vw - 10vmax) calc(100vh - 5vmax), rgb(255 184 28 / .55), rgb(255 184 28 / .27) 50%, transparent),
+    radial-gradient(circle 25vmax at calc(30vw + 20vmax) calc(40vh + 20vmax), rgb(53 199 255 / .5), rgb(53 199 255 / .25) 50%, transparent);
+}
 .pzo-center { position: relative; display: grid; justify-items: center; gap: 18px; text-align: center; padding: 40px; }
 .pzo-tag { font-family: var(--font-mono); font-size: 26px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); }
 .pzo-title { font-family: var(--font-display); font-size: 120px; font-weight: 800; text-transform: uppercase; line-height: .95; color: #fff; text-shadow: 0 .05em .3em rgba(0, 0, 0, .6); max-width: 16em; }
@@ -80,13 +83,13 @@
 .qzo-body { display: grid; gap: .6em; padding: .8em 1.1em 1em; }
 .qzo-q { font-family: var(--font-display); font-size: 1.8em; font-weight: 800; line-height: 1.1; color: #fff; }
 .qzo-bar { height: .35em; border-radius: 999px; background: rgba(255, 255, 255, .1); overflow: hidden; }
-.qzo-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #35c7ff, #9be15d); transition: width .5s linear; }
+.qzo-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #35c7ff, #9be15d); transform-origin: left; transition: transform .5s linear; }
 .qzo-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45em; }
 .qzo-a {
   position: relative; display: flex; align-items: center; gap: .5em; padding: .5em .7em; border-radius: .7em; overflow: hidden;
   background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); font-weight: 700;
 }
-.qzo-a::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); background: rgba(53, 199, 255, .2); transition: width 1s var(--ease-out); }
+.qzo-a::before { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--p, 0)); background: rgba(53, 199, 255, .2); transition: transform 1s var(--ease-out); }
 .qzo-a > * { position: relative; }
 .qzo-a b { display: grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: .4em; background: #35c7ff; color: #04222e; flex: none; }
 .qzo-a small { margin-left: auto; font-family: var(--font-mono); color: #c3cadb; }
@@ -139,7 +142,7 @@
 .cdo-main b { font-family: var(--font-display); font-size: 1.7em; font-weight: 800; color: #fff; }
 .cdo-rarity { font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--rc); }
 @media (prefers-reduced-motion: reduce) {
-  .ov-x, .ov-x-pause, .pzo-bg i, .tto-icon { animation: none !important; }
+  .ov-x, .ov-x-pause, .tto-icon { animation: none !important; }
 }
 
 /* ---------- Verlosung ---------- */

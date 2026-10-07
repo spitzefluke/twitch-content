@@ -278,6 +278,12 @@ Im Dashboard oben rechts auf **🎛️ OBS** klicken – das kann jeder, der ang
 
 **Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann der Streamer mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
 
+**Leistung – keine Lags im Stream:** Das Overlay ist darauf ausgelegt, OBS möglichst wenig zu belasten. Bewegung läuft auf der Grafikkarte (transform/opacity statt Neuzeichnen), das Glücksrad zeichnet seine Scheibe nur einmal und dreht dann das fertige Bild, das Haustier misst nicht in jedem Bild neu, und es gibt keine Unschärfe-Filter über großen Flächen. Gemessen mit allen Ebenen an: ca. 190 % → 40 % Rechenzeit (Software-Grafik), Pausen-Bildschirm 200 % → 15 %. Für OBS empfohlen:
+- Browserquelle **1920 × 1080** (wie die Leinwand), **„Benutzerdefinierte Bildrate“ 30** statt 60 – halbiert die Arbeit, sieht für Karten und Laufband gleich aus.
+- In OBS unter *Einstellungen → Erweitert* **„Browserquellen-Hardwarebeschleunigung“ an** lassen.
+- **„Quelle herunterfahren, wenn nicht sichtbar“** nur für Quellen, die ihr nicht braucht – das Overlay selbst sollte laufen bleiben (sonst fehlen Alerts).
+- Nur die Ebenen einschalten, die ihr im Stream wirklich zeigt; jede ausgeschaltete Ebene kostet nichts.
+
 Das Passwort bleibt nur in diesem Browser; die Verbindung geht direkt an OBS auf `127.0.0.1:4455`, nicht ins Internet. Ohne Verbindung geht es auch: „OBS-Fenster teilen“ zeigt ein geteiltes Fenster (z. B. einen Fenster-Projektor) als Hintergrund der Vorschau, und die Adresse lässt sich kopieren und von Hand als Browserquelle (Breite 1920, Höhe 1080) einfügen.
 
 Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad taucht nur auf, wenn jemand dreht – per Kanalpunkte oder auf der Webseite –, und verschwindet nach dem Ergebnis wieder (außer mit `always=1`). Für verschiedene Szenen kannst du mehrere Browserquellen mit unterschiedlichen Adressen anlegen.

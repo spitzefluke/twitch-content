@@ -330,7 +330,18 @@ export class Dino {
     this.blinkTimer = setInterval(() => this.blink(), 3800);
   }
 
-  width() { return this.container.clientWidth; }
+  // Breite der Bühne: gemerkt statt in jedem Bild gemessen (Messen erzwingt sonst ein Layout pro Bild)
+  width() {
+    if (this.cw === undefined) {
+      this.cw = this.container.clientWidth;
+      if ('ResizeObserver' in window) {
+        this.ro = new ResizeObserver(() => { this.cw = this.container.clientWidth; });
+        this.ro.observe(this.container);
+      } else this.cw = undefined;
+      return this.cw ?? this.container.clientWidth;
+    }
+    return this.cw;
+  }
 
   // ---------- Tierart und Stadium (Ei → Baby → Erwachsen) ----------
   // Anderes Tier: gleiche Gelenke, neue Zeichnung – Kostüm bleibt
@@ -476,6 +487,7 @@ export class Dino {
   // Chat-Zeile über dem Dino: „@user !change lok → LOKFÜHRER“
   chatLine(who, costume) {
     this.chat.replaceChildren();
+    this.chat.bw = 0;
     const name = document.createElement('b');
     name.textContent = `@${who || 'Chat'}`;
     const to = document.createElement('strong');
@@ -497,6 +509,7 @@ export class Dino {
     this.wake();
     this.regrow();
     cancelAnimationFrame(this.raf);
+    this.ro?.disconnect();
     clearInterval(this.blinkTimer);
     clearTimeout(this.chatTimer);
     this.el.remove();
@@ -528,7 +541,8 @@ export class Dino {
 
   // Sprechblase und Chat-Zeile bleiben im Bild, auch wenn der Dino am Rand steht
   keepInView(el) {
-    const bw = el.offsetWidth;
+    // Breite einmal pro neuem Text messen (bw wird beim Setzen des Texts zurückgesetzt)
+    const bw = el.bw ||= el.offsetWidth;
     const left = this.x + this.size / 2 - bw / 2;
     const W = this.width();
     let shift = 0;
@@ -555,7 +569,7 @@ export class Dino {
       } else {
         this.y += Math.sign(dy) * Math.min(Math.abs(dy), speed * dt);
       }
-      this.el.style.transform = `translate(${this.x}px, ${-this.y}px)`;
+      this.place();
       this.raf = requestAnimationFrame(this.frame);
       return;
     }
@@ -577,16 +591,24 @@ export class Dino {
       }
     }
     if (!this.climbing) this.x = Math.min(max, Math.max(0, this.x));
-    this.el.classList.toggle('is-walking', walking);
+    if (walking !== this.wasWalking) { this.el.classList.toggle('is-walking', walking); this.wasWalking = walking; }
     // Kleine Staubwölkchen an den Füßen
     if (walking && !this.reducedMotion && t - (this.dustAt ?? 0) > 380) {
       this.dustAt = t;
       this.dust();
     }
-    this.el.style.transform = `translate(${this.x}px, ${-this.y}px)`;
+    this.place();
     if (this.speaking) this.keepInView(this.bubble);
     if (!this.chat.hidden) this.keepInView(this.chat);
     this.raf = requestAnimationFrame(this.frame);
+  }
+
+  // Position nur schreiben, wenn sie sich geändert hat – steht er, kostet ein Bild fast nichts
+  place() {
+    const tr = `translate(${Math.round(this.x * 10) / 10}px, ${-Math.round(this.y * 10) / 10}px)`;
+    if (tr === this.lastTr) return;
+    this.lastTr = tr;
+    this.el.style.transform = tr;
   }
 
   dust() {
@@ -889,6 +911,7 @@ export class Dino {
     if (!line) { this.speaking = false; this.bubble.hidden = true; return; }
     this.speaking = true;
     this.bubble.textContent = line.text;
+    this.bubble.bw = 0;
     this.bubble.hidden = false;
     this.bubble.classList.remove('is-in');
     void this.bubble.offsetWidth;

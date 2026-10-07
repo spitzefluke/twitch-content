@@ -112,7 +112,7 @@ function setupScene(o, data, kind) {
   el.className = 'ov-scene';
   el.dataset.scene = kind;
   el.innerHTML = `
-    <div class="sc-bg" aria-hidden="true"><i></i><i></i><i></i><span class="sc-grid"></span></div>
+    <div class="sc-bg" aria-hidden="true"><span class="sc-grid"></span></div>
     <div class="sc-center">
       <span class="sc-tag"></span>
       <b class="sc-title"></b>
