@@ -304,3 +304,18 @@ main.nc-wrap { flex: 1; }
 @keyframes nc-check { 0%, 8% { color: var(--color-neutral-700); transform: scale(.8); } 14% { color: var(--color-accent); transform: scale(1.25); } 20%, 88% { color: var(--color-accent); transform: none; } 100% { color: var(--color-neutral-700); } }
 .nc-band-num small { font-size: .45em; letter-spacing: 0; margin-left: 4px; color: var(--color-accent-300); }
 .nc-band-num [data-count] { font-variant-numeric: tabular-nums; }
+
+/* Streamer-Liste (Plattform) */
+.nc-sec--channels { padding-bottom: 24px; }
+.nc-channels { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 14px; }
+.nc-channel {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 14px; width: 100%; padding: 14px 16px;
+  border: 1px solid var(--color-neutral-800); border-radius: 16px; background: rgba(255, 255, 255, .02); color: inherit; text-align: left;
+  font: inherit; cursor: pointer; transition: border-color .2s ease, transform .2s ease, background-color .2s ease;
+}
+.nc-channel:hover, .nc-channel:focus-visible { border-color: var(--color-accent); background: rgba(145, 70, 255, .08); transform: translateY(-2px); outline: none; }
+.nc-channel.is-current { border-color: var(--color-accent); }
+.nc-channel-ava { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; background: linear-gradient(135deg, #9146ff, #ff4fa3); font-weight: 700; font-size: 20px; color: #fff; }
+.nc-channel-ava img { width: 100%; height: 100%; object-fit: cover; }
+.nc-channel b { display: block; font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc-channel small { color: var(--color-neutral-400); font-size: 13px; }

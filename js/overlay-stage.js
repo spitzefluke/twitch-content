@@ -15,6 +15,7 @@
 // Zuschauerzahl und Laufzeit kommen aus stream_live_info(), der Ziel-Stand aus goal_progress()
 // (Migration …_overlay_designs.sql) – beides ohne Anmeldung. Im Demo-Modus aus localStorage.
 import { CONFIG } from './config.js';
+import { channelHeaders } from './channel.js';
 
 export const OVERLAY_THEMES = [
   { id: 'standard', name: 'Standard', desc: 'Dunkle Karten, klar und ruhig' },
@@ -79,7 +80,7 @@ export function setupOverlayStage(o) {
 async function rpc(name, body = {}) {
   const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
-    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
     body: JSON.stringify(body),
     cache: 'no-store',
   });

@@ -10,6 +10,7 @@
 //   hotwords=tl|…    Hot Words: die häufigsten Wörter im Chat mit Zähler (nur solange es welche gibt)   hwsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
+import { rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
 
 const RARITY = { common: 'Gewöhnlich', uncommon: 'Ungewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
@@ -113,10 +114,10 @@ function liveData(sb) {
       .gte('reviewed_at', new Date(Date.now() - 90000).toISOString()).order('reviewed_at')),
     on(table, cb) {
       sb.channel(`ov-x-${table}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table }, (p) => cb(p.new, p.eventType))
+        .on('postgres_changes', rtSpec(table), (p) => cb(p.new, p.eventType))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error(`Overlay: Realtime für ${table} fehlgeschlagen`); });
     },
-    cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${encodeURIComponent(path)}` : ''),
+    cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
 }
 

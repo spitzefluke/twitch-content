@@ -68,6 +68,19 @@ function demoCall(action, extra) {
     return { ok: true };
   }
   if (action === 'twitch_check') return { found: false, status: 'im Demo-Modus nicht verfügbar' };
+  if (action === 'channels' || action === 'channel_status') {
+    const list = read('channels', null) ?? [
+      { id: 'demo-default', login: 'streamhelp', display_name: 'StreamHelp', status: 'active', is_default: true },
+      { id: 'demo-retro', login: 'retrolena', display_name: 'RetroLena', status: 'active', is_default: false },
+    ];
+    if (action === 'channel_status') {
+      const c = list.find((x) => x.id === extra.channel_id);
+      if (c?.is_default && extra.status !== 'active') throw new Error('Der Standard-Kanal bleibt immer aktiv.');
+      if (c) Object.assign(c, { status: extra.status, admin_note: extra.note ?? c.admin_note ?? '' });
+      localStorage.setItem('zd_channels', JSON.stringify(list));
+    }
+    return { channels: list.map((c) => ({ note: '', admin_note: '', owner: c.owner ?? '', connected: false, created_at: c.created_at ?? new Date().toISOString(), ...c })) };
+  }
   if (action === 'bot_start') throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
   if (action === 'bot_disconnect') return { ok: true };
   if (action === 'site_session') {
@@ -186,6 +199,79 @@ function showApp() {
   $('#admin-login').hidden = true;
   $('#admin-app').hidden = false;
   refresh();
+  loadChannels();
+}
+
+// ============================================================
+// Streamer-Kanäle: Bewerbungen freischalten (Migration …_platform.sql)
+// ============================================================
+const CHANNEL_STATUS = {
+  pending: ['chip--warn', '⏳ Wartet'],
+  active: ['chip--ok', '✓ Freigeschaltet'],
+  blocked: ['chip--bad', '🚫 Gesperrt'],
+};
+
+async function loadChannels() {
+  try {
+    const data = await call('channels');
+    state.channels = data.channels ?? [];
+    $('#channels-note').textContent = '';
+  } catch (err) {
+    if (err.status === 401) return;
+    state.channels = [];
+    $('#channels-note').textContent = err.message;
+  }
+  renderChannels();
+}
+
+function renderChannels() {
+  const list = state.channels ?? [];
+  const pending = list.filter((c) => c.status === 'pending').length;
+  $('#channels-count').textContent = list.length ? `(${nf.format(list.length)}${pending ? ` · ${pending} warten` : ''})` : '';
+  const tbody = $('#channels');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="muted">Noch keine Kanäle.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((c) => {
+    const [cls, label] = CHANNEL_STATUS[c.status] ?? ['', c.status];
+    const actions = [];
+    if (c.status !== 'active') actions.push(`<button class="btn btn--primary btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="active">Freischalten</button>`);
+    if (c.status !== 'blocked' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="blocked">Sperren</button>`);
+    if (c.status === 'active' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="pending">Zurückstellen</button>`);
+    return `
+    <tr>
+      <td><span class="u-name"><span class="avatar" aria-hidden="true">${escapeHtml((c.display_name || c.login || '?').slice(0, 1).toUpperCase())}</span>
+        <span>${escapeHtml(c.display_name || c.login || '–')}${c.is_default ? ' <span class="chip">Standard</span>' : ''}<br>
+        <small class="muted">${c.login ? `twitch.tv/${escapeHtml(c.login)}` : ''}${c.owner ? ` · Konto: ${escapeHtml(c.owner)}` : ''}</small></span></span></td>
+      <td><span class="chip ${cls}">${label}</span>${c.admin_note ? `<br><small class="muted">${escapeHtml(c.admin_note)}</small>` : ''}</td>
+      <td class="muted">${escapeHtml(c.note || '–')}</td>
+      <td class="mono">${fmtDate(c.created_at)}</td>
+      <td>${c.connected ? '<span class="chip chip--ok">verbunden</span>' : '<span class="muted">–</span>'}</td>
+      <td><span class="channel-actions">${actions.join('') || '–'}</span></td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('button[data-status]').forEach((btn) => btn.addEventListener('click', () => setChannelStatus(btn)));
+}
+
+async function setChannelStatus(btn) {
+  const c = (state.channels ?? []).find((x) => x.id === btn.dataset.channel);
+  const status = btn.dataset.status;
+  let note = null;
+  if (status === 'blocked') {
+    note = prompt(`Kanal „${c?.display_name || c?.login}“ sperren. Grund (sieht der Streamer, optional):`, c?.admin_note ?? '');
+    if (note === null) return;
+  }
+  btn.disabled = true;
+  try {
+    const data = await call('channel_status', { channel_id: btn.dataset.channel, status, note });
+    state.channels = data.channels ?? state.channels;
+    renderChannels();
+    toast({ active: 'Kanal freigeschaltet – der Streamer kann jetzt loslegen.', blocked: 'Kanal gesperrt.', pending: 'Kanal zurückgestellt.' }[status], 'ok');
+  } catch (err) {
+    toast(`Ändern fehlgeschlagen: ${err.message}`, 'error');
+    btn.disabled = false;
+  }
 }
 
 // ============================================================

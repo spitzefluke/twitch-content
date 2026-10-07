@@ -22,6 +22,10 @@ import { guardFrame } from './frame-guard.js';
 import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
 import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
+import {
+  channelFromUrl, channelParam, cleanChannel, rememberChannel, rememberedChannel, setChannel, withChannelParam,
+} from './channel.js';
+import { h } from './extras-core.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -183,6 +187,10 @@ async function boot() {
     return;
   }
   if (state.api.demo) $('#demo-banner').hidden = false;
+  // Link auf einen Kanal (#/c/<login>): gilt auch nach dem Anmelden noch (Twitch-Login verliert die Adresse)
+  const linked = channelFromUrl();
+  if (linked) onceStore.set(LINK_ONCE, linked);
+  await previewChannel(linked);
   loadStreamer();
 
   const twitchReturn = params.get('twitch');
@@ -244,7 +252,7 @@ function showTwitchReturn(status, reason, detail, bot) {
     return;
   }
   const reasons = {
-    wrong_account: 'Verbinden darf nur der Kanal, der in Supabase als Secret BROADCASTER_LOGIN eingetragen ist.',
+    wrong_account: 'Verbinden darf nur das Twitch-Konto, dem dieser Kanal gehört. Auf twitch.tv abmelden, mit dem richtigen Konto anmelden und noch einmal verbinden.',
     bot_is_broadcaster: 'Das war der Account des Streamers. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
     no_broadcaster_login: 'In Supabase fehlt das Secret BROADCASTER_LOGIN (Twitch-Name des Streamers). Ohne es darf sich aus Sicherheitsgründen nur ein Admin verbinden. Secret unter Edge Functions → Secrets eintragen und erneut verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zu StreamHelp zurückgeleitet. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → Verwalten) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen, speichern und noch einmal verbinden.`,
@@ -279,6 +287,7 @@ function showLanding() {
   $('#auth').hidden = true;
   $('#landing').hidden = false;
   setupLanding($('#landing'));
+  renderLandingChannels();
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
 }
@@ -692,6 +701,9 @@ async function enterApp(user, { animate = false } = {}) {
   }
 
   const api = state.api;
+  // Welcher Kanal? Muss vor allem anderen feststehen – jede Abfrage schickt ihn mit.
+  await chooseChannel();
+  if (!state.user) return;
   const [profile, tiles, variants, twitch, spins, ideas, prankSettings, prankLog, bingo, access] = await Promise.all([
     api.getProfile(user),
     api.getTiles().catch(fail('Kacheln', [])),
@@ -722,6 +734,9 @@ async function enterApp(user, { animate = false } = {}) {
   if (bingo) Object.assign(state.bingo, bingo, { lines: bingoState(bingo.card).count });
 
   renderHeader();
+  renderChannelBar();
+  loadStreamer().then(channelNameFallback);
+  maybeAskAccountType();
   let view = null;
   try { view = localStorage.getItem(VIEW_KEY); } catch { /* egal */ }
   applyView(view);
@@ -787,7 +802,7 @@ function renderHeader() {
   $('#user-role').hidden = !profile.is_admin;
   $('#user-role').textContent = state.access?.is_owner ? 'Streamer' : state.access?.is_mod ? 'Mod' : 'Admin';
   // Der Admin-Bereich ist nur für echte Admins, nicht für Mods
-  $('#admin-btn').hidden = !(state.access ? state.access.is_site_admin : profile.is_admin);
+  $('#admin-btn').hidden = !(state.access ? state.access.is_site_admin || state.access.is_platform_admin : profile.is_admin);
 
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
@@ -828,6 +843,263 @@ async function loadStreamer() {
     console.warn('Streamer-Name nicht verfügbar (Migration …_streamer_mods.sql?):', err);
     applyStreamer(null);
   }
+}
+// Kanal ohne Twitch-Verbindung: sein Name aus der Anmeldung
+function channelNameFallback() {
+  if (!state.streamer.connected && state.channel) {
+    applyStreamer({ connected: false, name: state.channel.display_name || state.channel.login, login: state.channel.login });
+  }
+}
+
+// ============================================================
+// Kanäle (Plattform, js/channel.js): welcher Streamer, wechseln, Streamer werden
+// ============================================================
+const LINK_ONCE = 'sh_channel_link';      // ausdrücklich gewählter Kanal (Link, Klick) – hat Vorrang
+const WANTS_STREAMER = 'sh_wants_streamer'; // nach dem Twitch-Login gleich „Kanal anmelden“ zeigen
+const onceStore = {
+  get(key) { try { return sessionStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { if (value == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch { /* egal */ } },
+};
+const channelLabel = (c) => c?.display_name || c?.login || 'Streamer';
+
+function channelAvatar(el, c) {
+  el.replaceChildren();
+  if (c?.avatar_url && /^https:\/\//.test(c.avatar_url)) {
+    const img = new Image();
+    img.alt = '';
+    img.referrerPolicy = 'no-referrer';
+    img.src = c.avatar_url;
+    el.append(img);
+  } else {
+    el.textContent = channelLabel(c).slice(0, 1).toUpperCase();
+  }
+}
+
+// Ohne Anmeldung (Startseite): den verlinkten Kanal schon zeigen
+async function previewChannel(key) {
+  if (!key) return;
+  const res = await state.api.resolveChannel(key).catch(() => ({ platform: false, channel: null }));
+  if (res.platform && res.channel) {
+    setChannel(res.channel);
+    Object.assign(state, { platform: true, channel: res.channel });
+  }
+}
+
+// Reihenfolge: Link → eigener (freigeschalteter) Kanal → zuletzt besuchter → Standard-Kanal
+async function chooseChannel() {
+  const api = state.api;
+  const linked = channelFromUrl() ?? cleanChannel(onceStore.get(LINK_ONCE));
+  onceStore.set(LINK_ONCE, null);
+  const mine = await api.channelMine().catch(() => null);
+  state.myChannel = mine;
+  const key = linked ?? (mine?.status === 'active' ? mine.id : null) ?? rememberedChannel();
+  const none = { platform: false, channel: null };
+  let res = await api.resolveChannel(key).catch((err) => { console.warn('Kanal nicht lesbar:', err); return none; });
+  if (res.platform && !res.channel && key) {
+    if (linked) toast(`Den Kanal „${linked}“ gibt es nicht oder er ist noch nicht freigeschaltet – du siehst die Startseite von StreamHelp.`, 'error', 9000);
+    rememberChannel(null);
+    res = await api.resolveChannel(null).catch(() => none);
+  }
+  Object.assign(state, { platform: res.platform, channel: res.channel });
+  setChannel(res.channel, res.platform);
+  if (!res.platform) return;
+  rememberChannel(res.channel && !res.channel.is_default ? res.channel.login || res.channel.id : null);
+  // Link zum Teilen in der Adresszeile
+  if (!OBS_PAGE) {
+    const p = channelParam();
+    const hash = p ? `#/c/${p}` : '';
+    if (location.hash !== hash && (!location.hash || /^#\/c\//.test(location.hash))) {
+      history.replaceState(null, '', `${location.pathname}${location.search}${hash}`);
+    }
+  }
+}
+
+function switchChannel(c) {
+  closeDialog($('#channel-dialog'));
+  if (c.id === state.channel?.id) return;
+  onceStore.set(LINK_ONCE, c.login || c.id);
+  rememberChannel(c.is_default ? null : c.login || c.id);
+  history.replaceState(null, '', `${location.pathname}${c.is_default ? '' : `#/c/${c.login || c.id}`}`);
+  location.reload();
+}
+
+function channelLink(c) {
+  const url = new URL(location.pathname, location.href);
+  url.hash = c.is_default ? '' : `/c/${c.login || c.id}`;
+  return url.href;
+}
+
+function renderChannelBar() {
+  const btn = $('#channel-btn');
+  btn.hidden = !state.platform || !state.channel || OBS_PAGE;
+  if (!btn.hidden) {
+    channelAvatar($('#channel-avatar'), state.channel);
+    $('#channel-name').textContent = channelLabel(state.channel);
+  }
+  const mine = state.myChannel;
+  const banner = $('#channel-banner');
+  banner.hidden = !state.platform || !mine || mine.status === 'active' || OBS_PAGE;
+  if (banner.hidden) return;
+  const blocked = mine.status === 'blocked';
+  banner.querySelector('.channel-banner-ico').textContent = blocked ? '🚫' : '⏳';
+  $('#channel-banner-title').textContent = blocked ? `Dein Kanal „${channelLabel(mine)}“ ist gesperrt` : `Dein Kanal „${channelLabel(mine)}“ wartet auf Freischaltung`;
+  $('#channel-banner-detail').textContent = blocked
+    ? mine.admin_note || 'Bei Fragen melde dich beim StreamHelp-Team.'
+    : 'Wir schalten neue Kanäle von Hand frei. Bis dahin kannst du dich bei anderen Streamern umsehen.';
+}
+
+async function openChannelDialog() {
+  const dlg = $('#channel-dialog');
+  const [mine, list] = await Promise.all([
+    state.api.channelMine().catch(() => state.myChannel),
+    state.api.channelsList().catch(() => []),
+  ]);
+  state.myChannel = mine;
+  renderChannelBar();
+  const box = $('#channels-mine');
+  box.replaceChildren();
+  if (mine) {
+    const status = { active: '✅ Freigeschaltet', pending: '⏳ Wartet auf Freischaltung', blocked: '🚫 Gesperrt' }[mine.status] ?? mine.status;
+    box.append(h('p', {}, h('b', {}, 'Dein Kanal: '), channelLabel(mine), ' · ', h('small', {}, status)));
+    if (mine.status === 'active') {
+      const input = h('input', { type: 'text', readonly: true, value: channelLink(mine), 'aria-label': 'Link zu deinem Kanal' });
+      box.append(
+        h('p', { class: 'form-hint' }, 'Diesen Link kannst du deinen Zuschauern geben (z. B. im Twitch-Panel oder als Chat-Befehl):'),
+        h('div', { class: 'channels-link' }, input,
+          h('button', {
+            type: 'button', class: 'btn btn--ghost btn--sm',
+            onclick: async () => {
+              try { await navigator.clipboard.writeText(input.value); toast('Link kopiert.', 'ok', 2000); } catch { input.select(); }
+            },
+          }, '📋 Kopieren')),
+      );
+      if (mine.id !== state.channel?.id) {
+        box.append(h('div', {}, h('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => switchChannel(mine) }, '🎥 Zu meinem Kanal')));
+      }
+    }
+  } else {
+    box.append(
+      h('p', {}, h('b', {}, 'Du streamst selbst?'), ' Melde deinen Kanal an – wir schalten ihn kurz von Hand frei.'),
+      h('div', {}, h('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => { closeDialog(dlg); openAccountDialog('streamer'); } }, '🎥 Kanal anmelden')),
+    );
+  }
+  const ul = $('#channels-list');
+  ul.replaceChildren(...list.map((c) => {
+    const ava = h('span', { class: 'channels-ava', 'aria-hidden': 'true' });
+    channelAvatar(ava, c);
+    const here = c.id === state.channel?.id;
+    return h('li', {}, h('button', { type: 'button', 'aria-current': here ? 'true' : 'false', onclick: () => switchChannel(c) },
+      ava, h('b', {}, channelLabel(c)), h('small', {}, here ? 'hier bist du' : c.is_owner ? 'dein Kanal' : '')));
+  }));
+  if (!list.length) ul.append(h('li', { class: 'form-hint' }, 'Noch keine freigeschalteten Kanäle.'));
+  if (!dlg.open) dlg.showModal();
+}
+
+// ---------- Nach der ersten Anmeldung: Zuschauer oder Streamer? ----------
+async function maybeAskAccountType() {
+  if (!state.platform || OBS_PAGE) return;
+  if (onceStore.get(WANTS_STREAMER) === '1') {
+    onceStore.set(WANTS_STREAMER, null);
+    if (!state.myChannel) openAccountDialog('streamer');
+    return;
+  }
+  if (state.myChannel) return;
+  const type = await state.api.accountType().catch(() => 'unknown');
+  if (type === null && state.user) openAccountDialog('ask');
+}
+
+async function openAccountDialog(step = 'ask') {
+  const dlg = $('#account-dialog');
+  if (step === 'streamer') step = (await state.api.hasTwitchLogin().catch(() => false)) ? 'apply' : 'twitch';
+  dlg.querySelectorAll('[data-step]').forEach((el) => { el.hidden = el.dataset.step !== step; });
+  if (step === 'apply') {
+    const meta = state.user?.user_metadata ?? {};
+    dlg.querySelector('[data-apply-name]').textContent = meta.nickname || meta.preferred_username || meta.name || state.profile?.username || 'dein Twitch-Kanal';
+  }
+  if (!dlg.open) dlg.showModal();
+}
+
+function setupChannelUi() {
+  $('#channel-btn').addEventListener('click', openChannelDialog);
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-open-channels]')) openChannelDialog();
+  });
+  // Startseite: Klick auf einen Kanal bzw. „Kanal anmelden“ merkt sich das für nach dem Anmelden
+  document.addEventListener('click', (e) => {
+    const pick = e.target.closest('[data-channel]');
+    if (pick) onceStore.set(LINK_ONCE, pick.dataset.channel);
+    if (e.target.closest('[data-become-streamer]')) onceStore.set(WANTS_STREAMER, '1');
+  }, true);
+  const dlg = $('#account-dialog');
+  dlg.addEventListener('click', async (e) => {
+    const choice = e.target.closest('[data-account]');
+    if (choice?.dataset.account === 'viewer') {
+      try {
+        await state.api.setAccountType('viewer');
+        closeDialog(dlg);
+        toast('Viel Spaß beim Zuschauen! Andere Streamer findest du oben unter „Kanal“.', 'ok', 6000);
+      } catch (err) { toast(germanError(err), 'error'); }
+    }
+    if (choice?.dataset.account === 'streamer') openAccountDialog('streamer');
+    if (e.target.closest('[data-account-back]')) openAccountDialog('ask');
+    if (e.target.closest('[data-account-twitch]')) {
+      onceStore.set(WANTS_STREAMER, '1');
+      state.api.signInWithProvider('twitch').catch((err) => { onceStore.set(WANTS_STREAMER, null); toast(germanError(err), 'error'); });
+    }
+  });
+  dlg.querySelector('[data-step="apply"]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.submitter;
+    btn.disabled = true;
+    try {
+      state.myChannel = await state.api.channelApply(e.currentTarget.note.value.trim());
+      if (state.myChannel?.status === 'active') {
+        closeDialog(dlg);
+        toast('Dein Kanal ist schon freigeschaltet.', 'ok');
+        switchChannel(state.myChannel);
+        return;
+      }
+      openAccountDialog('done');
+      renderChannelBar();
+    } catch (err) {
+      toast(germanError(err), 'error', 8000);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  // Anderer Kanal in der Adresszeile (Link eingefügt, Zurück-Knopf): neu laden
+  addEventListener('hashchange', () => {
+    const key = channelFromUrl();
+    const c = state.channel;
+    if (!state.user || !state.platform || !key || !c) return;
+    if (key === c.id || key === c.login) return;
+    onceStore.set(LINK_ONCE, key);
+    location.reload();
+  });
+}
+
+// Startseite: alle freigeschalteten Kanäle
+let landingChannelsDone = false;
+async function renderLandingChannels() {
+  if (landingChannelsDone || !state.api) return;
+  landingChannelsDone = true;
+  const list = await state.api.channelsList().catch(() => []);
+  const section = $('#streamer');
+  if (!list.length) return;
+  section.hidden = false;
+  document.querySelectorAll('[data-for-channels]').forEach((el) => { el.hidden = false; });
+  const here = state.channel && !state.channel.is_default ? state.channel : null;
+  if (here) {
+    $('#lp-channels-title').textContent = `Willkommen bei ${channelLabel(here)}!`;
+    $('#lp-channels-hint').textContent = 'Melde dich an und mach im Stream mit – oder schau dir die anderen Streamer an.';
+  }
+  $('#lp-channels').replaceChildren(...list.map((c) => {
+    const ava = h('span', { class: 'nc-channel-ava', 'aria-hidden': 'true' });
+    channelAvatar(ava, c);
+    return h('li', {}, h('button', {
+      type: 'button', class: `nc-channel${here && c.id === here.id ? ' is-current' : ''}`, 'data-go': 'login', 'data-channel': c.login || c.id,
+    }, ava, h('span', {}, h('b', {}, channelLabel(c)), h('small', {}, c.login ? `twitch.tv/${c.login}` : 'StreamHelp'))));
+  }));
 }
 
 function startLabel(iso) {
@@ -1258,6 +1530,7 @@ function setupDialogs() {
   });
 
   $('#logout-btn').addEventListener('click', () => state.api.signOut());
+  setupChannelUi();
   $('#wheel-card').addEventListener('click', openWheel);
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();
@@ -4975,7 +5248,7 @@ const OBS_SIZE = {
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [], previewSound: false, presets: null };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
-const obsLiveUrl = () => new URL('overlay.html?live=1', location.href).href;
+const obsLiveUrl = () => withChannelParam(new URL('overlay.html?live=1', location.href)).href;
 const obsLocked = () => obsLive.ready && !obsLive.access.can_edit;
 
 function setupObs() {
@@ -5691,7 +5964,7 @@ function obsUrl({ preview = false } = {}) {
   }
   // Vorschau stumm – außer „Ton in der Vorschau“ ist an (Mixer: ▶ Probehören)
   if (preview) { if (!obs.previewSound) p.set('vol', '0'); p.set('test', '1'); p.set('edit', '1'); }
-  return url.href;
+  return withChannelParam(url).href;
 }
 
 function loadObs() {
@@ -5719,7 +5992,7 @@ function saveObs(values) {
 
 // Die OBS-Einstellungen laufen in einem eigenen Fenster (index.html?obs), nicht als Pop-up
 function openObsWindow() {
-  const url = new URL(location.pathname, location.href);
+  const url = withChannelParam(new URL(location.pathname, location.href));
   url.searchParams.set('obs', '1');
   const win = window.open(url.href, 'streamhelp-obs');
   if (win) win.focus();
@@ -5730,7 +6003,7 @@ function startObsPage() {
   document.body.classList.add('obs-page');
   document.title = 'OBS · StreamHelp';
   if (new URLSearchParams(location.search).has('welcome')) {
-    history.replaceState(null, '', `${location.pathname}?obs=1`);
+    history.replaceState(null, '', withChannelParam(new URL(`${location.pathname}?obs=1`, location.href)).href);
     toast(`Twitch ist verbunden. Das ist deine Streameransicht, ${streamerName()}: OBS einrichten, Mods freigeben und deine Content-Ideen starten.`, 'ok', 10000);
   }
   const back = $('#obs-dialog .dialog-head [data-close]');
@@ -5741,7 +6014,8 @@ function startObsPage() {
 
 function leaveObsPage() {
   if (window.opener && !window.opener.closed) { window.close(); return; }
-  location.href = location.pathname;
+  const c = channelParam();
+  location.href = `${location.pathname}${c ? `#/c/${c}` : ''}`;
 }
 
 async function openObsDialog({ page = false } = {}) {
@@ -6549,6 +6823,15 @@ function renderBotPanel() {
       : 'Noch kein Bot verbunden. Zuerst muss der Streamer Twitch verbinden, dann den Bot.';
   $('#bot-connect').textContent = connected ? '🔄 Anderen Bot verbinden' : '🤖 Bot verbinden';
   $('#bot-disconnect').hidden = !connected;
+  // Plattform: Alle Kanäle teilen sich den StreamHelp-Bot – verbinden und trennen nur der Plattform-Admin
+  const shared = state.platform && !state.access?.is_platform_admin;
+  if (shared) {
+    $('#bot-connect').hidden = true;
+    $('#bot-disconnect').hidden = true;
+    status.textContent = connected
+      ? `✓ Der StreamHelp-Bot ${t.bot_name ?? t.bot_login} liest deinen Chat mit${t.bot_scope === false ? ' – darf aber noch nicht schreiben: Twitch einmal neu verbinden.' : ' und schreibt Ergebnisse hinein.'}`
+      : 'Der StreamHelp-Bot ist gerade nicht verbunden – das StreamHelp-Team kümmert sich darum.';
+  }
   renderCommands();
   loadBotCommands();
   loadWatchtime();

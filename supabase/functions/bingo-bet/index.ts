@@ -8,7 +8,7 @@
 //   POST {action:"cancel"}         → Abbrechen, alle bekommen ihre Punkte zurück
 // Nur für Admins. Die Runde steht in bingo_card.bet (Migration …_bingo_bet.sql).
 import {
-  CodedError, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, isAdminUser, json, sendChat, type Connection,
+  channelServe, CodedError, type Connection, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, isAdminUser, json, sendChat,
 } from "../_shared/twitch.ts";
 import { betLines, fullLines } from "../_shared/bingo.ts";
 
@@ -26,7 +26,7 @@ type Bet = {
   winner_title?: string;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
   const user = await getUserFromRequest(req);
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     console.error(e);
     return json({ error: (e as Error).message, code: (e as CodedError).code }, e instanceof CodedError ? 400 : 500);
   }
-});
+}));
 
 async function loadCard() {
   const { data, error } = await db.from("bingo_card").select("size, cells, marked, bet").eq("id", 1).maybeSingle();

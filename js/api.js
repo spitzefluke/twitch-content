@@ -1,6 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
+import { channelFetch, current as channel, rtSpec, storageFolder } from './channel.js';
 import { BOARD } from './prank-fx.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, drawCard, fullBetLines } from './bingo.js';
@@ -67,6 +68,11 @@ const ERRORS = [
   [/access.denied|user denied|cancel/i, 'Anmeldung abgebrochen.'],
   [/email.*(not|kein).*(provided|available)|missing email/i, 'Der Anbieter hat keine E-Mail-Adresse geliefert. Bitte eine andere Möglichkeit wählen.'],
 ];
+// Funktion gibt es (noch) nicht in der Datenbank – Migration fehlt
+export function missingFunction(error) {
+  return error?.code === 'PGRST202' || /could not find the function/i.test(error?.message ?? '');
+}
+
 export function germanError(err) {
   const msg = err?.message ?? String(err);
   return ERRORS.find(([re]) => re.test(msg))?.[1] ?? msg;
@@ -77,7 +83,8 @@ export function germanError(err) {
 // ------------------------------------------------------------
 async function createSupabaseApi() {
   const { createClient } = await import('./supabase-js.js');
-  const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  // Jede Anfrage trägt den Kanal (Header x-channel, js/channel.js)
+  const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { global: { fetch: channelFetch } });
   const unwrap = ({ data, error }) => { if (error) throw error; return data; };
 
   // Edge Function aufrufen. Kommt gar keine Antwort (Netzwerk, Kaltstart-Aussetzer, Werbeblocker),
@@ -230,6 +237,42 @@ async function createSupabaseApi() {
     },
     async saveOverlayPreset(name, params) { return unwrap(await sb.rpc('overlay_preset_save', { p_name: name, p_params: params })); },
     async deleteOverlayPreset(id) { return unwrap(await sb.rpc('overlay_preset_delete', { p_id: id })); },
+    // ---------- Kanäle (Plattform, Migration …_platform.sql) ----------
+    // Kanal suchen (Twitch-Login oder ID, null = Standard-Kanal). {platform:false}, solange die Migration fehlt.
+    async resolveChannel(key) {
+      const { data, error } = await sb.rpc('channel_info', { p_key: key ?? null });
+      if (error) {
+        if (missingFunction(error)) return { platform: false, channel: null };
+        throw error;
+      }
+      return { platform: true, channel: data };
+    },
+    // Alle freigeschalteten Kanäle (Startseite, Kanal wechseln)
+    async channelsList() {
+      const { data, error } = await sb.rpc('channels_list');
+      return error ? [] : data ?? [];
+    },
+    // Mein eigener Kanal (auch wenn er noch auf die Freischaltung wartet) oder null
+    async channelMine() {
+      const { data, error } = await sb.rpc('channel_mine');
+      return error ? null : data;
+    },
+    async channelApply(note = '') { return unwrap(await sb.rpc('channel_apply', { p_note: note })); },
+    // Zuschauer oder Streamer? null = noch nie gefragt, 'unknown' = Migration fehlt (dann nicht fragen)
+    async accountType() {
+      const { data: session } = await sb.auth.getSession();
+      const user = session.session?.user;
+      if (!user) return 'unknown';
+      const { data, error } = await sb.from('profiles').select('account_type').eq('id', user.id).maybeSingle();
+      return error ? 'unknown' : data?.account_type ?? null;
+    },
+    async setAccountType(type) { unwrap(await sb.rpc('profile_set_type', { p_type: type })); },
+    // Mit Twitch angemeldet? (Streamer brauchen das – so ist klar, dass der Kanal ihnen gehört)
+    async hasTwitchLogin() {
+      const { data } = await sb.auth.getSession();
+      const user = data.session?.user;
+      return !!user?.identities?.some((i) => i.provider === 'twitch') || user?.app_metadata?.provider === 'twitch';
+    },
     // ---------- Streamer und Mods ----------
     // Name des verbundenen Kanals – auch ohne Anmeldung (Anmeldeseite, Overlay)
     async streamerInfo() { return unwrap(await sb.rpc('streamer_info')); },
@@ -281,7 +324,7 @@ async function createSupabaseApi() {
     async startAnniversary(start = '') { return invoke('stream-tools', { action: 'anniversary', start: start || undefined }); },
     onPrank(cb) {
       sb.channel('pranks-feed')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pranks' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('pranks', 'INSERT'), (p) => cb(p.new))
         .subscribe();
     },
     soundUrl(path) {
@@ -360,7 +403,7 @@ async function createSupabaseApi() {
     // Datei-Kopie (Löschen des einen nimmt das Bild der anderen nicht mit). Alle teilen den Fingerabdruck.
     async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null } = {}) {
       const ext = blob.type === 'image/webp' ? 'webp' : 'png';
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${storageFolder()}${crypto.randomUUID()}.${ext}`;
       unwrap(await sb.storage.from('bingo').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
       const list = rarities?.length ? rarities : [rarity];
       const first = await this.insertBingoItem({ name, path, rarity: list[0], amount, image_key: imageKey });
@@ -371,7 +414,7 @@ async function createSupabaseApi() {
     // Dasselbe Bild noch einmal, z. B. mit anderer Zahl. Die Datei wird kopiert,
     // damit Löschen des einen Eintrags das Bild des anderen nicht mitnimmt.
     async copyBingoItem(item, patch = {}) {
-      const path = `${crypto.randomUUID()}.${item.path.split('.').pop()}`;
+      const path = `${storageFolder()}${crypto.randomUUID()}.${item.path.split('.').pop()}`;
       unwrap(await sb.storage.from('bingo').copy(item.path, path));
       return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, image_key: item.image_key ?? null, ...patch });
     },
@@ -422,7 +465,7 @@ async function createSupabaseApi() {
     },
     onBingo(cb) {
       sb.channel('bingo-feed')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bingo_card' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('bingo_card', '*'), (p) => cb(p.new))
         .subscribe();
     },
     // ---------- Unangenehme Fragen ----------
@@ -453,12 +496,12 @@ async function createSupabaseApi() {
     },
     onQuestions(cb) {
       sb.channel('questions-feed')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, (p) => cb(p))
+        .on('postgres_changes', rtSpec('questions', '*'), (p) => cb(p))
         .subscribe();
     },
     onQuestionStage(cb) {
       sb.channel('question-stage')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'question_stage' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('question_stage', 'UPDATE'), (p) => cb(p.new))
         .subscribe();
     },
     // ---------- Kisten-Shop ----------
@@ -502,7 +545,7 @@ async function createSupabaseApi() {
     },
     onShopRuns(cb) {
       sb.channel('shop-runs')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_runs' }, (p) => cb(p.eventType === 'DELETE' ? null : p.new))
+        .on('postgres_changes', rtSpec('shop_runs', '*'), (p) => cb(p.eventType === 'DELETE' ? null : p.new))
         .subscribe();
     },
     // ---------- Win-Challenge ----------
@@ -522,7 +565,7 @@ async function createSupabaseApi() {
     },
     onChallenge(cb) {
       sb.channel('win-challenge')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'win_challenge' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('win_challenge', 'UPDATE'), (p) => cb(p.new))
         .subscribe();
     },
     // ---------- Laufband im Overlay ----------
@@ -549,17 +592,17 @@ async function createSupabaseApi() {
     },
     onPet(cb) {
       sb.channel('pet-feed')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pet' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('pet', 'UPDATE'), (p) => cb(p.new))
         .subscribe();
     },
     onPetEvents(cb) {
       sb.channel('pet-events')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pet_events' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('pet_events', 'INSERT'), (p) => cb(p.new))
         .subscribe();
     },
     onSpin(cb) {
       sb.channel('spins-feed')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spins' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('spins', 'INSERT'), (p) => cb(p.new))
         .subscribe();
     },
     // ---------- Alerts im Overlay (Follower, Abos) ----------
@@ -568,7 +611,7 @@ async function createSupabaseApi() {
     },
     onAlerts(cb) {
       sb.channel('stream-alerts')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stream_alerts' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('stream_alerts', 'INSERT'), (p) => cb(p.new))
         .subscribe();
     },
     async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
@@ -585,12 +628,12 @@ async function createSupabaseApi() {
     },
     onTwitchHealth(cb) {
       sb.channel('twitch-health')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'twitch_health' }, (p) => cb(p.new))
+        .on('postgres_changes', rtSpec('twitch_health', '*'), (p) => cb(p.new))
         .subscribe();
     },
     // Eigene Alert-Sounds (nur Admins laden hoch), Bucket "alert-sounds"
     alertSoundUrl(path) {
-      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${encodeURIComponent(path)}`;
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-sounds/${path.split('/').map(encodeURIComponent).join('/')}`;
     },
     async getAlertSounds() {
       const rows = unwrap(await sb.from('alert_sounds').select('id, name, path, duration, created_at').order('created_at', { ascending: false }));
@@ -598,7 +641,7 @@ async function createSupabaseApi() {
     },
     async uploadAlertSound(file, name, duration) {
       const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? 'mp3').toLowerCase();
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${storageFolder()}${crypto.randomUUID()}.${ext}`;
       const up = await sb.storage.from('alert-sounds').upload(path, file, {
         contentType: file.type || 'audio/mpeg',
         cacheControl: '31536000',
@@ -631,7 +674,7 @@ async function createSupabaseApi() {
       if (!rows?.length) throw new Error('Nur der Streamer, Admins und freigegebene Mods dürfen die Alerts gestalten.');
     },
     alertMediaUrl(path) {
-      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${encodeURIComponent(path)}`;
+      return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${path.split('/').map(encodeURIComponent).join('/')}`;
     },
     async getAlertMedia() {
       const rows = unwrap(await sb.from('alert_media').select('id, name, path, kind, created_at').order('created_at', { ascending: false }));
@@ -640,7 +683,7 @@ async function createSupabaseApi() {
     async uploadAlertMedia(file, name) {
       const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? '').toLowerCase().replace('jpeg', 'jpg');
       const kind = /^video\//.test(file.type) ? 'video' : 'image';
-      const path = `${crypto.randomUUID()}.${ext}`;
+      const path = `${storageFolder()}${crypto.randomUUID()}.${ext}`;
       const up = await sb.storage.from('alert-media').upload(path, file, { contentType: file.type, cacheControl: '31536000', upsert: false });
       if (up.error && /bucket not found/i.test(up.error.message)) throw new Error('relation "public.alert_media" does not exist');
       unwrap(up);
@@ -900,6 +943,18 @@ function createLocalApi() {
     return row;
   }
 
+  // Beispiel-Kanäle für die Demo (Plattform)
+  function demoChannels() {
+    return store.get('channels', null) ?? [
+      { id: 'demo-default', login: (CONFIG.CHANNEL || 'streamhelp').toLowerCase(), display_name: CONFIG.CHANNEL || 'StreamHelp', avatar_url: '', status: 'active', is_default: true },
+      { id: 'demo-retro', login: 'retrolena', display_name: 'RetroLena', avatar_url: '', status: 'active', is_default: false },
+    ];
+  }
+  function demoChannelPublic(c) {
+    return { id: c.id, login: c.login, display_name: c.display_name, avatar_url: c.avatar_url ?? '', is_default: !!c.is_default,
+      status: c.status, is_owner: !!c.owner && c.owner === current?.email };
+  }
+
   const sessionEmail = store.get('session', null);
   const users = store.get('users', {});
   if (sessionEmail && users[sessionEmail]) current = { id: sessionEmail, email: sessionEmail };
@@ -1022,6 +1077,34 @@ function createLocalApi() {
       return old ?? list[list.length - 1];
     },
     async deleteOverlayPreset(id) { store.set('overlay_presets', store.get('overlay_presets', []).filter((x) => x.id !== id)); },
+    // ---------- Kanäle (Demo: zwei Beispiel-Kanäle, Bewerbungen bleiben im Browser) ----------
+    async resolveChannel(key) {
+      const k = String(key ?? '').toLowerCase();
+      const mine = demoChannels().find((c) => c.owner === current?.email);
+      const list = demoChannels().filter((c) => c.status === 'active' || c === mine);
+      const c = k ? list.find((x) => x.id === k || x.login === k) : list.find((x) => x.is_default);
+      return { platform: true, channel: c ? demoChannelPublic(c) : null };
+    },
+    async channelsList() { return demoChannels().filter((c) => c.status === 'active').map(demoChannelPublic); },
+    async channelMine() {
+      const c = demoChannels().find((x) => x.owner && x.owner === current?.email);
+      return c ? { ...demoChannelPublic(c), note: c.note ?? '', admin_note: '', created_at: c.created_at } : null;
+    },
+    async channelApply(note = '') {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const list = demoChannels();
+      if (!list.some((c) => c.owner === current.email)) {
+        const name = (store.get('users', {})[current.email]?.username ?? 'streamer').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 25) || 'streamer';
+        list.push({ id: `demo-${Date.now()}`, login: name, display_name: store.get('users', {})[current.email]?.username ?? name, avatar_url: '',
+          status: 'pending', is_default: false, owner: current.email, note, created_at: new Date().toISOString() });
+        store.set('channels', list);
+      }
+      store.set(`account_type_${current.email}`, 'streamer');
+      return this.channelMine();
+    },
+    async accountType() { return current ? store.get(`account_type_${current.email}`, null) : 'unknown'; },
+    async setAccountType(type) { if (current) store.set(`account_type_${current.email}`, type); },
+    async hasTwitchLogin() { return true; }, // Demo: so tun, als wäre es ein Twitch-Konto
     // Demo: kein Twitch – der Streamer heißt wie der Kanal in js/config.js
     async streamerInfo() { return { connected: false, login: CONFIG.CHANNEL, name: CONFIG.CHANNEL || 'Streamer' }; },
     async myAccess() {

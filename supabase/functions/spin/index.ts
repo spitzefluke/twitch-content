@@ -1,13 +1,12 @@
 // Drehung von der Website aus. Das Ergebnis wird serverseitig ausgelost,
 // damit es für alle gleich ist und optional im Twitch-Chat landet.
 import {
-  chatText, CodedError, corsHeaders, db, getConnection, getUserFromRequest, json, sendChat,
-  isAdminUser, performSpin,
+  channelServe, chatText, CodedError, corsHeaders, db, getConnection, getUserFromRequest, isAdminUser, json, performSpin, sendChat,
 } from "../_shared/twitch.ts";
 
 const COOLDOWN_MS = 8000;
 
-Deno.serve(async (req) => {
+Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
 
@@ -49,4 +48,4 @@ Deno.serve(async (req) => {
     if (e instanceof CodedError && e.code === "unknown_variant") return json({ error: e.message }, 400);
     return json({ error: "Drehen fehlgeschlagen" }, 500);
   }
-});
+}));

@@ -6,13 +6,15 @@
 //   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
-import { corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json } from "../_shared/twitch.ts";
+import {
+  channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json,
+} from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
 import { watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
 
-Deno.serve(async (req) => {
+Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
   const { action, key, start } = await req.json().catch(() => ({}));
@@ -67,4 +69,4 @@ Deno.serve(async (req) => {
     console.error("stream-tools:", e);
     return json({ error: String((e as Error)?.message ?? e).slice(0, 300) }, 500);
   }
-});
+}));
