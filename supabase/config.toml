@@ -20,3 +20,7 @@ verify_jwt = false
 
 [functions.stream-tools]
 verify_jwt = false
+
+# Twitch-Panel: prüft den Ausweis der Twitch-Erweiterung (Secret EXTENSION_SECRET) selbst
+[functions.twitch-ext]
+verify_jwt = false

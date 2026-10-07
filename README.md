@@ -2,6 +2,7 @@
 
 Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen). Seit der **Plattform** (siehe „Plattform: viele Streamer“) hat jeder Streamer seinen eigenen Kanal mit eigenen Inhalten; alle teilen sich den StreamHelp-Bot:
 
+- **Twitch-Panel** unter dem Stream: aktuelles Game mit passenden Ideen, Mitmachen per Klick (Verlosung, Warteschlange) und Link zur Seite.
 - **Games im Dashboard**: Fortnite, Minecraft, Just Chatting und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
 - **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
@@ -677,6 +678,30 @@ Oben bei den **Content-Ideen** stehen die Games des Kanals (z. B. Fortnite, Mine
 - **Automatisch**: Läuft das OBS-Overlay, liest StreamHelp alle 5 Minuten die **Twitch-Kategorie** des Streams. Passt sie zu einem Game, wird es angeschaltet und für alle Zuschauer vorausgewählt (mit „Live“-Plakette). Ausschaltbar in „Games verwalten“.
 - Neue Games: in `js/games.js` (Name, Symbol, passende Ideen) **und** in `supabase/functions/_shared/games.ts` (Twitch-Kategorie) eintragen.
 - Einmal nötig: Migration **`supabase/migrations/20261029000000_games.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt die Seite die Content-Ideen wie bisher ohne Games.
+
+## Twitch-Panel (Erweiterung unter dem Stream)
+
+Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`):
+
+- **Aktuelles Game** (mit „Live“, wenn die Twitch-Kategorie passt) und die **passenden Content-Ideen** – wie im Dashboard; Games ohne eigene Idee zeigen „Wir arbeiten an einer Content-Idee für dieses Game“.
+- **Mitmachen per Klick**: bei der **Verlosung** (gleiche Regeln wie `!mitmachen` im Chat, auch „nur Follower“) und in der **Mitspieler-Warteschlange** (mit Epic-Name). Dafür gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
+- **Als Nächstes** mit Termin und ein Link **zur Seite** (direkt in den Kanal, `#/c/<name>`).
+- Hell/Dunkel wie Twitch. Das Panel erkennt den Kanal selbst – jeder freigeschaltete Streamer mit Twitch-Verbindung kann es nutzen.
+
+**Einmal einrichten (Plattform-Admin, bei Twitch):**
+
+1. [dev.twitch.tv/console/extensions](https://dev.twitch.tv/console/extensions) → **Erweiterung erstellen**: Name z. B. „StreamHelp“, Typ **Panel**.
+2. Version → **Asset-Hosting**: Pfad für die Panel-Ansicht `panel.html`, Panel-Höhe `500`. Konfigurationsseite: keine.
+3. Version → **Funktionen**:
+   - **Identitätsverknüpfung** (Zuschauer-ID anfordern) einschalten – nötig für „Mitmachen“.
+   - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
+   - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
+4. **Erweiterungs-Secret**: in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets oder `npx supabase secrets set EXTENSION_SECRET=…`). Nicht ins Repo und nicht in den Chat. Damit prüft `twitch-ext`, dass Anfragen wirklich von Twitch kommen.
+5. **Dateien hochladen**: `panel.html`, `panel.css` und `panel.js` aus `extension/` als ZIP (die drei Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
+6. **Gehosteter Test**: Im Creator-Dashboard des eigenen Kanals unter Erweiterungen → Meine Erweiterungen installieren und als Panel aktivieren.
+7. Für alle anderen Streamer: **Zur Prüfung einreichen**. Nach der Freigabe durch Twitch kann jeder Streamer das Panel in seinem Creator-Dashboard aktivieren.
+
+Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

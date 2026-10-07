@@ -1,31 +1,38 @@
-// Games (Migration …_games.sql): Twitch-Kategorie → Game auf StreamHelp.
-// Die vollständige Liste mit Namen und Content-Ideen steht in js/games.js – hier nur die Zuordnung,
-// damit beim Live-Gehen das passende Game angeschaltet wird. Neue Games in beiden Dateien eintragen.
+// Games (Migration …_games.sql): Twitch-Kategorie → Game auf StreamHelp, dazu Name, Symbol und
+// passende Content-Ideen (für das Twitch-Panel, twitch-ext). Die Webseite hat dieselbe Liste in
+// js/games.js – neue Games in beiden Dateien eintragen.
 import { db } from "./twitch.ts";
 
-const GAMES: [string, string[]][] = [
-  ["fortnite", ["Fortnite"]],
-  ["minecraft", ["Minecraft"]],
-  ["just-chatting", ["Just Chatting"]],
-  ["super-mario-64", ["Super Mario 64"]],
-  ["mario-kart-64", ["Mario Kart 64"]],
-  ["zelda-oot", ["The Legend of Zelda: Ocarina of Time"]],
-  ["pokemon-red-blue", ["Pokémon Red/Blue", "Pokémon Red", "Pokémon Blue", "Pokémon Red and Blue"]],
-  ["tetris", ["Tetris", "Tetris 99", "Tetris Effect"]],
-  ["sonic", ["Sonic the Hedgehog", "Sonic the Hedgehog 2"]],
-  ["crash", ["Crash Bandicoot", "Crash Bandicoot N. Sane Trilogy"]],
-  ["goldeneye", ["GoldenEye 007"]],
-  ["street-fighter-2", ["Street Fighter II", "Street Fighter II: The World Warrior", "Super Street Fighter II Turbo"]],
-  ["super-mario-world", ["Super Mario World"]],
-  ["retro", ["Retro"]],
+export type Game = { id: string; name: string; icon: string; twitch: string[]; ideas: string[] };
+
+export const GAMES: Game[] = [
+  { id: "fortnite", name: "Fortnite", icon: "🏝️", twitch: ["Fortnite"], ideas: ["wheel", "bingo", "shop", "quiz", "challenge"] },
+  { id: "minecraft", name: "Minecraft", icon: "⛏️", twitch: ["Minecraft"], ideas: [] },
+  { id: "just-chatting", name: "Just Chatting", icon: "💬", twitch: ["Just Chatting"], ideas: ["questions", "hotwords", "tts", "pet"] },
+  { id: "super-mario-64", name: "Super Mario 64", icon: "🍄", twitch: ["Super Mario 64"], ideas: [] },
+  { id: "super-mario-world", name: "Super Mario World", icon: "🦖", twitch: ["Super Mario World"], ideas: [] },
+  { id: "mario-kart-64", name: "Mario Kart 64", icon: "🏎️", twitch: ["Mario Kart 64"], ideas: [] },
+  { id: "zelda-oot", name: "Zelda: Ocarina of Time", icon: "🗡️", twitch: ["The Legend of Zelda: Ocarina of Time"], ideas: [] },
+  { id: "pokemon-red-blue", name: "Pokémon Rot/Blau", icon: "⚡", twitch: ["Pokémon Red/Blue", "Pokémon Red", "Pokémon Blue", "Pokémon Red and Blue"], ideas: [] },
+  { id: "tetris", name: "Tetris", icon: "🧱", twitch: ["Tetris", "Tetris 99", "Tetris Effect"], ideas: [] },
+  { id: "sonic", name: "Sonic the Hedgehog", icon: "💨", twitch: ["Sonic the Hedgehog", "Sonic the Hedgehog 2"], ideas: [] },
+  { id: "crash", name: "Crash Bandicoot", icon: "🦊", twitch: ["Crash Bandicoot", "Crash Bandicoot N. Sane Trilogy"], ideas: [] },
+  { id: "goldeneye", name: "GoldenEye 007", icon: "🔫", twitch: ["GoldenEye 007"], ideas: [] },
+  { id: "street-fighter-2", name: "Street Fighter II", icon: "🥊", twitch: ["Street Fighter II", "Street Fighter II: The World Warrior", "Super Street Fighter II Turbo"], ideas: [] },
+  { id: "retro", name: "Retro (alles andere)", icon: "🕹️", twitch: ["Retro"], ideas: [] },
 ];
 
+// Ideen, die nur zu ihrem Game passen – bei anderen Games ausgeblendet (wie auf der Webseite)
+export const GAME_ONLY = new Set(["wheel", "bingo", "shop", "quiz"]);
+
 const norm = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-const BY_NAME = new Map(GAMES.flatMap(([id, names]) => names.map((n) => [norm(n), id] as const)));
+const BY_NAME = new Map(GAMES.flatMap((g) => g.twitch.map((n) => [norm(n), g.id] as const)));
 
 export function gameForCategory(category: string): string {
   return BY_NAME.get(norm(category)) ?? "";
 }
+
+export const gameById = (id: string) => GAMES.find((g) => g.id === id) ?? null;
 
 // Stream ist live in dieser Kategorie – fehlt die Migration, passiert einfach nichts
 export async function noteLiveCategory(category: string) {

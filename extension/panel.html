@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StreamHelp</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <!-- Twitch-Panel unter dem Stream (Twitch-Erweiterung, Typ „Panel“). Anleitung: README → „Twitch-Panel“ -->
+  <main class="panel" id="panel" aria-live="polite">
+    <header class="head">
+      <span class="brand"><span class="logo" aria-hidden="true">▶</span>Stream<b>Help</b></span>
+      <span class="channel" id="channel"></span>
+    </header>
+    <div id="content">
+      <p class="muted center">Lädt …</p>
+    </div>
+  </main>
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
