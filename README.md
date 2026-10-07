@@ -688,6 +688,18 @@ Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt 
 - Die Zahlen kommen aus `public.platform_stats()`: nur Summen über alle freigeschalteten Kanäle, keine Namen; für 20 Sekunden zwischengespeichert, damit viele Besucher die Datenbank nicht ständig zählen lassen.
 - Einmal nötig: Migration **`supabase/migrations/20261030000000_platform_stats.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt der Balken nur, was in StreamHelp steckt.
 
+## Video aufnehmen (Aufnahme-Studio)
+
+Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.html`, `js/record.js`). Damit nimmt der Streamer ein Video für YouTube, Shorts oder TikTok auf – im Browser, während OBS ganz normal streamt.
+
+- **Ohne Overlay (Standard):** Das Overlay steckt nur in OBS. Das Studio nimmt den Bildschirm bzw. das Spielfenster direkt auf – Alerts, Chat, Laufband & Co. sind im Stream zu sehen, im Video nicht.
+- **Mit Overlay, wenn gewünscht:** „Overlay-Elemente mit aufnehmen“ einschalten und einzelne Elemente anhaken (z. B. nur Alerts und Kamera-Rahmen). Das Studio zeigt dann eine stille Kopie des Live-Overlays (`overlay.html?live=1&rec=<Ebenen>`: ohne Ton, ohne Watchtime-Zählung) über dem Spiel und nimmt sich selbst auf („Diesen Tab teilen“). Geht in Chrome und Edge; je größer das Studio-Fenster, desto schärfer.
+- **Kamera** (Ecke, Größe, runde Ecken oder „wie im Stream“ – dort, wo der Kamera-Rahmen des Overlays sitzt), **Mikrofon** und **Spielton** („Systemaudio teilen“ in der Freigabe) mit Pegelanzeige.
+- **Format:** YouTube 16:9 oder Shorts/TikTok 9:16 (Kamera oben, Spiel darunter), 1080p/720p, 30/60 Bilder pro Sekunde.
+- **Datei:** WebM (H.264, von der Grafikkarte gerechnet, wo möglich) – YouTube, Shorts und TikTok nehmen das direkt an. In Chrome/Edge schreibt das Studio direkt in eine Datei auf dem PC (auch stundenlange Aufnahmen), sonst am Ende „Herunterladen“. Nichts wird hochgeladen.
+- Pause/Weiter, Stopp; die Aufnahme läuft weiter, wenn das Studio-Fenster im Hintergrund liegt und man spielt. Endet die Bildschirm-Freigabe, wird die Aufnahme gespeichert.
+- Tipp: Für ein Video exakt wie im Stream (alles inklusive) einfach in OBS „Aufnahme starten“.
+
 ## Twitch-Panel (Erweiterung unter dem Stream)
 
 Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`):

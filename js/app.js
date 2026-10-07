@@ -316,7 +316,7 @@ const SB_KEY = 'sh_sidebar';
 const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
-  overlay: 'Overlay & OBS', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
+  overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
 };
 
 function setupShell() {
@@ -436,6 +436,13 @@ function setupShell() {
   $('#cmd-custom').addEventListener('input', (e) => e.target.closest('.cmd-row')?.classList.add('is-dirty'));
   $('#cmd-custom').addEventListener('change', (e) => { if (e.target.name === 'enabled') saveBotCommand(e.target.closest('.cmd-row')); });
   $('#bot-disconnect').addEventListener('click', disconnectBot);
+  // Aufnahme-Studio im eigenen Fenster (wie das OBS-Fenster)
+  $('#open-record').addEventListener('click', () => {
+    const url = withChannelParam(new URL('record.html', location.href));
+    const win = window.open(url.href, 'streamhelp-record');
+    if (win) win.focus();
+    else location.href = url.href;
+  });
   $('#dash-obs-copy').addEventListener('click', async () => {
     const input = $('#dash-obs-url');
     try { await navigator.clipboard.writeText(input.value); toast('Adresse kopiert – in OBS als Browserquelle einfügen.', 'ok'); }

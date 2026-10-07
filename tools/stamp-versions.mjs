@@ -2,7 +2,7 @@
 // neue Dateien mischen (GitHub Pages lässt Dateien 10 Minuten im Cache).
 //
 // Jede Datei bekommt ?v=<Hash ihres Inhalts>. Für die JS-Module steht das in einer
-// Import-Map in index.html, overlay.html und admin.html (zwischen den Markierungen
+// Import-Map in index.html, overlay.html, admin.html und record.html (zwischen den Markierungen
 // <!-- versions:start --> und <!-- versions:end -->), für CSS direkt am <link>.
 // Ändert sich eine Datei, ändert sich ihre Adresse – der Browser lädt sie neu.
 //
@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js' };
+const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js' };
 const check = process.argv.includes('--check');
 
 // Wohin die Seiten Verbindungen aufbauen dürfen (Supabase, Wetter, Twitch-Chat, OBS auf dem eigenen PC)
@@ -74,17 +74,17 @@ for (const [page, entry] of Object.entries(PAGES)) {
   }
 }
 
-// Statische Seiten ohne Module (404.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
+// Statische Seiten ohne Module (404.html, datenschutz.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
 const STATIC_CSP = (scriptHashes) => [
   "default-src 'none'",
-  `script-src ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}`,
+  `script-src ${scriptHashes.length ? scriptHashes.map((h) => `'sha256-${h}'`).join(' ') : "'none'"}`,
   "style-src 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
   "base-uri 'none'",
   "form-action 'none'",
 ].join('; ');
-for (const page of ['404.html']) {
+for (const page of ['404.html', 'datenschutz.html']) {
   const file = join(root, page);
   const before = readFileSync(file, 'utf8');
   const scripts = [...before.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => sha(m[1]));

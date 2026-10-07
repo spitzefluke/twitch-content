@@ -138,6 +138,19 @@ if (params.get('scene') === 'chat') {
   params.set('chat', 'tr');
   if (!params.has('chsize')) params.set('chsize', '115');
 }
+// Aufnahme-Studio (record.html): rec=<Ebenen> zeigt nur diese Ebenen – ohne Ton (spielt schon OBS)
+// und ohne Watchtime-Anstoß. Den Stream ändert das nicht, es ist eine zweite, stille Kopie.
+const REC = urlParams.has('rec') ? new Set((urlParams.get('rec') ?? '').split(',').filter(Boolean)) : null;
+if (REC) {
+  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon',
+    'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'labels', 'goal']) if (!REC.has(key)) params.set(key, '0');
+  for (const key of ['prank', 'pet', 'camframe', 'pause']) if (!REC.has(key)) params.set(key, '0');
+  if (!REC.has('ticker')) params.set('ticker_show', '0');
+  if (!REC.has('scene')) params.delete('scene');
+  params.set('sound', '0');
+  params.delete('edit');
+  params.delete('test');
+}
 
 // Der Streamer: Name und Login des verbundenen Twitch-Kanals (streamer_info, ohne Anmeldung).
 // Fehlt die Migration …_streamer_mods.sql oder läuft die Demo: CHANNEL aus js/config.js.
@@ -469,7 +482,7 @@ function watchForUpdate() {
 // live ist, und zählt höchstens alle 4,5 Minuten – mehrere OBS-Quellen stören also nicht.
 const WATCH_TICK_MS = 5 * 60_000;
 function startWatchtime() {
-  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test) return;
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test || REC) return;
   const tick = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
     method: 'POST',
     headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
