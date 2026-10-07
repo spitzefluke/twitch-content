@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ejyXWcYxn4LC09zTsipjFh4KwTEZkoid7Y+6wSHTAcc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>404 – Stream nicht gefunden · StreamHelp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+  <!-- Eigene 404-Seite für GitHub Pages: alles in dieser Datei, weil sie unter jeder falschen Adresse
+       ausgeliefert wird (relative Pfade zu css/ oder js/ würden dort ins Leere zeigen). -->
+  <style>
+    :root { --bg: #0b0a12; --text: #f2f0fa; --muted: #a49fbd; --twitch: #9146ff; --accent: #ffb81c; --line: rgba(255, 255, 255, .1); color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+      background: radial-gradient(90% 70% at 50% 0%, rgba(145, 70, 255, .28), transparent 60%), radial-gradient(60% 50% at 85% 100%, rgba(255, 184, 28, .14), transparent 70%), var(--bg);
+      color: var(--text); font-family: "Inter", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+    }
+    main { width: min(100%, 640px); display: grid; justify-items: center; gap: 22px; text-align: center; }
+    .tv {
+      position: relative; width: min(100%, 420px); aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden;
+      border: 1px solid var(--line); background: #08070d; box-shadow: 0 30px 80px -30px rgba(145, 70, 255, .6), inset 0 0 0 1px rgba(255, 255, 255, .04);
+    }
+    /* Bildrauschen: zwei verschobene Streifenmuster, nur per transform bewegt */
+    .tv::before, .tv::after {
+      content: ""; position: absolute; inset: -50%; opacity: .18;
+      background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .5) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(145, 70, 255, .35) 0 2px, transparent 2px 5px);
+      animation: noise .35s steps(4) infinite;
+    }
+    .tv::after { opacity: .08; animation-duration: .5s; animation-direction: reverse; }
+    @keyframes noise { 0% { transform: translate(0, 0); } 25% { transform: translate(-3%, 2%); } 50% { transform: translate(2%, -3%); } 75% { transform: translate(-1%, 3%); } 100% { transform: translate(3%, 0); } }
+    .tv-inner { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; gap: 6px; }
+    .code { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800; font-size: clamp(72px, 18vw, 120px); line-height: .9; letter-spacing: .02em; text-shadow: 3px 0 #ff2a6d, -3px 0 #05d9e8; animation: glitch 3.5s infinite; }
+    @keyframes glitch { 0%, 90%, 100% { transform: none; text-shadow: 3px 0 #ff2a6d, -3px 0 #05d9e8; } 92% { transform: translateX(-4px) skewX(-8deg); text-shadow: -4px 0 #ff2a6d, 4px 0 #05d9e8; } 94% { transform: translateX(3px); } }
+    .live { justify-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; background: rgba(255, 255, 255, .08); font: 500 12px "JetBrains Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .live i { width: 8px; height: 8px; border-radius: 50%; background: #6b6585; }
+    h1 { margin: 0; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1.05; text-transform: uppercase; }
+    p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .path { display: inline-block; max-width: 100%; overflow-wrap: anywhere; padding: 2px 8px; border-radius: 6px; background: rgba(255, 255, 255, .06); font: 500 13px "JetBrains Mono", ui-monospace, monospace; color: var(--text); }
+    .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 600; text-decoration: none; transition: transform .15s ease, background-color .15s ease; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .btn-primary { background: var(--twitch); color: #fff; }
+    .btn-ghost { border: 1px solid var(--line); color: var(--text); background: rgba(255, 255, 255, .04); }
+    footer { font-size: 12px; color: #6b6585; }
+    @media (prefers-reduced-motion: reduce) { .tv::before, .tv::after, .code { animation: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="tv" aria-hidden="true">
+      <div class="tv-inner">
+        <span class="code">404</span>
+        <span class="live"><i></i>Offline</span>
+      </div>
+    </div>
+    <h1>Dieser Stream ist offline</h1>
+    <p>Unter <span class="path" id="path">dieser Adresse</span> gibt es nichts zu sehen – vielleicht ein Tippfehler im Link oder die Seite ist umgezogen.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="./" data-base="">🏠 Zur Startseite</a>
+      <a class="btn btn-ghost" href="./#dashboard" data-base="#dashboard">📊 Zum Dashboard</a>
+    </div>
+    <footer>StreamHelp · Content-Ideen für deinen Stream</footer>
+  </main>
+  <script>
+    // Grundadresse der Seite: bei GitHub Pages (Projektseite) der erste Pfadteil, sonst „/“
+    (function () {
+      var parts = location.pathname.split('/').filter(Boolean);
+      var base = /\.github\.io$/.test(location.hostname) && parts.length ? '/' + parts[0] + '/' : '/';
+      document.querySelectorAll('[data-base]').forEach(function (a) { a.href = base + a.getAttribute('data-base'); });
+      var path = document.getElementById('path');
+      path.textContent = decodeURIComponent(location.pathname + location.search).slice(0, 120);
+    })();
+  </script>
+</body>
+</html>

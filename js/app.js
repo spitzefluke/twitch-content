@@ -4972,7 +4972,7 @@ const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
   forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', hotwords: 'hwsize', labels: 'lbsize', goal: 'gsize',
 };
-const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [] };
+const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [], previewSound: false, presets: null };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
 const obsLive = { ready: false, params: '', access: { can_edit: false, is_owner: false, admins_can_edit: false }, timer: 0, filling: false };
 const obsLiveUrl = () => new URL('overlay.html?live=1', location.href).href;
@@ -5220,7 +5220,7 @@ function paintObsHistory() {
 // ---------- OBS-Fenster v2: Reiter und Ebenen ----------
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
-const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: null,
+const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: 'ticker_show',
   forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', hotwords: 'hotwords_on', pause: 'pause',
   scene: 'scene_on', camframe: 'camframe', labels: 'labels_on', goal: 'goal_on',
 };
@@ -5232,6 +5232,10 @@ const obsBodies = new Map();
 
 function setupObsLayers() {
   const dlg = $('#obs-dialog');
+  addObsLookFields();
+  setupObsMixer();
+  setupObsPresets();
+  $('#obs-sound-check').addEventListener('click', runObsSoundCheck);
   dlg.querySelectorAll('.obs-layer').forEach((row) => obsBodies.set(row.dataset.layer, row.querySelector('.obs-layer-body')));
   $('#obs-insp-close').addEventListener('click', () => openObsLayer(null));
   dlg.addEventListener('keydown', (e) => {
@@ -5282,8 +5286,217 @@ function setupObsLayers() {
   setupObsPet();
 }
 
+// ---------- Aussehen je Ebene: Farbe, Schrift, Einblenden (Parameter lc_/lcc_/lf_/la_/ls_, siehe js/overlay.js) ----------
+const LOOK_LAYERS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'ticker', 'forbid', 'subathon',
+  'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'labels', 'goal'];
+const LOOK_NO_ANIM = new Set(['wheel', 'alerts', 'ticker']); // haben eigene Effekte (Rad-Auftritt, Alert-Designer, Lauftext)
+const LOOK_COLORS = [['', 'Design-Farbe'], ['ffb81c', 'Gold'], ['9146ff', 'Twitch-Lila'], ['ff4fd8', 'Pink'], ['ff5a4e', 'Rot'], ['ff7a28', 'Orange'],
+  ['3ddc84', 'Grün'], ['35c7ff', 'Türkis'], ['4f7cff', 'Blau'], ['ffffff', 'Weiß'], ['custom', 'Eigene Farbe …']];
+const LOOK_FONTS = [['', 'Design-Schrift'], ['display', 'Barlow Condensed (kräftig)'], ['barlow', 'Barlow'], ['inter', 'Inter (schlicht)'],
+  ['mono', 'JetBrains Mono (Technik)'], ['serif', 'Georgia (klassisch)'], ['comic', 'Comic (verspielt)'], ['impact', 'Impact (laut)']];
+const LOOK_ANIMS = [['', 'Standard'], ['fade', 'Einblenden'], ['up', 'Von unten'], ['down', 'Von oben'], ['left', 'Von rechts'], ['right', 'Von links'],
+  ['zoom', 'Heranzoomen'], ['pop', 'Aufploppen'], ['flip', 'Aufklappen'], ['none', 'Ohne Animation']];
+const LOOK_SPEEDS = [['', 'Normal'], ['slow', 'Langsam'], ['fast', 'Schnell']];
+function addObsLookFields() {
+  const opts = (list) => list.map(([v, t], i) => `<option value="${v}"${i === 0 ? ' selected' : ''}>${t}</option>`).join('');
+  for (const key of LOOK_LAYERS) {
+    const body = $(`#obs-dialog .obs-layer[data-layer="${key}"] .obs-layer-body`);
+    if (!body) continue;
+    const box = document.createElement('div');
+    box.className = 'obs-look-block';
+    box.innerHTML = `<b class="obs-look-title">🎨 Aussehen</b>
+      <label class="obs-row"><span>Farbe</span><select name="lc_${key}">${opts(LOOK_COLORS)}</select></label>
+      <label class="obs-row obs-look-custom"><span>Eigene Farbe</span><input type="color" name="lcc_${key}" value="#ffb81c"></label>
+      <label class="obs-row"><span>Schrift</span><select name="lf_${key}">${opts(LOOK_FONTS)}</select></label>
+      ${LOOK_NO_ANIM.has(key) ? '' : `<label class="obs-row"><span>Einblenden</span><select name="la_${key}">${opts(LOOK_ANIMS)}</select></label>
+      <label class="obs-row"><span>Tempo</span><select name="ls_${key}">${opts(LOOK_SPEEDS)}</select></label>`}`;
+    body.append(box);
+  }
+}
+
+// ---------- Ton: Mixer mit 🔇 (stumm/zurück) und ▶ (in der Vorschau anhören) ----------
+function setupObsMixer() {
+  const mixer = $('#obs-mixer');
+  const head = mixer.querySelector('.obs-mixer-head');
+  const toggle = document.createElement('label');
+  toggle.className = 'toggle obs-preview-sound';
+  toggle.innerHTML = '<input type="checkbox" id="obs-preview-sound"><span class="toggle-ui" aria-hidden="true"></span>🔈 Ton in der Vorschau';
+  head.after(toggle);
+  $('#obs-preview-sound').addEventListener('change', (e) => { obs.previewSound = e.target.checked; renderObsPreview(); });
+  mixer.querySelectorAll('.obs-mix[data-mix]').forEach((row) => {
+    const range = row.querySelector('input[type=range]');
+    const key = row.dataset.mix;
+    const mute = document.createElement('button');
+    mute.type = 'button';
+    mute.className = 'obs-mini-btn obs-mix-mute';
+    mute.textContent = '🔇';
+    mute.title = 'Stumm / wieder an';
+    mute.setAttribute('aria-label', `${row.textContent.trim()} stumm schalten`);
+    mute.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (range.disabled) return;
+      if (Number(range.value) > 0) { range.dataset.prev = range.value; range.value = '0'; }
+      else range.value = range.dataset.prev && range.dataset.prev !== '0' ? range.dataset.prev : '100';
+      range.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'obs-mini-btn obs-mix-play';
+    play.textContent = '▶';
+    play.title = 'In der Vorschau anhören';
+    play.setAttribute('aria-label', `${row.textContent.trim()} in der Vorschau anhören`);
+    play.addEventListener('click', (e) => { e.preventDefault(); previewLayerSound(key); });
+    row.append(mute, play);
+  });
+  const paintMutes = () => mixer.querySelectorAll('.obs-mix').forEach((row) => {
+    const r = row.querySelector('input[type=range]');
+    row.classList.toggle('is-muted', Number(r?.value) === 0);
+  });
+  $('#obs-options').addEventListener('input', paintMutes);
+  $('#obs-options').addEventListener('change', paintMutes);
+  setTimeout(paintMutes);
+}
+
+// Ton der Ebene in der Vorschau vorführen (schaltet „Ton in der Vorschau“ dafür ein)
+function previewLayerSound(key) {
+  const send = () => $('#obs-preview iframe')?.contentWindow?.postMessage({ type: 'stellwerk-test', key }, location.origin);
+  if (!$('#obs-preview iframe')) { toast('Die Vorschau ist eingeklappt – erst „Vorschau“ oben einschalten.', 'info'); return; }
+  if (obs.previewSound) { send(); return; }
+  obs.previewSound = true;
+  $('#obs-preview-sound').checked = true;
+  renderObsPreview();
+  $('#obs-preview iframe')?.addEventListener('load', () => setTimeout(send, 900), { once: true });
+}
+
+// ---------- Ton-Prüfung mit OBS (js/obs-ws.js soundCheck) ----------
+async function runObsSoundCheck() {
+  const btn = $('#obs-sound-check');
+  const box = $('#obs-sound-result');
+  if (!obs.ws?.connected) { toast('Erst mit OBS verbinden.', 'info'); return; }
+  btn.disabled = true;
+  box.hidden = false;
+  box.replaceChildren(Object.assign(document.createElement('p'), { textContent: '🔊 Spiele in OBS einen Test-Ton … (3 Sekunden)' }));
+  try {
+    const r = await obs.ws.soundCheck({ tts: true });
+    const rows = [];
+    const add = (ok, text) => rows.push([ok, text]);
+    if (!r.source) {
+      add(false, 'Die Quelle „StreamHelp-Overlay“ gibt es in OBS noch nicht – erst „In OBS übernehmen“ klicken.');
+    } else {
+      add(r.reroute, r.reroute ? '„Audio über OBS steuern“ ist an – der Ton steht im OBS-Mixer als „StreamHelp-Overlay“.'
+        : '„Audio über OBS steuern“ ist aus – der Ton geht dann am Stream vorbei (nur auf deine Lautsprecher).');
+      add(!r.muted, r.muted ? 'Die Quelle „StreamHelp-Overlay“ ist in OBS stumm geschaltet.' : 'Die Quelle ist nicht stumm.');
+      if (r.volumeDb !== null && r.volumeDb < -30) add(false, `Die Quelle ist in OBS sehr leise (${Math.round(r.volumeDb)} dB).`);
+      if (r.event === false) add(false, 'OBS konnte den Test-Ton nicht ans Overlay schicken (OBS zu alt?). Ton bitte im Stream selbst prüfen.');
+      else if (r.heard === true) add(true, `OBS hat den Test-Ton gehört (Pegel ${Math.round(r.peak * 100)} %). ✓ Der Ton ist im Stream.`);
+      else if (r.heard === false) add(false, 'OBS hat keinen Ton vom Overlay bekommen. Ist die Quelle in der aktuellen Szene sichtbar und die Gesamtlautstärke im Overlay über 0?');
+    }
+    const desk = r.desktop.filter((d) => !d.muted);
+    add(desk.length > 0, desk.length
+      ? `Vorlesen (Windows-Stimme) läuft über „${desk[0].name}“ – das nimmt OBS auf.`
+      : r.desktop.length ? 'Desktop-Audio ist in OBS stumm – dann ist das Vorlesen nicht im Stream.'
+        : 'In OBS ist kein Desktop-Audio eingerichtet – das Vorlesen (Windows-Stimme) ist dann nicht im Stream. Einstellungen → Audio → „Desktop-Audio“ auf „Standard“.');
+    box.replaceChildren(...rows.map(([ok, text]) => {
+      const p = document.createElement('p');
+      p.className = ok ? 'is-ok' : 'is-bad';
+      p.textContent = `${ok ? '✓' : '⚠'} ${text}`;
+      return p;
+    }));
+    if (r.source && (!r.reroute || r.muted)) {
+      const fix = document.createElement('button');
+      fix.type = 'button';
+      fix.className = 'btn btn--primary btn--sm';
+      fix.textContent = '🛠 Beheben und neu prüfen';
+      fix.addEventListener('click', async () => {
+        fix.disabled = true;
+        try { await obs.ws.fixOverlayAudio(); toast('In OBS korrigiert.', 'ok'); await runObsSoundCheck(); }
+        catch (err) { toast(germanError(err), 'error'); fix.disabled = false; }
+      });
+      box.append(fix);
+    }
+  } catch (err) {
+    box.replaceChildren(Object.assign(document.createElement('p'), { className: 'is-bad', textContent: `⚠ ${germanError(err)}` }));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- Vorlagen (overlay_presets) ----------
+function setupObsPresets() {
+  $('#obs-preset-save').addEventListener('click', saveObsPreset);
+  $('#obs-preset-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveObsPreset(); } });
+}
+
+async function loadObsPresets() {
+  if (!state.api) return;
+  obs.presets = await state.api.getOverlayPresets().catch(() => null);
+  paintObsPresets();
+}
+
+function paintObsPresets() {
+  const list = $('#obs-preset-list');
+  const locked = obsLocked();
+  $('#obs-preset-save').disabled = locked;
+  $('#obs-preset-name').disabled = locked;
+  if (obs.presets === null) {
+    list.innerHTML = '<li class="obs-preset-empty">Für Vorlagen fehlt die Migration supabase/migrations/20261027000000_overlay_presets.sql.</li>';
+    return;
+  }
+  if (!obs.presets.length) {
+    list.innerHTML = '<li class="obs-preset-empty">Noch keine Vorlagen – stell das Overlay ein und speichere es oben unter einem Namen.</li>';
+    return;
+  }
+  list.replaceChildren(...obs.presets.map((pr) => {
+    const li = document.createElement('li');
+    const name = document.createElement('b');
+    name.textContent = pr.name;
+    const load = document.createElement('button');
+    load.type = 'button';
+    load.className = 'btn btn--ghost btn--sm';
+    load.textContent = 'Laden';
+    load.disabled = locked;
+    load.addEventListener('click', () => {
+      if (!confirm(`Vorlage „${pr.name}“ laden? Die aktuellen Overlay-Einstellungen werden ersetzt (Rückgängig geht mit Strg+Z).`)) return;
+      applyObsParams(pr.params);
+      updateObs({ now: true });
+      toast(`Vorlage „${pr.name}“ geladen.`, 'ok');
+    });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'obs-mini-btn';
+    del.textContent = '🗑';
+    del.title = 'Vorlage löschen';
+    del.setAttribute('aria-label', `Vorlage „${pr.name}“ löschen`);
+    del.disabled = locked;
+    del.addEventListener('click', async () => {
+      if (!confirm(`Vorlage „${pr.name}“ löschen?`)) return;
+      try { await state.api.deleteOverlayPreset(pr.id); await loadObsPresets(); } catch (err) { toast(germanError(err), 'error'); }
+    });
+    li.append(name, load, del);
+    return li;
+  }));
+}
+
+async function saveObsPreset() {
+  const input = $('#obs-preset-name');
+  const name = input.value.trim();
+  if (!name) { input.focus(); toast('Bitte einen Namen für die Vorlage eingeben.', 'info'); return; }
+  const params = new URL(obsUrl()).search.replace(/^\?/, '');
+  const exists = obs.presets?.some((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (exists && !confirm(`Es gibt schon eine Vorlage „${name}“. Überschreiben?`)) return;
+  try {
+    await state.api.saveOverlayPreset(name, params);
+    input.value = '';
+    toast(`Vorlage „${name}“ gespeichert.`, 'ok');
+    await loadObsPresets();
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+}
+
 function showObsTab(name) {
   const dlg = $('#obs-dialog');
+  if (name === 'look') loadObsPresets();
   dlg.querySelectorAll('.obs-tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
   dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
 }
@@ -5476,7 +5689,8 @@ function obsUrl({ preview = false } = {}) {
     else if (el.type === 'color') p.set(el.name, value.slice(1));
     else p.set(el.name, value);
   }
-  if (preview) { p.set('vol', '0'); p.set('test', '1'); p.set('edit', '1'); }
+  // Vorschau stumm – außer „Ton in der Vorschau“ ist an (Mixer: ▶ Probehören)
+  if (preview) { if (!obs.previewSound) p.set('vol', '0'); p.set('test', '1'); p.set('edit', '1'); }
   return url.href;
 }
 

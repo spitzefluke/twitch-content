@@ -223,6 +223,13 @@ async function createSupabaseApi() {
     async overlayAccess() { return unwrap(await sb.rpc('overlay_access')); },
     async saveOverlayConfig(params) { return unwrap(await sb.rpc('overlay_save', { p_params: params })); },
     async allowAdminsOverlay(on) { return unwrap(await sb.rpc('overlay_allow_admins', { p_on: on })); },
+    // Overlay-Vorlagen (…_overlay_presets.sql); fehlt die Migration: null
+    async getOverlayPresets() {
+      const { data, error } = await sb.from('overlay_presets').select('id, name, params, updated_at').order('name');
+      return error ? null : data;
+    },
+    async saveOverlayPreset(name, params) { return unwrap(await sb.rpc('overlay_preset_save', { p_name: name, p_params: params })); },
+    async deleteOverlayPreset(id) { return unwrap(await sb.rpc('overlay_preset_delete', { p_id: id })); },
     // ---------- Streamer und Mods ----------
     // Name des verbundenen Kanals – auch ohne Anmeldung (Anmeldeseite, Overlay)
     async streamerInfo() { return unwrap(await sb.rpc('streamer_info')); },
@@ -999,6 +1006,22 @@ function createLocalApi() {
       const cfg = store.get('overlay_config', {});
       return { can_edit: admin, is_owner: admin, admins_can_edit: !!cfg.admins_can_edit, mods_enabled: !!cfg.mods_enabled, is_mod: false };
     },
+    async getOverlayPresets() { return [...store.get('overlay_presets', [])].sort((x, y) => x.name.localeCompare(y.name)); },
+    async saveOverlayPreset(name, params) {
+      if (!isAdminNow()) throw new Error('Vorlagen speichern darf nur, wer das Overlay anpassen darf.');
+      const n = String(name ?? '').trim();
+      if (!n || n.length > 40) throw new Error('Bitte einen Namen mit 1–40 Zeichen.');
+      const list = store.get('overlay_presets', []);
+      const old = list.find((x) => x.name.toLowerCase() === n.toLowerCase());
+      if (old) Object.assign(old, { params, updated_at: new Date().toISOString() });
+      else {
+        if (list.length >= 50) throw new Error('Höchstens 50 Vorlagen – lösch erst eine alte.');
+        list.push({ id: Date.now(), name: n, params, updated_at: new Date().toISOString() });
+      }
+      store.set('overlay_presets', list);
+      return old ?? list[list.length - 1];
+    },
+    async deleteOverlayPreset(id) { store.set('overlay_presets', store.get('overlay_presets', []).filter((x) => x.id !== id)); },
     // Demo: kein Twitch – der Streamer heißt wie der Kanal in js/config.js
     async streamerInfo() { return { connected: false, login: CONFIG.CHANNEL, name: CONFIG.CHANNEL || 'Streamer' }; },
     async myAccess() {

@@ -217,6 +217,7 @@ const opt = {
   chstat: flag('chstat', true),
   // Das Laufband ist immer da: "0" oder Unsinn heißt Standardplatz
   ticker: position(params.get('ticker'), 'bc') ?? 'bc',
+  tickerOn: flag('ticker_show', true), // Laufband abschaltbar (OBS-Fenster: Schalter in der Ebene)
   tstyle: TICKER_STYLES.includes(params.get('tstyle')) ? params.get('tstyle') : 'bar',
   tsize: number('tsize', 100, 50, 200) / 100,
   tspeed: number('tspeed', 70, 20, 300),
@@ -230,6 +231,86 @@ const MIX = {
   vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards', vgive: 'giveaway',
 };
 for (const [param, key] of Object.entries(MIX)) opt.vols[key] = opt.volume * number(param, 100, 0, 200) / 100;
+
+// ---------- Aussehen je Ebene (OBS-Fenster → Ebene → „Aussehen“) ----------
+//   lc_<ebene>=ff4fd8     eigene Akzentfarbe der Karte (Hex ohne #; custom = Farbe aus lcc_<ebene>)
+//   lf_<ebene>=inter      Schrift: display, barlow, inter, mono, serif, comic, impact
+//   la_<ebene>=pop        Einblenden: fade, up, down, left, right, zoom, pop, flip, none
+//   ls_<ebene>=fast       Tempo des Einblendens: slow, fast (Standard: normal)
+// Als ein <style>-Block: gilt auch für Karten, die erst später erscheinen. Farbe/Schrift über die ID
+// (gewinnt sicher), das Einblenden über die Klasse – Effekte wie „Neu!“ oder Wackeln behalten Vorrang.
+const LAYER_LOOK = {
+  wheel: ['#ov-spin', null], next: ['#ov-next', '.ov-next'], bingo: ['#ov-bingo', '.ov-bingo'], quest: ['#ov-quest', '.ov-quest'],
+  shop: ['#ov-shop', '.ov-shop'], challenge: ['#ov-challenge', '.ov-challenge'], alerts: ['#ov-alert', null], recent: ['#ov-recent', '.ov-recent'],
+  chat: ['#ov-chat', '.ov-chat'], ticker: ['#ov-ticker', null], forbid: ['#ov-x-forbid', '.ov-x-forbid'], subathon: ['#ov-x-subathon', '.ov-x-subathon'],
+  quiz: ['#ov-x-quiz', '.ov-x-quiz'], queue: ['#ov-x-queue', '.ov-x-queue'], tts: ['#ov-x-tts', '.ov-x-tts'], cards: ['#ov-x-cards', '.ov-x-cards'],
+  giveaway: ['#ov-x-giveaway', '.ov-x-giveaway'], hotwords: ['#ov-x-hotwords', '.ov-x-hotwords'], labels: ['.ov-labels', '.ov-labels'], goal: ['.ov-goal', '.ov-goal'],
+};
+const LOOK_FONTS = {
+  display: '"Barlow Condensed", "Arial Narrow", sans-serif', barlow: '"Barlow", system-ui, sans-serif', inter: '"Inter", system-ui, sans-serif',
+  mono: '"JetBrains Mono", ui-monospace, Consolas, monospace', serif: 'Georgia, "Times New Roman", serif',
+  comic: '"Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive', impact: 'Impact, "Arial Black", sans-serif',
+};
+const LOOK_ANIMS = ['fade', 'up', 'down', 'left', 'right', 'zoom', 'pop', 'flip', 'none'];
+const LOOK_SPEED = { slow: 1.1, fast: 0.3 };
+function layerLooks() {
+  const css = [];
+  for (const [key, [idSel, animSel]] of Object.entries(LAYER_LOOK)) {
+    const pick = params.get(`lc_${key}`) ?? '';
+    const raw = pick === 'custom' ? (params.get(`lcc_${key}`) ?? 'ffb81c') : pick;
+    const color = /^[0-9a-f]{6}$/i.test(raw) ? `#${raw}` : null;
+    const font = LOOK_FONTS[params.get(`lf_${key}`)] ?? null;
+    if (color || font) {
+      const decl = [];
+      if (color) decl.push(`--accent: ${color}`, `--c: ${color}`, `border-color: color-mix(in srgb, ${color} 60%, transparent)`);
+      if (font) decl.push(`--font-display: ${font}`, `--font-body: ${font}`, `font-family: ${font}`);
+      // Variablen erben alle Kinder der Karte (Überschriften, Zahlen, Texte)
+      css.push(`${idSel} { ${decl.join('; ')}; }`);
+    }
+    const anim = params.get(`la_${key}`);
+    if (animSel && LOOK_ANIMS.includes(anim)) {
+      const dur = LOOK_SPEED[params.get(`ls_${key}`)] ?? 0.6;
+      css.push(anim === 'none'
+        ? `${animSel} { animation: none; }`
+        : `${animSel} { animation: ova-${anim} ${dur}s ${anim === 'pop' ? 'var(--ease-spring, cubic-bezier(.34, 1.56, .64, 1))' : 'cubic-bezier(.2, .8, .2, 1)'} both; }`);
+    }
+  }
+  if (!css.length) return;
+  const style = document.createElement('style');
+  style.id = 'ov-looks';
+  style.textContent = css.join('\n');
+  document.head.append(style);
+}
+layerLooks();
+
+// Ton-Test aus dem OBS-Fenster (Dashboard → obs-websocket → obs-browser „emit_event“):
+// ein kurzer Dreiklang über die Gesamtlautstärke; mit tts zusätzlich die Vorlese-Stimme.
+// Das Dashboard liest dabei die Pegelanzeige der Quelle in OBS mit.
+addEventListener('streamhelpSoundTest', async (e) => {
+  try {
+    const ac = new (window.AudioContext ?? window.webkitAudioContext)();
+    if (ac.state === 'suspended') await ac.resume().catch(() => {});
+    const vol = Math.max(0.15, opt.volume || 0);
+    [[523, 0], [659, 0.18], [784, 0.36]].forEach(([f, at]) => {
+      const t = ac.currentTime + at;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.3 * vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g).connect(ac.destination);
+      o.start(t);
+      o.stop(t + 0.55);
+    });
+    setTimeout(() => ac.close().catch(() => {}), 1500);
+  } catch { /* ohne WebAudio kein Test-Ton */ }
+  if (e.detail?.tts) {
+    const { speak } = await import('./tts-voice.js');
+    speak('Ton-Test vom StreamHelp-Overlay.', 'normal', { volume: opt.vols.tts ?? opt.volume });
+  }
+});
 
 // Kamera-Bereich "links,oben,Breite,Höhe" in Prozent des Bildes
 function camera(value) {
@@ -336,7 +417,8 @@ async function start() {
   if (opt.shop) setupShop(source);
   if (opt.challenge) setupChallenge(source);
   if (opt.alerts || opt.recent) setupAlerts(source);
-  setupTicker(source);
+  if (opt.tickerOn) setupTicker(source);
+  else { $('ov-ticker').hidden = true; $('ov-ticker').style.display = 'none'; }
   if (opt.chat) setupChat();
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });

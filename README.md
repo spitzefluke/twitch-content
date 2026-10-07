@@ -25,6 +25,7 @@ Die Stream-Zentrale für einen Twitch-Kanal – Content-Ideen, Chat-Bot, Kanalpu
 ```
 index.html, css/, js/, assets/   → statische Seite für GitHub Pages
 overlay.html                     → OBS-Browserquelle (alle Ebenen, live eingestellt)
+404.html                         → eigene Fehlerseite („Dieser Stream ist offline“) für falsche Adressen
 supabase/migrations/             → Datenbank (Profile, Kacheln, Varianten, Drehungen, Vorschläge, Twitch-Tokens)
 supabase/functions/
   twitch-oauth/                  → Twitch-Login für Streamer und Bot, Belohnungen, EventSub-Abos, Gesundheitscheck
@@ -277,6 +278,14 @@ Im Dashboard oben rechts auf **🎛️ OBS** klicken – das kann jeder, der ang
 4. **In OBS übernehmen:** legt in der aktuellen Szene die Browserquelle **„StreamHelp-Overlay“** an (eine alte „Stellwerk-Overlay“-Quelle wird dabei umbenannt) (1920 × 1080, Ton über OBS) und schiebt sie ganz nach oben, über die Kamera.
 
 **Live:** Die Browserquelle bekommt die feste Adresse `overlay.html?live=1`. Alle Einstellungen aus dem Dialog liegen in der Datenbank (`overlay_config`) – jede Änderung im Dialog wird sofort gespeichert und das Overlay in OBS lädt sich von selbst neu. Einmal einrichten reicht, danach nie wieder die Adresse tauschen. Ändern darf **der Streamer** (wer Twitch verbunden hat, und der Admin-Bereich); im Dialog kann der Streamer mit **„Admins (Mods) dürfen das Overlay anpassen“** den Admins der Seite das Anpassen erlauben. Alle anderen sehen die aktuellen Einstellungen nur an. Migration `20260930000000_live_overlay.sql` nötig – ohne sie enthält die Adresse wie früher alle Einstellungen.
+
+**Ton im Stream:** Der Ton des Overlays (Glücksrad, Alerts, Sounds …) kommt in den Stream, wenn bei der Browserquelle **„Audio über OBS steuern“** an ist – „In OBS übernehmen“ stellt das automatisch ein, im OBS-Mixer steht dann „StreamHelp-Overlay“. Mit OBS verbunden prüft **🔊 Ton prüfen** im OBS-Fenster alles auf einmal: Die Seite schickt dem Overlay in OBS einen Test-Ton (über das Browserquellen-Ereignis `streamhelpSoundTest`), liest dabei die Pegelanzeige in OBS mit und meldet, ob der Ton ankommt – oder warum nicht (Ton nicht über OBS, Quelle stumm, sehr leise). **🛠 Beheben** schaltet „Audio über OBS steuern“ ein und die Stummschaltung aus. **Vorlesen** nutzt die Windows-Stimme des PCs; die kann eine Browserquelle technisch nicht an OBS geben, sie läuft über **Desktop-Audio** – die Prüfung zeigt, ob OBS Desktop-Audio aufnimmt.
+
+**Ton anpassen:** Unter *Aussehen & Ton* gibt es die Gesamtlautstärke und einen Regler je Ebene (0–200 %), dazu **🔇** (stumm/zurück) und **▶** (Ton der Ebene in der Vorschau anhören – schaltet „🔈 Ton in der Vorschau“ ein; sonst ist die Vorschau stumm).
+
+**Aussehen je Ebene:** Jede Karte hat unter *Ebene → 🎨 Aussehen* eine eigene **Farbe** (Design-Farbe, 9 Farben oder frei gewählt), eine **Schrift** (Barlow, Inter, JetBrains Mono, Georgia, Comic, Impact …) und – außer Glücksrad, Alerts und Laufband, die eigene Effekte haben – wie sie **einblendet** (von unten/oben/rechts/links, zoomen, aufploppen, aufklappen, nur einblenden oder ohne) samt **Tempo**. Das **Laufband** lässt sich jetzt wie alle Ebenen ausschalten.
+
+**Vorlagen:** Unter *Aussehen & Ton → 💾 Vorlagen* speichert ihr die kompletten Overlay-Einstellungen unter einem Namen (z. B. „Fortnite-Abend“) und holt sie mit **Laden** zurück (Strg+Z macht es rückgängig). Speichern/Löschen darf, wer das Overlay anpassen darf. Einmal nötig: Migration `supabase/migrations/20261027000000_overlay_presets.sql`.
 
 **Leistung – keine Lags im Stream:** Das Overlay ist darauf ausgelegt, OBS möglichst wenig zu belasten. Bewegung läuft auf der Grafikkarte (transform/opacity statt Neuzeichnen), das Glücksrad zeichnet seine Scheibe nur einmal und dreht dann das fertige Bild, das Haustier misst nicht in jedem Bild neu, und es gibt keine Unschärfe-Filter über großen Flächen. Gemessen mit allen Ebenen an: ca. 190 % → 40 % Rechenzeit (Software-Grafik), Pausen-Bildschirm 200 % → 15 %. Für OBS empfohlen:
 - Browserquelle **1920 × 1080** (wie die Leinwand), **„Benutzerdefinierte Bildrate“ 30** statt 60 – halbiert die Arbeit, sieht für Karten und Laufband gleich aus.

@@ -56,6 +56,9 @@ export class ObsSocket {
           settled = true;
           this.version = msg.d.negotiatedRpcVersion;
           resolve();
+        } else if (msg.op === 5) {
+          // Ereignis (nur die, die wir per Reidentify abonniert haben, z. B. Pegelanzeigen)
+          this.onEvent?.(msg.d.eventType, msg.d.eventData ?? {});
         } else if (msg.op === 7) {
           const p = this.pending.get(msg.d.requestId);
           if (!p) return;
@@ -204,6 +207,67 @@ export function itemRect(t, canvas) {
   if (right - left < 1 || bottom - top < 1) return null;
   return { x: left, y: top, w: Math.round((right - left) * 10) / 10, h: Math.round((bottom - top) * 10) / 10 };
 }
+
+// ---------- Ton-Prüfung ----------
+// Kommt der Ton des Overlays in OBS an? 1. Einstellungen der Browserquelle lesen (Ton über OBS
+// steuern, stumm, Lautstärke), 2. dem Overlay über obs-browser einen Test-Ton schicken
+// (Ereignis „streamhelpSoundTest“), 3. dabei die Pegelanzeige der Quelle mitlesen.
+// Dazu, ob „Desktop-Audio“ aufgenommen wird – darüber läuft das Vorlesen (Windows-Stimme).
+const DESKTOP_AUDIO = /wasapi_output_capture|pulse_output_capture|coreaudio_output_capture|sck_audio_capture|screen_capture.*audio/i;
+const SUB_VOLUME_METERS = 1 << 16;
+
+ObsSocket.prototype.soundCheck = async function soundCheck({ tts = false, listenMs = 3500 } = {}) {
+  const { inputs } = await this.request('GetInputList');
+  const source = inputs.find((i) => i.inputName === OVERLAY_SOURCE);
+  const desktop = [];
+  for (const i of inputs.filter((x) => DESKTOP_AUDIO.test(x.inputKind ?? ''))) {
+    const { inputMuted } = await this.request('GetInputMute', { inputName: i.inputName }).catch(() => ({ inputMuted: false }));
+    desktop.push({ name: i.inputName, muted: inputMuted });
+  }
+  const result = { source: !!source, reroute: null, muted: null, volumeDb: null, heard: null, peak: 0, desktop };
+  if (!source) return result;
+  const [{ inputSettings }, { inputMuted }, vol] = await Promise.all([
+    this.request('GetInputSettings', { inputName: OVERLAY_SOURCE }),
+    this.request('GetInputMute', { inputName: OVERLAY_SOURCE }),
+    this.request('GetInputVolume', { inputName: OVERLAY_SOURCE }).catch(() => ({})),
+  ]);
+  result.reroute = inputSettings.reroute_audio === true;
+  result.muted = inputMuted;
+  result.volumeDb = vol.inputVolumeDb ?? null;
+
+  // Pegel mitlesen, während der Test-Ton läuft
+  let peak = 0;
+  const before = this.onEvent;
+  this.onEvent = (type, data) => {
+    before?.(type, data);
+    if (type !== 'InputVolumeMeters') return;
+    const me = (data.inputs ?? []).find((i) => i.inputName === OVERLAY_SOURCE);
+    for (const ch of me?.inputLevelsMul ?? []) peak = Math.max(peak, ch[1] ?? 0, ch[2] ?? 0);
+  };
+  this.ws.send(JSON.stringify({ op: 3, d: { eventSubscriptions: SUB_VOLUME_METERS } }));
+  try {
+    await this.request('CallVendorRequest', {
+      vendorName: 'obs-browser', requestType: 'emit_event',
+      requestData: { event_name: 'streamhelpSoundTest', event_data: { tts } },
+    });
+    result.event = true;
+  } catch {
+    result.event = false; // obs-browser zu alt: kein Test-Ton möglich
+  }
+  await new Promise((r) => setTimeout(r, listenMs));
+  this.ws?.send(JSON.stringify({ op: 3, d: { eventSubscriptions: 0 } }));
+  this.onEvent = before;
+  result.peak = peak;
+  // Läuft der Ton nicht über OBS, zeigt die Quelle keinen Pegel – dann ist „heard“ unbekannt
+  result.heard = result.event && result.reroute ? peak > 0.003 : null;
+  return result;
+};
+
+// Häufigste Ursachen beheben: Ton über OBS steuern, Quelle nicht stumm
+ObsSocket.prototype.fixOverlayAudio = async function fixOverlayAudio() {
+  await this.request('SetInputSettings', { inputName: OVERLAY_SOURCE, inputSettings: { reroute_audio: true }, overlay: true });
+  await this.request('SetInputMute', { inputName: OVERLAY_SOURCE, inputMuted: false });
+};
 
 // obs-websocket 5: base64(sha256(base64(sha256(passwort + salt)) + challenge))
 async function authString(password, salt, challenge) {

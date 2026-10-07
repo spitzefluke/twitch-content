@@ -74,6 +74,28 @@ for (const [page, entry] of Object.entries(PAGES)) {
   }
 }
 
+// Statische Seiten ohne Module (404.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
+const STATIC_CSP = (scriptHashes) => [
+  "default-src 'none'",
+  `script-src ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}`,
+  "style-src 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+for (const page of ['404.html']) {
+  const file = join(root, page);
+  const before = readFileSync(file, 'utf8');
+  const scripts = [...before.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => sha(m[1]));
+  const after = before.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/,
+    `<meta http-equiv="Content-Security-Policy" content="${STATIC_CSP(scripts)}">`);
+  if (after !== before) {
+    stale.push(page);
+    if (!check) writeFileSync(file, after);
+  }
+}
+
 if (check && stale.length) {
   console.error(`Versionsnummern veraltet in: ${stale.join(', ')} – bitte "node tools/stamp-versions.mjs" ausführen und committen.`);
   process.exit(1);

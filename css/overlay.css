@@ -830,3 +830,13 @@ body.is-apreview .ov-alert { position: relative; margin: 0; }
 .ov-guide.is-h { left: 0; right: 0; height: 1px; }
 .is-test-ping { animation: ov-test-ping 1.2s ease-out; }
 @keyframes ov-test-ping { 0% { box-shadow: 0 0 0 0 rgba(61, 220, 132, .9); } 100% { box-shadow: 0 0 0 1.4em rgba(61, 220, 132, 0); } }
+
+/* ---------- Einblenden je Ebene (OBS-Fenster → Ebene → Aussehen, js/overlay.js layerLooks) ---------- */
+@keyframes ova-fade { from { opacity: 0; } }
+@keyframes ova-up { from { opacity: 0; transform: translateY(1.4em); } }
+@keyframes ova-down { from { opacity: 0; transform: translateY(-1.4em); } }
+@keyframes ova-left { from { opacity: 0; transform: translateX(2.5em); } }
+@keyframes ova-right { from { opacity: 0; transform: translateX(-2.5em); } }
+@keyframes ova-zoom { from { opacity: 0; transform: scale(.6); } }
+@keyframes ova-pop { 0% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1.08); } 100% { transform: none; } }
+@keyframes ova-flip { from { opacity: 0; transform: perspective(700px) rotateX(-75deg); transform-origin: 50% 0; } }
