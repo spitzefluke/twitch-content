@@ -63,7 +63,9 @@
 /* ==========================================================
    STARTSEITE: siehe css/landing.css (Entwurf aus Claude Design)
    ========================================================== */
-.landing { animation: sh-fade .6s var(--ease-out) both; }
+/* Nur Deckkraft und ohne „both“: ein bleibendes transform würde position: fixed (Licht, Kapitel-Leiste) an die Startseite binden */
+.landing { animation: sh-fade-o .6s var(--ease-out) backwards; }
+@keyframes sh-fade-o { from { opacity: 0; } }
 @keyframes sh-fade { from { opacity: 0; transform: translateY(10px); } }
 
 /* ==========================================================

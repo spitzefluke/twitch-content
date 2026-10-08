@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZwH8olaFCmHl0/aFIQ5ekW7FG2FYl6qQ+1KIS6YMRCs=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1mzrkQl+N0exzBLTVsZDCBOrpBkoS5qGFBX7AHhNz0Q=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -50,8 +50,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=c984ff8222">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
-  <link rel="stylesheet" href="css/landing.css?v=dc51dc03bc">
-  <link rel="stylesheet" href="css/shell.css?v=6355d16a40">
+  <link rel="stylesheet" href="css/landing.css?v=c15fc8ef35">
+  <link rel="stylesheet" href="css/shell.css?v=b14941aad3">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -82,7 +82,8 @@
       "./js/extras.js": "./js/extras.js?v=d16d5d0cf2",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=f051a4c3f0",
-      "./js/landing.js": "./js/landing.js?v=ef49302aad",
+      "./js/landing-journey.js": "./js/landing-journey.js?v=499d67a6bf",
+      "./js/landing.js": "./js/landing.js?v=eadbd6ba3f",
       "./js/library.js": "./js/library.js?v=0290fc401c",
       "./js/obs-ws.js": "./js/obs-ws.js?v=b2a626829a",
       "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
@@ -131,22 +132,34 @@
        Entwurf „StreamHelp Startseite“ aus Claude Design (Designsystem Nocturne),
        Stile in css/landing.css (alles unter .nct, damit nichts mit dem Dashboard kollidiert). -->
   <div id="landing" class="landing nct" hidden>
+    <!-- Reise beim Scrollen (js/landing.js): Licht wandert mit, ein drittes folgt dem Mauszeiger -->
+    <div class="nc-aurora" data-fx-aurora aria-hidden="true"><span class="nc-orb nc-orb--a" data-orb="a"></span><span class="nc-orb nc-orb--c" data-orb="c"></span><span class="nc-orb nc-orb--b" data-orb="b"></span></div>
     <div class="nc-progress" aria-hidden="true"><i></i></div>
     <nav class="nc-nav" aria-label="Hauptmenü">
       <a class="nc-nav-brand" href="#top"><img class="nc-logo" src="assets/favicon.svg" width="28" height="28" alt=""><span>Stream<span class="nc-accent">Help</span></span></a>
-      <a href="#funktionen">Funktionen</a>
-      <a href="#streamer" data-for-channels hidden>Streamer</a>
-      <a href="#start">So startest du</a>
-      <a href="#sicherheit">Sicherheit</a>
-      <a href="#faq">FAQ</a>
+      <a href="#funktionen" data-nav="funktionen">Funktionen</a>
+      <a href="#streamer" data-nav="streamer" data-for-channels hidden>Streamer</a>
+      <a href="#start" data-nav="start">So startest du</a>
+      <a href="#sicherheit" data-nav="sicherheit">Sicherheit</a>
+      <a href="#faq" data-nav="faq">FAQ</a>
       <button type="button" class="nc-btn nc-btn-ghost lp-login" data-go="login">Anmelden</button>
+    </nav>
+    <nav class="nc-rail" data-fx-rail aria-label="Kapitel">
+      <a href="#top" data-rail="top"><span data-rail-label>Overlay</span><i data-rail-bar></i></a>
+      <a href="#zahlen" data-rail="zahlen"><span data-rail-label>Zahlen</span><i data-rail-bar></i></a>
+      <a href="#funktionen" data-rail="funktionen"><span data-rail-label>Funktionen</span><i data-rail-bar></i></a>
+      <a href="#start" data-rail="start"><span data-rail-label>So startest du</span><i data-rail-bar></i></a>
+      <a href="#sicherheit" data-rail="sicherheit"><span data-rail-label>Sicherheit</span><i data-rail-bar></i></a>
+      <a href="#faq" data-rail="faq"><span data-rail-label>FAQ</span><i data-rail-bar></i></a>
     </nav>
 
     <main class="nc-wrap">
+      <div data-fx-pin>
+      <div data-fx-pin-inner>
       <section id="top" class="nc-hero">
-        <div class="nc-hero-text">
+        <div class="nc-hero-text" data-fx-herotext>
           <p class="nc-kicker nc-rv"><span class="nc-live" aria-hidden="true"></span>Stream-Zentrale von <span data-streamer>Streamer</span></p>
-          <h1 class="nc-title nc-rv" style="--i: 1"><span>Dein Stream.</span><span class="nc-accent">Eine Zentrale.</span></h1>
+          <h1 class="nc-title nc-rv" style="--i: 1"><span data-fx-l1>Dein Stream.</span><span class="nc-accent" data-fx-l2>Eine Zentrale.</span></h1>
           <p class="nc-lead nc-rv" style="--i: 2">Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und das OBS-Overlay an einem Ort – für jeden Streamer auf StreamHelp. Zuschauer machen mit, Mods steuern mit, der Streamer behält den Überblick.</p>
           <div class="nc-actions nc-rv" style="--i: 3">
             <button type="button" class="nc-btn nc-btn-solid nc-btn-lg" data-go="login" data-quick="twitch"><i class="ph ph-twitch-logo" aria-hidden="true"></i>Mit Twitch anmelden</button>
@@ -154,33 +167,50 @@
           <p class="nc-small nc-rv" style="--i: 4">Oder mit <button type="button" class="nc-link" data-go="login">Discord, Google, Spotify, GitHub oder E-Mail</button>.</p>
         </div>
 
-        <div aria-hidden="true" class="nc-card nc-preview elev-lg nc-rv" style="--i: 2" data-parallax=".1">
-          <div class="nc-preview-bar">
+        <div aria-hidden="true" class="nc-card nc-preview elev-lg nc-rv" style="--i: 2" data-parallax=".1" data-scrub data-fx-card>
+          <div class="nc-preview-bar" data-layer="bar">
             <span><i class="ph ph-monitor-play"></i>OBS-Overlay · Vorschau</span>
             <span class="nc-tag nc-tag-accent"><span class="nc-live"></span>Live</span>
           </div>
           <div class="nc-preview-stage" data-pv>
-            <div class="nc-pv-alert" data-pv-alert>
+            <div class="nc-pv-alert" data-pv-alert data-layer="alert">
               <i class="ph ph-star"></i>
               <span><b data-pv-alert-name>NightOwl_Mia</b><span data-pv-alert-sub>hat abonniert · 3 Monate</span></span>
               <i class="nc-pv-alert-timer"></i>
             </div>
-            <div class="nc-pv-chat" data-pv-chat></div>
-            <div class="nc-pv-wheel" data-pv-wheel>
+            <div class="nc-pv-chat" data-pv-chat data-layer="chat"></div>
+            <div class="nc-pv-wheel" data-pv-wheel data-layer="wheel">
               <span class="nc-pv-disc-wrap"><span class="nc-pv-disc"></span><i class="nc-pv-pointer"></i></span>
               <span><span class="nc-pv-label">Glücksrad · Waffen-Roulette</span><b data-pv-result>Nur Schrotflinten</b></span>
             </div>
-            <div class="nc-pv-ticker">
+            <div class="nc-pv-ticker" data-layer="ticker">
               <span class="nc-pv-pet" data-pv-pet></span>
               <span class="nc-pv-ticker-track"><span>Mehr von <span data-streamer>Streamer</span> · twitch.tv/<span data-streamer>Streamer</span> · youtube.com/@<span data-streamer>Streamer</span> · Discord · </span><span aria-hidden="true">Mehr von <span data-streamer>Streamer</span> · twitch.tv/<span data-streamer>Streamer</span> · youtube.com/@<span data-streamer>Streamer</span> · Discord · </span></span>
             </div>
+            <div class="nc-pv-timer" data-pv-timer data-layer="timer">
+              <i class="ph ph-timer"></i>
+              <span><span class="nc-pv-label">Subathon</span><b data-pv-time>02:14:37</b></span>
+              <span class="nc-pv-bump" data-pv-bump>+30s</span>
+            </div>
+            <div class="nc-pv-fx" data-pv-fx data-layer="fx"></div>
+            <div class="nc-pv-raid" data-pv-raid data-layer="raid">
+              <div><i class="ph ph-users-three"></i><span><b>Raid von CrispyCarl</b><span>kommt mit <span data-pv-raid-n>42</span> Zuschauern</span></span></div>
+            </div>
+            <span class="nc-fx-label nc-fx-label--l" data-fx-label="alert" style="left: 5%; top: calc(7% - 34px)"><i class="ph ph-bell-ringing"></i>Alerts</span>
+            <span class="nc-fx-label nc-fx-label--r" data-fx-label="chat" style="right: 5%; top: calc(7% - 34px)"><i class="ph ph-robot"></i>Chat &amp; Bot</span>
+            <span class="nc-fx-label nc-fx-label--l" data-fx-label="wheel" style="left: 5%; bottom: calc(20% + 78px)"><i class="ph ph-spinner-gap"></i>Glücksrad</span>
+            <span class="nc-fx-label nc-fx-label--r" data-fx-label="ticker" style="right: 16px; bottom: 44px"><i class="ph ph-paw-print"></i>Laufband &amp; Haustier</span>
+            <span class="nc-fx-label nc-fx-label--r" data-fx-label="timer" style="right: 5%; bottom: calc(20% + 66px)"><i class="ph ph-timer"></i>Subathon-Timer</span>
           </div>
         </div>
       </section>
+      <p class="nc-fx-caption" data-fx-caption aria-hidden="true">Eine Browserquelle für <span class="nc-accent">alles.</span></p>
+      </div>
+      </div>
     </main>
 
-    <section class="nc-band" aria-label="Auf einen Blick" data-stats>
-      <div class="nc-wrap">
+    <section id="zahlen" class="nc-band" aria-label="Auf einen Blick" data-stats data-fx-band>
+      <div class="nc-wrap" data-fx-bandin>
         <p class="nc-band-head" data-stats-head hidden><span class="nc-live-dot" aria-hidden="true"></span><span>Live aus allen Streams</span><span class="nc-band-when" data-stats-when></span></p>
         <div class="nc-band-grid" data-stats-grid>
           <div class="nc-rv"><p class="nc-band-num"><span data-count="16">16</span></p><p class="nc-band-label">Content-Ideen zum Mitmachen</p></div>
@@ -193,11 +223,15 @@
     </section>
 
     <div class="nc-wrap">
-      <section id="funktionen" class="nc-sec nc-sec--features">
+      <section id="funktionen" class="nc-sec nc-sec--features nc-fx-sec">
+        <span class="nc-fx-num" data-fx-num aria-hidden="true">03</span>
+        <div data-fx-pin2>
+        <div data-fx-pin2-inner>
         <p class="nc-eyebrow nc-rv">Funktionen</p>
-        <h2 class="nc-h2 nc-h2--narrow nc-rv" style="--i: 1">Für jede Rolle das Richtige – ohne fünf Tools.</h2>
-        <div class="nc-groups">
-          <article class="nc-group nc-rv" style="--i: 0">
+        <h2 class="nc-h2 nc-h2--narrow nc-rv" style="--i: 1" data-scrub data-words>Für jede Rolle das Richtige – ohne fünf Tools.</h2>
+        <div class="nc-groups" data-fx-groups>
+          <article class="nc-group nc-rv" style="--i: 0" data-scrub data-fx-group>
+            <div class="nc-spot" data-spot aria-hidden="true"></div>
             <p class="nc-card-kicker"><i class="ph ph-heart"></i>Zuschauer</p>
             <h3 class="nc-group-title">Mitmachen</h3>
             <div class="nc-demo nc-demo--bingo" aria-hidden="true"><i></i><i></i><i></i><i></i><i class="is-free"></i><i></i><i></i><i></i><i></i></div>
@@ -208,7 +242,8 @@
               <li><i class="ph ph-smiley-angry"></i>Den Streamer mit Kanalpunkten ärgern</li>
             </ul>
           </article>
-          <article class="nc-group nc-rv" style="--i: 1">
+          <article class="nc-group nc-rv" style="--i: 1" data-scrub data-fx-group>
+            <div class="nc-spot" data-spot aria-hidden="true"></div>
             <p class="nc-card-kicker"><i class="ph ph-shield-check"></i>Mods</p>
             <h3 class="nc-group-title">Mitsteuern</h3>
             <div class="nc-demo nc-demo--guard" aria-hidden="true">
@@ -222,7 +257,8 @@
               <li><i class="ph ph-robot"></i>Chat-Bot und eigene Befehle</li>
             </ul>
           </article>
-          <article class="nc-group nc-rv" style="--i: 2">
+          <article class="nc-group nc-rv" style="--i: 2" data-scrub data-fx-group>
+            <div class="nc-spot" data-spot aria-hidden="true"></div>
             <p class="nc-card-kicker"><i class="ph ph-video-camera"></i>Streamer</p>
             <h3 class="nc-group-title">Alles einrichten</h3>
             <div class="nc-demo nc-demo--health" aria-hidden="true">
@@ -238,7 +274,9 @@
             </ul>
           </article>
         </div>
-        <div class="nc-ideas nc-rv">
+        </div>
+        </div>
+        <div class="nc-ideas nc-rv" data-fx-ideas>
           <p class="nc-mono-label">Content-Ideen im Dashboard</p>
           <div class="nc-tags">
             <span class="nc-tag nc-tag-outline"><i class="ph ph-spinner-gap" aria-hidden="true"></i>Glücksrad</span>
@@ -270,60 +308,65 @@
         </div>
       </section>
 
-      <section id="start" class="nc-sec nc-sec--start">
+      <section id="start" class="nc-sec nc-sec--start nc-fx-sec">
+        <span class="nc-fx-num" data-fx-num aria-hidden="true">04</span>
         <p class="nc-eyebrow nc-rv">So startest du</p>
         <h2 class="nc-h2 nc-rv" style="--i: 1">In drei Schritten live</h2>
-        <ol class="nc-steps">
-          <li class="is-first nc-rv"><span class="nc-num">01</span><b>Anmelden</b><span>Am schnellsten mit Twitch.</span></li>
-          <li class="nc-rv" style="--i: 1"><span class="nc-num">02</span><b>Twitch verbinden</b><span>Der Streamer erlaubt einmal Kanalpunkte, Chat und Alerts.</span></li>
-          <li class="nc-rv" style="--i: 2"><span class="nc-num">03</span><b>OBS öffnen</b><span>Browserquelle einfügen – fertig, alles läuft live.</span></li>
+        <ol class="nc-steps" data-fx-steps>
+          <li class="is-first nc-rv" data-scrub data-fx-step><span class="nc-num">01</span><b>Anmelden</b><span>Am schnellsten mit Twitch.</span></li>
+          <li class="nc-rv" style="--i: 1" data-scrub data-fx-step><span class="nc-num">02</span><b>Twitch verbinden</b><span>Der Streamer erlaubt einmal Kanalpunkte, Chat und Alerts.</span></li>
+          <li class="nc-rv" style="--i: 2" data-scrub data-fx-step><span class="nc-num">03</span><b>OBS öffnen</b><span>Browserquelle einfügen – fertig, alles läuft live.</span></li>
+          <li class="nc-fx-line" data-fx-line aria-hidden="true"></li>
         </ol>
         <div class="nc-actions nc-actions--start"><button type="button" class="nc-btn nc-btn-solid nc-btn-lg" data-go="login" data-quick="twitch"><i class="ph ph-twitch-logo" aria-hidden="true"></i>Los geht’s</button></div>
       </section>
 
-      <section id="sicherheit" class="nc-sec nc-safety">
+      <section id="sicherheit" class="nc-sec nc-safety nc-fx-sec">
+        <span class="nc-fx-num" data-fx-num aria-hidden="true">05</span>
         <div class="nc-rv">
           <p class="nc-eyebrow">Sicherheit</p>
           <h2 class="nc-h2 nc-h2--short">Dein Kanal bleibt deiner.</h2>
           <p class="nc-text">Jeder Kanal wird von Hand freigeschaltet, und verbinden kann sich nur das Twitch-Konto, dem der Kanal gehört. Mods bekommen erst Zugriff, wenn der Streamer sie freigibt – und verlieren ihn mit einem Klick wieder.</p>
         </div>
-        <ul class="nc-safety-list nc-rv" style="--i: 1">
-          <li><i class="ph ph-shield-warning" aria-hidden="true"></i><span><b>Raid-Schutz</b><span>Ein Klick pausiert alle Zuschauer-Aktionen, Kanalpunkte gehen automatisch zurück.</span></span></li>
-          <li><i class="ph ph-robot" aria-hidden="true"></i><span><b>StreamHelp-Bot</b><span>Ergebnisse schreibt der StreamHelp-Bot – nie im Namen des Streamers.</span></span></li>
-          <li><i class="ph ph-lock-key" aria-hidden="true"></i><span><b>OBS bleibt lokal</b><span>Das OBS-Passwort bleibt im Browser, die Verbindung geht direkt an deinen PC.</span></span></li>
-          <li><i class="ph ph-heartbeat" aria-hidden="true"></i><span><b>Gesundheitscheck</b><span>Alle 30 Minuten wird die Twitch-Verbindung geprüft und – wo möglich – repariert.</span></span></li>
+        <ul class="nc-safety-list nc-rv" style="--i: 1" data-scrub data-fx-safety>
+          <li class="nc-fx-scan" data-fx-scan aria-hidden="true"></li>
+          <li data-fx-safe><i class="ph ph-shield-warning" aria-hidden="true"></i><span><b>Raid-Schutz</b><span>Ein Klick pausiert alle Zuschauer-Aktionen, Kanalpunkte gehen automatisch zurück.</span></span></li>
+          <li data-fx-safe><i class="ph ph-robot" aria-hidden="true"></i><span><b>StreamHelp-Bot</b><span>Ergebnisse schreibt der StreamHelp-Bot – nie im Namen des Streamers.</span></span></li>
+          <li data-fx-safe><i class="ph ph-lock-key" aria-hidden="true"></i><span><b>OBS bleibt lokal</b><span>Das OBS-Passwort bleibt im Browser, die Verbindung geht direkt an deinen PC.</span></span></li>
+          <li data-fx-safe><i class="ph ph-heartbeat" aria-hidden="true"></i><span><b>Gesundheitscheck</b><span>Alle 30 Minuten wird die Twitch-Verbindung geprüft und – wo möglich – repariert.</span></span></li>
         </ul>
       </section>
 
       <!-- Häufige Fragen: <details> klappt ohne JavaScript auf -->
-      <section id="faq" class="nc-sec nc-faq" aria-labelledby="faq-title">
+      <section id="faq" class="nc-sec nc-faq nc-fx-sec" aria-labelledby="faq-title">
+        <span class="nc-fx-num" data-fx-num aria-hidden="true">06</span>
         <div class="nc-rv">
           <p class="nc-eyebrow">FAQ</p>
           <h2 class="nc-h2 nc-h2--short" id="faq-title">Häufige Fragen</h2>
           <p class="nc-text">Noch etwas unklar? Die Einführung im Dashboard zeigt jede Stelle Schritt für Schritt.</p>
         </div>
-        <div class="nc-faq-list nc-rv" style="--i: 1">
-          <details>
+        <div class="nc-faq-list nc-rv" style="--i: 1" data-scrub data-fx-faqlist>
+          <details data-fx-faq>
             <summary>Was ist StreamHelp?</summary>
             <p>Eine Stream-Zentrale für Twitch: OBS-Overlay, Alerts, Chat-Bot, Kanalpunkte und Content-Ideen wie Glücksrad, Bingo, Verlosung oder Quiz an einem Ort. Zuschauer machen über die Seite oder den Chat mit, Mods steuern mit, der Streamer behält den Überblick.</p>
           </details>
-          <details>
+          <details data-fx-faq>
             <summary>Brauche ich OBS?</summary>
             <p>Für Overlay und Alerts ja – genauer: ein Streaming-Programm mit Browserquelle (OBS, Streamlabs Desktop o. Ä.). Dort fügst du eine einzige Adresse ein, alles Weitere stellst du im OBS-Fenster von StreamHelp ein. Content-Ideen, Chat-Bot und Kanalpunkte laufen auch ohne.</p>
           </details>
-          <details>
+          <details data-fx-faq>
             <summary>Wie komme ich als Streamer dazu?</summary>
             <p>Mit Twitch anmelden, „Kanal anmelden“ wählen und kurz warten: Jeder Kanal wird von Hand freigeschaltet. Danach verbindest du einmal Twitch (Kanalpunkte, Chat, Alerts) und fügst das Overlay in OBS ein.</p>
           </details>
-          <details>
+          <details data-fx-faq>
             <summary>Was dürfen meine Mods?</summary>
             <p>Erst einmal nichts – du gibst sie frei und sperrst sie mit einem Klick wieder. Freigegebene Mods steuern Content-Ideen und Overlay, schalten den Raid-Schutz, passen Kanalpunkte-Kosten an und pflegen Bot-Befehle. Twitch-Verbindung und Mod-Freigaben bleiben bei dir.</p>
           </details>
-          <details>
+          <details data-fx-faq>
             <summary>Geht das auch mit YouTube?</summary>
             <p>Teilweise: Der Chat im Overlay zeigt Twitch und YouTube zusammen, und mit dem Aufnahme-Studio nimmst du Videos für YouTube, Shorts und TikTok auf – auf Wunsch ohne Overlay. Kanalpunkte, Alerts und der Chat-Bot sind Twitch-Funktionen.</p>
           </details>
-          <details>
+          <details data-fx-faq>
             <summary>Ist mein Twitch-Konto sicher?</summary>
             <p>Die Anmeldung läuft direkt über Twitch – dein Passwort sehen wir nie. Ergebnisse schreibt der StreamHelp-Bot, nie dein eigenes Konto, und die Verbindung kannst du jederzeit in den Twitch-Einstellungen unter „Verbindungen“ trennen. Was gespeichert wird, steht in den <a href="datenschutz.html">Datenschutzhinweisen</a>.</p>
           </details>
@@ -331,11 +374,11 @@
       </section>
     </div>
 
-    <section class="nc-cta">
-      <div class="nc-wrap nc-cta-inner nc-rv">
-        <div class="nc-cta-logo"><span class="nc-cta-glow" aria-hidden="true"></span><img class="nc-logo" src="assets/favicon.svg" width="112" height="112" alt=""></div>
+    <section class="nc-cta" data-fx-cta>
+      <div class="nc-wrap nc-cta-inner nc-rv" data-scrub>
+        <div class="nc-cta-logo" data-scrub data-fx-ctalogo><span class="nc-cta-glow" aria-hidden="true"></span><img class="nc-logo" src="assets/favicon.svg" width="112" height="112" alt=""></div>
         <div class="nc-cta-text">
-          <h2>Bereit für den nächsten Stream?</h2>
+          <h2 data-words>Bereit für den nächsten Stream?</h2>
           <p>Melde dich an und mach beim Stream von <span data-streamer>Streamer</span> mit.</p>
         </div>
         <div class="nc-actions"><button type="button" class="nc-btn nc-btn-solid nc-btn-lg" data-go="login" data-quick="twitch"><i class="ph ph-twitch-logo" aria-hidden="true"></i>Mit Twitch anmelden</button></div>
