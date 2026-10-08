@@ -854,12 +854,13 @@ const streamerName = () => state.streamer.name || 'Streamer';
 const streamerLogin = () => state.streamer.login || CONFIG.CHANNEL;
 
 // Name des Streamers überall eintragen (Kopfzeile, Anmeldeseite, Titel)
+const PAGE_TITLE = document.title; // aus index.html (für Suchmaschinen und Lesezeichen)
 function applyStreamer(info) {
   if (info?.name) state.streamer.name = info.name;
   if (info?.login) state.streamer.login = info.login;
   if (info) state.streamer.connected = !!info.connected;
   document.querySelectorAll('[data-streamer]').forEach((el) => { el.textContent = streamerName(); });
-  if (!OBS_PAGE) document.title = state.streamer.connected ? `StreamHelp · ${streamerName()}` : 'StreamHelp';
+  if (!OBS_PAGE) document.title = state.streamer.connected ? `StreamHelp · ${streamerName()}` : PAGE_TITLE;
 }
 async function loadStreamer() {
   try {

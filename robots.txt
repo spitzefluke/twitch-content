@@ -1,0 +1,12 @@
+# StreamHelp – Hinweis: Bei GitHub-Pages-Projektseiten (…github.io/twitch-content/) lesen Suchmaschinen
+# nur die robots.txt der Domain-Wurzel. Diese Datei greift, sobald die Seite eine eigene Domain hat.
+# Bis dahin halten <meta name="robots" content="noindex"> (Overlay, Studio, Admin) die Werkzeugseiten
+# aus dem Index; die Sitemap lässt sich direkt in der Google Search Console einreichen.
+User-agent: *
+Allow: /
+Disallow: /overlay.html
+Disallow: /record.html
+Disallow: /admin.html
+Disallow: /extension/
+
+Sitemap: https://spitzefluke.github.io/twitch-content/sitemap.xml
