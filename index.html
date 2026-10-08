@@ -2,11 +2,45 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-YiY1ik91HMPKO0vAlFwtPzjG9mifxYJtJOHEap18fdc=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZwH8olaFCmHl0/aFIQ5ekW7FG2FYl6qQ+1KIS6YMRCs=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StreamHelp</title>
-  <meta name="description" content="StreamHelp – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay für den Stream.">
+  <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
+  <meta name="description" content="StreamHelp ist die Stream-Zentrale für Twitch: OBS-Overlay, Alerts, Chat-Bot, Kanalpunkte und Content-Ideen wie Glücksrad, Bingo und Verlosung – Zuschauer machen mit, Mods steuern mit.">
+  <link rel="canonical" href="https://spitzefluke.github.io/twitch-content/">
+  <!-- Vorschau beim Teilen (Discord, X, WhatsApp …): Bild assets/og-image.png, 1200 × 630 -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="StreamHelp">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:url" content="https://spitzefluke.github.io/twitch-content/">
+  <meta property="og:title" content="StreamHelp – Dein Stream. Eine Zentrale.">
+  <meta property="og:description" content="OBS-Overlay, Chat-Bot, Alerts und Content-Ideen für Twitch – Zuschauer machen mit, Mods steuern mit.">
+  <meta property="og:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="StreamHelp: OBS-Overlay mit Abo-Alert, Glücksrad und Chat">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="StreamHelp – Dein Stream. Eine Zentrale.">
+  <meta name="twitter:description" content="OBS-Overlay, Chat-Bot, Alerts und Content-Ideen für Twitch.">
+  <meta name="twitter:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
+  <!-- Strukturierte Daten für Suchmaschinen (reine Daten, kein Skript – die CSP lässt das zu) -->
+  <script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebSite", "name": "StreamHelp", "url": "https://spitzefluke.github.io/twitch-content/", "inLanguage": "de" },
+      {
+        "@type": "SoftwareApplication",
+        "name": "StreamHelp",
+        "url": "https://spitzefluke.github.io/twitch-content/",
+        "image": "https://spitzefluke.github.io/twitch-content/assets/og-image.png",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "de",
+        "description": "Stream-Zentrale für Twitch: OBS-Overlay, Alerts, Chat-Bot, Kanalpunkte und Content-Ideen zum Mitmachen.",
+        "featureList": ["OBS-Overlay als eine Browserquelle", "Alerts mit eigenem Design", "Chat-Bot mit eigenen Befehlen", "Glücksrad, Bingo, Verlosung und weitere Content-Ideen", "Twitch-Panel unter dem Stream", "Aufnahme-Studio für YouTube, Shorts und TikTok"]
+      }
+    ]
+  }</script>
   <meta name="theme-color" content="#0b0714">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
@@ -16,7 +50,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=c984ff8222">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
-  <link rel="stylesheet" href="css/landing.css?v=a20855c40f">
+  <link rel="stylesheet" href="css/landing.css?v=dc51dc03bc">
   <link rel="stylesheet" href="css/shell.css?v=6355d16a40">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
@@ -31,7 +65,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=bdfa8cbcc5",
-      "./js/app.js": "./js/app.js?v=73c37c519a",
+      "./js/app.js": "./js/app.js?v=46277f0fcd",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
@@ -104,6 +138,7 @@
       <a href="#streamer" data-for-channels hidden>Streamer</a>
       <a href="#start">So startest du</a>
       <a href="#sicherheit">Sicherheit</a>
+      <a href="#faq">FAQ</a>
       <button type="button" class="nc-btn nc-btn-ghost lp-login" data-go="login">Anmelden</button>
     </nav>
 
@@ -259,6 +294,41 @@
           <li><i class="ph ph-heartbeat" aria-hidden="true"></i><span><b>Gesundheitscheck</b><span>Alle 30 Minuten wird die Twitch-Verbindung geprüft und – wo möglich – repariert.</span></span></li>
         </ul>
       </section>
+
+      <!-- Häufige Fragen: <details> klappt ohne JavaScript auf -->
+      <section id="faq" class="nc-sec nc-faq" aria-labelledby="faq-title">
+        <div class="nc-rv">
+          <p class="nc-eyebrow">FAQ</p>
+          <h2 class="nc-h2 nc-h2--short" id="faq-title">Häufige Fragen</h2>
+          <p class="nc-text">Noch etwas unklar? Die Einführung im Dashboard zeigt jede Stelle Schritt für Schritt.</p>
+        </div>
+        <div class="nc-faq-list nc-rv" style="--i: 1">
+          <details>
+            <summary>Was ist StreamHelp?</summary>
+            <p>Eine Stream-Zentrale für Twitch: OBS-Overlay, Alerts, Chat-Bot, Kanalpunkte und Content-Ideen wie Glücksrad, Bingo, Verlosung oder Quiz an einem Ort. Zuschauer machen über die Seite oder den Chat mit, Mods steuern mit, der Streamer behält den Überblick.</p>
+          </details>
+          <details>
+            <summary>Brauche ich OBS?</summary>
+            <p>Für Overlay und Alerts ja – genauer: ein Streaming-Programm mit Browserquelle (OBS, Streamlabs Desktop o. Ä.). Dort fügst du eine einzige Adresse ein, alles Weitere stellst du im OBS-Fenster von StreamHelp ein. Content-Ideen, Chat-Bot und Kanalpunkte laufen auch ohne.</p>
+          </details>
+          <details>
+            <summary>Wie komme ich als Streamer dazu?</summary>
+            <p>Mit Twitch anmelden, „Kanal anmelden“ wählen und kurz warten: Jeder Kanal wird von Hand freigeschaltet. Danach verbindest du einmal Twitch (Kanalpunkte, Chat, Alerts) und fügst das Overlay in OBS ein.</p>
+          </details>
+          <details>
+            <summary>Was dürfen meine Mods?</summary>
+            <p>Erst einmal nichts – du gibst sie frei und sperrst sie mit einem Klick wieder. Freigegebene Mods steuern Content-Ideen und Overlay, schalten den Raid-Schutz, passen Kanalpunkte-Kosten an und pflegen Bot-Befehle. Twitch-Verbindung und Mod-Freigaben bleiben bei dir.</p>
+          </details>
+          <details>
+            <summary>Geht das auch mit YouTube?</summary>
+            <p>Teilweise: Der Chat im Overlay zeigt Twitch und YouTube zusammen, und mit dem Aufnahme-Studio nimmst du Videos für YouTube, Shorts und TikTok auf – auf Wunsch ohne Overlay. Kanalpunkte, Alerts und der Chat-Bot sind Twitch-Funktionen.</p>
+          </details>
+          <details>
+            <summary>Ist mein Twitch-Konto sicher?</summary>
+            <p>Die Anmeldung läuft direkt über Twitch – dein Passwort sehen wir nie. Ergebnisse schreibt der StreamHelp-Bot, nie dein eigenes Konto, und die Verbindung kannst du jederzeit in den Twitch-Einstellungen unter „Verbindungen“ trennen. Was gespeichert wird, steht in den <a href="datenschutz.html">Datenschutzhinweisen</a>.</p>
+          </details>
+        </div>
+      </section>
     </div>
 
     <section class="nc-cta">
@@ -275,7 +345,7 @@
     <footer class="nc-foot">
       <div class="nc-wrap nc-foot-inner">
         <span class="nc-foot-brand"><img class="nc-logo" src="assets/favicon.svg" width="18" height="18" alt="">StreamHelp</span>
-        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="datenschutz.html">Datenschutz</a><a href="admin.html">Admin-Zugang</a></div>
+        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="#faq">FAQ</a><a href="datenschutz.html">Datenschutz</a><a href="admin.html">Admin-Zugang</a></div>
       </div>
     </footer>
   </div>

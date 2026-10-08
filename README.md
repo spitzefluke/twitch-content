@@ -688,6 +688,15 @@ Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt 
 - Die Zahlen kommen aus `public.platform_stats()`: nur Summen über alle freigeschalteten Kanäle, keine Namen; für 20 Sekunden zwischengespeichert, damit viele Besucher die Datenbank nicht ständig zählen lassen.
 - Einmal nötig: Migration **`supabase/migrations/20261030000000_platform_stats.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt der Balken nur, was in StreamHelp steckt.
 
+## Suchmaschinen & Teilen
+
+- **Vorschaubild:** `assets/og-image.png` (1200 × 630) erscheint, wenn jemand den Link auf Discord, X oder WhatsApp teilt (Open-Graph-/Twitter-Tags in `index.html` und `datenschutz.html`). Discord merkt sich Vorschauen eine Weile – ein neues Bild greift dort evtl. erst nach Stunden.
+- **Titel & Beschreibung:** Die Startseite heißt „StreamHelp – OBS-Overlay, Chat-Bot & Content-Ideen für Twitch“. Ist ein Streamer verbunden, setzt die App „StreamHelp · Name“.
+- **Strukturierte Daten:** `WebSite` und `SoftwareApplication` als JSON-LD in `index.html`.
+- **FAQ:** Abschnitt „Häufige Fragen“ auf der Startseite (`#faq`).
+- **Sitemap:** `sitemap.xml` (Startseite, Datenschutz) – in der [Google Search Console](https://search.google.com/search-console) einreichen. Werkzeugseiten (Overlay, Studio, Admin, 404) sind `noindex`.
+- **robots.txt:** liegt bereit, wirkt aber erst mit eigener Domain: Bei `…github.io/twitch-content/` lesen Suchmaschinen nur die robots.txt der Domain-Wurzel.
+
 ## Video aufnehmen (Aufnahme-Studio)
 
 Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.html`, `js/record.js`). Damit nimmt der Streamer ein Video für YouTube, Shorts oder TikTok auf – im Browser, während OBS ganz normal streamt.

@@ -204,6 +204,17 @@ main.nc-wrap { flex: 1; }
 .nc-safety-list li > span { display: grid; gap: 4px; }
 .nc-safety-list b { font-weight: 500; font-size: 16px; }
 .nc-safety-list li > span > span { font-size: 14.5px; line-height: 1.6; color: var(--color-neutral-300); }
+.nc-faq { padding: 24px 0 96px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 40px clamp(24px, 5vw, 96px); align-items: start; }
+.nc-faq-list { display: grid; border-top: 1px solid var(--color-neutral-800); }
+.nc-faq-list details { border-bottom: 1px solid var(--color-neutral-800); }
+.nc-faq-list summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 16px; font-weight: 500; cursor: pointer; list-style: none; }
+.nc-faq-list summary::-webkit-details-marker { display: none; }
+.nc-faq-list summary::after { content: '+'; flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--color-neutral-700); font: 400 18px/1 var(--nc-font-mono); color: var(--color-accent-300); transition: transform .25s var(--nc-out), background .2s; }
+.nc-faq-list details[open] summary::after { transform: rotate(45deg); background: color-mix(in srgb, var(--color-accent) 18%, transparent); }
+.nc-faq-list summary:hover { color: var(--color-accent-200); }
+.nc-faq-list summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: 6px; }
+.nc-faq-list details p { margin: 0 !important; padding: 0 44px 20px 0; font-size: 14.5px; line-height: 1.7; color: var(--color-neutral-300); }
+.nc-faq-list a { color: var(--color-accent-300); }
 
 /* Abschluss */
 .nc-cta { position: relative; overflow: hidden; border-top: 1px solid var(--color-neutral-800); }
@@ -232,7 +243,7 @@ main.nc-wrap { flex: 1; }
   .nc-pv-chat { width: 48%; font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .nc-live, .nc-live-dot::after, .nc-band-sub::before, .nc-band-item, .nc-band-num, .nc-pv-disc, .nc-cta-glow, .nc-pv-alert, .nc-pv-ticker-track, .nc-demo *, .nc-demo { animation: none !important; }
+  .nc-live, .nc-live-dot::after, .nc-faq-list summary::after, .nc-band-sub::before, .nc-band-item, .nc-band-num, .nc-pv-disc, .nc-cta-glow, .nc-pv-alert, .nc-pv-ticker-track, .nc-demo *, .nc-demo { animation: none !important; }
   .nct.nc-js .nc-rv { opacity: 1; transform: none; filter: none; transition: none; }
   .nc-preview { transform: none !important; }
 }
