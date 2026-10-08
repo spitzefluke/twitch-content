@@ -37,6 +37,7 @@
 
   position: relative; z-index: 1;
   min-height: 100vh; display: flex; flex-direction: column;
+  overflow-x: clip; /* gekippte Abschnitte der Reise ragen sonst seitlich hinaus (clip statt hidden: sticky bleibt) */
   font-family: var(--nc-font-body); font-size: 15px; line-height: 1.55; color: var(--color-text);
   text-wrap: pretty;
   background:
@@ -347,3 +348,52 @@ main.nc-wrap { flex: 1; }
 .nc-channel-ava img { width: 100%; height: 100%; object-fit: cover; }
 .nc-channel b { display: block; font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nc-channel small { color: var(--color-neutral-400); font-size: 13px; }
+
+/* ---------- Reise beim Scrollen (Entwurf „StreamHelp Startseite v3“, js/landing.js) ----------
+   Alles Zusätzliche ist ohne JavaScript bzw. mit „Bewegung reduzieren“ unsichtbar –
+   dann bleibt die Seite wie vorher. */
+.nc-aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity .8s; }
+.nc-orb { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform; }
+.nc-orb--a { width: 70vmax; height: 70vmax; background: radial-gradient(closest-side, color-mix(in srgb, var(--color-indigo) 42%, transparent), transparent); }
+.nc-orb--b { width: 60vmax; height: 60vmax; background: radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent); }
+.nc-orb--c { width: 640px; height: 640px; opacity: 0; transition: opacity .6s; background: radial-gradient(closest-side, color-mix(in srgb, var(--color-indigo) 30%, transparent), transparent); }
+
+/* Kapitel-Leiste rechts (ab 1100 px) */
+.nc-rail { position: fixed; right: clamp(14px, 2vw, 32px); top: 50%; transform: translateY(-50%); z-index: 15; display: none; flex-direction: column; align-items: flex-end; gap: 12px; }
+.nct .nc-rail a { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-family: var(--nc-font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-400); }
+.nc-rail [data-rail-label] { opacity: 0; transform: translateX(6px); transition: opacity .3s, transform .3s, color .3s; white-space: nowrap; }
+.nc-rail a:hover [data-rail-label], .nc-rail a:focus-visible [data-rail-label] { opacity: 1 !important; transform: none !important; }
+.nc-rail [data-rail-bar] { display: block; width: 16px; height: 2px; border-radius: 2px; background: var(--color-neutral-700); transition: width .4s var(--nc-out), background .3s, box-shadow .3s; }
+
+/* Vorschau: Subathon-Timer, Effekte, Raid, Beschriftungen der Ebenen */
+.nc-pv-timer { position: absolute; right: 5%; bottom: 20%; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-bg) 88%, transparent); border: 1px solid var(--color-neutral-800); }
+.nc-pv-timer > .ph { font-size: 20px; color: var(--color-accent-300); }
+.nc-pv-timer > span:not(.nc-pv-bump) { display: grid; gap: 2px; }
+.nc-pv-timer b { display: block; font-family: var(--nc-font-mono); font-weight: 500; font-size: 14px; font-variant-numeric: tabular-nums; transform-origin: 0 50%; }
+.nc-pv-bump { position: absolute; right: 10px; top: -12px; padding: 2px 7px; border-radius: 6px; background: var(--color-accent-800); color: var(--color-accent-100); font-family: var(--nc-font-mono); font-size: 11px; opacity: 0; pointer-events: none; }
+.nc-pv-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.nc-pv-raid { position: absolute; left: 5%; right: 47%; top: 34%; display: flex; justify-content: flex-start; pointer-events: none; }
+.nc-pv-raid > div { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-indigo-deep) 94%, transparent); border: 1px solid var(--color-accent); box-shadow: 0 0 30px color-mix(in srgb, var(--color-accent) 35%, transparent); opacity: 0; }
+.nc-pv-raid .ph { font-size: 22px; color: var(--color-accent); }
+.nc-pv-raid > div > span { display: grid; gap: 2px; }
+.nc-pv-raid b { font-weight: 500; font-size: 15px; white-space: nowrap; }
+.nc-pv-raid > div > span > span { font-size: 12px; color: var(--color-neutral-300); white-space: nowrap; }
+.nc-fx-label { position: absolute; display: flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid color-mix(in srgb, var(--color-accent) 60%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--color-bg) 86%, transparent); font-family: var(--nc-font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-300); white-space: nowrap; opacity: 0; pointer-events: none; transform-origin: 0 100%; }
+.nc-fx-label--r { transform-origin: 100% 100%; }
+.nc-fx-caption { display: none; position: absolute; left: 0; right: 0; bottom: 7vh; margin: 0; text-align: center; font-family: var(--nc-font-heading); font-weight: 600; font-size: clamp(22px, 2.4vw, 32px); letter-spacing: -.02em; color: var(--color-text); opacity: 0; pointer-events: none; }
+
+/* Große Kapitelnummern, Licht auf den Rollen-Karten, Linie durch die Schritte, Scan über die Sicherheit */
+.nc-fx-sec { position: relative; }
+.nc-fx-num { display: none; position: absolute; right: 0; top: 24px; z-index: -1; font-family: var(--nc-font-heading); font-weight: 600; font-size: clamp(140px, 20vw, 300px); line-height: .8; letter-spacing: -.05em; color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--color-text) 16%, transparent); pointer-events: none; user-select: none; }
+.nc-group { position: relative; }
+.nc-spot { position: absolute; inset: 0; border-radius: 14px; pointer-events: none; opacity: 0; transition: opacity .35s; background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--color-accent) 13%, transparent), transparent 62%); }
+.nc-steps { position: relative; }
+.nc-steps li.nc-fx-line { display: block; position: absolute; left: 0; right: 0; top: -1px; height: 2px; padding: 0; border: 0; opacity: 0; transform: scaleX(0); transform-origin: 0 50%; background: linear-gradient(90deg, var(--color-indigo), var(--color-accent)); box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 70%, transparent); pointer-events: none; }
+.nc-safety-list { position: relative; }
+.nc-safety-list li.nc-fx-scan { display: none; position: absolute; left: 0; right: 0; top: 0; height: 2px; padding: 0; border: 0; background: linear-gradient(90deg, transparent, var(--color-accent) 30%, var(--color-accent-300) 50%, var(--color-accent) 70%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--color-accent) 70%, transparent); pointer-events: none; }
+
+/* Content-Ideen als zwei gegenläufige Reihen */
+.nc-marquee { display: grid; gap: 10px; margin-inline: calc(-1 * clamp(20px, 5vw, 72px)); -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); overflow: hidden; padding-block: 4px; }
+.nc-marquee-row { display: flex; gap: 8px; width: max-content; will-change: transform; }
+.nc-marquee .nc-tag { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+.nc-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

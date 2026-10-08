@@ -688,6 +688,16 @@ Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt 
 - Die Zahlen kommen aus `public.platform_stats()`: nur Summen über alle freigeschalteten Kanäle, keine Namen; für 20 Sekunden zwischengespeichert, damit viele Besucher die Datenbank nicht ständig zählen lassen.
 - Einmal nötig: Migration **`supabase/migrations/20261030000000_platform_stats.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt der Balken nur, was in StreamHelp steckt.
 
+## Startseite: Reise beim Scrollen
+
+Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-journey.js`, Stile am Ende von `css/landing.css`):
+
+- **Overlay-Kapitel:** Die Vorschau bleibt stehen, wandert in die Bildschirmmitte, klappt in ihre Ebenen auf (Alerts, Chat & Bot, Glücksrad, Laufband & Haustier, Subathon-Timer – mit Beschriftung und „Eine Browserquelle für alles.“) und setzt sich wieder zusammen. Nur zweispaltig ab 900 px Breite, wenn der Hero ins Fenster passt.
+- **Danach:** Zahlen-Band wächst auf volle Breite, Überschriften erscheinen Wort für Wort, die Rollen-Karten fächern aus einem Stapel auf, Content-Ideen laufen in zwei Reihen gegeneinander, eine Linie zieht durch die Schritte, ein Scan schaltet die Sicherheits-Punkte frei, die FAQ klappt Zeile für Zeile auf, am Ende dreht sich das Logo auf und sprüht Funken.
+- **Rundherum:** Licht im Hintergrund wandert mit (eins folgt der Maus), große Kapitelnummern, Kapitel-Leiste rechts (ab 1100 px), magnetische Knöpfe, Lichtfleck auf den Karten.
+- **Vorschau-Szene:** Alerts mit Funken, Abos und Bits verlängern den Subathon-Timer, Glücksrad mit Konfetti, Chat mit hervorgehobenen `!Befehlen`, das Haustier hüpft bei `!füttern`, ab und zu ein Raid.
+- Mit „Bewegung reduzieren“ (Systemeinstellung) bleibt die Seite ruhig wie vorher; Live-Zahlen und Streamer-Liste funktionieren unverändert.
+
 ## Suchmaschinen & Teilen
 
 - **Vorschaubild:** `assets/og-image.png` (1200 × 630) erscheint, wenn jemand den Link auf Discord, X oder WhatsApp teilt (Open-Graph-/Twitter-Tags in `index.html` und `datenschutz.html`). Discord merkt sich Vorschauen eine Weile – ein neues Bild greift dort evtl. erst nach Stunden.
