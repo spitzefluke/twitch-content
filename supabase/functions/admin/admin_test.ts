@@ -46,3 +46,43 @@ Deno.test("Daten nur mit Token", async () => {
   }));
   assertEquals(res.status, 401);
 });
+
+Deno.test("Base32 hin und zurück", async () => {
+  const { base32Encode, base32Decode } = await import("./index.ts");
+  const bytes = crypto.getRandomValues(new Uint8Array(20));
+  assertEquals(base32Encode(bytes).length, 32);
+  assertEquals(base32Decode(base32Encode(bytes)), bytes);
+  assertEquals(base32Encode(new TextEncoder().encode("foobar")), "MZXW6YTBOI");
+});
+
+Deno.test("TOTP nach RFC 6238 (SHA-1)", async () => {
+  const { totp } = await import("./index.ts");
+  const secret = new TextEncoder().encode("12345678901234567890");
+  // Testwerte aus RFC 6238, Anhang B (8 Ziffern)
+  assertEquals(await totp(secret, Math.floor(59 / 30), 8), "94287082");
+  assertEquals(await totp(secret, Math.floor(1111111109 / 30), 8), "07081804");
+  assertEquals(await totp(secret, Math.floor(20000000000 / 30), 8), "65353130");
+});
+
+Deno.test("Code gilt ±30 s und nur einmal", async () => {
+  const { base32Encode, matchTotp, totp } = await import("./index.ts");
+  const raw = crypto.getRandomValues(new Uint8Array(20));
+  const secret = base32Encode(raw);
+  const now = 1_800_000_000_000;
+  const step = Math.floor(now / 30_000);
+  const code = await totp(raw, step);
+  assertEquals(await matchTotp(secret, code, 0, now), step);
+  assertEquals(await matchTotp(secret, ` ${code.slice(0, 3)} ${code.slice(3)} `, 0, now), step);
+  assertEquals(await matchTotp(secret, await totp(raw, step - 1), 0, now), step - 1);
+  assertEquals(await matchTotp(secret, await totp(raw, step - 2), 0, now), null);
+  assertEquals(await matchTotp(secret, code, step, now), null); // schon benutzt
+  assertEquals(await matchTotp(secret, "12345", 0, now), null);
+  assertEquals(await matchTotp(secret, undefined, 0, now), null);
+});
+
+Deno.test("Token ohne 2FA gilt nur zum Einrichten", async () => {
+  const { token } = await createToken(Date.now(), false);
+  assertEquals((await verifyToken(token))?.mfa, false);
+  const full = await createToken();
+  assertEquals((await verifyToken(full.token))?.mfa, true);
+});

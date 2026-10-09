@@ -1,0 +1,71 @@
+# Sicherheits-Prüfungen bei jeder PR und jedem Push auf main:
+#   · Webseite: Versionsnummern/CSP aktuell, JS-Syntax, keine geheimen Schlüssel im Code
+#   · Datenbank: Migrationen (security definer mit search_path, RLS für neue Tabellen, keine
+#     Rechte auf geheime Tabellen) – tools/check-sql.mjs
+#   · Edge Functions: Typprüfung und Tests mit Deno
+#   · Secret-Scan über die ganze Git-Historie (gitleaks, Ausnahmen in .gitleaks.toml)
+# Schlägt etwas fehl, steht der Grund im Log des Schritts.
+name: Sicherheits-Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Webseite & Datenbank
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Versionsnummern und Content-Security-Policy
+        run: node tools/stamp-versions.mjs --check
+      - name: JavaScript-Syntax
+        run: for f in js/*.js extension/*.js tools/*.mjs; do node --check "$f" || exit 1; done
+      - name: Keine geheimen Schlüssel im Code
+        run: node tools/check-secrets.mjs
+      - name: Migrationen
+        run: node tools/check-sql.mjs
+
+  functions:
+    name: Edge Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.6
+      - name: Typprüfung
+        run: deno check supabase/functions/*/index.ts
+      - name: Tests
+        run: deno test --allow-env --allow-net supabase/functions/
+
+  secrets:
+    name: Secret-Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Feste Version mit Prüfsumme (nicht „latest“ – sonst könnte ein fremdes Update mitlaufen)
+      - name: gitleaks installieren
+        env:
+          VERSION: 8.24.3
+          SHA256: 9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c
+        run: |
+          curl -sSL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar xzf gitleaks.tgz gitleaks
+      - name: Git-Historie nach Geheimnissen durchsuchen
+        run: ./gitleaks git . --config .gitleaks.toml --redact --no-banner -v

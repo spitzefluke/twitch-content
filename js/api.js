@@ -135,14 +135,15 @@ async function createSupabaseApi() {
     onAuthChange(cb) {
       sb.auth.onAuthStateChange((_event, session) => cb(session?.user ?? null));
     },
-    async signIn(email, password) {
-      unwrap(await sb.auth.signInWithPassword({ email, password }));
+    // captchaToken: Bot-Schutz (Cloudflare Turnstile), nur wenn in js/config.js eingerichtet
+    async signIn(email, password, captchaToken) {
+      unwrap(await sb.auth.signInWithPassword({ email, password, options: captchaToken ? { captchaToken } : {} }));
     },
-    async signUp(username, email, password) {
+    async signUp(username, email, password, captchaToken) {
       const data = unwrap(await sb.auth.signUp({
         email,
         password,
-        options: { data: { username }, emailRedirectTo: location.origin + location.pathname },
+        options: { data: { username }, emailRedirectTo: location.origin + location.pathname, ...(captchaToken ? { captchaToken } : {}) },
       }));
       return { needsConfirmation: !data.session };
     },
@@ -166,6 +167,41 @@ async function createSupabaseApi() {
       unwrap(await sb.auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' }));
     },
     async signOut() { await sb.auth.signOut(); },
+
+    // ---------- Sicherheit (Migration …_security.sql) ----------
+    // Zwei-Faktor-Anmeldung mit Authenticator-App (TOTP, eingebaut in Supabase Auth)
+    async mfaStatus() {
+      const { data: aal, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      const { data: f, error: e2 } = await sb.auth.mfa.listFactors();
+      if (e2) throw e2;
+      return { current: aal.currentLevel, next: aal.nextLevel, factors: (f?.totp ?? []).filter((x) => x.status === 'verified') };
+    },
+    async mfaEnroll() {
+      // Nie bestätigte Versuche aufräumen – sonst lehnt Supabase einen neuen ab
+      const { data: f } = await sb.auth.mfa.listFactors();
+      for (const x of (f?.all ?? []).filter((x) => x.factor_type === 'totp' && x.status !== 'verified')) {
+        await sb.auth.mfa.unenroll({ factorId: x.id });
+      }
+      const data = unwrap(await sb.auth.mfa.enroll({ factorType: 'totp', issuer: 'StreamHelp', friendlyName: `StreamHelp ${Date.now().toString(36)}` }));
+      return { id: data.id, qr: data.totp.qr_code, secret: data.totp.secret };
+    },
+    async mfaVerify(factorId, code) {
+      unwrap(await sb.auth.mfa.challengeAndVerify({ factorId, code }));
+    },
+    async mfaUnenroll(factorId) {
+      unwrap(await sb.auth.mfa.unenroll({ factorId }));
+      await sb.auth.refreshSession();
+    },
+    async mySessions() { return unwrap(await sb.rpc('my_sessions')); },
+    async revokeSession(id) { return unwrap(await sb.rpc('session_revoke', { p_id: id })); },
+    async signOutOthers() { unwrap(await sb.auth.signOut({ scope: 'others' })); },
+    async modRights() { return unwrap(await sb.rpc('mod_rights_list')); },
+    async setModRights(twitchUserId, denied) { return unwrap(await sb.rpc('mod_rights_set', { p_twitch_user_id: twitchUserId, p_denied: denied })); },
+    async auditLog({ before = null, role = null, limit = 60 } = {}) {
+      return unwrap(await sb.rpc('audit_list', { p_limit: limit, p_before: before, p_role: role }));
+    },
+    async channelExport() { return unwrap(await sb.rpc('channel_export')); },
     async getProfile(user) {
       const { data } = await sb.from('profiles').select('username, is_admin').eq('id', user.id).maybeSingle();
       return data ?? { username: user.user_metadata?.username ?? user.email.split('@')[0], is_admin: false };
@@ -995,6 +1031,8 @@ function createLocalApi() {
       if (!u || u.pass !== await hash(password)) throw new Error('E-Mail oder Passwort ist falsch.');
       current = { id: email.toLowerCase(), email: email.toLowerCase() };
       store.set('session', current.email);
+      store.set('session_aal', 'aal1');
+      store.set('session_at', new Date().toISOString());
       emit();
     },
     async signUp(username, email, password) {
@@ -1023,7 +1061,83 @@ function createLocalApi() {
     async signOut() {
       current = null;
       store.set('session', null);
+      store.set('session_aal', 'aal1');
       emit();
+    },
+
+    // ---------- Sicherheit (Demo): Der Zwei-Faktor-Code ist hier immer 123456 ----------
+    async mfaStatus() {
+      const f = store.get(`mfa_${current?.email}`, null);
+      const factors = f?.verified ? [{ id: f.id, factor_type: 'totp', status: 'verified', created_at: f.created_at }] : [];
+      const aal = factors.length && store.get('session_aal', 'aal1') === 'aal2' ? 'aal2' : 'aal1';
+      return { current: aal, next: factors.length ? 'aal2' : 'aal1', factors, demo: true };
+    },
+    async mfaEnroll() {
+      if (!current) throw new Error('Bitte zuerst anmelden.');
+      const f = { id: `demo-${Date.now().toString(36)}`, verified: false, created_at: new Date().toISOString() };
+      store.set(`mfa_${current.email}`, f);
+      return { id: f.id, qr: '', secret: 'DEMO MODE CODE 123456', demo: true };
+    },
+    async mfaVerify(factorId, code) {
+      const f = store.get(`mfa_${current?.email}`, null);
+      if (!f || f.id !== factorId) throw new Error('Bitte die Einrichtung neu starten.');
+      if (String(code ?? '').replace(/\s+/g, '') !== '123456') throw new Error('Der Code passt nicht. (Demo: 123456)');
+      store.set(`mfa_${current.email}`, { ...f, verified: true });
+      store.set('session_aal', 'aal2');
+    },
+    async mfaUnenroll() { store.set(`mfa_${current?.email}`, null); },
+    async mySessions() {
+      const aal = store.get('session_aal', 'aal1');
+      const others = store.get('demo_sessions', [
+        { id: 'demo-phone', created_at: new Date(Date.now() - 3 * 86400_000).toISOString(), last_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
+          user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile Safari', ip: '84.150.12.7', aal: 'aal1' },
+      ]);
+      return [{ id: 'demo-this', created_at: store.get('session_at', new Date().toISOString()), last_at: new Date().toISOString(),
+        user_agent: navigator.userAgent, ip: '', aal, current: true }, ...others.map((x) => ({ ...x, current: false }))];
+    },
+    async revokeSession(id) {
+      const list = (await this.mySessions()).filter((x) => !x.current && x.id !== id);
+      store.set('demo_sessions', list);
+      return true;
+    },
+    async signOutOthers() { store.set('demo_sessions', []); },
+    async modRights() {
+      const denied = store.get('mod_rights', {});
+      return (await this.getMods()).map((m) => ({ ...m, denied: denied[m.twitch_user_id] ?? [] }));
+    },
+    async setModRights(twitchUserId, list) {
+      await requireAdmin();
+      const all = store.get('mod_rights', {});
+      all[twitchUserId] = [...new Set(list)].sort();
+      store.set('mod_rights', all);
+      const log = store.get('audit_log', []);
+      log.unshift({ id: Date.now(), at: new Date().toISOString(), actor_name: store.get('users', {})[current.email]?.username ?? '', role: 'owner',
+        action: 'mod_rights_set', tables: ['mod_rights'], ops: ['update'], detail: {} });
+      store.set('audit_log', log.slice(0, 100));
+      return { twitch_user_id: twitchUserId, denied: all[twitchUserId] };
+    },
+    async auditLog({ before = null, role = null } = {}) {
+      await requireAdmin();
+      const ago = (m) => new Date(Date.now() - m * 60_000).toISOString();
+      const sample = [
+        { id: 5, at: ago(12), actor_name: 'Lena_Mod', role: 'mod', action: 'giveaway_draw', tables: ['giveaway', 'giveaway_winners'], ops: ['update', 'insert'], detail: {} },
+        { id: 4, at: ago(35), actor_name: 'Lena_Mod', role: 'mod', action: 'site_guard_set', tables: ['site_guard'], ops: ['update'], detail: {} },
+        { id: 3, at: ago(80), actor_name: 'Kai_Mod', role: 'mod', action: 'wheel_cost', tables: [], ops: [], detail: { cost: 500 } },
+        { id: 2, at: ago(240), actor_name: 'Kai_Mod', role: 'mod', action: 'bingo_new_card', tables: ['bingo_card'], ops: ['update'], detail: {} },
+        { id: 1, at: ago(1500), actor_name: 'Du', role: 'owner', action: 'overlay_save', tables: ['overlay_config'], ops: ['update'], detail: {} },
+      ];
+      return [...store.get('audit_log', []), ...sample]
+        .filter((x) => (before === null || x.id < before) && (!role || x.role === role));
+    },
+    async channelExport() {
+      await requireAdmin();
+      const tables = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k?.startsWith('zd_') || ['zd_users', 'zd_session', 'zd_session_aal'].includes(k)) continue;
+        try { tables[k.slice(3)] = JSON.parse(localStorage.getItem(k)); } catch { /* egal */ }
+      }
+      return { format: 'streamhelp-export-1', exported_at: new Date().toISOString(), channel: { login: 'demo', display_name: 'Demo' }, tables };
     },
     async getProfile(user) {
       const u = store.get('users', {})[user.email] ?? {};
@@ -1154,7 +1268,13 @@ function createLocalApi() {
       const cfg = store.get('overlay_config', {});
       return { is_admin: admin, is_site_admin: admin, is_owner: admin, is_mod: false, is_twitch_mod: false, mods_enabled: !!cfg.mods_enabled, mods_scope: false, mods_count: 0 };
     },
-    async getMods() { return []; },
+    // Zwei Beispiel-Mods, damit sich Mod-Rechte und Protokoll ausprobieren lassen
+    async getMods() {
+      return [
+        { twitch_user_id: '1001', login: 'kai_mod', display_name: 'Kai_Mod' },
+        { twitch_user_id: '1002', login: 'lena_mod', display_name: 'Lena_Mod' },
+      ];
+    },
     async syncMods() { await requireAdmin(); return { missing_scope: true, count: 0 }; },
     async allowModsOverlay(on) {
       await requireAdmin();

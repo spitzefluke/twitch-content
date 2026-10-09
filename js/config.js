@@ -15,4 +15,10 @@ export const CONFIG = {
   // Optional: Twitch-Name des Streamers, solange noch kein Kanal verbunden ist.
   // Leer lassen – sobald der Streamer Twitch verbindet, kommt der Name aus der Datenbank.
   CHANNEL: '',
+
+  // Optional: Bot-Schutz beim Anmelden und Registrieren (Cloudflare Turnstile).
+  // Den öffentlichen „Site Key“ hier eintragen, den geheimen „Secret Key“ NUR in Supabase unter
+  // Authentication → Attack Protection → Captcha (Anbieter Turnstile). Leer = aus.
+  // Erst beides eintragen, dann in Supabase einschalten – sonst klappt das Anmelden nicht.
+  TURNSTILE_SITE_KEY: '',
 };

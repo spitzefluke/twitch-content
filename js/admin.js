@@ -49,6 +49,8 @@ async function call(action, extra = {}) {
   if (!res.ok) {
     const err = new Error(data.error ?? data.message ?? `Fehler ${res.status}`);
     err.status = res.status;
+    // Altes Token ohne Zwei-Faktor-Code: erst einrichten
+    if (res.status === 403 && data.mfa_setup && action !== 'mfa_setup') { clearTimeout(state.timer); showMfaSetup(); }
     throw err;
   }
   return data;
@@ -57,9 +59,29 @@ async function call(action, extra = {}) {
 // Demo: liest die Daten, die die Webseite im selben Browser gespeichert hat
 function demoCall(action, extra) {
   const read = (k, f) => { try { return JSON.parse(localStorage.getItem(`zd_${k}`)) ?? f; } catch { return f; } };
+  // Demo: Passwort „demo“, Zwei-Faktor-Code 123456
+  const mfaOn = read('admin_mfa_on', false);
   if (action === 'login') {
-    if (extra.password !== 'demo') { const e = new Error('Falsches Passwort. (Demo: „demo“)'); e.status = 401; throw e; }
-    return { token: 'demo', expires_at: new Date(Date.now() + 12 * 3600e3).toISOString() };
+    if (extra.password !== 'demo' || (mfaOn && String(extra.code ?? '').replace(/\s+/g, '') !== '123456')) {
+      const e = new Error(mfaOn ? 'Passwort oder Code falsch. (Demo: „demo“ und 123456)' : 'Falsches Passwort. (Demo: „demo“)');
+      e.status = 401;
+      throw e;
+    }
+    return { token: demoToken(mfaOn), expires_at: new Date(Date.now() + 12 * 3600e3).toISOString(), mfa: mfaOn };
+  }
+  if (action === 'mfa_setup') return { secret: 'DEMODEMODEMODEMODEMODEMODEMODEMO', qr: '', uri: '' };
+  if (action === 'mfa_enable') {
+    if (String(extra.code ?? '').replace(/\s+/g, '') !== '123456') throw new Error('Der Code passt nicht. (Demo: 123456)');
+    localStorage.setItem('zd_admin_mfa_on', 'true');
+    return { token: demoToken(true), mfa: true };
+  }
+  if (action === 'security_report') {
+    return { checks: [
+      { id: 'rls', title: 'Tabellen ohne Row Level Security', level: 'ok', items: [] },
+      { id: 'secrets', title: 'Geheime Tabellen für Besucher lesbar (nur RLS schützt)', level: 'ok', items: [] },
+      { id: 'rate_limit', title: 'Rate-Limit für die API (db-pre-request)', level: 'ok', items: ['pgrst.db_pre_request=public.api_guard'] },
+      { id: 'mfa', title: 'Streamer ohne Zwei-Faktor-Anmeldung', level: 'info', items: ['1 von 2'] },
+    ] };
   }
   if (action === 'set_admin') {
     const users = read('users', {});
@@ -106,6 +128,21 @@ function demoCall(action, extra) {
   };
 }
 
+// Demo-Token im selben Aufbau wie das echte (Inhalt.Signatur), damit tokenMfa() es lesen kann
+function demoToken(mfa) {
+  return `${btoa(JSON.stringify({ exp: Date.now() + 12 * 3600e3, mfa })).replace(/=+$/, '')}.demo`;
+}
+
+// Mit Zwei-Faktor-Code angemeldet? (Inhalt des Tokens; die Edge Function prüft es selbst noch einmal)
+function tokenMfa(token) {
+  try {
+    const part = String(token).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(part + '='.repeat((4 - (part.length % 4)) % 4))).mfa === true;
+  } catch {
+    return false;
+  }
+}
+
 // ============================================================
 // Start / Login
 // ============================================================
@@ -114,6 +151,9 @@ if (guardFrame()) init();
 function init() {
   if (isDemo) $('#demo-banner').hidden = false;
   $('#admin-form').addEventListener('submit', onLogin);
+  $('#mfa-form').addEventListener('submit', onMfaEnable);
+  $('#mfa-cancel').addEventListener('click', () => logout());
+  $('#security-check').addEventListener('click', checkSecurity);
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
   $('#site-btn').addEventListener('click', openSiteAsAdmin);
@@ -128,12 +168,14 @@ function init() {
 
   state.token = session.get();
   loadProviders();
-  if (state.token) showApp();
+  if (state.token && tokenMfa(state.token)) showApp();
+  else if (state.token) showMfaSetup();
   else showLogin();
 }
 
 function showLogin(message) {
   $('#admin-app').hidden = true;
+  $('#admin-mfa').hidden = true;
   $('#admin-login').hidden = false;
   const msg = $('#admin-form .form-msg');
   msg.textContent = message ?? '';
@@ -146,16 +188,19 @@ async function onLogin(e) {
   const btn = form.querySelector('button[type="submit"]');
   const msg = form.querySelector('.form-msg');
   const password = form.password.value;
+  const code = form.code.value.replace(/\s+/g, '');
   if (!password) { msg.textContent = 'Bitte das Admin-Passwort eingeben.'; return; }
   msg.textContent = '';
   btn.disabled = true;
   btn.classList.add('is-loading');
   try {
-    const { token } = await call('login', { password });
+    const { token, mfa, mfa_missing: mfaMissing } = await call('login', { password, code });
     state.token = token;
     session.set(token);
     form.reset();
+    if (mfa === false) { showMfaSetup(); return; }
     showApp();
+    if (mfaMissing) toast('Zwei-Faktor-Code noch nicht möglich: In Supabase fehlt die Migration supabase/migrations/20261031000000_security.sql.', 'error', 9000);
   } catch (err) {
     msg.textContent = err.status === 404
       ? 'Die Admin-Funktion ist noch nicht in Supabase hochgeladen (setup-supabase.ps1 ausführen).'
@@ -195,8 +240,87 @@ async function openSiteAsAdmin() {
   }
 }
 
+// Pflicht: Ohne eingerichteten Zwei-Faktor-Code gilt das Token nur hierfür
+async function showMfaSetup() {
+  $('#admin-app').hidden = true;
+  $('#admin-login').hidden = true;
+  $('#admin-mfa').hidden = false;
+  const form = $('#mfa-form');
+  const msg = form.querySelector('.form-msg');
+  msg.textContent = '';
+  try {
+    const { secret, qr } = await call('mfa_setup');
+    $('#mfa-secret').textContent = secret.replace(/(.{4})/g, '$1 ').trim();
+    const img = $('#mfa-qr');
+    img.hidden = !qr;
+    // SVG als Bild (nicht als HTML einsetzen)
+    if (qr) img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}`;
+    form.code.focus();
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    if (err.status === 409) { logout('Der Zwei-Faktor-Code ist schon eingerichtet. Bitte mit Passwort und Code einloggen.'); return; }
+    msg.textContent = err.message;
+  }
+}
+
+async function onMfaEnable(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const btn = form.querySelector('button[type="submit"]');
+  const msg = form.querySelector('.form-msg');
+  const code = form.code.value.replace(/\s+/g, '');
+  if (!/^\d{6}$/.test(code)) { msg.textContent = 'Bitte die 6 Ziffern aus der App eingeben.'; return; }
+  btn.disabled = true;
+  try {
+    const { token } = await call('mfa_enable', { code });
+    state.token = token;
+    session.set(token);
+    form.reset();
+    toast('Zwei-Faktor-Code ist eingerichtet. Ab jetzt beim Einloggen immer mit angeben.', 'ok', 7000);
+    showApp();
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    msg.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Sicherheits-Check der Datenbank (security_report, Migration …_security.sql)
+const CHECK_LEVEL = { ok: ['chip--ok', '✓ OK'], warn: ['chip--warn', '⚠️ Prüfen'], error: ['chip--bad', '✗ Problem'], info: ['', 'ℹ️ Info'] };
+async function checkSecurity() {
+  const btn = $('#security-check');
+  const list = $('#security');
+  btn.disabled = true;
+  try {
+    const { checks } = await call('security_report');
+    list.replaceChildren(...checks.map((c) => {
+      const [cls, label] = CHECK_LEVEL[c.level] ?? ['', c.level];
+      const li = document.createElement('li');
+      const chip = document.createElement('span');
+      chip.className = `chip ${cls}`;
+      chip.textContent = label;
+      const title = document.createElement('b');
+      title.textContent = c.title;
+      li.append(chip, title);
+      if (c.items?.length) {
+        const small = document.createElement('small');
+        small.textContent = c.items.join(', ');
+        li.append(small);
+      }
+      return li;
+    }));
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    list.replaceChildren(Object.assign(document.createElement('li'), { className: 'muted', textContent: err.message }));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function showApp() {
   $('#admin-login').hidden = true;
+  $('#admin-mfa').hidden = true;
   $('#admin-app').hidden = false;
   refresh();
   loadChannels();

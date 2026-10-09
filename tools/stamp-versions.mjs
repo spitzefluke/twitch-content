@@ -21,16 +21,21 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js' };
 const check = process.argv.includes('--check');
 
+// Bot-Schutz bei Anmelden/Registrieren (Cloudflare Turnstile, nur wenn in js/config.js eingerichtet):
+// Skript und Prüf-Fenster kommen von dort – nur auf der Startseite mit den Anmeldeformularen.
+const CAPTCHA = 'https://challenges.cloudflare.com';
+const CAPTCHA_PAGES = ['index.html'];
+
 // Wohin die Seiten Verbindungen aufbauen dürfen (Supabase, Wetter, Twitch-Chat, OBS auf dem eigenen PC)
-const CSP = (scriptHashes) => [
+const CSP = (scriptHashes, page) => [
   "default-src 'self'",
-  `script-src 'self' ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}`,
+  `script-src 'self' ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}${CAPTCHA_PAGES.includes(page) ? ` ${CAPTCHA}` : ''}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
-  "frame-src 'self'",
+  `frame-src 'self'${CAPTCHA_PAGES.includes(page) ? ` ${CAPTCHA}` : ''}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -59,7 +64,7 @@ for (const [page, entry] of Object.entries(PAGES)) {
   ].join('\n');
   let after = before.replace(/<!-- versions:start[\s\S]*?<!-- versions:end -->/, block);
   // Content-Security-Policy direkt nach <meta charset> (muss vor allen Skripten stehen)
-  const meta = `<meta http-equiv="Content-Security-Policy" content="${CSP([sha(importmap), sha(loader)])}">`;
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${CSP([sha(importmap), sha(loader)], page)}">`;
   after = after.includes('http-equiv="Content-Security-Policy"')
     ? after.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/, meta)
     : after.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n  ${meta}\n  <meta name="referrer" content="same-origin">`);

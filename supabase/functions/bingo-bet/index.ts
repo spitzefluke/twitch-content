@@ -8,7 +8,8 @@
 //   POST {action:"cancel"}         → Abbrechen, alle bekommen ihre Punkte zurück
 // Nur für Admins. Die Runde steht in bingo_card.bet (Migration …_bingo_bet.sql).
 import {
-  channelServe, CodedError, type Connection, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, isAdminUser, json, sendChat,
+  audit, channelServe, CodedError, type Connection, corsHeaders, db, getConnection, getUserFromRequest, helix, HelixError, isAdminUser, json,
+  rateLimit, sendChat, tooMany,
 } from "../_shared/twitch.ts";
 import { betLines, fullLines } from "../_shared/bingo.ts";
 
@@ -31,13 +32,22 @@ Deno.serve(channelServe(async (req) => {
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Nicht angemeldet" }, 401);
-  if (!(await isAdminUser(user.id))) return json({ error: "Nur Admins und freigegebene Mods dürfen Tipprunden starten." }, 403);
+  if (!(await isAdminUser(user.id, "bingo"))) return json({ error: "Nur Admins und freigegebene Mods dürfen Tipprunden starten." }, 403);
+  if (!(await rateLimit(`bingo-bet:${user.id}`, 60))) return tooMany();
 
   const { action, seconds } = await req.json().catch(() => ({}));
   try {
-    if (action === "start") return json(await start(Number(seconds)));
+    if (action === "start") {
+      const result = await start(Number(seconds));
+      await audit(user.id, "bingo_bet_start", { seconds: Number(seconds) || null });
+      return json(result);
+    }
     if (action === "check") return json(await check());
-    if (action === "cancel") return json(await cancel());
+    if (action === "cancel") {
+      const result = await cancel();
+      await audit(user.id, "bingo_bet_cancel");
+      return json(result);
+    }
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {
     console.error(e);
@@ -64,7 +74,7 @@ async function connection(): Promise<Connection & { scopes?: string[] }> {
   if (!scopes.includes(SCOPE)) {
     throw new CodedError("need_reconnect", "Für Tipprunden braucht die Seite eine neue Twitch-Berechtigung (Vorhersagen). Der Streamer muss Twitch einmal neu verbinden: Twitch-Knopf oben → „Neu verbinden“.");
   }
-  return conn;
+  return { ...conn, scopes };
 }
 
 async function saveBet(bet: Bet) {

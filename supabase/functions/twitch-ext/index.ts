@@ -7,7 +7,7 @@
 // Extension-Secret (Supabase-Secret EXTENSION_SECRET, base64). Er nennt den Kanal (channel_id) und –
 // wenn der Zuschauer seine Twitch-ID freigegeben hat – den Zuschauer (user_id). Mitmachen geht nur damit.
 import {
-  channelForTwitch, currentChannel, db, env, getAppToken, getConnection, helix, sendChat, withChannel,
+  channelForTwitch, currentChannel, db, env, getAppToken, getConnection, helix, rateLimit, sendChat, withChannel,
 } from "../_shared/twitch.ts";
 import { GAME_ONLY, gameById } from "../_shared/games.ts";
 
@@ -57,6 +57,14 @@ Deno.serve(async (req) => {
   const claims = await verify(req);
   if (!claims) return json({ error: "auth", message: "Ausweis von Twitch ungültig oder abgelaufen." }, 401);
   const body = await req.json().catch(() => ({}));
+
+  // Rate-Limit je Zuschauer (opaque_user_id gibt Twitch auch ohne freigegebene ID): Stand abrufen
+  // 30× pro Minute, Mitmachen 6× pro Minute – genug für echte Klicks, zu wenig für Skripte.
+  const viewer = claims.opaque_user_id ?? claims.user_id ?? "anon";
+  const join = body.action === "giveaway" || body.action === "queue";
+  if (!(await rateLimit(`ext:${join ? "join" : "state"}:${claims.channel_id}:${viewer}`, join ? 6 : 30))) {
+    return json({ error: "rate", message: "Zu viele Klicks – kurz warten." }, 429);
+  }
 
   const channel = await channelForTwitch(claims.channel_id).catch(() => null);
   if (!channel?.known) return json({ error: "unknown", message: "Dieser Kanal ist (noch) nicht bei StreamHelp." }, 404);

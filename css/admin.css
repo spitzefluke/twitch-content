@@ -204,3 +204,14 @@
 /* Streamer-Kanäle */
 .channels .channel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .channels small { font-weight: 400; }
+
+/* Zwei-Faktor-Code (Pflicht) und Sicherheits-Check */
+.field-hint { font-size: 12px; color: var(--muted); }
+.admin-mfa { max-width: 460px; }
+.mfa-setup { display: grid; justify-items: center; gap: 10px; }
+.mfa-qr { width: 200px; height: 200px; padding: 10px; border-radius: 14px; background: #fff; }
+.mfa-secret { font-size: 13px; color: var(--muted); text-align: center; }
+.mfa-secret code { display: inline-block; margin-top: 4px; font: 600 13px var(--font-mono); letter-spacing: .06em; color: var(--text); overflow-wrap: anywhere; }
+.security-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.security-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .03); }
+.security-list small { flex-basis: 100%; color: var(--muted); overflow-wrap: anywhere; }

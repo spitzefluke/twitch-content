@@ -133,13 +133,45 @@ export class CodedError extends Error {
   }
 }
 
+// Bereiche, die der Streamer einzelnen Mods sperren kann (Migration …_security.sql, mod_areas())
+export type ModArea = "ideas" | "wheel" | "bingo" | "games" | "giveaway" | "pranks" | "pet" | "overlay" | "chat" | "points" | "guard";
+
 // Admin für die Inhalte des Kanals: Inhaber, Plattform-Admin, Admin-Häkchen (nur Standard-Kanal)
-// oder vom Streamer freigegebener Mod (is_admin_user). Fehlt die Funktion noch, zählt nur das Häkchen.
-export async function isAdminUser(userId: string): Promise<boolean> {
+// oder vom Streamer freigegebener Mod (is_admin_user). Mit area zählen Mods nur, wenn der Streamer
+// ihnen diesen Bereich nicht gesperrt hat. Fehlt die Funktion noch, zählt nur das Häkchen.
+export async function isAdminUser(userId: string, area?: ModArea): Promise<boolean> {
+  if (area) {
+    const { data, error } = await db.rpc("is_admin_user_in", { p_user: userId, p_area: area });
+    if (!error) return data === true;
+    if (error.code !== "PGRST202") throw error; // nur „Funktion fehlt“ (Migration fehlt) fällt zurück
+  }
   const { data, error } = await db.rpc("is_admin_user", { p_user: userId });
   if (!error) return data === true;
   const { data: profile } = await db.from("profiles").select("is_admin").eq("id", userId).maybeSingle();
   return !!profile?.is_admin;
+}
+
+// Rate-Limit (Migration …_security.sql): true = noch erlaubt. Fehlt die Funktion oder hakt die
+// Datenbank, lässt es die Anfrage durch – die Grenze soll schützen, nicht die Seite lahmlegen.
+export async function rateLimit(key: string, max: number, windowSec = 60): Promise<boolean> {
+  try {
+    const { data, error } = await clientFor(null).rpc("rate_hit", { p_key: key, p_max: max, p_window: windowSec });
+    return error ? true : data !== false;
+  } catch {
+    return true;
+  }
+}
+
+export const tooMany = () => json({ error: "Zu viele Anfragen – bitte kurz warten." }, 429);
+
+// Mod-Protokoll: Aktion eines Kontos im Kanal der Anfrage (nur Streamer, Mods, Admins landen dort)
+export async function audit(userId: string, action: string, detail: Record<string, unknown> = {}) {
+  try {
+    const { error } = await db.rpc("audit_add", { p_user: userId, p_action: action, p_detail: detail });
+    if (error && error.code !== "PGRST202") console.warn("Protokoll:", error.message);
+  } catch (e) {
+    console.warn("Protokoll:", e);
+  }
 }
 
 // Plattform-Admin (das StreamHelp-Admin-Konto aus dem Admin-Bereich). Vor der Plattform-Migration
@@ -164,12 +196,27 @@ export async function isChannelOwner(userId: string): Promise<boolean> {
   return !!profile?.is_admin;
 }
 
-// Angemeldeten Supabase-User aus dem Authorization-Header lesen
+// Angemeldeten Supabase-User aus dem Authorization-Header lesen.
+// Zwei-Faktor-Anmeldung: Hat das Konto 2FA eingerichtet, zählt die Sitzung erst nach
+// bestätigtem Code (aal2) – vorher gilt die Anfrage als nicht angemeldet.
 export async function getUserFromRequest(req: Request) {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!token) return null;
   const { data, error } = await db.auth.getUser(token);
-  return error ? null : data.user;
+  if (error || !data.user) return null;
+  const hasMfa = (data.user.factors ?? []).some((f) => f.status === "verified");
+  if (hasMfa && tokenClaims(token).aal !== "aal2") return null;
+  return data.user;
+}
+
+// Inhalt eines JWT lesen (ohne Prüfung – nur nach getUser(), das ihn bei Supabase geprüft hat)
+function tokenClaims(token: string): { aal?: string } {
+  try {
+    const part = token.split(".")[1] ?? "";
+    return JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (part.length % 4)) % 4)));
+  } catch {
+    return {};
+  }
 }
 
 // ---------- Twitch API ----------

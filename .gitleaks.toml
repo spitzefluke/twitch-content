@@ -1,0 +1,12 @@
+# Secret-Scan (gitleaks) in .github/workflows/security-checks.yml – Standardregeln plus zwei Ausnahmen:
+#   · js/config.js enthält absichtlich den öffentlichen Anon-Key. Dass dort nie ein geheimer Schlüssel
+#     steht (service_role, sb_secret_…), prüft tools/check-secrets.mjs.
+#   · *_test.ts: erfundene Schlüssel für Tests
+title = "StreamHelp"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Öffentlicher Anon-Key und Test-Schlüssel"
+paths = ['''js/config\.js$''', '''_test\.ts$''']

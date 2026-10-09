@@ -1,7 +1,8 @@
 // Drehung von der Website aus. Das Ergebnis wird serverseitig ausgelost,
 // damit es für alle gleich ist und optional im Twitch-Chat landet.
 import {
-  channelServe, chatText, CodedError, corsHeaders, db, getConnection, getUserFromRequest, isAdminUser, json, performSpin, sendChat,
+  audit, channelServe, chatText, CodedError, corsHeaders, db, getConnection, getUserFromRequest, isAdminUser, json, performSpin,
+  rateLimit, sendChat, tooMany,
 } from "../_shared/twitch.ts";
 
 const COOLDOWN_MS = 8000;
@@ -12,6 +13,7 @@ Deno.serve(channelServe(async (req) => {
 
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Nicht angemeldet" }, 401);
+  if (!(await rateLimit(`spin:${user.id}`, 10))) return tooMany();
 
   const { variant_id, announce } = await req.json().catch(() => ({}));
   const { data: profile } = await db.from("profiles").select("username, is_admin").eq("id", user.id).maybeSingle();
@@ -31,7 +33,8 @@ Deno.serve(channelServe(async (req) => {
     });
 
     let announced = false;
-    if (announce && (await isAdminUser(user.id))) {
+    if (announce && (await isAdminUser(user.id, "wheel"))) {
+      await audit(user.id, "spin", { result: spin.result, variant: spin.variant_name });
       const conn = await getConnection();
       if (conn) {
         try {

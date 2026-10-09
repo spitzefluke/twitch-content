@@ -22,6 +22,17 @@ Bitte **nicht** als öffentliches Issue melden, sondern über GitHub unter
 - **Geheimnisse:** stehen nur in Supabase (Edge Functions → Secrets) bzw. GitHub (Actions → Secrets),
   nie im Code. `js/config.js` enthält nur den öffentlichen Anon-Key.
 
+- **Zwei-Faktor-Anmeldung:** für alle Konten (Authenticator-App); mit eingerichteter 2FA gelten
+  Streamer-/Mod-/Admin-Rechte nur nach bestätigtem Code. Im Admin-Bereich ist sie Pflicht.
+- **Mod-Rechte und Protokoll:** Streamer sperren Mods einzelne Bereiche; Änderungen mit Rechten
+  landen im Mod-Protokoll.
+- **Rate-Limits** für die API (`api_guard`) und die Edge Functions; Bot-Schutz bei der Registrierung.
+- **Automatische Prüfungen** bei jeder PR: Secret-Scan, Migrationen, Edge Functions, CodeQL.
+
+## Wenn etwas passiert
+
+Siehe **`NOTFALLPLAN.md`** (Raid, gekaperte Konten, verlorene 2FA, Schlüssel austauschen, Backups).
+
 ## Einstellungen, die nur im Supabase-Dashboard gehen
 
 Siehe README, Abschnitt „Sicherheit – Checkliste“.
