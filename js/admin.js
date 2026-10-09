@@ -29,9 +29,9 @@ const state = {
   search: '',
 };
 
+// Das Admin-Token liegt nur im Arbeitsspeicher (state.token), nie im Browser-Speicher: Neu laden
+// heißt neu einloggen. Früher gespeicherte Tokens werden beim Start gelöscht.
 const session = {
-  get() { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } },
-  set(v) { try { sessionStorage.setItem(TOKEN_KEY, v); } catch { /* privat */ } },
   clear() { try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* privat */ } },
 };
 
@@ -166,11 +166,9 @@ function init() {
   });
   setInterval(updateLiveLabel, 1000);
 
-  state.token = session.get();
+  session.clear();
   loadProviders();
-  if (state.token && tokenMfa(state.token)) showApp();
-  else if (state.token) showMfaSetup();
-  else showLogin();
+  showLogin();
 }
 
 function showLogin(message) {
@@ -196,7 +194,6 @@ async function onLogin(e) {
   try {
     const { token, mfa, mfa_missing: mfaMissing } = await call('login', { password, code });
     state.token = token;
-    session.set(token);
     form.reset();
     if (mfa === false) { showMfaSetup(); return; }
     showApp();
@@ -223,7 +220,8 @@ function logout(message) {
 }
 
 // Meldet auf der Webseite mit dem internen Admin-Account an (ohne Registrierung).
-// Der Einmal-Code geht über sessionStorage (gleicher Tab), nicht über die URL.
+// Der Einmal-Code geht über sessionStorage, nicht über die URL. Die Webseite öffnet in einem neuen
+// Tab (er bekommt eine Kopie des sessionStorage) – so bleibt dieser Tab angemeldet.
 async function openSiteAsAdmin() {
   const btn = $('#site-btn');
   btn.disabled = true;
@@ -231,7 +229,11 @@ async function openSiteAsAdmin() {
   try {
     const { token_hash } = await call('site_session');
     sessionStorage.setItem('zd_admin_site', token_hash);
-    location.href = './';
+    const win = window.open('./', '_blank');
+    if (!win) { location.href = './'; return; } // Pop-up blockiert: im selben Tab
+    sessionStorage.removeItem('zd_admin_site');
+    btn.disabled = false;
+    btn.classList.remove('is-loading');
   } catch (err) {
     if (err.status === 401) { logout(err.message); return; }
     toast(`Webseite konnte nicht geöffnet werden: ${err.message}`, 'error', 6000);
@@ -274,7 +276,6 @@ async function onMfaEnable(e) {
   try {
     const { token } = await call('mfa_enable', { code });
     state.token = token;
-    session.set(token);
     form.reset();
     toast('Zwei-Faktor-Code ist eingerichtet. Ab jetzt beim Einloggen immer mit angeben.', 'ok', 7000);
     showApp();

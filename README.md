@@ -775,7 +775,7 @@ Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen A
 - **Streamer-Kanäle**: Bewerbungen neuer Streamer mit Nachricht – **Freischalten**, **Sperren** oder **Zurückstellen** (siehe „Plattform: viele Streamer“)
 - Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf (gilt nur im Standard-Kanal; in den anderen Kanälen sind es Inhaber und freigegebene Mods).
 
-Mit **„Webseite als Admin öffnen“** (oben rechts) landest du direkt auf der Webseite, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
+Mit **„Webseite als Admin öffnen“** (oben rechts) öffnet sich die Webseite in einem neuen Tab, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
 
 Das Passwort steht **nicht** im Code, weil das Repo öffentlich ist. Es liegt als Secret `ADMIN_PASSWORD` in Supabase und wird im Setup-Skript abgefragt. Später ändern:
 
@@ -785,7 +785,7 @@ npx supabase secrets set "ADMIN_PASSWORD='neues-langes-passwort'"
 
 Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen in 15 Minuten ist der Login für 15 Minuten gesperrt. Im Demo-Modus lautet das Passwort `demo` (2FA-Code `123456`).
 
-**Zwei-Faktor-Code (Pflicht, Migration …_security.sql):** Beim ersten Login nur mit Passwort zeigt der Admin-Bereich einen QR-Code für die Authenticator-App. Nach dem Bestätigen gilt: Passwort **und** Code. Das Geheimnis liegt in `public.admin_mfa` (nur die Edge Function liest es). Handy verloren: `NOTFALLPLAN.md`, Abschnitt 4. Unter **Sicherheits-Check** prüft der Admin-Bereich die Datenbank.
+**Zwei-Faktor-Code (Pflicht, Migration …_security.sql):** Beim ersten Login nur mit Passwort zeigt der Admin-Bereich einen QR-Code für die Authenticator-App. Nach dem Bestätigen gilt: Passwort **und** Code. Das Geheimnis liegt in `public.admin_mfa` (nur die Edge Function liest es). Handy verloren: `NOTFALLPLAN.md`, Abschnitt 4. Die Admin-Sitzung liegt nur im Arbeitsspeicher des Tabs (nicht im Browser-Speicher) – nach dem Neuladen oder nach „Twitch-Bot verbinden“ einfach wieder einloggen. Unter **Sicherheits-Check** prüft der Admin-Bereich die Datenbank.
 
 ## Wichtig zu wissen
 
