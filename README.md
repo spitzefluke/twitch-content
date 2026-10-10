@@ -749,6 +749,22 @@ Kachel **„Chat-Kommandos“** im Dashboard. Zuschauer tippen ein Kommando in d
 - Der Bot antwortet auf Chat-Kommandos nicht (sonst flutet er den Chat) – das Overlay zeigt alles. Kommandos haben Vorrang vor eigenen Bot-Befehlen gleichen Namens; Zähler-Befehle und eingebaute Befehle (`!vote`, `!puls` …) sind gesperrt.
 - Mods brauchen den Bereich **„Mitmach-Spiele“** (Mod-Rechte). Im Demo-Modus spielt **💬 Chat simulieren** ein paar Zuschauer.
 
+## Overlay in Module aufteilen
+
+Statt einer Browserquelle mit allem kann das Overlay auf mehrere Quellen verteilt werden – z. B. **Alerts** in jede Szene, den **Chat** nur in der Chatting-Szene, **Spiele** nur beim Zocken. OBS-Fenster → Reiter **„Module“**:
+
+- Fertige Module (`js/overlay-modules.js`): 🔔 Alerts & Ziele · 💬 Chat · 📢 Laufband · 🎥 Kamera & Haustier · 🎮 Spiele & Mitmachen · 🖼️ Pause & Szenen. Je Modul **„Link kopieren“** (von Hand als Browserquelle 1920 × 1080 einfügen) oder **„In OBS anlegen“** (mit OBS verbunden: legt die Quelle „StreamHelp-Overlay · <Modul>“ in der aktuellen Szene an bzw. aktualisiert sie).
+- **Eigenes Modul:** Ebenen anhaken, Namen geben – fertig.
+- Die Adresse ist `overlay.html?live=1&only=<Ebenen>&m=<Modul>`: Plätze, Größen und Aussehen kommen wie gewohnt aus dem OBS-Fenster, die Quelle zeigt nur ihre Ebenen. Eine Ebene, die im OBS-Fenster aus ist, bleibt auch im Modul aus.
+- **Entweder** das ganze Overlay **oder** Module – beides zusammen zeigt Ebenen doppelt (und spielt Sounds zweimal).
+
+## Statistik: OBS & Daten
+
+Unter **📈 Statistik → „OBS & Daten“** (Streamer und freigegebene Mods). Einmal nötig: Migration **`supabase/migrations/20261108000000_overlay_usage.sql`** (nach `…_chat_control.sql`).
+
+- **Datenverbrauch des Overlays:** Jede Browserquelle misst, was sie lädt (`js/overlay-usage.js`: Seite/Bilder/Sounds über Resource Timing, Datenbank-Abfragen über `fetch`, Realtime und Twitch-Chat über die WebSockets) und meldet alle 5 Minuten die neuen Bytes an `overlay_usage_add` (ohne Anmeldung, höchstens eine Meldung pro Minute und Modul, Werte gedeckelt). Die Statistik zeigt je Tag gestapelte Balken (Dateien, Datenbank, Live-Verbindung, Twitch-Chat, Sonstiges), den Verbrauch je Quelle/Modul und den Schnitt pro Stunde. Gemessen wird nur im Live-Link (nicht in Vorschau, Test oder Aufnahme-Studio); Bilder von fremden Servern ohne `Timing-Allow-Origin` (z. B. Emotes) zählen oft nicht mit – es sind Richtwerte. Gespeichert werden 90 Tage.
+- **OBS gerade:** Läuft OBS auf demselben PC, verbindet sich die Statistik über obs-websocket (gleiches gespeichertes Passwort wie im OBS-Fenster) und zeigt alle 2 Sekunden CPU, Arbeitsspeicher, Bilder pro Sekunde, Renderzeit, ausgelassene Bilder, freien Speicher – und während des Streams Laufzeit, hochgeladene Daten, **Bitrate**, Upload pro Stunde, verlorene Bilder und Netz-Auslastung. Diese Werte bleiben im Browser.
+
 ## Startseite: Balken „Auf einen Blick“
 
 Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt alle 30 Sekunden neu nach (nur solange die Startseite offen ist). Neue Werte zählen vom alten zum neuen Wert hoch, „+… heute“ zeigt, was seit Mitternacht dazukam, ein roter Punkt, wer gerade live ist.

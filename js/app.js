@@ -35,6 +35,7 @@ import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, s
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
+import { LAYERS, MODULES, layerName, moduleUrl } from './overlay-modules.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -576,7 +577,7 @@ const PAGE_ENTER = {
   mods: () => { loadMods(); renderModSecurity(); },
   twitch: () => { renderTwitchPanel(); loadShowcase(); },
   security: () => renderSecurityPage(),
-  stats: () => renderStats($('#stats-slot'), state.api),
+  stats: () => renderStats($('#stats-slot'), state.api, STATS_OBS),
   ideas: () => renderStart(START),
 };
 
@@ -5605,6 +5606,7 @@ function setupObs() {
   form.addEventListener('change', () => updateObs());
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
+  setupObsModules();
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
   $('#obs-alert-upload-btn').addEventListener('click', uploadAlertSound);
   // Die Upload-Felder gehören nicht zu den OBS-Einstellungen
@@ -6118,6 +6120,7 @@ async function saveObsPreset() {
 function showObsTab(name) {
   const dlg = $('#obs-dialog');
   if (name === 'look') loadObsPresets();
+  if (name === 'modules') renderObsModules();
   dlg.querySelectorAll('.obs-tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
   dlg.querySelectorAll('.obs-pane').forEach((p) => { p.hidden = p.dataset.pane !== name; });
 }
@@ -6960,6 +6963,112 @@ async function copyObsUrl() {
     toast('Adresse ist markiert – mit Strg+C kopieren.');
   }
 }
+
+// ---------- Overlay-Module (js/overlay-modules.js): je Modul eine eigene Browserquelle ----------
+const obsBaseUrl = () => (obsLive.ready ? obsLiveUrl() : obsUrl());
+async function copyText(text, okText) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(okText, 'ok');
+  } catch {
+    prompt('Adresse kopieren:', text);
+  }
+}
+async function applyModule(btn, mod) {
+  if (!obs.ws?.connected) { toast('Erst oben mit OBS verbinden – oder den Link kopieren und von Hand als Browserquelle einfügen.', 'info', 6000); return; }
+  btn.disabled = true;
+  try {
+    if (obsLive.ready && obsLive.access.can_edit) await saveObsLive();
+    const { moduleSourceName } = await import('./obs-ws.js');
+    const name = moduleSourceName(mod.name);
+    const { scene, created } = await obs.ws.applyOverlay(moduleUrl(obsBaseUrl(), mod), name);
+    toast(created ? `Fertig: „${name}“ liegt jetzt in der Szene „${scene}“.` : `„${name}“ ist aktualisiert (Szene „${scene}“).`, 'ok', 6000);
+  } catch (err) {
+    toast(`OBS: ${err.message}`, 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+function customModule() {
+  const layers = [...$('#obs-modules-checks').querySelectorAll('input:checked')].map((i) => i.value);
+  const label = $('#obs-modules-name').value.trim() || 'Eigenes Modul';
+  const id = label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'eigenes';
+  return { id, name: label, layers };
+}
+function setupObsModules() {
+  $('#obs-modules-checks').replaceChildren(...LAYERS.map(([key, name]) => {
+    const label = document.createElement('label');
+    label.className = 'obs-modules-check';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = key;
+    label.append(box, ` ${name}`);
+    return label;
+  }));
+  $('#obs-modules-checks').addEventListener('change', () => { $('#obs-modules-apply').disabled = !customModule().layers.length; });
+  $('#obs-modules-copy').addEventListener('click', () => {
+    const mod = customModule();
+    if (!mod.layers.length) { toast('Erst Ebenen anhaken.', 'info'); return; }
+    copyText(moduleUrl(obsBaseUrl(), mod), 'Link kopiert – in OBS als Browserquelle (1920 × 1080) einfügen.');
+  });
+  $('#obs-modules-apply').addEventListener('click', (e) => {
+    const mod = customModule();
+    if (mod.layers.length) applyModule(e.currentTarget, mod);
+  });
+}
+function renderObsModules() {
+  const list = $('#obs-modules-list');
+  const on = (key) => {
+    const el = $('#obs-options').elements[OBS_LAYER_SWITCH[key] ?? `${key}_on`];
+    return !el || el.checked;
+  };
+  list.replaceChildren(...MODULES.map((mod) => {
+    const li = document.createElement('li');
+    li.className = 'obs-module';
+    const active = mod.layers.filter(on);
+    const head = document.createElement('div');
+    head.className = 'obs-module-head';
+    const title = document.createElement('b');
+    title.textContent = `${mod.icon} ${mod.name}`;
+    const hint = document.createElement('small');
+    hint.textContent = `${mod.hint} ${active.length ? `An: ${active.map(layerName).join(', ')}` : 'Gerade ist keine dieser Ebenen an.'}`;
+    head.append(title, hint);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'btn btn--ghost btn--sm';
+    copy.textContent = 'Link kopieren';
+    copy.addEventListener('click', () => copyText(moduleUrl(obsBaseUrl(), mod), `Link für „${mod.name}“ kopiert – in OBS als Browserquelle (1920 × 1080) einfügen.`));
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.className = 'btn btn--primary btn--sm';
+    apply.textContent = 'In OBS anlegen';
+    apply.addEventListener('click', () => applyModule(apply, mod));
+    const row = document.createElement('div');
+    row.className = 'obs-module-actions';
+    row.append(copy, apply);
+    li.classList.toggle('is-empty', !active.length);
+    li.append(head, row);
+    return li;
+  }));
+  $('#obs-modules-warn').hidden = false;
+}
+
+// ---------- Statistik → OBS gerade (js/dash-obsdata.js) ----------
+// Das OBS-Fenster läuft in einem eigenen Tab – die Statistik verbindet sich darum selbst (gleiches gespeichertes Passwort).
+const statsObs = { ws: null };
+const STATS_OBS = {
+  obs: () => (obs.ws?.connected ? obs.ws : statsObs.ws),
+  openObs: () => openObsWindow(),
+  savedPassword: () => readObsLogin().catch(() => null),
+  async connect(password) {
+    const { ObsSocket } = await import('./obs-ws.js');
+    statsObs.ws?.close();
+    const ws = new ObsSocket();
+    await ws.connect({ password: password ?? '' });
+    statsObs.ws = ws;
+    saveSecret(OBS_WS_KEY, password ?? '');
+  },
+};
 
 // ---------- Verbindung zu OBS (WebSocket) ----------
 async function readObsLogin() {

@@ -216,6 +216,8 @@ async function createSupabaseApi() {
     async setChannelShowcase(on) { return unwrap(await sb.rpc('channel_showcase_set', { p_on: on })); },
     // Dashboard → Statistik (Migration …_dashboard.sql)
     async channelStats(days) { return unwrap(await sb.rpc('channel_stats', { p_days: days })); },
+    // Statistik → OBS & Daten (Migration …_overlay_usage.sql)
+    async overlayUsage(days) { return unwrap(await sb.rpc('overlay_usage_stats', { p_days: days })); },
     async getProfile(user) {
       const { data } = await sb.from('profiles').select('username, is_admin').eq('id', user.id).maybeSingle();
       return data ?? { username: user.user_metadata?.username ?? user.email.split('@')[0], is_admin: false };
@@ -1190,6 +1192,36 @@ function createLocalApi() {
         },
         top_viewers: [{ name: 'PixelPaul', seconds: 61200 }, { name: 'NightOwl_Mia', seconds: 48300 }, { name: 'LootLukas', seconds: 30120 }, { name: 'gg_sina', seconds: 21900 }],
         chatters: 37,
+      };
+    },
+    // Demo: Datenverbrauch des Overlays – an Stream-Tagen (wie channelStats) drei Module
+    async overlayUsage(days = 7) {
+      await requireAdmin();
+      const n = Math.min(Math.max(Number(days) || 7, 1), 90);
+      const mods = { alerts: [0.9, 0.5, 0.25, 0.04], chat: [0.4, 0.15, 0.2, 1.6], games: [1.4, 0.9, 0.6, 0.05] };
+      const KEYS = ['files', 'db', 'live', 'chat'];
+      const per = {};
+      const series = Array.from({ length: n }, (_, i) => {
+        const d = new Date(Date.now() - (n - 1 - i) * 86400000);
+        const seed = d.getDate() * 31 + d.getMonth() * 7;
+        const live = d.getDay() % 3 !== 0;
+        const sec = live ? (90 + (seed % 150)) * 60 + 600 : 0;
+        const row = { day: d.toISOString().slice(0, 10), files: 0, db: 0, live: 0, chat: 0, other: 0, seconds: 0 };
+        if (!live) return row;
+        for (const [id, rate] of Object.entries(mods)) {
+          const m = (per[id] ??= { module: id, total: 0, seconds: 0, last_at: null });
+          KEYS.forEach((k, j) => { const b = Math.round(rate[j] * 1e6 * (sec / 3600) * (0.8 + (seed % 5) / 10)); row[k] += b; m.total += b; });
+          row.other += 40000; m.total += 40000;
+          row.seconds += sec; m.seconds += sec;
+          m.last_at = new Date(d.setHours(22, 15, 0, 0)).toISOString();
+        }
+        return row;
+      });
+      const sum = (k) => series.reduce((a, d) => a + d[k], 0);
+      return {
+        days: n, series,
+        modules: Object.values(per).sort((a, b) => b.total - a.total),
+        totals: { files: sum('files'), db: sum('db'), live: sum('live'), chat: sum('chat'), other: sum('other'), seconds: sum('seconds') },
       };
     },
     async channelExport() {

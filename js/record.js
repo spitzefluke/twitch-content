@@ -14,6 +14,7 @@
 //                  Takt aus einem Worker.
 //   mit Overlay  → die Vorschau hier (Spiel + Kamera + Overlay mit rec=<Ebenen>) wird per Tab-Freigabe
 //                  aufgenommen und auf die Vorschau zugeschnitten (Region Capture, Chrome und Edge).
+import { LAYERS } from './overlay-modules.js';
 import { CONFIG } from './config.js';
 import { channelFromUrl, channelHeaders, channelParam, lookupChannel, setChannel, withChannelParam } from './channel.js';
 
@@ -31,15 +32,6 @@ const MIMES = [
   ['video/webm', 'webm'],
   ['video/mp4;codecs=avc1,mp4a.40.2', 'mp4'],
   ['video/mp4', 'mp4'],
-];
-// Overlay-Ebenen (Namen wie im OBS-Fenster). kind: wie die Ebene in den Overlay-Einstellungen an ist
-const LAYERS = [
-  ['alerts', 'Alerts'], ['chat', 'Chat'], ['ticker', 'Laufband', 'ticker'], ['camframe', 'Kamera-Rahmen', 'flag'],
-  ['labels', 'Info-Leiste'], ['goal', 'Ziel-Balken'], ['recent', 'Letzter Follower & Abo'], ['next', 'Als Nächstes'],
-  ['wheel', 'Glücksrad'], ['prank', 'Würfe & Sounds', 'flag'], ['pet', 'Haustier', 'flag'], ['quest', 'Unangenehme Fragen'],
-  ['bingo', 'Fortnite-Bingo'], ['shop', 'Kisten-Shop'], ['challenge', 'Win-Challenge'], ['forbid', 'Verbotenes Wort'],
-  ['subathon', 'Subathon-Timer'], ['quiz', 'Quiz'], ['queue', 'Mitspielen'], ['tts', 'Vorlesen'], ['cards', 'Sammelkarten'],
-  ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['poll', 'Umfrage'], ['counter', 'Zähler'], ['gamewheel', 'Spiel-Rad'], ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
 ];
 
 const form = $('rec-form');

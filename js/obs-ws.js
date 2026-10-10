@@ -123,7 +123,7 @@ export class ObsSocket {
   async sources(scene) {
     const [{ sceneItems }, canvas] = await Promise.all([this.request('GetSceneItemList', { sceneName: scene }), this.canvas()]);
     return sceneItems
-      .filter((it) => !it.isGroup && it.sourceName !== OVERLAY_SOURCE && it.sourceName !== OLD_SOURCE && !NOT_VIDEO.test(it.inputKind ?? ''))
+      .filter((it) => !it.isGroup && !it.sourceName.startsWith(OVERLAY_SOURCE) && it.sourceName !== OLD_SOURCE && !NOT_VIDEO.test(it.inputKind ?? ''))
       .map((it) => ({
         name: it.sourceName,
         kind: it.inputKind ?? '',
@@ -136,31 +136,31 @@ export class ObsSocket {
   }
 
   // Legt die Browserquelle an oder aktualisiert ihre Adresse – und legt sie
-  // in der aktuellen Szene ganz nach oben, über die Kamera.
-  async applyOverlay(url) {
+  // in der aktuellen Szene ganz nach oben, über die Kamera. name: eigene Quelle je Modul (js/overlay-modules.js)
+  async applyOverlay(url, name = OVERLAY_SOURCE) {
     const scene = await this.programScene();
     const canvas = await this.canvas();
     const settings = { url, ...OVERLAY_SIZE, reroute_audio: true, shutdown: false };
     const { inputs } = await this.request('GetInputList');
-    if (!inputs.some((i) => i.inputName === OVERLAY_SOURCE) && inputs.some((i) => i.inputName === OLD_SOURCE)) {
+    if (name === OVERLAY_SOURCE && !inputs.some((i) => i.inputName === OVERLAY_SOURCE) && inputs.some((i) => i.inputName === OLD_SOURCE)) {
       await this.request('SetInputName', { inputName: OLD_SOURCE, newInputName: OVERLAY_SOURCE });
       inputs.find((i) => i.inputName === OLD_SOURCE).inputName = OVERLAY_SOURCE;
     }
-    const exists = inputs.some((i) => i.inputName === OVERLAY_SOURCE);
+    const exists = inputs.some((i) => i.inputName === name);
     let created = false;
     if (exists) {
-      await this.request('SetInputSettings', { inputName: OVERLAY_SOURCE, inputSettings: settings, overlay: true });
+      await this.request('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true });
     } else {
       await this.request('CreateInput', {
-        sceneName: scene, inputName: OVERLAY_SOURCE, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true,
+        sceneName: scene, inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true,
       });
       created = true;
     }
     let id;
     try {
-      id = (await this.request('GetSceneItemId', { sceneName: scene, sourceName: OVERLAY_SOURCE })).sceneItemId;
+      id = (await this.request('GetSceneItemId', { sceneName: scene, sourceName: name })).sceneItemId;
     } catch {
-      id = (await this.request('CreateSceneItem', { sceneName: scene, sourceName: OVERLAY_SOURCE })).sceneItemId;
+      id = (await this.request('CreateSceneItem', { sceneName: scene, sourceName: name })).sceneItemId;
       created = true;
     }
     if (created) {
@@ -277,3 +277,13 @@ async function authString(password, salt, challenge) {
   };
   return sha((await sha(password + salt)) + challenge);
 }
+
+// Name der OBS-Quelle für ein Modul: „StreamHelp-Overlay · Chat“
+export const moduleSourceName = (label) => `${OVERLAY_SOURCE} · ${String(label).slice(0, 30)}`;
+
+// Live-Werte für die Statistik: Leistung (GetStats) und Stream (GetStreamStatus, fehlt ohne Stream-Ausgabe)
+export async function obsStats(ws) {
+  const [stats, stream] = await Promise.all([ws.request('GetStats'), ws.request('GetStreamStatus').catch(() => null)]);
+  return { stats, stream };
+}
+

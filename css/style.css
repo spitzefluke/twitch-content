@@ -2007,3 +2007,19 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 @media (hover: none) { .tile-fav { opacity: .85; } }
 .grid-empty { grid-column: 1 / -1; color: var(--dim, #8a93a6); padding: 18px 0; }
 @media (max-width: 640px) { .grid-search { width: 100%; } .section-head:has(.grid-tools) { flex-wrap: wrap; } }
+
+/* ---------- OBS-Fenster: Overlay-Module (js/overlay-modules.js) ---------- */
+.obs-modules { display: grid; gap: 12px; padding: 4px 2px 12px; }
+.obs-modules .form-hint { margin: 0; }
+.obs-modules-warn { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(255, 184, 28, .12); color: var(--text); font-size: 13px; }
+.obs-modules-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.obs-module { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--bg-2); }
+.obs-module.is-empty { opacity: .7; }
+.obs-module-head { display: grid; gap: 2px; min-width: 0; }
+.obs-module-head small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.obs-module-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.obs-modules-custom summary { cursor: pointer; font-weight: 700; }
+.obs-modules-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; margin: 10px 0; font-size: 13px; }
+.obs-modules-check { display: flex; align-items: center; gap: 6px; }
+.obs-modules-custom .x-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.obs-modules-custom input[type="text"] { flex: 1; min-width: 140px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); font: inherit; }
