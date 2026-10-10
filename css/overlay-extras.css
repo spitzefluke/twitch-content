@@ -213,3 +213,36 @@
 .plo-row.is-win::before { background: linear-gradient(90deg, rgba(61, 220, 132, .65), rgba(61, 220, 132, .25)); }
 @media (prefers-reduced-motion: reduce) { .plo-row::before { transition: none; } .plo-pct.is-bump { animation: none; } }
 
+/* ---------- Zähler ---------- */
+.ov-x-counter { --c: #ff5a4e; font-size: calc(16px * var(--cts, 1)); width: auto; min-width: 9em; border-color: rgba(255, 90, 78, .5); }
+.cto-list { list-style: none; margin: 0; padding: .5em .65em; display: grid; gap: .3em; }
+.cto-row { display: grid; grid-template-columns: 1.6em auto minmax(0, 1fr); align-items: center; gap: .5em; padding: .25em .4em; border-radius: .5em; }
+.cto-emoji { font-size: 1.3em; line-height: 1; text-align: center; }
+.cto-value { font-family: var(--font-mono); font-size: 1.5em; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.6em; text-align: right; }
+.cto-label { font-family: var(--font-display); font-weight: 800; font-size: 1.05em; text-transform: uppercase; letter-spacing: .03em; opacity: .85; white-space: nowrap; }
+.cto-row.is-up { animation: cto-up .7s var(--ease-spring); }
+.cto-row.is-down { animation: cto-down .6s ease-out; }
+@keyframes cto-up { 30% { background: rgba(255, 90, 78, .35); transform: scale(1.08); } }
+@keyframes cto-down { 30% { background: rgba(255, 255, 255, .12); } }
+
+/* ---------- Spiel-Rad ---------- */
+.ov-x-gamewheel { --c: #ff4fd8; font-size: calc(16px * var(--sgs, 1)); width: 17em; border-color: rgba(255, 79, 216, .5); text-align: center; }
+.sgo-stage { position: relative; width: 15em; margin: .6em auto 0; }
+.sgo-canvas { display: block; width: 100%; aspect-ratio: 1; }
+.sgo-pointer { position: absolute; top: -.35em; left: 50%; transform: translateX(-50%); z-index: 1; font-size: 1.5em; color: #fff; text-shadow: 0 2px 6px rgba(0, 0, 0, .7); }
+.sgo-result { display: block; min-height: 1.4em; padding: .4em .8em .7em; font-family: var(--font-display); font-size: 1.35em; font-weight: 800; overflow-wrap: anywhere; }
+.ov-x-gamewheel.is-done .sgo-result { animation: sgo-pop .6s var(--ease-spring) both; color: #ffd36b; }
+@keyframes sgo-pop { from { opacity: 0; transform: scale(.6); } }
+
+/* ---------- Herzfrequenz ---------- */
+.ov-x-heart { --c: #ff2d55; font-size: calc(16px * var(--hrs, 1)); width: auto; display: flex; align-items: center; gap: .45em; padding: .45em .9em .45em .6em; border-color: rgba(255, 45, 85, .5); }
+.ov-x-heart[hidden] { display: none; }
+.hro-heart { font-size: 1.9em; line-height: 1; animation: hro-beat var(--beat, 1s) ease-in-out infinite; }
+.hro-bpm { font-family: var(--font-mono); font-size: 2em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.hro-unit { font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.ov-x-heart.is-alarm { border-color: #ff2d55; box-shadow: 0 0 1.4em rgba(255, 45, 85, .55); animation: hro-alarm 1.2s ease-in-out infinite; }
+.ov-x-heart.is-alarm .hro-bpm { color: #ff6b85; }
+@keyframes hro-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.22); } 30% { transform: scale(.94); } 45% { transform: scale(1.1); } }
+@keyframes hro-alarm { 50% { transform: translateX(-.06em) rotate(-.6deg); } }
+@media (prefers-reduced-motion: reduce) { .hro-heart, .ov-x-heart.is-alarm, .cto-row.is-up, .ov-x-gamewheel.is-done .sgo-result { animation: none; } }
+

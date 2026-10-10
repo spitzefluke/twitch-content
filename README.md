@@ -4,7 +4,8 @@ Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkt
 
 - **Twitch-Panel** unter dem Stream: aktuelles Game mit passenden Ideen, **Umfragen**, **Haustier füttern**, Mitmachen per Klick (Verlosung, Warteschlange) und Link zur Seite – mit echtem Kanalnamen, hell/dunkel wie Twitch und auch in der Twitch-App.
 - **Umfragen**: Frage mit 2–5 Antworten, abstimmen im Panel, mit `!vote 2` im Chat oder auf der Seite; Ergebnis live im Overlay.
-- **Games im Dashboard**: Fortnite, Minecraft, Just Chatting und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
+- **Games im Dashboard**: Fortnite, Minecraft, Just Chatting, Speedrun, Horror und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
+- **Game-Pakete**: **Zähler** (Tode, Kills, Versuche, Jumpscares – Mods zählen im Chat mit `!tode +`), **Spiel-Rad** (nächstes Game oder eine Challenge passend zum Game) und **Herzfrequenz** per Bluetooth-Pulsgurt – alles live im Overlay.
 - **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
 - **Öffentliche Startseite** nach dem Entwurf „StreamHelp Startseite“ aus Claude Design (`css/landing.css`, `js/landing.js`, Icons von Phosphor lokal in `assets/fonts/`) in den Farben des Logos (Indigo und Grün): „Dein Stream. Eine Zentrale.“ mit **Mit Twitch anmelden** als einzigem Hauptknopf (die anderen Wege stehen klein darunter). Die Overlay-Vorschau ist eine kleine Szene: Alerts kommen und gehen (Abo, Follower, Bits), das Glücksrad holt aus, dreht und bleibt auf einem Ergebnis stehen, der Chat schreibt weiter und das Haustier läuft auf dem Laufband. Die Zahlen im Band zählen hoch, sobald man hinscrollt; die Funktionen stehen nach Rolle (Zuschauer, Mods, Streamer) mit kleiner Vorführung. Beim Scrollen gleiten die Abschnitte herein, die Vorschau bewegt sich langsamer als die Seite (Tiefe), oben zeigt ein Balken, wie weit man ist. Wer „weniger Bewegung“ eingestellt hat, sieht alles ruhig
@@ -708,12 +709,32 @@ StreamHelp läuft für beliebig viele Streamer. Jeder Kanal hat **eigene** Kache
 
 ## Games im Dashboard
 
-Oben bei den **Content-Ideen** stehen die Games des Kanals (z. B. Fortnite, Minecraft, Just Chatting). Ein Klick auf ein Game zeigt zuerst die **passenden Ideen** (Fortnite: Glücksrad, Bingo, Kisten-Shop, Quiz, Win-Challenge; Just Chatting: Unangenehme Fragen, Hot Words, Vorlesen, Dino), darunter alles, was **zu jedem Game** passt. Games ohne eigene Idee zeigen „**Wir arbeiten an einer Content-Idee für dieses Game**“ – mit Knopf zu den Vorschlägen. „Alle Ideen“ zeigt alles wie bisher.
+Oben bei den **Content-Ideen** stehen die Games des Kanals (z. B. Fortnite, Minecraft, Just Chatting). Ein Klick auf ein Game zeigt zuerst die **passenden Ideen** (Fortnite: Glücksrad, Bingo, Kisten-Shop, Quiz, Win-Challenge, Zähler; Minecraft und Speedrun: Zähler, Spiel-Rad, Umfrage; Just Chatting: Unangenehme Fragen, Umfrage, Hot Words, Vorlesen, Dino, Spiel-Rad; Horror: Herzfrequenz, Zähler, Spiel-Rad), darunter alles, was **zu jedem Game** passt. Games ohne eigene Idee zeigen „**Wir arbeiten an einer Content-Idee für dieses Game**“ – mit Knopf zu den Vorschlägen. „Alle Ideen“ zeigt alles wie bisher.
 
-- **Games verwalten** (Streamer, freigegebene Mods): Games anhaken – Fortnite, Minecraft, Just Chatting und Retro-Games (Super Mario 64, Super Mario World, Mario Kart 64, Zelda: Ocarina of Time, Pokémon Rot/Blau, Tetris, Sonic, Crash Bandicoot, GoldenEye 007, Street Fighter II, „Retro“). Dazu ein Standard-Game für die Zeit ohne Stream.
-- **Automatisch**: Läuft das OBS-Overlay, liest StreamHelp alle 5 Minuten die **Twitch-Kategorie** des Streams. Passt sie zu einem Game, wird es angeschaltet und für alle Zuschauer vorausgewählt (mit „Live“-Plakette). Ausschaltbar in „Games verwalten“.
+- **Games verwalten** (Streamer, freigegebene Mods): Games anhaken – Fortnite, Minecraft, Just Chatting, **Speedrun**, **Horror** und Retro-Games (Super Mario 64, Super Mario World, Mario Kart 64, Zelda: Ocarina of Time, Pokémon Rot/Blau, Tetris, Sonic, Crash Bandicoot, GoldenEye 007, Street Fighter II, „Retro“). Dazu ein Standard-Game für die Zeit ohne Stream.
+- **Automatisch**: Läuft das OBS-Overlay, liest StreamHelp alle 5 Minuten die **Twitch-Kategorie** des Streams. Passt sie zu einem Game, wird es angeschaltet und für alle Zuschauer vorausgewählt (mit „Live“-Plakette). Ausschaltbar in „Games verwalten“. „Horror“ erkennt bekannte Horror-Spiele (Phasmophobia, Lethal Company, Dead by Daylight, Outlast, Resident Evil, Five Nights at Freddy's, Silent Hill …); „Speedrun“ hat keine eigene Twitch-Kategorie und wird von Hand gewählt.
 - Neue Games: in `js/games.js` (Name, Symbol, passende Ideen) **und** in `supabase/functions/_shared/games.ts` (Twitch-Kategorie) eintragen.
 - Einmal nötig: Migration **`supabase/migrations/20261029000000_games.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt die Seite die Content-Ideen wie bisher ohne Games.
+
+## Game-Pakete: Zähler, Spiel-Rad, Herzfrequenz
+
+Zu jedem Game-Paket (Fortnite, Minecraft, Just Chatting, Speedrun, Horror) gibt es passende **Zähler-Vorlagen** und **Challenges**; sie stehen in `js/games.js` (`PACKS`). Einmal nötig: Migration **`supabase/migrations/20261106000000_game_packs.sql`** (nach `…_polls.sql`). Im OBS-Fenster gibt es dazu die Ebenen **Zähler**, **Spiel-Rad** und **Herzfrequenz**.
+
+**🔢 Zähler** (bis zu 12 je Kanal): Symbol, Name und Chat-Befehl, z. B. 💀 Tode mit `!tode`.
+- Im Dashboard: **+1**, **−1**, **=** (Wert setzen), bearbeiten, Reihenfolge, löschen. **Vorlagen** legen auf einen Klick die passenden Zähler an (Minecraft: Tode, Diamanten, Creeper; Speedrun: Versuche, Resets, Bestzeiten; Horror: Jumpscares, Tode, Schreie; Fortnite: Kills, Wins, Tode; Just Chatting: Lacher, Ähms).
+- Im Chat: `!tode` zeigt allen den Stand (je Zähler höchstens alle 10 Sekunden). **Mods und Streamer** zählen mit `!tode +`, `!tode +3`, `!tode -1` oder `!tode =42` (der Bot nennt den neuen Stand). Hat der Streamer einem Mod die „Mitmach-Spiele“ gesperrt, darf er nur noch nachsehen.
+- Im Stream (Ebene „Zähler“) und im **Twitch-Panel** stehen alle Zähler mit „im Stream zeigen“; eine geänderte Zahl hüpft kurz.
+
+**🎡 Spiel-Rad:**
+- **🎮 Nächstes Game:** Das Rad dreht zwischen allen angeschalteten Games. Mit „Gewonnenes Game gleich im Dashboard einstellen“ (Standard) springt das Dashboard auf das Game.
+- **🎯 Challenge:** Für das gewählte Game dreht das Rad eine Challenge (z. B. Minecraft: „Nur Holzwerkzeuge“, Horror: „Licht aus im Zimmer“). Eigene Challenges je Game (2–16, eine pro Zeile) speichert der Streamer im Dialog; „Vorlage“ stellt die Standardliste wieder her.
+- Das Ergebnis lost die Datenbank aus. Im Stream (Ebene „Spiel-Rad“) taucht das Rad auf, dreht und zeigt das Ergebnis ein paar Sekunden; der Bot verkündet es im Chat, sobald das Rad steht. Drehen dürfen Streamer und Mods.
+
+**❤️ Herzfrequenz:**
+- Im Dialog **„Pulsgurt verbinden“** – geht mit Pulsgurten (Polar, Garmin, Wahoo …) und Uhren, die ihren Puls per Bluetooth senden. Das klappt in **Chrome oder Edge am PC oder unter Android** (Web Bluetooth); Firefox, Safari und das iPhone können es nicht. Das Fenster muss offen bleiben (darf im Hintergrund sein); reißt die Verbindung ab, verbindet die Seite sich bis zu fünfmal neu.
+- Die Seite schickt höchstens alle 3 Sekunden den Puls. Gespeichert werden nur der **letzte Wert** und Min/Durchschnitt/Max der laufenden Sitzung (nach 10 Minuten ohne Werte beginnt eine neue).
+- Im Stream (Ebene „Herzfrequenz“) schlägt ein Herz im Takt; ab der **Warnschwelle** (Standard 140) wird es rot und wackelt. Ohne frische Werte verschwindet es. Im Chat nennt `!puls` (oder `!herz`) den Wert. „Puls ausblenden“ beendet die Anzeige.
+- Im Demo-Modus simuliert **🫀 Simulieren** einen Puls.
 
 ## Startseite: Balken „Auf einen Blick“
 
@@ -784,6 +805,7 @@ Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `tw
 - **Aktuelles Game** (mit „Live“, wenn die Twitch-Kategorie passt) und die **passenden Content-Ideen** – wie im Dashboard; Games ohne eigene Idee zeigen „Wir arbeiten an einer Content-Idee für dieses Game“.
 - **📊 Umfrage** (siehe „Umfragen“): Antworten mit Balken, Restzeit, die eigene Stimme ist markiert und lässt sich ändern. Nach dem Ende steht das Ergebnis da, bis der Streamer es ausblendet.
 - **🦖 Haustier füttern** (sobald die Kachel für Zuschauer freigeschaltet ist): zeigt, ob es Hunger hat, wie oft und von wem es zuletzt gefüttert wurde. Es gelten **dieselben Regeln wie `!füttern` im Chat** – jeder alle 10 Minuten, insgesamt höchstens alle 15 Sekunden, Raid-Schutz beachtet; der Knopf zählt die Wartezeit herunter.
+- **🔢 Zähler** (siehe „Game-Pakete“): Tode, Kills, Versuche … mit den Chat-Befehlen dazu.
 - **Mitmachen per Klick**: bei der **Verlosung** (gleiche Regeln wie `!mitmachen` im Chat, auch „nur Follower“) und in der **Mitspieler-Warteschlange** (mit Epic-Name). Für Abstimmen, Füttern und Mitmachen gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
 - **Als Nächstes** mit Termin und ein Link **zur Seite** (direkt in den Kanal, `#/c/<name>`).
 - **Hell/Dunkel wie Twitch** (folgt dem Twitch-Design des Zuschauers). Das Panel erkennt den Kanal selbst – jeder freigeschaltete Streamer mit Twitch-Verbindung kann es nutzen.

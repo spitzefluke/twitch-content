@@ -201,6 +201,9 @@
     // Haustier füttern
     if (data.pet) parts.push(petCard(data.pet, me));
 
+    // Zähler (Tode, Kills, Versuche …)
+    if (data.counters && data.counters.length) parts.push(countersCard(data.counters));
+
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
       var v = el('section', 'card');
@@ -361,6 +364,22 @@
     return c;
   }
 
+  function countersCard(list) {
+    var c = el('section', 'card counters');
+    c.append(el('h2', null, T('🔢 Zähler')));
+    var grid = el('div', 'counter-grid');
+    list.forEach(function (x) {
+      var item = el('div', 'counter');
+      item.append(el('span', 'counter-emoji', x.emoji), el('b', 'counter-value', String(x.value)), el('small', null, x.label));
+      if (x.command) item.title = '!' + x.command;
+      grid.append(item);
+    });
+    c.append(grid);
+    var cmds = list.filter(function (x) { return x.command; }).map(function (x) { return '!' + x.command; });
+    if (cmds.length) c.append(el('p', 'muted', T('Stand im Chat: {name}', { name: cmds.slice(0, 3).join(' · ') })));
+    return c;
+  }
+
   // Jede Sekunde: Restzeit der Umfrage, Wartezeit beim Füttern
   function tick() {
     clearInterval(ticker);
@@ -439,6 +458,7 @@
       queue: { open: true, waiting: 4, note: 'Squads ab 20 Uhr' },
       poll: { status: 'open', round: 1, question: 'Was spielen wir als Nächstes?', options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [7, 4, 2], total: 13, ends_at: new Date(Date.now() + 5 * 60000).toISOString(), chat: true },
       pet: { name: 'Rexi', species: 'dino', stage: 'adult', command: '!füttern', fed_count: 128, last_fed_by: 'Mia', last_fed_at: new Date(Date.now() - 60 * 60000).toISOString(), hungry_after: 45 },
+      counters: [{ emoji: '💀', label: 'Tode', value: 17, command: 'tode' }, { emoji: '🔫', label: 'Kills', value: 42, command: 'kills' }, { emoji: '👑', label: 'Wins', value: 3, command: 'wins' }],
       me: { shared: true, giveaway: false, queue: null, epic: '', vote: null, feed_wait: 0 },
     });
     var reply;

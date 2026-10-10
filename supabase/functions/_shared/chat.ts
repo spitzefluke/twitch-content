@@ -2,7 +2,7 @@
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
-// laufenden Umfrage „!vote 2“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
+// laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“) und „!puls“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
 // in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
 import { channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
@@ -85,6 +85,11 @@ export async function handleChatMessage(event: ChatMessage) {
     if (await handleVote(event, arg).catch((e) => { console.warn("Umfrage:", e); return false; })) return;
   }
 
+  // Zähler („!tode“, Mods: „!tode +“) und „!puls“ (Migration …_game_packs.sql)
+  if (!self || event.chatter_user_id !== self.user_id) {
+    if (await handleGameChat(event, text).catch((e) => { console.warn("Zähler/Puls:", e); return false; })) return;
+  }
+
   // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
   // Zahlenraten, !watchtime, !befehle, eigene Befehle)
   if (!self || event.chatter_user_id !== self.user_id) {
@@ -103,6 +108,27 @@ export async function handleChatMessage(event: ChatMessage) {
   if (self && event.chatter_user_id === self.user_id) return;
   // Abklingzeiten, Starttermin und Stadium: _shared/pet.ts (gilt genauso fürs Twitch-Panel)
   await feedPet(event.chatter_user_id, event.chatter_user_name || event.chatter_user_login);
+}
+
+// ---------- Zähler und Puls (Migration …_game_packs.sql) ----------
+// Liefert true, wenn der Befehl ein Zähler oder !puls war (Antwort geht gleich raus).
+async function handleGameChat(event: ChatMessage, text: string) {
+  const { data, error } = await db.rpc("game_chat", {
+    p_user_id: event.chatter_user_id,
+    p_name: event.chatter_user_name || event.chatter_user_login,
+    p_badges: (event.badges ?? []).map((b) => b.set_id),
+    p_text: text.slice(0, 200),
+  });
+  if (error) {
+    if (!/game_chat/.test(error.message)) console.warn("game_chat:", error.message); // Migration fehlt: nichts tun
+    return false;
+  }
+  if (!data?.handled) return false;
+  if (data.reply) {
+    const conn = await getConnection().catch(() => null);
+    if (conn) await sendChat(conn, String(data.reply)).catch((e) => console.warn("Chat:", (e as Error).message));
+  }
+  return true;
 }
 
 // ---------- Umfrage (Migration …_polls.sql) ----------

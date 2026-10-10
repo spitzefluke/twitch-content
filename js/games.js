@@ -4,9 +4,11 @@
 //   ideas: Content-Ideen (Kachel-Arten), die besonders zu diesem Game passen.
 //          Leer = „Wir arbeiten an einer Content-Idee für dieses Game“.
 export const GAMES = [
-  { id: 'fortnite', name: 'Fortnite', icon: '🏝️', group: 'top', ideas: ['wheel', 'bingo', 'shop', 'quiz', 'challenge'] },
-  { id: 'minecraft', name: 'Minecraft', icon: '⛏️', group: 'top', ideas: [] },
-  { id: 'just-chatting', name: 'Just Chatting', icon: '💬', group: 'top', ideas: ['questions', 'hotwords', 'tts', 'pet'] },
+  { id: 'fortnite', name: 'Fortnite', icon: '🏝️', group: 'top', ideas: ['wheel', 'bingo', 'shop', 'quiz', 'challenge', 'counter'] },
+  { id: 'minecraft', name: 'Minecraft', icon: '⛏️', group: 'top', ideas: ['counter', 'gamewheel', 'poll'] },
+  { id: 'just-chatting', name: 'Just Chatting', icon: '💬', group: 'top', ideas: ['questions', 'poll', 'hotwords', 'tts', 'pet', 'gamewheel'] },
+  { id: 'speedrun', name: 'Speedrun', icon: '⏱️', group: 'top', ideas: ['counter', 'gamewheel', 'poll'] },
+  { id: 'horror', name: 'Horror', icon: '👻', group: 'top', ideas: ['heart', 'counter', 'gamewheel'] },
   { id: 'super-mario-64', name: 'Super Mario 64', icon: '🍄', group: 'retro', ideas: [] },
   { id: 'super-mario-world', name: 'Super Mario World', icon: '🦖', group: 'retro', ideas: [] },
   { id: 'mario-kart-64', name: 'Mario Kart 64', icon: '🏎️', group: 'retro', ideas: [] },
@@ -21,6 +23,33 @@ export const GAMES = [
 ];
 
 export const GAME_GROUPS = [['top', 'Beliebt'], ['retro', 'Retro']];
+
+// Game-Pakete (Migration …_game_packs.sql): Zähler-Vorlagen und Challenges fürs Spiel-Rad.
+// command = Chat-Befehl ohne „!“ (Mods zählen mit „!tode +“). Eigene Challenges je Game speichert die
+// Datenbank (gamewheel.challenges); ohne eigene gelten diese hier.
+export const PACKS = {
+  fortnite: {
+    counters: [['Kills', '🔫', 'kills'], ['Wins', '👑', 'wins'], ['Tode', '💀', 'tode']],
+    challenges: ['Nur graue Waffen', 'Landen, wo der Chat sagt', 'Keine Heilung', 'Nur Pistolen', 'Kein Bauen', 'Erste Kiste = Loadout', 'Nur Sniper', 'Rückwärts laufen bis zur Zone'],
+  },
+  minecraft: {
+    counters: [['Tode', '💀', 'tode'], ['Diamanten', '💎', 'diamanten'], ['Creeper', '💥', 'creeper']],
+    challenges: ['Nur Holzwerkzeuge', 'Keine Rüstung bis zum Nether', 'Kein Sprinten', 'Nur Fleisch essen', 'Chat wählt das nächste Ziel', 'Ein Haus in 5 Minuten', 'Kein Springen für 5 Minuten', 'Nur auf Blöcken laufen, die du platzierst'],
+  },
+  'just-chatting': {
+    counters: [['Lacher', '😂', 'lacher'], ['Ähms', '🤔', 'aehm']],
+    challenges: ['Erzähl eine peinliche Geschichte', 'Chat wählt das nächste Thema', '5 Minuten nur Englisch', 'Lies die letzte Chat-Nachricht dramatisch vor', 'Sing den Refrain deines Lieblingslieds', 'Beantworte 3 Fragen aus dem Chat ehrlich', 'Imitiere eine Person aus dem Chat', 'Ein Witz – lacht der Chat nicht, gibt’s eine Strafe'],
+  },
+  speedrun: {
+    counters: [['Versuche', '🔁', 'versuche'], ['Resets', '♻️', 'resets'], ['Bestzeiten', '🏆', 'pb']],
+    challenges: ['Kein Glitch erlaubt', 'Nur ein Leben', 'Mit der schwächsten Figur', 'Alles einsammeln (100 %)', 'Ohne Pause bis zum Ende', 'Chat wählt die Route', 'Blind: ohne Karte und Splits', 'Nächster Run rückwärts im Menü starten'],
+  },
+  horror: {
+    counters: [['Jumpscares', '😱', 'jumpscares'], ['Tode', '💀', 'tode'], ['Schreie', '🗣️', 'schreie']],
+    challenges: ['Licht aus im Zimmer', 'Lautstärke hoch', 'Ohne Taschenlampe', 'Nur flüstern', 'Bei jedem Jumpscare: 5 Liegestütze', 'Kamera näher ran', 'Kein Wegschauen – sonst Strafe', 'Chat wählt die nächste Tür'],
+  },
+};
+export const packOf = (id) => PACKS[id] ?? null;
 
 // Ideen, die nur zu ihrem Game passen (Fortnite-Bingo, Kisten-Shop, Fortnite-Quiz, Fortnite-Glücksrad) –
 // bei anderen Games ausgeblendet. Alle anderen Ideen passen zu jedem Game.

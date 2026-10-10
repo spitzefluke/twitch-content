@@ -9,10 +9,14 @@
 //   giveaway=tc|…    Verlosung: Preis, Befehl, Zahl im Lostopf, neue Teilnehmer; beim Ziehen laufen die Namen durch  gwsize=100
 //   hotwords=tl|…    Hot Words: die häufigsten Wörter im Chat mit Zähler (nur solange es welche gibt)   hwsize=100
 //   poll=tr|…        Umfrage: Frage, Antworten mit Balken, Restzeit; nach dem Ende das Ergebnis (bis „Ausblenden“)   plsize=100
+//   counter=tl|…     Zähler: Tode, Kills, Versuche … (nur die mit „im Stream zeigen“)   ctsize=100
+//   gamewheel=tc|…   Spiel-Rad: erscheint beim Drehen, zeigt das Ergebnis ein paar Sekunden   sgsize=100
+//   heart=tr|…       Herzfrequenz: schlagendes Herz mit Puls (nur solange Werte kommen)   hrsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
+import { Wheel } from './wheel.js';
 
 const RARITY = { common: 'Gewöhnlich', uncommon: 'Ungewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -30,8 +34,11 @@ export function setupOverlayExtras(o) {
     giveaway: o.position(o.params.get('giveaway'), null),
     hotwords: o.position(o.params.get('hotwords'), null),
     poll: o.position(o.params.get('poll'), null),
+    counter: o.position(o.params.get('counter'), null),
+    gamewheel: o.position(o.params.get('gamewheel'), null),
+    heart: o.position(o.params.get('heart'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -45,6 +52,9 @@ export function setupOverlayExtras(o) {
   if (cfg.giveaway) setupGiveaway(ctx, card('ov-x-giveaway', 'giveaway', cfg.giveaway, o));
   if (cfg.hotwords) setupHotwords(ctx, card('ov-x-hotwords', 'hotwords', cfg.hotwords, o));
   if (cfg.poll) setupPoll(ctx, card('ov-x-poll', 'poll', cfg.poll, o));
+  if (cfg.counter) setupCounters(ctx, card('ov-x-counter', 'counter', cfg.counter, o));
+  if (cfg.gamewheel) setupGamewheel(ctx, card('ov-x-gamewheel', 'gamewheel', cfg.gamewheel, o));
+  if (cfg.heart) setupHeart(ctx, card('ov-x-heart', 'heart', cfg.heart, o));
 }
 
 function card(id, key, pos, o) {
@@ -122,6 +132,7 @@ function liveData(sb) {
     },
     // Umfrage: Zeit um → beenden lassen (darf jeder, passiert nur, wenn sie wirklich abgelaufen ist)
     pollTick: () => rows(sb.rpc('poll_tick')).catch(() => null),
+    counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
 }
@@ -134,6 +145,7 @@ function demoData() {
     giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round && !e.kicked).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
     ttsRecent: async () => [],
     pollTick: async () => null,
+    counters: async () => read('counters', []).filter((c) => c.show).sort((a, b) => a.position - b.position).slice(0, 8),
     on(table, cb) {
       addEventListener('storage', (e) => {
         if (e.key !== `zd_${table}`) return;
@@ -812,3 +824,136 @@ async function setupPoll({ src, opt, editTests }, el) {
   setInterval(time, 1000);
   setInterval(reload, 30000);
 }
+
+// ============================================================
+// Zähler (…_game_packs.sql): Tode, Kills, Versuche … – die Zahl hüpft, wenn sie sich ändert
+// ============================================================
+async function setupCounters({ src, opt, editTests }, el) {
+  el.innerHTML = '<ul class="cto-list" data-list></ul>';
+  const list = el.querySelector('[data-list]');
+  let rows = [];
+  const before = new Map();
+  const paint = () => {
+    el.hidden = !(rows.length || opt.edit);
+    list.replaceChildren(...rows.map((c) => {
+      const li = document.createElement('li');
+      li.className = 'cto-row';
+      li.innerHTML = `<span class="cto-emoji">${esc(c.emoji)}</span><b class="cto-value">${Number(c.value) || 0}</b><span class="cto-label">${esc(c.label)}</span>`;
+      const old = before.get(c.id);
+      if (old !== undefined && old !== c.value) li.classList.add(c.value > old ? 'is-up' : 'is-down');
+      before.set(c.id, c.value);
+      return li;
+    }));
+  };
+  if (opt.test || opt.edit) {
+    rows = [{ id: 1, emoji: '💀', label: 'Tode', value: 17 }, { id: 2, emoji: '🔫', label: 'Kills', value: 42 }, { id: 3, emoji: '👑', label: 'Wins', value: 3 }];
+    paint();
+    const bump = () => { rows = rows.map((c, i) => (i === Math.floor(Math.random() * rows.length) ? { ...c, value: c.value + 1 } : c)); paint(); };
+    if (editTests) editTests.counter = () => { for (let i = 0; i < 3; i++) setTimeout(bump, i * 500); };
+    if (opt.test && !opt.edit) setInterval(bump, 2500);
+    return;
+  }
+  const reload = async () => {
+    const fresh = await src.counters().catch(() => null);
+    if (!fresh) return;
+    rows = fresh;
+    paint();
+  };
+  await reload();
+  let timer = 0;
+  src.on('counters', () => { clearTimeout(timer); timer = setTimeout(reload, 120); });
+  setInterval(reload, 30000);
+}
+
+// ============================================================
+// Spiel-Rad: taucht beim Drehen auf, dreht auf das Ergebnis, zeigt es und verschwindet wieder
+// ============================================================
+const GW_SHOW_MS = 14000;
+async function setupGamewheel({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span data-title>🎡 Spiel-Rad</span></header>
+    <div class="sgo-stage"><span class="sgo-pointer" aria-hidden="true">▼</span><canvas class="sgo-canvas" width="300" height="300"></canvas></div>
+    <b class="sgo-result" data-result></b>`;
+  const wheel = new Wheel(el.querySelector('canvas'));
+  const result = el.querySelector('[data-result]');
+  let seen = null;
+  let hideTimer = 0;
+  const play = async (g, animate) => {
+    clearTimeout(hideTimer);
+    el.querySelector('[data-title]').textContent = g.mode === 'challenge' ? '🎯 Challenge' : '🎮 Nächstes Game';
+    el.classList.remove('is-done');
+    result.textContent = '';
+    el.hidden = false;
+    wheel.setVariant({ segments: g.options.map((label) => ({ label })), color: g.mode === 'challenge' ? '#ff4fd8' : '#4f7cff' });
+    if (animate) {
+      wheel.start();
+      await new Promise((r) => setTimeout(r, 400));
+      await wheel.spinTo(g.result_index);
+    }
+    result.textContent = g.result;
+    el.classList.add('is-done');
+    if (!opt.edit) hideTimer = setTimeout(() => { el.hidden = true; }, GW_SHOW_MS);
+  };
+  if (opt.test || opt.edit) {
+    const demo = { mode: 'game', options: ['🏝️ Fortnite', '⛏️ Minecraft', '👻 Horror', '⏱️ Speedrun', '💬 Just Chatting'], result_index: 2, result: '👻 Horror' };
+    if (opt.edit) { el.hidden = false; play(demo, false); }
+    const run = () => { const i = Math.floor(Math.random() * demo.options.length); play({ ...demo, result_index: i, result: demo.options[i] }, true); };
+    if (editTests) editTests.gamewheel = run;
+    if (opt.test && !opt.edit) { run(); setInterval(run, 20000); }
+    return;
+  }
+  const reload = async (animate) => {
+    const g = await src.one('gamewheel').catch(() => null);
+    if (!g || !g.n) return;
+    if (seen === null) {
+      seen = g.n;
+      // Gerade erst gedreht (OBS neu geladen): Ergebnis noch kurz zeigen
+      if (g.spun_at && Date.now() - Date.parse(g.spun_at) < 8000 && g.options?.length >= 2) play(g, false);
+      return;
+    }
+    if (g.n > seen && g.options?.length >= 2) {
+      seen = g.n;
+      play(g, animate);
+    }
+  };
+  await reload(false);
+  src.on('gamewheel', () => reload(true));
+  setInterval(() => reload(true), 15000);
+}
+
+// ============================================================
+// Herzfrequenz: schlägt im Takt, wird ab der Warnschwelle rot; ohne frische Werte unsichtbar
+// ============================================================
+const HR_FRESH_MS = 20000;
+async function setupHeart({ src, opt, editTests }, el) {
+  el.innerHTML = '<span class="hro-heart" aria-hidden="true">❤️</span><b class="hro-bpm" data-bpm>–</b><span class="hro-unit">bpm</span>';
+  const bpmEl = el.querySelector('[data-bpm]');
+  let hr = null;
+  const paint = () => {
+    const fresh = !!hr?.bpm && !!hr.at && Date.now() - Date.parse(hr.at) < HR_FRESH_MS;
+    el.hidden = !(fresh || opt.edit);
+    if (!fresh && !opt.edit) return;
+    const bpm = hr?.bpm ?? 0;
+    bpmEl.textContent = bpm ? String(bpm) : '–';
+    el.style.setProperty('--beat', `${(60 / Math.max(40, bpm || 60)).toFixed(3)}s`);
+    el.classList.toggle('is-alarm', !!bpm && bpm >= (hr?.alarm ?? 140));
+  };
+  if (opt.test || opt.edit) {
+    let v = 88;
+    const tick = (jump) => { v = jump ? 152 : Math.max(70, Math.min(160, v + (Math.random() - 0.55) * 8)); hr = { bpm: Math.round(v), at: new Date().toISOString(), alarm: 140 }; paint(); };
+    tick();
+    if (editTests) editTests.heart = () => tick(true);
+    setInterval(() => tick(false), opt.edit ? 3000 : 1500);
+    return;
+  }
+  const reload = async () => {
+    const fresh = await src.one('heart_rate').catch(() => null);
+    if (fresh) hr = fresh;
+    paint();
+  };
+  await reload();
+  src.on('heart_rate', (row) => { if (row) { hr = { ...hr, ...row }; paint(); } });
+  setInterval(paint, 5000);
+  setInterval(reload, 30000);
+}
+
