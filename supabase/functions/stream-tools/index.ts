@@ -6,6 +6,7 @@
 //   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
 //   POST {action:"watch_dates"}         → „Follower seit“/„Konto seit“ für die Watchtime-Rangliste nachholen (Admins, Mods mit Bereich Chat)
 //   POST {action:"cc_sync"}           → Kanalpunkte-Belohnungen der Chat-Kommandos anlegen/abgleichen (Admins, freigegebene Mods)
+//   POST {action:"song_add", url}       → Song-Wunsch per YouTube-Link eintragen (Streamer, freigegebene Mods mit Bereich Chat)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import {
@@ -17,11 +18,12 @@ import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
 import { refreshWatchDates, watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
 import { syncChatControlRewards } from "../_shared/chatcontrol.ts";
+import { addSongFromWeb } from "../_shared/bot.ts";
 
 Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
-  const { action, key, start } = await req.json().catch(() => ({}));
+  const { action, key, start, url } = await req.json().catch(() => ({}));
   // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt nur alle
   // 4,5 Minuten einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
   if (action === "watch_tick") {
@@ -81,6 +83,12 @@ Deno.serve(channelServe(async (req) => {
       } catch (e) {
         return json({ error: errorText(e, 300) }, 409);
       }
+    }
+    if (action === "song_add") {
+      if (!(await isAdminUser(user.id, "chat"))) return json({ error: "Nur der Streamer und freigegebene Mods." }, 403);
+      const { data: profile } = await db.from("profiles").select("username").eq("id", user.id).maybeSingle();
+      const res = await addSongFromWeb(String(url ?? "").slice(0, 300), profile?.username ?? "Dashboard");
+      return json(res, res.ok ? 200 : 409);
     }
     if (action === "anniversary") {
       if (!(await isAdminUser(user.id, "overlay"))) return json({ error: "Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods." }, 403);

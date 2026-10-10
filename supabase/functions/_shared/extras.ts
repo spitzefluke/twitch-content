@@ -4,6 +4,7 @@
 //   · Kanalpunkte: Text-to-Speech und Karten-Packs (Belohnungen anlegen, Einlösungen)
 import { db, getConnection, helix, HelixError, CodedError, sendChat, type Connection } from "./twitch.ts";
 import { refreshWatchDates } from "./watchtime.ts";
+import { fillLive } from "./bot.ts";
 
 const OUTBOX_MAX_AGE_MS = 3 * 60_000;
 
@@ -36,6 +37,7 @@ type ChatEvent = {
   chatter_user_id: string;
   chatter_user_name: string;
   chatter_user_login: string;
+  message_id?: string;
   badges?: { set_id: string }[];
   message?: { text?: string };
 };
@@ -59,7 +61,13 @@ export async function handleExtraCommand(event: ChatEvent) {
   }
   const conn = await getConnection();
   if (!conn) return;
-  if (data?.reply) await sendChat(conn, String(data.reply)).catch((e) => console.warn("Chat:", e.message));
+  if (data?.reply) {
+    // Eigene Befehle (…_chat_bot_plus.sql): {uptime} {game} {title} {followage} und die Antwortart
+    let reply = await fillLive(conn, String(data.reply), event.chatter_user_id).catch(() => String(data.reply));
+    if (data.reply_type === "mention" && !reply.includes("@")) reply = `@${event.chatter_user_name || event.chatter_user_login} ${reply}`;
+    const replyTo = data.reply_type === "reply" ? event.message_id : undefined;
+    await sendChat(conn, reply, replyTo).catch((e) => console.warn("Chat:", e.message));
+  }
   await flushOutbox(conn).catch((e) => console.warn("Bot-Nachrichten:", e.message));
 }
 

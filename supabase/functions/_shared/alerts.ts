@@ -20,6 +20,8 @@ export const ALERT_TYPES: AlertType[] = [
   { type: "channel.subscription.message", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "channel.subscription.gift", version: "1", scope: "channel:read:subscriptions", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "channel.cheer", version: "1", scope: "bits:read", condition: (id) => ({ broadcaster_user_id: id }) },
+  // Raids: kein Recht nötig – für das Danke und den Shoutout vom Chat-Bot (…_chat_bot_plus.sql), kein Alert
+  { type: "channel.raid", version: "1", scope: "", condition: (id) => ({ to_broadcaster_user_id: id }) },
 ];
 export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === type);
 
@@ -32,11 +34,11 @@ export async function ensureAlertSubscriptions(broadcasterId: string, callback: 
   const appToken = await getAppToken();
   const result: Record<string, AlertSubState> = {};
   for (const a of ALERT_TYPES) {
-    if (!scopes.includes(a.scope)) { result[a.type] = { state: "missing_scope" }; continue; }
+    if (a.scope && !scopes.includes(a.scope)) { result[a.type] = { state: "missing_scope" }; continue; }
     try {
       const existing = await helix("eventsub/subscriptions", appToken, { query: { type: a.type } });
-      type Sub = { id: string; status: string; condition?: { broadcaster_user_id?: string }; transport?: { callback?: string } };
-      const mine = (existing.data ?? []).filter((s: Sub) => s.condition?.broadcaster_user_id === broadcasterId);
+      type Sub = { id: string; status: string; condition?: { broadcaster_user_id?: string; to_broadcaster_user_id?: string }; transport?: { callback?: string } };
+      const mine = (existing.data ?? []).filter((s: Sub) => (s.condition?.broadcaster_user_id ?? s.condition?.to_broadcaster_user_id) === broadcasterId);
       // Ein gerade angelegtes Abo wartet kurz auf die Webhook-Prüfung – das ist kein Fehler
       const usable = (s: Sub) => s.transport?.callback === callback && (s.status === "enabled" || s.status === "webhook_callback_verification_pending");
       const good = mine.find((s: Sub) => s.status === "enabled" && usable(s)) ?? mine.find(usable);

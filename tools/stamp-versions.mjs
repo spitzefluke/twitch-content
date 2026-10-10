@@ -21,6 +21,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js' };
 const check = process.argv.includes('--check');
 
+// Song-Wünsche (js/bot-plus.js): eingebetteter YouTube-Player (ohne Cookies) im Dashboard
+const YOUTUBE_FRAME = 'https://www.youtube-nocookie.com';
+const YOUTUBE_PAGES = ['index.html'];
+
 // Bot-Schutz bei Anmelden/Registrieren (Cloudflare Turnstile, nur wenn in js/config.js eingerichtet):
 // Skript und Prüf-Fenster kommen von dort – nur auf der Startseite mit den Anmeldeformularen.
 const CAPTCHA = 'https://challenges.cloudflare.com';
@@ -35,7 +39,7 @@ const CSP = (scriptHashes, page) => [
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
-  `frame-src 'self'${CAPTCHA_PAGES.includes(page) ? ` ${CAPTCHA}` : ''}`,
+  `frame-src 'self'${CAPTCHA_PAGES.includes(page) ? ` ${CAPTCHA}` : ''}${YOUTUBE_PAGES.includes(page) ? ` ${YOUTUBE_FRAME}` : ''}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

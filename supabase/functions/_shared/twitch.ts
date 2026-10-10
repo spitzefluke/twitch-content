@@ -228,6 +228,8 @@ export const BROADCASTER_SCOPES = [
   "channel:read:redemptions", "channel:manage:redemptions", "channel:bot", "channel:manage:predictions",
   "moderator:read:followers", "channel:read:subscriptions", "bits:read", "moderation:read",
   "moderator:read:chatters",
+  // Chat-Bot (…_chat_bot_plus.sql): Moderation (löschen, Timeout) und Shoutouts – ausgeführt im Namen des Streamers
+  "moderator:manage:chat_messages", "moderator:manage:banned_users", "moderator:manage:shoutouts",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und den Chat des Streamers lesen – für Befehle wie !füttern.
@@ -360,12 +362,16 @@ export async function getBot(): Promise<{ user_id: string; login: string; displa
 // wird mit dem App-Token: Dafür hat der Bot user:bot freigegeben und der Streamer
 // channel:bot (oder der Bot ist Moderator im Kanal). Twitch zeigt dann das
 // Bot-Abzeichen. Ohne verbundenen Bot bleibt der Chat still.
-export async function sendChat(conn: Connection, message: string) {
+// replyTo: als Antwort auf diese Chat-Nachricht (Twitch zeigt sie dann verknüpft)
+export async function sendChat(conn: Connection, message: string, replyTo?: string) {
   const bot = await getBot();
   if (!bot) throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
   const res = await helix("chat/messages", await getAppToken(), {
     method: "POST",
-    body: { broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: message.slice(0, 500) },
+    body: {
+      broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: message.slice(0, 500),
+      ...(replyTo ? { reply_parent_message_id: replyTo } : {}),
+    },
   });
   const r = res?.data?.[0];
   if (r && !r.is_sent) throw new Error(`Chat-Nachricht blockiert: ${r.drop_reason?.message ?? "unbekannt"}`);

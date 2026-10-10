@@ -1,5 +1,6 @@
 // Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
+// Vorneweg der Chat-Bot (_shared/bot.ts: Moderation, Begrüßung, Auto-Nachrichten, Stream-Infos, Song-Wünsche).
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
 // laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“) und „!puls“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
@@ -10,6 +11,7 @@ import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
 import { noteHotwords } from "./hotwords.ts";
 import { feedPet } from "./pet.ts";
+import { handleBot } from "./bot.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const VOTE_COMMANDS = new Set(["vote", "abstimmen"]);
@@ -54,20 +56,28 @@ type ChatMessage = {
   chatter_user_id: string;
   chatter_user_login: string;
   chatter_user_name: string;
+  message_id?: string;
   badges?: { set_id: string }[];
-  message?: { text?: string };
+  message?: { text?: string; fragments?: { type: string; text: string }[] };
 };
 
 export async function handleChatMessage(event: ChatMessage) {
   const text = (event.message?.text ?? "").trim();
   const self = await getBot();
+  // Chat-Bot zuerst (…_chat_bot_plus.sql): Moderation, Begrüßung (fragt, ob jemand neu ist – darum vor der
+  // Watchtime), Auto-Nachrichten, Stream-Infos, Song-Wünsche
+  let bot: "mod" | "done" | false = false;
+  if (!self || event.chatter_user_id !== self.user_id) {
+    bot = await handleBot(event).catch((e) => { console.warn("Bot:", e); return false as const; });
+    if (bot === "mod") return; // gelöscht oder Timeout: zählt für nichts
+  }
   // Watchtime: wer schreibt, ist da (zählt, falls Twitch die Chatters-Liste nicht herausgibt)
   if (!self || event.chatter_user_id !== self.user_id) {
     await noteChatter(event.chatter_user_id, event.chatter_user_login, event.chatter_user_name).catch(() => {});
     // Hot Words: Wörter zählen (Befehle nicht)
     await noteHotwords(event.chatter_user_id, text).catch((e) => console.warn("Hot Words:", e));
   }
-  if (!text.startsWith("!")) return;
+  if (!text.startsWith("!") || bot === "done") return;
   const [command, arg = ""] = text.split(/\s+/);
 
   // Verlosung: eigener Befehl, braucht die Follower-Prüfung bei Twitch (kann SQL nicht)

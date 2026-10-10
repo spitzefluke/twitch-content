@@ -23,6 +23,9 @@ const SCOPE_FEATURE: Record<string, string> = {
   "bits:read": "Bits-Alerts",
   "moderation:read": "Mods erkennen",
   "moderator:read:chatters": "Watchtime (wer im Chat ist)",
+  "moderator:manage:chat_messages": "Bot-Moderation (Nachrichten löschen)",
+  "moderator:manage:banned_users": "Bot-Moderation (Timeout)",
+  "moderator:manage:shoutouts": "Shoutouts (!so, nach Raids)",
 };
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
