@@ -17,6 +17,8 @@
 --   7. Export: alle Daten des eigenen Kanals als JSON (ohne Tokens und Lösungen).
 --   8. Sicherheits-Check für den Plattform-Admin (security_report).
 -- Braucht 20261028000000_platform.sql. Mehrfach ausführbar.
+-- Wird …_platform.sql später noch einmal ausgeführt, überschreibt sie die Rechte-Funktionen
+-- (is_admin_of, is_owner …) – danach diese Datei einfach erneut ausführen.
 --
 -- Rate-Limit wieder ausschalten (falls nötig):
 --   alter role authenticator reset pgrst.db_pre_request; notify pgrst, 'reload config';
