@@ -36,3 +36,29 @@ Siehe **`NOTFALLPLAN.md`** (Raid, gekaperte Konten, verlorene 2FA, Schlüssel au
 ## Einstellungen, die nur im Supabase-Dashboard gehen
 
 Siehe README, Abschnitt „Sicherheit – Checkliste“.
+
+## Supabase-Sicherheitsbericht (Advisors)
+
+Nach `supabase/migrations/20261103000000_advisor_cleanup.sql` (Trigger-Funktionen nicht mehr direkt
+aufrufbar) meldet der Bericht unter **0028/0029 „SECURITY DEFINER Function executable“** weiter
+Funktionen. Das ist Absicht:
+
+- **Rechte-Prüfungen** (`is_admin`, `is_mod`, `is_owner`, `is_owner_of`, `is_admin_of`, `is_site_admin`,
+  `is_legacy_admin`, `mfa_ok`, `current_channel`, `default_channel`, `my_name`, `overlay_can_edit`,
+  `challenge_can_edit`, `storage_admin_ok`, `storage_files_of`, `viewer_paused`, `feature_open`): stecken in den
+  Row-Level-Security-Regeln. Postgres führt sie mit der Rolle des Aufrufers aus – ohne `EXECUTE` für
+  `anon`/`authenticated` würde jede Abfrage scheitern. Sie verraten nur etwas über den Aufrufer selbst.
+- **`api_guard`**: ist die Rate-Limit-Prüfung vor jeder Anfrage (PostgREST `db_pre_request`) und läuft
+  mit der Rolle der Anfrage – sie muss ausführbar bleiben. Direkt aufgerufen zählt sie nur einen Treffer.
+- **Öffentliche Daten** (`channel_info`, `channels_list`, `showcase_list`, `platform_stats`, `stream_live_info`,
+  `streamer_info`, `goal_progress`, `contact_send`): für Startseite, Overlay (OBS hat keine Anmeldung) und
+  Kontaktformular gedacht – nur freigegebene Felder, mit Grenzen gegen Spam.
+- **Aktionen für Angemeldete** (Glücksrad, Bingo, Quiz, Shop, Verlosung, Einstellungen …): prüfen in der
+  Funktion selbst, wer was darf (Streamer, freigegebene Mods, Zuschauer).
+
+Neue Trigger-Funktion angelegt? Danach die Aufräum-Migration noch einmal ausführen.
+
+**Leaked Password Protection** (Warnung `auth_leaked_password_protection`): ist eine Einstellung in
+Supabase unter **Authentication → Attack Protection** (bzw. Passwort-Einstellungen) – dort einschalten,
+falls euer Supabase-Plan sie anbietet. Unabhängig davon lehnt StreamHelp häufige und zu einfache
+Passwörter schon bei der Registrierung ab.
