@@ -203,6 +203,17 @@ async function createSupabaseApi() {
       return unwrap(await sb.rpc('audit_list', { p_limit: limit, p_before: before, p_role: role }));
     },
     async channelExport() { return unwrap(await sb.rpc('channel_export')); },
+
+    // ---------- Startseite: KI-Hilfe, Kontakt, Showcase (Migration …_contact_showcase.sql) ----------
+    async helpAsk(question, lang, history) { return invoke('help-chat', { question, lang, history }); },
+    async contactSend(m) {
+      return unwrap(await sb.rpc('contact_send', {
+        p_name: m.name, p_email: m.email, p_topic: m.topic, p_message: m.message, p_lang: m.lang, p_website: m.website,
+      }));
+    },
+    async showcaseList() { return unwrap(await sb.rpc('showcase_list')); },
+    async channelShowcase() { return unwrap(await sb.rpc('channel_showcase')); },
+    async setChannelShowcase(on) { return unwrap(await sb.rpc('channel_showcase_set', { p_on: on })); },
     async getProfile(user) {
       const { data } = await sb.from('profiles').select('username, is_admin').eq('id', user.id).maybeSingle();
       return data ?? { username: user.user_metadata?.username ?? user.email.split('@')[0], is_admin: false };
@@ -1129,6 +1140,23 @@ function createLocalApi() {
       return [...store.get('audit_log', []), ...sample]
         .filter((x) => (before === null || x.id < before) && (!role || x.role === role));
     },
+    // Demo: keine KI – die Seite antwortet aus den FAQ
+    async helpAsk() { return { fallback: true }; },
+    async contactSend(m) {
+      if (String(m.message ?? '').trim().length < 10) throw new Error('Bitte schreib etwas mehr (mindestens 10 Zeichen).');
+      const list = store.get('contact_messages', []);
+      list.unshift({ id: Date.now(), created_at: new Date().toISOString(), name: m.name, email: m.email, topic: m.topic,
+        message: m.message, lang: m.lang, channel: '', status: 'new' });
+      store.set('contact_messages', list.slice(0, 100));
+      return true;
+    },
+    async showcaseList() {
+      const on = store.get('showcase', true);
+      return on ? [{ login: 'streamhelp', display_name: 'StreamHelp', avatar_url: '', live: true, category: 'Fortnite' },
+        { login: 'retrolena', display_name: 'RetroLena', avatar_url: '', live: false, category: '' }] : [];
+    },
+    async channelShowcase() { return store.get('showcase', true); },
+    async setChannelShowcase(on) { await requireAdmin(); store.set('showcase', !!on); return !!on; },
     async channelExport() {
       await requireAdmin();
       const tables = {};

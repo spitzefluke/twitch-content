@@ -397,3 +397,55 @@ main.nc-wrap { flex: 1; }
 .nc-marquee-row { display: flex; gap: 8px; width: max-content; will-change: transform; }
 .nc-marquee .nc-tag { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
 .nc-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Sprachauswahl (js/i18n.js) */
+.lang-pick {
+  flex: none; padding: 6px 26px 6px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23bbb'/%3E%3C/svg%3E") no-repeat right 10px center;
+  color: inherit; font: 600 13px/1.2 inherit; appearance: none; cursor: pointer;
+}
+.lang-pick option { color: #111; }
+.lang-pick--nav { margin-left: auto; }
+.lang-pick--auth { position: absolute; top: 18px; right: 18px; z-index: 3; }
+
+/* Kontakt: KI-Hilfe und Formular (js/help.js) */
+.nc-contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 18px; margin-top: 28px; align-items: start; }
+.nc-help, .nc-form { gap: 12px; padding: 22px; border: 1px solid var(--color-neutral-800); border-radius: 16px; background: linear-gradient(170deg, color-mix(in srgb, var(--color-indigo-deep) 60%, transparent), color-mix(in srgb, var(--color-surface) 60%, transparent)); }
+.nc-help-log { list-style: none; margin: 0; padding: 4px; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+.nc-help-msg { max-width: 88%; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nc-help-msg--bot { align-self: flex-start; background: rgba(255, 255, 255, .06); border-bottom-left-radius: 4px; }
+.nc-help-msg--me { align-self: flex-end; background: color-mix(in srgb, var(--color-accent) 22%, transparent); border-bottom-right-radius: 4px; }
+.nc-help-msg.is-wait { opacity: .7; }
+.nc-help-msg.is-wait::after { content: " …"; animation: nc-blink 1s steps(2) infinite; }
+@keyframes nc-blink { 50% { opacity: 0; } }
+.nc-help-msg a { color: var(--color-accent); }
+.nc-help-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nc-chip { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--color-neutral-800); background: rgba(255, 255, 255, .03); color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; }
+.nc-chip:hover { border-color: var(--color-accent); }
+.nc-help-form { display: flex; gap: 8px; }
+.nc-help-form input { flex: 1; min-width: 0; }
+.nc-help-form input, .nc-field input, .nc-field select, .nc-field textarea {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-neutral-800); background: rgba(0, 0, 0, .25); color: inherit; font: inherit; font-size: 14px;
+}
+.nc-help-form input:focus, .nc-field :is(input, select, textarea):focus { outline: 2px solid color-mix(in srgb, var(--color-accent) 60%, transparent); outline-offset: 1px; }
+.nc-help-note { opacity: .6; margin: 0; }
+.nc-contact-form { display: grid; gap: 12px; }
+.nc-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
+.nc-field { display: grid; gap: 5px; font-size: 13px; }
+.nc-field > span { opacity: .75; }
+.nc-field textarea { resize: vertical; min-height: 110px; }
+.nc-field select option { color: #111; }
+.nc-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.nc-form-msg { min-height: 1.2em; margin: 0; font-size: 14px; }
+.nc-form-msg.is-ok { color: #9ff0c3; }
+.nc-form-msg.is-error { color: #ff9d95; }
+.nc-contact-form .nc-btn { justify-self: start; }
+
+/* Showcase: Streamer mit Zustimmung, live zuerst */
+.nc-showcase { margin: 18px 0 26px; }
+.nc-showcase-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.nc-showcase-list a { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px 7px 7px; border-radius: 999px; border: 1px solid var(--color-neutral-800); background: rgba(255, 255, 255, .03); color: inherit; text-decoration: none; font-size: 14px; }
+.nc-showcase-list a:hover { border-color: var(--color-accent); }
+.nc-showcase-list .nc-channel-ava { width: 30px; height: 30px; }
+.nc-showcase-list small { opacity: .65; }
+.nc-showcase-live { padding: 1px 7px; border-radius: 999px; background: #e91916; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; }

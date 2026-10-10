@@ -2,13 +2,14 @@
 // ohne „Bewegung reduzieren“ – die Reise beim Scrollen mit der Vorschau als Szene (js/landing-journey.js).
 // Läuft nur, solange die Startseite zu sehen ist.
 import { startJourney } from './landing-journey.js';
+import { locale, t } from './i18n.js';
 
 // Balken „Auf einen Blick“: Zahlen aus allen Streams (public.platform_stats), alle 30 Sekunden neu.
 // Gezeigt werden die ersten acht, die schon etwas zählen; „today“ = wie viele davon heute.
 const STATS_EVERY = 30_000;
 const STATS_MAX = 8;
 const LIVE_STATS = [
-  { key: 'streamers', label: 'Streamer bei StreamHelp', always: true, sub: (s) => (s.live > 0 ? `${fmt(s.live)} gerade live` : ''), dot: (s) => s.live > 0 },
+  { key: 'streamers', label: 'Streamer bei StreamHelp', always: true, sub: (s) => (s.live > 0 ? t('{n} gerade live', { n: fmt(s.live) }) : ''), dot: (s) => s.live > 0 },
   { key: 'viewers_now', label: 'Zuschauer gerade live', dot: () => true },
   { key: 'watch_hours', label: 'Watchtime gezählt', unit: 'Std' },
   { key: 'alerts', label: 'Alerts im Stream', today: 'alerts_today' },
@@ -24,7 +25,7 @@ const LIVE_STATS = [
   { key: 'winners', label: 'Verlosungs-Gewinner' },
   { key: 'viewers_total', label: 'Zuschauer gezählt' },
 ];
-const fmt = (n) => Math.round(n).toLocaleString('de-DE');
+const fmt = (n) => Math.round(n).toLocaleString(locale());
 
 let started = false;
 
@@ -101,12 +102,12 @@ function statsBand(root, still, visible, { stats, facts = [] }) {
     p.append(num);
     if (it.unit) {
       const small = document.createElement('small');
-      small.textContent = ` ${it.unit}`;
+      small.textContent = ` ${t(it.unit)}`;
       p.append(small);
     }
     const label = document.createElement('p');
     label.className = 'nc-band-label';
-    label.textContent = it.label;
+    label.textContent = t(it.label);
     const sub = document.createElement('p');
     sub.className = 'nc-band-sub';
     const box = document.createElement('div');
@@ -124,7 +125,7 @@ function statsBand(root, still, visible, { stats, facts = [] }) {
       .filter((d) => d.always || d.n > 0)
       .slice(0, STATS_MAX)
       .map((d) => ({ key: d.key, n: d.n, label: d.label, unit: d.unit,
-        sub: d.sub ? d.sub(data) : d.today && data[d.today] > 0 ? `+${fmt(data[d.today])} heute` : '',
+        sub: d.sub ? d.sub(data) : d.today && data[d.today] > 0 ? t('+{n} heute', { n: fmt(data[d.today]) }) : '',
         dot: !!d.dot?.(data) })) : [];
     const fill = Math.max(0, 4 - live.length);
     return { grid: [...live, ...facts.slice(0, fill)], rest: facts.slice(fill) };
@@ -148,8 +149,8 @@ function statsBand(root, still, visible, { stats, facts = [] }) {
     chips.replaceChildren(...rest.map((f) => {
       const li = document.createElement('li');
       const b = document.createElement('b');
-      b.textContent = `${fmt(f.n)}${f.unit ? ` ${f.unit}` : ''}`;
-      li.append(b, ` ${f.label}`);
+      b.textContent = `${fmt(f.n)}${f.unit ? ` ${t(f.unit)}` : ''}`;
+      li.append(b, ` ${t(f.label)}`);
       return li;
     }));
     chips.hidden = !rest.length;
@@ -160,7 +161,7 @@ function statsBand(root, still, visible, { stats, facts = [] }) {
   const ago = () => {
     if (!at) return;
     const s = Math.round((Date.now() - at) / 1000);
-    when.textContent = s < 10 ? 'gerade aktualisiert' : s < 60 ? `vor ${s} s` : `vor ${Math.floor(s / 60)} Min`;
+    when.textContent = s < 10 ? t('gerade aktualisiert') : s < 60 ? t('vor {n} s', { n: s }) : t('vor {n} Min', { n: Math.floor(s / 60) });
   };
 
   render();

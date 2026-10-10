@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { createApi, germanError } from './api.js';
+import { createApi, germanError, missingFunction } from './api.js';
 import { Wheel } from './wheel.js';
 import { DEFAULT_TILES, RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
@@ -28,6 +28,8 @@ import {
 } from './channel.js';
 import { h } from './extras-core.js';
 import { startTour } from './tour.js';
+import { applyI18n, initI18n, langPicker, t as tr } from './i18n.js';
+import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
@@ -142,6 +144,13 @@ if (guardFrame()) boot();
 // ============================================================
 async function boot() {
   const params = new URLSearchParams(location.search);
+  // Sprache für Startseite und Anmeldung (js/i18n.js) – vor allem anderen, die Startseite liest ihre Texte beim Aufbau
+  await initI18n();
+  applyI18n($('#landing'));
+  applyI18n($('#auth'));
+  document.title = tr(document.title);
+  $('#landing .lp-login')?.before(langPicker('lang-pick--nav'));
+  $('#auth .auth-back')?.after(langPicker('lang-pick--auth'));
 
   // Rückweg vom Chat-Bot-Verbinden im Admin-Bereich: Das Ergebnis gehört dorthin,
   // auch wenn die Weiterleitung hier gelandet ist. Aus dem Dashboard verbundene
@@ -306,6 +315,7 @@ function showLanding() {
   $('#auth').hidden = true;
   $('#landing').hidden = false;
   setupLanding($('#landing'), { stats: () => state.api.platformStats(), facts: landingFacts() });
+  setupHelp($('#landing'), state.api);
   renderLandingChannels();
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
@@ -520,7 +530,7 @@ const PAGE_ENTER = {
   library: () => openLibrary(),
   guard: () => renderGuard(),
   mods: () => { loadMods(); renderModSecurity(); },
-  twitch: () => renderTwitchPanel(),
+  twitch: () => { renderTwitchPanel(); loadShowcase(); },
   security: () => renderSecurityPage(),
 };
 
@@ -606,7 +616,7 @@ function setupAuthForms() {
       if (needsConfirmation) {
         select('login');
         forms.login.email.value = email;
-        formMsg(forms.login, 'Fast geschafft! Bestätige den Link in deiner E-Mail und melde dich dann an.', true);
+        formMsg(forms.login, tr('Fast geschafft! Bestätige den Link in deiner E-Mail und melde dich dann an.'), true);
       }
     });
   });
@@ -685,7 +695,7 @@ async function withLoading(form, fn) {
 
 // Anmeldeseite: Fehler zeigen – Karte wackelt kurz, das betroffene Feld bekommt eine Akzentlinie
 function authError(form, text, field = null) {
-  formMsg(form, text);
+  formMsg(form, tr(text));
   form.querySelectorAll('.field.is-invalid').forEach((f) => f.classList.remove('is-invalid'));
   const input = field && form.elements[field];
   if (input) {
@@ -1144,8 +1154,8 @@ async function renderLandingChannels() {
   document.querySelectorAll('[data-for-channels]').forEach((el) => { el.hidden = false; });
   const here = state.channel && !state.channel.is_default ? state.channel : null;
   if (here) {
-    $('#lp-channels-title').textContent = `Willkommen bei ${channelLabel(here)}!`;
-    $('#lp-channels-hint').textContent = 'Melde dich an und mach im Stream mit – oder schau dir die anderen Streamer an.';
+    $('#lp-channels-title').textContent = tr('Willkommen bei {name}!', { name: channelLabel(here) });
+    $('#lp-channels-hint').textContent = tr('Melde dich an und mach im Stream mit – oder schau dir die anderen Streamer an.');
   }
   $('#lp-channels').replaceChildren(...list.map((c) => {
     const ava = h('span', { class: 'nc-channel-ava', 'aria-hidden': 'true' });
@@ -5525,6 +5535,7 @@ function setupObs() {
   $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
   $('#obs-mods-toggle').addEventListener('change', toggleMods);
   $('#obs-mods-sync').addEventListener('click', syncMods);
+  $('#showcase-toggle').addEventListener('change', toggleShowcase);
   $('#obs-content-list').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-content-open], [data-content-unlock]');
     const tile = btn && state.tiles.find((t) => t.id === (btn.dataset.contentOpen ?? btn.dataset.contentUnlock));
@@ -6507,6 +6518,35 @@ async function unlockTile(tile, btn) {
     toast(`Freischalten fehlgeschlagen: ${germanError(err)}`, 'error');
   } finally {
     renderObsContent();
+  }
+}
+
+// Showcase auf der Startseite: Zustimmung des Streamers (Migration …_contact_showcase.sql)
+async function loadShowcase() {
+  const box = $('#showcase-toggle');
+  const status = $('#showcase-status');
+  box.disabled = true;
+  try {
+    box.checked = await state.api.channelShowcase();
+    box.disabled = !(state.access?.is_owner || state.api.demo);
+  } catch (err) {
+    status.textContent = missingFunction(err)
+      ? 'Einmal nötig: supabase/migrations/20261101000000_contact_showcase.sql im SQL Editor ausführen.'
+      : germanError(err);
+  }
+}
+
+async function toggleShowcase(e) {
+  const box = e.currentTarget;
+  box.disabled = true;
+  try {
+    box.checked = await state.api.setChannelShowcase(box.checked);
+    toast(box.checked ? 'Dein Kanal steht jetzt auf der Startseite.' : 'Dein Kanal steht nicht mehr auf der Startseite.', 'ok');
+  } catch (err) {
+    box.checked = !box.checked;
+    toast(germanError(err), 'error');
+  } finally {
+    box.disabled = false;
   }
 }
 

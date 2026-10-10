@@ -69,6 +69,13 @@ function demoCall(action, extra) {
     }
     return { token: demoToken(mfaOn), expires_at: new Date(Date.now() + 12 * 3600e3).toISOString(), mfa: mfaOn };
   }
+  if (action === 'messages') return { messages: read('contact_messages', []) };
+  if (action === 'message_set') {
+    const list = read('contact_messages', []);
+    const next = extra.delete ? list.filter((m) => m.id !== extra.id) : list.map((m) => (m.id === extra.id ? { ...m, status: extra.status } : m));
+    localStorage.setItem('zd_contact_messages', JSON.stringify(next));
+    return { ok: true };
+  }
   if (action === 'mfa_setup') return { secret: 'DEMODEMODEMODEMODEMODEMODEMODEMO', qr: '', uri: '' };
   if (action === 'mfa_enable') {
     if (String(extra.code ?? '').replace(/\s+/g, '') !== '123456') throw new Error('Der Code passt nicht. (Demo: 123456)');
@@ -154,6 +161,8 @@ function init() {
   $('#mfa-form').addEventListener('submit', onMfaEnable);
   $('#mfa-cancel').addEventListener('click', () => logout());
   $('#security-check').addEventListener('click', checkSecurity);
+  $('#inbox-done').addEventListener('change', renderInbox);
+  $('#inbox').addEventListener('click', inboxClick);
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
   $('#site-btn').addEventListener('click', openSiteAsAdmin);
@@ -319,10 +328,91 @@ async function checkSecurity() {
   }
 }
 
+// ---------- Postfach: Kontaktformular der Startseite ----------
+const TOPICS = { question: 'Frage', bug: 'Fehler', idea: 'Idee', channel: 'Kanal', privacy: 'Datenschutz', other: 'Sonstiges' };
+async function loadInbox() {
+  try {
+    const { messages } = await call('messages');
+    state.inbox = messages ?? [];
+    state.inboxNote = '';
+  } catch (err) {
+    if (err.status === 401) return;
+    state.inbox = [];
+    state.inboxNote = err.message;
+  }
+  renderInbox();
+}
+
+function renderInbox() {
+  const list = $('#inbox');
+  const all = state.inbox ?? [];
+  const open = all.filter((m) => m.status !== 'done');
+  $('#inbox-count').textContent = all.length ? `(${open.length} neu)` : '';
+  const shown = $('#inbox-done').checked ? all : open;
+  if (!shown.length) {
+    list.replaceChildren(Object.assign(document.createElement('li'), { className: 'muted', textContent: state.inboxNote || 'Keine neuen Nachrichten.' }));
+    return;
+  }
+  list.replaceChildren(...shown.map((m) => {
+    const li = document.createElement('li');
+    li.className = `inbox-item${m.status === 'done' ? ' is-done' : ''}`;
+    const head = document.createElement('div');
+    head.className = 'inbox-head';
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = TOPICS[m.topic] ?? m.topic;
+    const who = document.createElement('b');
+    who.textContent = m.name || 'Ohne Namen';
+    const meta = document.createElement('small');
+    meta.className = 'muted';
+    meta.textContent = [new Date(m.created_at).toLocaleString('de-DE'), m.lang?.toUpperCase(), m.channel ? `Kanal ${m.channel}` : ''].filter(Boolean).join(' · ');
+    head.append(chip, who, meta);
+    const text = document.createElement('p');
+    text.className = 'inbox-text';
+    text.textContent = m.message;
+    const actions = document.createElement('div');
+    actions.className = 'inbox-actions';
+    if (m.email) {
+      const mail = document.createElement('a');
+      mail.className = 'btn btn--primary btn--sm';
+      mail.href = `mailto:${encodeURIComponent(m.email)}?subject=${encodeURIComponent('Re: deine Nachricht an StreamHelp')}`;
+      mail.textContent = `Antworten an ${m.email}`;
+      actions.append(mail);
+    }
+    const mk = (label, data) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn--ghost btn--sm', textContent: label });
+      Object.assign(b.dataset, data);
+      return b;
+    };
+    const toggle = mk(m.status === 'done' ? 'Wieder offen' : 'Erledigt', { inbox: String(m.id), status: m.status === 'done' ? 'new' : 'done' });
+    const del = mk('Löschen', { inbox: String(m.id), del: '1' });
+    actions.append(toggle, del);
+    li.append(head, text, actions);
+    return li;
+  }));
+}
+
+async function inboxClick(e) {
+  const btn = e.target.closest('button[data-inbox]');
+  if (!btn) return;
+  const id = Number(btn.dataset.inbox);
+  if (btn.dataset.del && !confirm('Diese Nachricht endgültig löschen?')) return;
+  btn.disabled = true;
+  try {
+    await call('message_set', btn.dataset.del ? { id, delete: true } : { id, status: btn.dataset.status });
+    await loadInbox();
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    toast(err.message, 'error');
+    btn.disabled = false;
+  }
+}
+
 function showApp() {
   $('#admin-login').hidden = true;
   $('#admin-mfa').hidden = true;
   $('#admin-app').hidden = false;
+  loadInbox();
   refresh();
   loadChannels();
 }
