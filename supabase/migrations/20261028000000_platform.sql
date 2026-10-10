@@ -241,6 +241,8 @@ begin
   for r in
     select c.relname from pg_class c
     where c.relnamespace = 'core'::regnamespace and c.relkind = 'r'
+      -- nur Tabellen je Kanal (spätere Migrationen legen in core auch Hilfstabellen ohne channel_id an)
+      and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'channel_id' and not a.attisdropped)
       and not exists (
         select 1 from pg_index i
         where i.indrelid = c.oid and i.indkey[0] = (select attnum from pg_attribute where attrelid = c.oid and attname = 'channel_id'))
@@ -327,7 +329,9 @@ do $$
 declare
   r record;
 begin
-  for r in select c.relname from pg_class c where c.relnamespace = 'core'::regnamespace and c.relkind = 'r' order by 1 loop
+  for r in select c.relname from pg_class c where c.relnamespace = 'core'::regnamespace and c.relkind = 'r'
+             and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'channel_id' and not a.attisdropped)
+           order by 1 loop
     perform public.channel_view(r.relname);
   end loop;
 end;
