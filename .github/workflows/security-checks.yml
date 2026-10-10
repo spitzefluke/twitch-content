@@ -33,7 +33,7 @@ jobs:
       - name: Versionsnummern und Content-Security-Policy
         run: node tools/stamp-versions.mjs --check
       - name: JavaScript-Syntax
-        run: for f in js/*.js extension/*.js tools/*.mjs; do node --check "$f" || exit 1; done
+        run: for f in js/*.js extension/*.js tools/*.mjs sw.js; do node --check "$f" || exit 1; done
       - name: Keine geheimen Schlüssel im Code
         run: node tools/check-secrets.mjs
       - name: Migrationen

@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pjwso6Urt6a2V+sGcz4vPCiC8/VIxuseNwraQ8Qg7Pw=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gIhS0t4jQiM98xq3BECCznja7h25nfAZBD1IEoqUQnU=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -45,6 +45,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -65,7 +66,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=d3ee3a259a",
-      "./js/app.js": "./js/app.js?v=d0bec5cc01",
+      "./js/app.js": "./js/app.js?v=abb401c826",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
@@ -575,6 +576,7 @@
         <button class="sb-item" type="button" data-page="security" title="Sicherheit"><span class="sb-ico" aria-hidden="true">🔐</span><span class="sb-label">Sicherheit</span></button>
       </nav>
       <div class="sb-foot">
+        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><span class="sb-ico" aria-hidden="true">📲</span><span class="sb-label">App installieren</span></button>
         <button id="tour-btn" class="sb-item" type="button" title="Einführung"><span class="sb-ico" aria-hidden="true">❓</span><span class="sb-label">Einführung</span></button>
         <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><span class="sb-ico" aria-hidden="true">⚙️</span><span class="sb-label">Admin-Bereich</span></a>
       </div>

@@ -231,11 +231,37 @@ async function boot() {
     if (user && !state.user) enterApp(user, { animate: !$('#auth').hidden });
     if (!user && state.user) leaveApp();
   });
+  setupInstall();
+  // Als Handy-App gestartet (manifest.webmanifest): Abkürzungen wie #stats öffnen gleich die Seite,
+  // und ohne Anmeldung geht es direkt zur Anmeldung statt zur Startseite.
+  const appStart = params.has('app');
+  if (appStart && PAGE_TITLES[location.hash.slice(1)]) state.pendingPage = location.hash.slice(1);
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
+  else if (appStart && !OBS_PAGE) showAuth();
   else if ((oauthLogin || oauthTokens) && !oauthError && !params.has('error')) showLoginReturnError(oauthLogin, oauthTokens);
   else if (location.hash === '#login' || oauthError || params.has('error') || OBS_PAGE) showAuth();
   else showLanding();
+}
+
+// Handy-App (PWA): Service Worker (sw.js – nur Offline-Notfall) und „App installieren“ in der Leiste
+function setupInstall() {
+  if (OBS_PAGE) return;
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service Worker:', err));
+  }
+  const btn = $('#install-btn');
+  if (!btn) return;
+  let prompt = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; btn.hidden = false; });
+  addEventListener('appinstalled', () => { btn.hidden = true; prompt = null; toast('StreamHelp ist jetzt als App installiert.', 'ok'); });
+  btn.addEventListener('click', async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    await prompt.userChoice.catch(() => null);
+    prompt = null;
+    btn.hidden = true;
+  });
 }
 
 // Vom Anbieter zurück, aber keine Sitzung: Grund und Abhilfe anzeigen

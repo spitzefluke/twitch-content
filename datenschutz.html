@@ -71,7 +71,7 @@
       <li><b>Hosting:</b> Die Seite liegt bei GitHub Pages (GitHub Inc.). GitHub verarbeitet beim Aufruf technisch nötige Daten wie die IP-Adresse.</li>
       <li><b>Konto:</b> Wenn du dich anmeldest (E-Mail oder Twitch), speichern wir E-Mail-Adresse bzw. Twitch-Kennung und deinen Benutzernamen. Datenbank und Anmeldung laufen über Supabase.</li>
       <li><b>Was du selbst eingibst:</b> z. B. Ideen-Vorschläge, Fragen, Bingo-Karten, Tipps – mit deinem Benutzernamen, damit der Streamer sie sieht.</li>
-      <li><b>Im Browser gespeichert:</b> Einstellungen wie Ansicht oder Seitenleiste (localStorage). Keine Werbe- oder Analyse-Cookies.</li>
+      <li><b>Im Browser gespeichert:</b> Einstellungen wie Sprache, Ansicht, Seitenleiste oder Kachel-Favoriten (localStorage). Das OBS-WebSocket-Passwort liegt verschlüsselt nur in deinem Browser (IndexedDB) und wird nie an uns geschickt. Als Handy-App installiert, hält der Browser eine Kopie der Seite für den Fall ohne Netz vor. Keine Werbe- oder Analyse-Cookies.</li>
       <li><b>Schriften:</b> Die Seiten der Anwendung laden Schriftarten von Google Fonts; dabei erhält Google deine IP-Adresse.</li>
       <li>Rechtsgrundlage: Bereitstellung des Dienstes (Art. 6 Abs. 1 lit. b DSGVO) und berechtigtes Interesse an einem sicheren Betrieb (lit. f).</li>
     </ul>
@@ -81,6 +81,7 @@
       <li>Der Bot liest den Chat der verbundenen Kanäle, um Befehle wie <code>!watchtime</code>, <code>!mitmachen</code> oder Hot Words zu verarbeiten.</li>
       <li><b>Watchtime:</b> Für <code>!watchtime</code> zählen wir je Zuschauer Twitch-ID, Name und die zugeschaute Zeit.</li>
       <li><b>Hot Words:</b> gezählt werden nur die Wörter, die der Streamer festlegt – nicht ganze Nachrichten.</li>
+      <li><b>Statistik für den Streamer:</b> je Tag Sendezeit sowie höchste und durchschnittliche Zuschauerzahl des Kanals (nur Zahlen, keine Namen); dazu Summen aus den Ereignissen oben. Sehen können sie nur der Streamer und freigegebene Mods.</li>
       <li>Das Overlay zeigt Ereignisse aus dem Stream (z. B. Follows, Abos, Bits) mit dem öffentlichen Namen.</li>
     </ul>
 
