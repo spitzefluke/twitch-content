@@ -92,7 +92,10 @@ const STATIC_CSP = (scriptHashes) => [
 for (const page of ['404.html', 'datenschutz.html']) {
   const file = join(root, page);
   const before = readFileSync(file, 'utf8');
-  const scripts = [...before.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => sha(m[1]));
+  // Inline-Skripte (ohne src); Schlusstag auch mit Leerzeichen/Großbuchstaben, z. B. </SCRIPT >
+  const scripts = [...before.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\b[^>]*>/gi)]
+    .filter((m) => !/\bsrc\s*=/i.test(m[1]))
+    .map((m) => sha(m[2]));
   const after = before.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/,
     `<meta http-equiv="Content-Security-Policy" content="${STATIC_CSP(scripts)}">`);
   if (after !== before) {

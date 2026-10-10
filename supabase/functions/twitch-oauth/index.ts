@@ -23,6 +23,7 @@ import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } f
 import { ensureChatSubscription } from "../_shared/chat.ts";
 import { ensureAlertSubscriptions } from "../_shared/alerts.ts";
 import { runHealthCheck } from "../_shared/health.ts";
+import { errorText } from "../_shared/errors.ts";
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
 
@@ -78,7 +79,7 @@ async function healthAllChannels() {
     const r = await withChannel(ch.id, async () => {
       const { data: conn } = await db.from("twitch_connection").select("id").eq("id", 1).maybeSingle();
       if (!conn) return null; // nicht mit Twitch verbunden – nichts zu prüfen
-      return await runHealthCheck({ repair: true }).catch((e) => ({ ok: false, error: String((e as Error)?.message ?? e) }));
+      return await runHealthCheck({ repair: true }).catch((e) => ({ ok: false, error: errorText(e) }));
     });
     if (r) results.push({ channel: ch.login ?? ch.id, ...(r as Record<string, unknown>) });
   }
@@ -221,7 +222,7 @@ async function finishCallback(url: URL, st: any) {
     // Unerwartete Fehler nicht als "unknown" verschlucken: Die Meldung
     // (eigene Texte wie "Umgebungsvariable … fehlt" oder die Antwort von
     // Twitch – keine Tokens) geht mit zurück und steht dann auf der Webseite.
-    const detail = String((e as { message?: string })?.message ?? e).slice(0, 200);
+    const detail = errorText(e);
     return back({ twitch: "error", reason: "unknown", detail });
   }
 }

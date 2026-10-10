@@ -5,6 +5,7 @@
 //   POST {continuation, clientVersion, apiKey}          → {ended:true} oder {messages, removed, removedAuthors, continuation, timeoutMs}
 // Ohne Anmeldung aufrufbar (OBS hat keine) – sie fragt nur fest vorgegebene YouTube-Adressen ab.
 import { CHANNEL_RE, CONTINUATION_RE, pollChat, startChat } from "../_shared/youtube.ts";
+import { errorText } from "../_shared/errors.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,6 @@ Deno.serve(async (req) => {
     return json(await startChat(channel));
   } catch (e) {
     console.warn("YouTube-Chat:", e);
-    return json({ error: String((e as Error)?.message ?? e).slice(0, 200) }, 502);
+    return json({ error: errorText(e) }, 502);
   }
 });

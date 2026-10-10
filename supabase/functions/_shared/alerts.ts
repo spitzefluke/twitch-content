@@ -4,6 +4,7 @@
 // Der Streamer braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
 // (einmal Twitch neu verbinden).
 import { db, getAppToken, helix, HelixError } from "./twitch.ts";
+import { errorText } from "./errors.ts";
 
 type AlertType = {
   type: string;
@@ -52,7 +53,7 @@ export async function ensureAlertSubscriptions(broadcasterId: string, callback: 
       result[a.type] = { state: good?.status === "enabled" ? "ok" : "pending" };
     } catch (e) {
       console.warn(`Alert-Abo ${a.type} nicht angelegt:`, e);
-      const message = e instanceof HelixError ? (e.data?.message ?? `Fehler ${e.status}`) : String((e as Error)?.message ?? e);
+      const message = e instanceof HelixError ? (e.data?.message ?? `Fehler ${e.status}`) : errorText(e);
       result[a.type] = { state: "error", message: message.slice(0, 200) };
     }
   }
