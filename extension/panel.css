@@ -1,11 +1,13 @@
-/* Twitch-Panel: 318 px breit, höchstens 500 px hoch (scrollt bei mehr Inhalt) */
+/* Twitch-Panel: 318 px breit, höchstens 500 px hoch (scrollt bei mehr Inhalt).
+   Hell/Dunkel folgt Twitch (data-theme), .is-mobile = Twitch-App (größere Knöpfe, ganze Breite). */
 :root {
   --bg: #0e0b17; --card: #1a1527; --line: #2d2540; --text: #f2eefc; --muted: #a49fbd;
   --purple: #9146ff; --purple-2: #b57bff; --green: #2fd27a; --red: #ff4d6d; --amber: #ffb81c;
   color-scheme: dark;
 }
 html[data-theme="light"] {
-  --bg: #f7f6fb; --card: #ffffff; --line: #e1dcef; --text: #1f1a2e; --muted: #6b6585;
+  --bg: #f7f6fb; --card: #ffffff; --line: #e1dcef; --text: #1f1a2e; --muted: #625c7a;
+  --purple: #772ce8; --purple-2: #5c16c5; --green: #0f7a43; --red: #c8193a; --amber: #9a6a00;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -13,10 +15,13 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
 body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
 .panel { padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.avatar { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--purple-2)); color: #fff; font-weight: 800; font-size: 13px; }
+.avatar:empty { display: none; }
+.brand { flex: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; font-size: 11px; color: var(--muted); }
 .brand b { color: var(--purple-2); }
-.logo { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--purple); color: #fff; font-size: 10px; }
-.channel { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; }
+.logo { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; background: var(--purple); color: #fff; font-size: 8px; }
+.channel { color: var(--text); font-size: 15px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .card { padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .card h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 6px; }
@@ -52,3 +57,41 @@ body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 .link:hover, .link:focus-visible { border-color: var(--purple-2); outline: none; }
 @media (prefers-reduced-motion: no-preference) { .card { animation: in .3s ease-out both; } }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---------- Umfrage ---------- */
+.card h2 .poll-time { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--amber); font-variant-numeric: tabular-nums; }
+.card h2 .poll-time.is-done { color: var(--muted); }
+.poll-q { font-weight: 700; }
+.poll-opts { display: grid; gap: 6px; }
+.poll-opt {
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; text-align: left;
+  cursor: pointer; overflow: hidden; isolation: isolate;
+}
+.poll-opt::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); z-index: -1;
+  background: color-mix(in srgb, var(--purple) 22%, transparent); transition: width .4s ease;
+}
+.poll-opt:hover:not(:disabled), .poll-opt:focus-visible { border-color: var(--purple-2); outline: none; }
+.poll-opt:disabled { cursor: default; }
+.poll-opt.is-mine { border-color: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-2); }
+.poll-opt.is-mine::before { background: color-mix(in srgb, var(--purple) 38%, transparent); }
+.poll-opt.is-win { border-color: var(--green); }
+.poll-opt.is-win::before { background: color-mix(in srgb, var(--green) 28%, transparent); }
+.poll-n { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); font-size: 11px; font-weight: 800; }
+.poll-label { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.poll-pct { flex: none; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---------- Haustier ---------- */
+.pet .row { align-items: center; flex-wrap: wrap; }
+.pet-cmd { font-size: 12px; }
+.game-ico.is-hungry { animation: hungry 1.4s ease-in-out infinite; }
+@keyframes hungry { 50% { transform: rotate(-8deg) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .game-ico.is-hungry { animation: none; } }
+
+/* ---------- Handy (Twitch-App) ---------- */
+.is-mobile body { font-size: 15px; }
+.is-mobile .panel { padding: 14px 16px; }
+.is-mobile .btn { min-height: 44px; padding: 8px 18px; }
+.is-mobile .poll-opt { min-height: 46px; }
+.is-mobile .row input { min-height: 44px; font-size: 16px; } /* 16px: iOS zoomt sonst beim Tippen */

@@ -1,6 +1,6 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
 // Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
-// und Hot Words (…_hotwords.sql).
+// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
@@ -160,6 +160,24 @@ function liveExtras({ sb, unwrap, invoke }) {
       addTest: null, // nur im Demo-Modus
     },
 
+    // ---------- Umfrage (…_polls.sql) ----------
+    // Abstimmen geht auch im Twitch-Panel (twitch-ext) und im Chat (!vote) – gezählt wird in poll_vote
+    poll: {
+      get: () => one('polls'),
+      history: async () => unwrap(await sb.from('poll_history').select('*').order('closed_at', { ascending: false }).limit(10)),
+      me: () => rpc('poll_me'),
+      vote: (choice) => rpc('poll_vote_web', { p_choice: choice }),
+      async start({ question, options, minutes, chat }) {
+        const r = await rpc('poll_start', { p_question: question, p_options: options, p_minutes: minutes, p_chat: chat });
+        flush();
+        return r;
+      },
+      async close() { const r = await rpc('poll_close'); flush(); return r; },
+      async hide() { const r = await rpc('poll_hide'); flush(); return r; },
+      async tick() { await rpc('poll_tick'); flush(); },
+      addTest: null, // nur im Demo-Modus
+    },
+
     // ---------- Vorlesen ----------
     tts: {
       settings: () => one('tts_settings'),
@@ -251,6 +269,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const T0 = { id: 1, need_approval: true, max_chars: 200, blocked_words: [] };
   const CS0 = { id: 1, pack_size: 3, daily: true, weights: [55, 25, 12, 6, 2] };
   const HW0 = { id: 1, enabled: true, max_words: 5, min_length: 3, round: 1, top: [], started_at: now(), updated_at: now() };
+  const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
 
@@ -709,6 +728,79 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         }
         store.set('giveaway_entries', list);
         return put('giveaway', GW0, { entries: g.entries + added });
+      },
+    },
+    // Umfrage: wie poll_start/poll_vote/poll_finish in der Migration
+    poll: {
+      get: async () => oneRow('polls', PL0),
+      history: async () => store.get('poll_history', []).slice(0, 10),
+      async me() {
+        const p = oneRow('polls', PL0);
+        return store.get('poll_votes', {})[`${p.round}:${key()}`] ?? null;
+      },
+      finish() {
+        const p = oneRow('polls', PL0);
+        if (p.status !== 'open') return p;
+        const done = put('polls', PL0, { status: 'closed', closed_at: now() });
+        if (done.total > 0) {
+          store.set('poll_history', [{ id: nextId++, question: done.question, options: done.options, counts: done.counts, total: done.total, opened_at: done.opened_at, closed_at: done.closed_at },
+            ...store.get('poll_history', [])].slice(0, 20));
+        }
+        return done;
+      },
+      async start({ question, options, minutes = 0, chat = true }) {
+        await requireAdmin();
+        const q = String(question ?? '').replace(/\s+/g, ' ').trim();
+        const opts = (options ?? []).map((o) => String(o).replace(/\s+/g, ' ').trim().slice(0, 60)).filter(Boolean);
+        if (q.length < 3 || q.length > 120) throw new Error('Die Frage braucht 3 bis 120 Zeichen.');
+        if (opts.length < 2 || opts.length > 5) throw new Error('Eine Umfrage braucht 2 bis 5 Antworten.');
+        if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length) throw new Error('Zwei Antworten sind gleich.');
+        this.finish();
+        const p = oneRow('polls', PL0);
+        const m = clampInt(minutes, 0, 60, 0);
+        store.set('poll_votes', {});
+        return put('polls', PL0, {
+          status: 'open', round: p.round + 1, question: q, options: opts, counts: opts.map(() => 0), total: 0, chat_vote: !!chat,
+          opened_at: now(), ends_at: m ? new Date(Date.now() + m * 60000).toISOString() : null, closed_at: null,
+        });
+      },
+      async close() { await requireAdmin(); return this.finish(); },
+      async hide() { await requireAdmin(); this.finish(); return put('polls', PL0, { status: 'idle' }); },
+      async tick() {
+        const p = oneRow('polls', PL0);
+        if (p.status === 'open' && p.ends_at && Date.parse(p.ends_at) <= Date.now()) this.finish();
+      },
+      cast(voter, choice) {
+        const p = oneRow('polls', PL0);
+        if (p.status !== 'open' || !tileOpen('poll')) return { ok: false, reason: 'closed' };
+        if (p.ends_at && Date.parse(p.ends_at) <= Date.now()) { this.finish(); return { ok: false, reason: 'closed' }; }
+        if (!(choice >= 1 && choice <= p.options.length)) return { ok: false, reason: 'choice' };
+        const votes = store.get('poll_votes', {});
+        const k = `${p.round}:${voter}`;
+        const old = votes[k];
+        const counts = [...p.counts];
+        let total = p.total;
+        if (!old) { counts[choice - 1] += 1; total += 1; }
+        else if (old !== choice) { counts[old - 1] = Math.max(0, counts[old - 1] - 1); counts[choice - 1] += 1; }
+        votes[k] = choice;
+        store.set('poll_votes', votes);
+        if (old !== choice) put('polls', PL0, { counts, total });
+        return { ok: true, choice, changed: !!old && old !== choice, counts, total };
+      },
+      async vote(choice) { needUser(); return this.cast(key(), Number(choice)); },
+      // Demo: der „Chat“ stimmt ab
+      async addTest(n = 10) {
+        await requireAdmin();
+        const p = oneRow('polls', PL0);
+        if (p.status !== 'open') throw new Error('Gerade läuft keine Umfrage.');
+        const weights = p.options.map((_, i) => 1 / (i + 1.5));
+        const sum = weights.reduce((a, b) => a + b, 0);
+        for (let i = 0; i < n; i++) {
+          let r = randomFloat() * sum;
+          const choice = weights.findIndex((w) => (r -= w) < 0) + 1 || 1;
+          this.cast(`demo:${nextId++}`, choice);
+        }
+        return oneRow('polls', PL0);
       },
     },
     // Hot Words: wie hotwords_note/-refresh in der Migration (ohne Spam-Schutz)

@@ -8,6 +8,7 @@
 //   cards=br|…       Sammelkarten: seltene Ziehungen (Episch, Legendär) springen auf                        cdsize=100
 //   giveaway=tc|…    Verlosung: Preis, Befehl, Zahl im Lostopf, neue Teilnehmer; beim Ziehen laufen die Namen durch  gwsize=100
 //   hotwords=tl|…    Hot Words: die häufigsten Wörter im Chat mit Zähler (nur solange es welche gibt)   hwsize=100
+//   poll=tr|…        Umfrage: Frage, Antworten mit Balken, Restzeit; nach dem Ende das Ergebnis (bis „Ausblenden“)   plsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { rtSpec } from './channel.js';
@@ -28,8 +29,9 @@ export function setupOverlayExtras(o) {
     cards: o.position(o.params.get('cards'), null),
     giveaway: o.position(o.params.get('giveaway'), null),
     hotwords: o.position(o.params.get('hotwords'), null),
+    poll: o.position(o.params.get('poll'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -42,6 +44,7 @@ export function setupOverlayExtras(o) {
   if (cfg.cards) setupCards(ctx, card('ov-x-cards', 'cards', cfg.cards, o));
   if (cfg.giveaway) setupGiveaway(ctx, card('ov-x-giveaway', 'giveaway', cfg.giveaway, o));
   if (cfg.hotwords) setupHotwords(ctx, card('ov-x-hotwords', 'hotwords', cfg.hotwords, o));
+  if (cfg.poll) setupPoll(ctx, card('ov-x-poll', 'poll', cfg.poll, o));
 }
 
 function card(id, key, pos, o) {
@@ -117,6 +120,8 @@ function liveData(sb) {
         .on('postgres_changes', rtSpec(table), (p) => cb(p.new, p.eventType))
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error(`Overlay: Realtime für ${table} fehlgeschlagen`); });
     },
+    // Umfrage: Zeit um → beenden lassen (darf jeder, passiert nur, wenn sie wirklich abgelaufen ist)
+    pollTick: () => rows(sb.rpc('poll_tick')).catch(() => null),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
 }
@@ -128,6 +133,7 @@ function demoData() {
     queue: async () => read('queue_entries', []).filter((e) => ['waiting', 'picked'].includes(e.status)),
     giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round && !e.kicked).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
     ttsRecent: async () => [],
+    pollTick: async () => null,
     on(table, cb) {
       addEventListener('storage', (e) => {
         if (e.key !== `zd_${table}`) return;
@@ -725,5 +731,84 @@ async function setupHotwords({ src, opt, editTests }, el) {
   await reload();
   let timer = 0;
   src.on('hotwords', () => { clearTimeout(timer); timer = setTimeout(reload, 150); });
+  setInterval(reload, 30000);
+}
+
+// ============================================================
+// Umfrage (…_polls.sql): Frage, Antworten mit Balken und Restzeit; danach das Ergebnis
+// ============================================================
+async function setupPoll({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>📊 Umfrage</span><span class="ov-sep">·</span><span class="plo-time" data-time></span></header>
+    <b class="plo-q" data-q></b>
+    <ol class="plo-list" data-list></ol>
+    <p class="plo-foot" data-foot></p>`;
+  const $ = (sel) => el.querySelector(sel);
+  let p = null;
+  let before = [];
+  let ticked = 0;
+
+  const isOpen = () => p?.status === 'open' && !(p.ends_at && Date.parse(p.ends_at) <= Date.now());
+  const paint = () => {
+    const shown = !!p && p.status !== 'idle' && (p.options ?? []).length > 0;
+    el.hidden = !(shown || opt.edit);
+    if (!shown) return;
+    const open = isOpen();
+    el.classList.toggle('is-done', !open);
+    $('[data-q]').textContent = p.question;
+    const counts = p.counts ?? [];
+    const best = Math.max(0, ...counts);
+    $('[data-list]').replaceChildren(...p.options.map((label, i) => {
+      const n = counts[i] ?? 0;
+      const share = p.total ? n / p.total : 0;
+      const li = document.createElement('li');
+      li.className = `plo-row${!open && n === best && n > 0 ? ' is-win' : ''}`;
+      li.style.setProperty('--p', share.toFixed(3));
+      li.innerHTML = `<span class="plo-n">${i + 1}</span><b class="plo-label">${esc(label)}</b><span class="plo-pct">${Math.round(share * 100)} %</span>`;
+      if (before[i] !== undefined && n > before[i]) li.querySelector('.plo-pct').classList.add('is-bump');
+      return li;
+    }));
+    before = [...counts];
+    $('[data-foot]').textContent = `${p.total} ${p.total === 1 ? 'Stimme' : 'Stimmen'}${open && p.chat_vote ? ` · !vote 1–${p.options.length}` : ''}`;
+    time();
+  };
+  const time = () => {
+    const t = $('[data-time]');
+    if (!p || p.status === 'idle') { t.textContent = ''; return; }
+    if (!isOpen()) { t.textContent = 'Ergebnis'; return; }
+    if (!p.ends_at) { t.textContent = 'jetzt abstimmen'; return; }
+    const left = Math.max(0, Math.ceil((Date.parse(p.ends_at) - Date.now()) / 1000));
+    t.textContent = left >= 3600 ? clock(left) : `${Math.floor(left / 60)}:${pad(left % 60)}`;
+    // Zeit um: einmal beenden lassen, dann neu lesen
+    if (left === 0 && Date.now() - ticked > 10000) {
+      ticked = Date.now();
+      src.pollTick().then(reload);
+    }
+  };
+
+  if (opt.test || opt.edit) {
+    p = { status: 'open', question: 'Was spielen wir als Nächstes?', options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [12, 7, 3], total: 22, chat_vote: true, ends_at: new Date(Date.now() + 4 * 60000).toISOString() };
+    paint();
+    const bump = () => {
+      const i = Math.floor(Math.random() * p.options.length);
+      p = { ...p, counts: p.counts.map((n, j) => (j === i ? n + 1 : n)), total: p.total + 1 };
+      paint();
+    };
+    if (editTests) editTests.poll = () => { for (let i = 0; i < 5; i++) setTimeout(bump, i * 400); };
+    if (opt.test && !opt.edit) setInterval(bump, 2000);
+    setInterval(time, 1000);
+    return;
+  }
+
+  async function reload() {
+    const fresh = await src.one('polls').catch(() => null);
+    if (!fresh) return;
+    p = fresh;
+    paint();
+  }
+  await reload();
+  let timer = 0;
+  src.on('polls', () => { clearTimeout(timer); timer = setTimeout(reload, 120); });
+  setInterval(time, 1000);
   setInterval(reload, 30000);
 }

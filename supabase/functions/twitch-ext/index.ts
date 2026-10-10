@@ -3,6 +3,8 @@
 //                                     Verlosung und Warteschlange (mit „bin ich schon dabei?“)
 //   POST {action:"giveaway"}        → bei der Verlosung mitmachen
 //   POST {action:"queue", epic?}    → in die Mitspieler-Warteschlange (Epic-Name, beim ersten Mal nötig)
+//   POST {action:"vote", choice}    → bei der laufenden Umfrage abstimmen (1–5, ändern geht)
+//   POST {action:"feed"}            → das Haustier füttern (gleiche Abklingzeiten wie !füttern im Chat)
 // Ausweis: Header Authorization: Bearer <JWT der Twitch-Erweiterung>. Twitch signiert ihn mit dem
 // Extension-Secret (Supabase-Secret EXTENSION_SECRET, base64). Er nennt den Kanal (channel_id) und –
 // wenn der Zuschauer seine Twitch-ID freigegeben hat – den Zuschauer (user_id). Mitmachen geht nur damit.
@@ -10,6 +12,7 @@ import {
   channelForTwitch, currentChannel, db, env, getAppToken, getConnection, helix, rateLimit, sendChat, withChannel,
 } from "../_shared/twitch.ts";
 import { GAME_ONLY, gameById } from "../_shared/games.ts";
+import { feedPet, feedWait, petStarted } from "../_shared/pet.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -61,7 +64,7 @@ Deno.serve(async (req) => {
   // Rate-Limit je Zuschauer (opaque_user_id gibt Twitch auch ohne freigegebene ID): Stand abrufen
   // 30× pro Minute, Mitmachen 6× pro Minute – genug für echte Klicks, zu wenig für Skripte.
   const viewer = claims.opaque_user_id ?? claims.user_id ?? "anon";
-  const join = body.action === "giveaway" || body.action === "queue";
+  const join = body.action === "giveaway" || body.action === "queue" || body.action === "vote" || body.action === "feed";
   if (!(await rateLimit(`ext:${join ? "join" : "state"}:${claims.channel_id}:${viewer}`, join ? 6 : 30))) {
     return json({ error: "rate", message: "Zu viele Klicks – kurz warten." }, 429);
   }
@@ -74,6 +77,8 @@ Deno.serve(async (req) => {
       if (body.action === "state") return json(await state(channel.id, claims));
       if (body.action === "giveaway") return json(await joinGiveaway(claims));
       if (body.action === "queue") return json(await joinQueue(claims, body.epic));
+      if (body.action === "vote") return json(await vote(claims, body.choice));
+      if (body.action === "feed") return json(await feed(claims));
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error("twitch-ext:", e);
@@ -95,7 +100,35 @@ type Shared = {
   next: { title: string; at: string } | null;
   giveaway: { open: boolean; prize: string; command: string; followers_only: boolean; entries: number; round: number } | null;
   queue: { open: boolean; waiting: number; note: string } | null;
+  poll: Poll | null;
+  pet: Pet | null;
 };
+type Poll = {
+  status: "open" | "closed"; round: number; question: string; options: string[]; counts: number[]; total: number;
+  ends_at: string | null; chat: boolean;
+};
+type Pet = {
+  name: string; species: string; stage: string; command: string; fed_count: number;
+  last_fed_by: string; last_fed_at: string | null; hungry_after: number;
+};
+
+// Name des Kanals so, wie er bei Twitch heißt (Groß-/Kleinschreibung, Umbenennungen) – 1 Stunde gemerkt
+const NAME_MS = 60 * 60_000;
+const names = new Map<string, { at: number; name: string | null }>();
+async function twitchName(twitchId: string) {
+  const hit = names.get(twitchId);
+  if (hit && Date.now() - hit.at < NAME_MS) return hit.name;
+  let name: string | null = null;
+  try {
+    const res = await helix("users", await getAppToken(), { query: { id: twitchId } });
+    const u = res?.data?.[0];
+    name = u ? String(u.display_name || u.login || "").slice(0, 40) || null : null;
+  } catch (e) {
+    console.warn("Kanalname:", (e as Error).message);
+  }
+  names.set(twitchId, { at: Date.now(), name });
+  return name;
+}
 
 function siteLink(login: string | null, isDefault: boolean) {
   const site = Deno.env.get("SITE_URL");
@@ -104,12 +137,12 @@ function siteLink(login: string | null, isDefault: boolean) {
   return isDefault || !login ? base : `${base}#/c/${login}`;
 }
 
-async function shared(channelId: string | null): Promise<Shared> {
+async function shared(channelId: string | null, twitchId: string): Promise<Shared> {
   const key = channelId ?? "default";
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  const [ch, conn, games, tiles, giveaway, queue, waiting] = await Promise.all([
+  const [ch, conn, games, tiles, giveaway, queue, waiting, poll, pet, petOpen, realName] = await Promise.all([
     currentChannel().catch(() => null),
     db.from("twitch_connection").select("display_name, broadcaster_login").eq("id", 1).maybeSingle(),
     db.from("stream_games").select("active, current, live_game, live_category, live_at").eq("id", 1).maybeSingle(),
@@ -117,6 +150,11 @@ async function shared(channelId: string | null): Promise<Shared> {
     db.from("giveaway").select("status, prize, command, followers_only, entries, round").eq("id", 1).maybeSingle(),
     db.from("queue_settings").select("open, note").eq("id", 1).maybeSingle(),
     db.from("queue_entries").select("id", { count: "exact", head: true }).eq("status", "waiting"),
+    // Umfrage (…_polls.sql) und Haustier – fehlt die Tabelle, bleibt der Teil einfach weg
+    db.from("polls").select("status, round, question, options, counts, total, ends_at, chat_vote").eq("id", 1).maybeSingle(),
+    db.from("pet").select("name, species, stage, feed_command, fed_count, last_fed_by, last_fed_at, hungry_after").eq("id", 1).maybeSingle(),
+    petStarted().catch(() => false),
+    twitchName(twitchId),
   ]);
 
   // Game: gerade live → Standard-Game → erstes aktives
@@ -135,7 +173,14 @@ async function shared(channelId: string | null): Promise<Shared> {
     .filter((t) => t.kind === "countdown" && t.target_at && Date.parse(t.target_at) > now)
     .sort((a, b) => Date.parse(a.target_at!) - Date.parse(b.target_at!))[0];
 
-  const name = ch?.display_name || conn.data?.display_name || "Streamer";
+  const name = realName || ch?.display_name || conn.data?.display_name || "Streamer";
+  const pl = poll.error ? null : poll.data;
+  // Zeit der Umfrage um: beenden (Ergebnis in den Verlauf, Bot verkündet es)
+  if (pl?.status === "open" && pl.ends_at && Date.parse(pl.ends_at) <= Date.now()) {
+    await db.rpc("poll_tick").then(() => { pl.status = "closed"; }, () => {});
+  }
+  const p = pet.error ? null : pet.data;
+  const pollTile = started.some((t) => t.kind === "poll");
   const login = ch?.login ?? conn.data?.broadcaster_login ?? null;
   const data: Shared = {
     channel: { name, login, link: siteLink(login, ch ? ch.is_default : true) },
@@ -147,24 +192,44 @@ async function shared(channelId: string | null): Promise<Shared> {
       ? { open: giveaway.data.status === "open", prize: giveaway.data.prize ?? "", command: giveaway.data.command ?? "", followers_only: !!giveaway.data.followers_only, entries: giveaway.data.entries ?? 0, round: giveaway.data.round ?? 0 }
       : null,
     queue: queue.data && !queue.error ? { open: !!queue.data.open, waiting: waiting.count ?? 0, note: queue.data.note ?? "" } : null,
+    poll: pl && pollTile && (pl.status === "open" || pl.status === "closed") && (pl.options ?? []).length
+      ? {
+        status: pl.status, round: pl.round ?? 0, question: pl.question ?? "", options: pl.options ?? [],
+        counts: (pl.options ?? []).map((_: string, i: number) => Number(pl.counts?.[i] ?? 0)), total: pl.total ?? 0,
+        ends_at: pl.ends_at ?? null, chat: !!pl.chat_vote,
+      }
+      : null,
+    pet: p && petOpen
+      ? {
+        name: String(p.name ?? "Rexi"), species: String(p.species ?? "dino"), stage: String(p.stage ?? "adult"),
+        command: String(p.feed_command ?? "!füttern"), fed_count: p.fed_count ?? 0, last_fed_by: String(p.last_fed_by ?? ""),
+        last_fed_at: p.last_fed_at ?? null, hungry_after: p.hungry_after ?? 45,
+      }
+      : null,
   };
   cache.set(key, { at: Date.now(), data });
   return data;
 }
 
 async function state(channelId: string | null, claims: Claims) {
-  const data = await shared(channelId);
-  const me: { shared: boolean; giveaway?: boolean; queue?: number | null; epic?: string | null } = { shared: !!claims.user_id };
+  const data = await shared(channelId, claims.channel_id);
+  const me: {
+    shared: boolean; giveaway?: boolean; queue?: number | null; epic?: string | null; vote?: number | null; feed_wait?: number;
+  } = { shared: !!claims.user_id };
   if (claims.user_id) {
     const key = `tw:${claims.user_id}`;
-    const [entry, waiting, player] = await Promise.all([
+    const [entry, waiting, player, choice, wait] = await Promise.all([
       data.giveaway ? db.from("giveaway_entries").select("id").eq("player_key", key).eq("round", data.giveaway.round).eq("kicked", false).maybeSingle() : null,
       data.queue ? db.rpc("queue_position", { p_key: key }) : null,
       data.queue ? db.from("queue_players").select("epic_name").eq("player_key", key).maybeSingle() : null,
+      data.poll ? db.rpc("poll_choice", { p_key: key }) : null,
+      data.pet ? feedWait(claims.user_id).catch(() => 0) : 0,
     ]);
     me.giveaway = !!entry?.data;
     me.queue = typeof waiting?.data === "number" ? waiting.data : null;
     me.epic = player?.data?.epic_name ?? null;
+    me.vote = typeof choice?.data === "number" ? choice.data : null;
+    me.feed_wait = wait;
   }
   return { ...data, me };
 }
@@ -213,4 +278,21 @@ async function joinQueue(claims: Claims, epic: unknown) {
   if (error) throw error;
   cache.clear();
   return { ok: !!res?.ok, reason: res?.reason ?? null, position: res?.position ?? null, picked: !!res?.picked };
+}
+
+async function vote(claims: Claims, choice: unknown) {
+  if (!claims.user_id) return { ok: false, reason: "share" };
+  const n = Number(choice);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, reason: "choice" };
+  const { data: res, error } = await db.rpc("poll_vote", { p_key: `tw:${claims.user_id}`, p_choice: n, p_source: "panel" });
+  if (error) throw error;
+  cache.clear();
+  return { ok: !!res?.ok, reason: res?.reason ?? null, choice: res?.choice ?? null, counts: res?.counts ?? null, total: res?.total ?? null };
+}
+
+async function feed(claims: Claims) {
+  if (!claims.user_id) return { ok: false, reason: "share" };
+  const res = await feedPet(claims.user_id, await displayName(claims.user_id));
+  cache.clear();
+  return res;
 }
