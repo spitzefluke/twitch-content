@@ -5,6 +5,7 @@ Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkt
 - **Twitch-Panel** unter dem Stream: aktuelles Game mit passenden Ideen, **Umfragen**, **Haustier füttern**, Mitmachen per Klick (Verlosung, Warteschlange) und Link zur Seite – mit echtem Kanalnamen, hell/dunkel wie Twitch und auch in der Twitch-App.
 - **Umfragen**: Frage mit 2–5 Antworten, abstimmen im Panel, mit `!vote 2` im Chat oder auf der Seite; Ergebnis live im Overlay.
 - **Games im Dashboard**: Fortnite, Minecraft, Just Chatting, Speedrun, Horror und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
+- **Chat-Kommandos**: Der Chat steuert das Spiel – `!springen`, `!links`, `!licht` (oder per Kanalpunkte), das Overlay zeigt groß, was der Streamer tun muss; auf Wunsch stimmt der Chat ab und das häufigste Kommando gewinnt.
 - **Game-Pakete**: **Zähler** (Tode, Kills, Versuche, Jumpscares – Mods zählen im Chat mit `!tode +`), **Spiel-Rad** (nächstes Game oder eine Challenge passend zum Game) und **Herzfrequenz** per Bluetooth-Pulsgurt – alles live im Overlay.
 - **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
@@ -735,6 +736,18 @@ Zu jedem Game-Paket (Fortnite, Minecraft, Just Chatting, Speedrun, Horror) gibt 
 - Die Seite schickt höchstens alle 3 Sekunden den Puls. Gespeichert werden nur der **letzte Wert** und Min/Durchschnitt/Max der laufenden Sitzung (nach 10 Minuten ohne Werte beginnt eine neue).
 - Im Stream (Ebene „Herzfrequenz“) schlägt ein Herz im Takt; ab der **Warnschwelle** (Standard 140) wird es rot und wackelt. Ohne frische Werte verschwindet es. Im Chat nennt `!puls` (oder `!herz`) den Wert. „Puls ausblenden“ beendet die Anzeige.
 - Im Demo-Modus simuliert **🫀 Simulieren** einen Puls.
+
+## Chat-Kommandos: Der Chat steuert das Spiel
+
+Kachel **„Chat-Kommandos“** im Dashboard. Zuschauer tippen ein Kommando in den Chat (z. B. `!springen`) oder lösen eine Kanalpunkte-Belohnung ein – die OBS-Ebene **„Chat-Kommandos“** zeigt groß, was der Streamer tun muss („SPRING!“), und er führt es selbst im Spiel aus. (Echte Tastendrücke im Spiel bräuchten ein Programm auf dem PC – das macht StreamHelp bewusst nicht.) Einmal nötig: Migration **`supabase/migrations/20261107000000_chat_control.sql`** (nach `…_game_packs.sql`).
+
+- **Kommandos** (bis zu 30): Befehl ohne `!`, was zu tun ist (bis 40 Zeichen), Symbol, **Abklingzeit** (für alle), **Kanalpunkte** (0 = keine Belohnung) und ob der **Chat-Befehl kostenlos** geht. Teure Kommandos (z. B. „Waffe wegwerfen“) am besten nur per Kanalpunkte. ▶ probiert ein Kommando im Overlay aus, ⏸ schaltet es aus.
+- **Vorlagen** je Game: Fortnite (springen, bauen, tanzen, heilen, Waffe wegwerfen), Minecraft (springen, schleichen, graben, essen, Item wegwerfen), Just Chatting (winken, lachen, tanzen, Wasser, Akzent), Speedrun (schneller, Pause, Reset), Horror (umdrehen, Licht aus, rennen, verstecken, schreien). Sie stehen in `js/games.js` (`PACKS` → `commands`).
+- **Modus „Direkt“:** Jedes Kommando kommt sofort ins Overlay (eins nach dem anderen, höchstens 5 warten). Dazu eine **Pause je Zuschauer** (Standard 20 s) und die Abklingzeit je Kommando.
+- **Modus „Abstimmen“:** Das erste Kommando startet eine Runde (10–120 s). Jeder Zuschauer hat eine Stimme (änderbar); das Overlay zeigt die Balken und die Restzeit, am Ende gewinnt das häufigste Kommando (bei Gleichstand das Los).
+- **Kanalpunkte:** Kommandos mit Kosten bekommen eine eigene Belohnung „🎮 …“ – im Dialog **„Kanalpunkte abgleichen“** legt sie an, passt Kosten, Abklingzeit und an/aus an und räumt Belohnungen gelöschter Kommandos weg. Einlösungen kommen in beiden Modi sofort; der Bot bestätigt sie im Chat. Sind die Kommandos aus oder läuft der Raid-Schutz, gibt es die Punkte zurück.
+- Der Bot antwortet auf Chat-Kommandos nicht (sonst flutet er den Chat) – das Overlay zeigt alles. Kommandos haben Vorrang vor eigenen Bot-Befehlen gleichen Namens; Zähler-Befehle und eingebaute Befehle (`!vote`, `!puls` …) sind gesperrt.
+- Mods brauchen den Bereich **„Mitmach-Spiele“** (Mod-Rechte). Im Demo-Modus spielt **💬 Chat simulieren** ein paar Zuschauer.
 
 ## Startseite: Balken „Auf einen Blick“
 

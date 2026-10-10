@@ -30,6 +30,8 @@
 .theme-gamewheel { --tile-glow: rgba(255, 79, 216, .45); }
 .theme-heart .tile-bg { background-image: url("../assets/bg-heart.svg"); }
 .theme-heart { --tile-glow: rgba(255, 45, 85, .5); }
+.theme-chatcontrol .tile-bg { background-image: url("../assets/bg-chatcontrol.svg"); }
+.theme-chatcontrol { --tile-glow: rgba(61, 220, 132, .45); }
 .tile--x-forbidden .prank-cta { background: #ff5a4e; color: #fff; }
 .tile--x-subathon .prank-cta { background: #9146ff; color: #fff; }
 .tile--x-pause .prank-cta { background: #ffb81c; color: #1a1204; }
@@ -43,6 +45,7 @@
 .tile--x-counter .prank-cta { background: #ff5a4e; color: #fff; }
 .tile--x-gamewheel .prank-cta { background: #ff4fd8; color: #2a0622; }
 .tile--x-heart .prank-cta { background: #ff2d55; color: #fff; }
+.tile--x-chatcontrol .prank-cta { background: #3ddc84; color: #04220f; }
 
 /* ---------- Dialog-Grundform ---------- */
 .dialog--extra { width: min(96vw, 1080px); }
@@ -390,4 +393,21 @@ button.xcard:hover { transform: translateY(-3px); }
 .hr-stat b { font-size: 22px; font-variant-numeric: tabular-nums; }
 .hr-status { margin: 0 0 8px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .hr-hero.is-live .hr-heart { animation: none; } }
+
+/* ---------- Chat-Kommandos (js/extras-chatcontrol.js) ---------- */
+.cc-hero { display: grid; gap: 10px; justify-items: stretch; min-height: 120px; align-content: center; }
+.cc-off { margin: 0; text-align: center; color: var(--muted); }
+.cc-last { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.cc-last-emoji { font-size: 48px; line-height: 1; }
+.cc-last b { font-size: clamp(22px, 3vw, 30px); overflow-wrap: anywhere; }
+.cc-last small, .cc-sub { color: var(--muted); }
+.cc-vote-head { display: flex; justify-content: space-between; align-items: center; margin: 0; }
+.cc-vote-head span { font-variant-numeric: tabular-nums; font-weight: 800; color: #3ddc84; }
+.cc-item { align-items: center; }
+.cc-item.is-off { opacity: .6; }
+.cc-emoji { font-size: 24px; line-height: 1; }
+.cc-main { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.cc-main small { color: var(--muted); }
+.cc-main .cc-err { color: #ff6b6b; }
+.cc-row2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 

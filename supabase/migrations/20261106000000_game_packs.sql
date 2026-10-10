@@ -25,7 +25,7 @@ alter table core.tiles drop constraint if exists tiles_kind_check;
 alter table core.tiles add constraint tiles_kind_check
   check (kind in ('wheel', 'countdown', 'prank', 'bingo', 'questions', 'pet', 'shop', 'challenge',
                   'forbidden', 'subathon', 'pause', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll',
-                  'counter', 'gamewheel', 'heart'));
+                  'counter', 'gamewheel', 'heart', 'chatcontrol'));
 
 do $$
 declare
@@ -394,7 +394,13 @@ begin
   end if;
 
   select * into c from core.counters where channel_id = v_ch and command = v_cmd;
-  if not found then return json_build_object('handled', false); end if;
+  if not found then
+    -- Chat-Kommandos (…_chat_control.sql), falls schon eingespielt – so bleibt die Datei mehrfach ausführbar
+    if to_regprocedure('public.cc_chat(uuid,text,text,text)') is not null then
+      return public.cc_chat(v_ch, p_user_id, p_name, v_cmd);
+    end if;
+    return json_build_object('handled', false);
+  end if;
 
   m := regexp_match(v_arg, '^([+-])\s*(\d{0,4})$');
   if m is not null then v_delta := (case when m[1] = '-' then -1 else 1 end) * coalesce(nullif(m[2], '')::int, 1); end if;

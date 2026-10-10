@@ -298,8 +298,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'chatcontrol',
     position: 21,
+    kind: 'chatcontrol',
+    title: 'Chat-Kommandos',
+    description: 'Der Chat steuert das Spiel: !springen, !links, !nachladen – der Streamer muss gehorchen.',
+    theme: 'chatcontrol',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 22,
     kind: 'countdown',
     title: 'Late-Night-Marathon',
     description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
@@ -309,7 +319,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 22,
+    position: 23,
     kind: 'countdown',
     title: 'Countdown zum Subathon',
     description: 'Der nächste Subathon kommt! Jeder Sub verlängert den Stream – wie lange geht es diesmal?',

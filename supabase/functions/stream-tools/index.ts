@@ -5,6 +5,7 @@
 //   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
 //   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
 //   POST {action:"watch_dates"}         → „Follower seit“/„Konto seit“ für die Watchtime-Rangliste nachholen (Admins, Mods mit Bereich Chat)
+//   POST {action:"cc_sync"}           → Kanalpunkte-Belohnungen der Chat-Kommandos anlegen/abgleichen (Admins, freigegebene Mods)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import {
@@ -15,6 +16,7 @@ import { errorText } from "../_shared/errors.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
 import { refreshWatchDates, watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
+import { syncChatControlRewards } from "../_shared/chatcontrol.ts";
 
 Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -63,6 +65,22 @@ Deno.serve(channelServe(async (req) => {
       );
       await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
       return json(result);
+    }
+    if (action === "cc_sync") {
+      if (!(await isAdminUser(user.id, "points"))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
+      await audit(user.id, "cc_sync", {});
+      const conn = await getConnection();
+      if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);
+      try {
+        const result = await syncChatControlRewards(conn);
+        const subscriptionId = await ensureRedemptionSubscription(
+          conn.broadcaster_id, `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`, env("EVENTSUB_SECRET"),
+        );
+        await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+        return json(result);
+      } catch (e) {
+        return json({ error: errorText(e, 300) }, 409);
+      }
     }
     if (action === "anniversary") {
       if (!(await isAdminUser(user.id, "overlay"))) return json({ error: "Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods." }, 403);

@@ -1,6 +1,6 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
 // Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
-// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql).
+// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql), Chat-Kommandos (…_chat_control.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
@@ -192,6 +192,21 @@ function liveExtras({ sb, unwrap, invoke }) {
       save: ({ game = null, challenges = null, auto = null }) => rpc('gamewheel_save', { p_game: game, p_challenges: challenges, p_auto: auto }),
       announce: flush, // Bot-Nachricht erst, wenn das Rad steht
     },
+    // ---------- Chat-Kommandos (…_chat_control.sql) ----------
+    chatcontrol: {
+      get: () => one('chat_control'),
+      commands: async () => unwrap(await sb.from('cc_commands').select('*').order('position').order('id')),
+      events: async (limit = 15) => unwrap(await sb.from('cc_events').select('*').order('id', { ascending: false }).limit(limit)),
+      saveSettings: ({ enabled = null, mode = null, voteSeconds = null, userCooldown = null, showSeconds = null }) =>
+        rpc('cc_settings_save', { p_enabled: enabled, p_mode: mode, p_vote_seconds: voteSeconds, p_user_cooldown: userCooldown, p_show_seconds: showSeconds }),
+      save: ({ id = null, word, label, emoji, cooldown = 15, chat = true, cost = 0, enabled = true, game = '' }) =>
+        rpc('cc_command_save', { p_id: id, p_word: word, p_label: label, p_emoji: emoji, p_cooldown: cooldown, p_chat: chat, p_cost: cost, p_enabled: enabled, p_game: game }),
+      remove: (id) => rpc('cc_command_delete', { p_id: id }),
+      test: (id) => rpc('cc_test', { p_id: id }),
+      tick: () => rpc('cc_tick'),
+      sync: () => invoke('stream-tools', { action: 'cc_sync' }),
+      simulate: null, // nur im Demo-Modus
+    },
     heart: {
       get: () => one('heart_rate'),
       push: (bpm) => rpc('heart_push', { p_bpm: bpm }),
@@ -290,6 +305,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const CS0 = { id: 1, pack_size: 3, daily: true, weights: [55, 25, 12, 6, 2] };
   const HW0 = { id: 1, enabled: true, max_words: 5, min_length: 3, round: 1, top: [], started_at: now(), updated_at: now() };
   const GWH0 = { id: 1, challenges: {}, auto_switch: true, n: 0, mode: 'game', game: '', options: [], result_index: null, result: '', spun_by: '', spun_at: null };
+  const CC0 = { id: 1, enabled: true, mode: 'direct', vote_seconds: 30, user_cooldown: 20, show_seconds: 6, round: 0, round_ends_at: null, tally: {}, voters: 0 };
   const HR0 = { id: 1, bpm: null, at: null, alarm: 140, session_at: null, s_min: null, s_max: null, s_sum: 0, s_n: 0 };
   const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
@@ -818,6 +834,84 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         return put('gamewheel', GWH0, { challenges: all, auto_switch: auto ?? g.auto_switch });
       },
       announce: async () => {},
+    },
+    // Chat-Kommandos: wie cc_* in der Migration (Kanalpunkte gibt es im Demo nicht)
+    chatcontrol: {
+      get: async () => oneRow('chat_control', CC0),
+      commands: async () => [...store.get('cc_commands', [])].sort((a, b) => a.position - b.position || a.id - b.id),
+      events: async (limit = 15) => store.get('cc_events', []).slice(-limit).reverse(),
+      async saveSettings({ enabled = null, mode = null, voteSeconds = null, userCooldown = null, showSeconds = null }) {
+        await requireAdmin();
+        const c = oneRow('chat_control', CC0);
+        const reset = (mode !== null && mode !== c.mode) || enabled === false;
+        return put('chat_control', CC0, {
+          enabled: enabled ?? c.enabled, mode: mode ?? c.mode, vote_seconds: clampInt(voteSeconds, 10, 120, c.vote_seconds),
+          user_cooldown: clampInt(userCooldown, 0, 600, c.user_cooldown), show_seconds: clampInt(showSeconds, 2, 30, c.show_seconds),
+          ...(reset ? { round_ends_at: null, tally: {}, voters: 0 } : {}),
+        });
+      },
+      async save({ id = null, word, label, emoji, cooldown = 15, chat = true, cost = 0, enabled = true, game = '' }) {
+        await requireAdmin();
+        const list = store.get('cc_commands', []);
+        const w = String(word ?? '').replace(/^!+/, '').trim().toLowerCase();
+        if (!/^[a-zäöüß0-9]{2,20}$/.test(w)) throw new Error('Der Befehl darf nur Buchstaben und Zahlen haben (2–20 Zeichen), z. B. springen.');
+        if (list.some((c) => c.word === w && c.id !== id)) throw new Error(`Das Kommando !${w} gibt es schon.`);
+        if (store.get('counters', []).some((c) => c.command === w)) throw new Error(`Den Befehl !${w} hat schon ein Zähler.`);
+        if (!String(label ?? '').trim() || String(label).trim().length > 40) throw new Error('Der Text braucht 1 bis 40 Zeichen.');
+        if (!chat && !(cost > 0)) throw new Error('Ohne Chat-Befehl braucht das Kommando Kanalpunkte – sonst kann es niemand auslösen.');
+        const fields = { word: w, label: label.trim(), emoji: emoji?.trim() || '🎮', cooldown: clampInt(cooldown, 0, 3600, 15), chat: !!chat, cost: clampInt(cost, 0, 1000000, 0), enabled: !!enabled, updated_at: now() };
+        let row;
+        if (id === null) {
+          if (list.length >= 30) throw new Error('Höchstens 30 Kommandos.');
+          row = { id: nextId++, ...fields, game, position: list.length + 1, uses: 0, last_at: null, reward_id: null, reward_error: '' };
+          store.set('cc_commands', [...list, row]);
+        } else {
+          store.set('cc_commands', list.map((c) => (c.id === id ? (row = { ...c, ...fields }) : c)));
+        }
+        emit('cc_commands', row);
+        return row;
+      },
+      async remove(id) { await requireAdmin(); store.set('cc_commands', store.get('cc_commands', []).filter((c) => c.id !== id)); emit('cc_commands', { id }); },
+      fire(cmd, who, source, votes = 0) {
+        const ev = { id: nextId++, command_id: cmd.id, word: cmd.word, label: cmd.label, emoji: cmd.emoji, who, source, votes, created_at: now() };
+        store.set('cc_events', [...store.get('cc_events', []), ev].slice(-50));
+        store.set('cc_commands', store.get('cc_commands', []).map((c) => (c.id === cmd.id ? { ...c, uses: c.uses + 1, last_at: now() } : c)));
+        emit('cc_events', ev);
+        return ev;
+      },
+      async test(id) {
+        await requireAdmin();
+        const cmd = store.get('cc_commands', []).find((c) => c.id === id);
+        if (!cmd) throw new Error('Dieses Kommando gibt es nicht.');
+        return this.fire(cmd, name(), 'web');
+      },
+      async tick() {
+        const c = oneRow('chat_control', CC0);
+        if (!c.round_ends_at || Date.parse(c.round_ends_at) > Date.now()) return;
+        const entries = Object.entries(c.tally ?? {}).sort((a, b) => b[1] - a[1]);
+        put('chat_control', CC0, { round_ends_at: null, tally: {}, voters: 0 });
+        const win = entries[0] && store.get('cc_commands', []).find((x) => String(x.id) === entries[0][0]);
+        if (win) this.fire(win, 'Chat', 'vote', entries[0][1]);
+      },
+      // Demo: der „Chat“ tippt ein paar Kommandos (wie cc_chat, ohne Abklingzeiten)
+      async simulate(n = 6) {
+        await requireAdmin();
+        const cmds = store.get('cc_commands', []).filter((c) => c.enabled && c.chat);
+        if (!cmds.length) throw new Error('Erst ein Kommando mit Chat-Befehl anlegen.');
+        const c = oneRow('chat_control', CC0);
+        if (!c.enabled) throw new Error('Die Chat-Kommandos sind aus.');
+        if (c.mode === 'direct') return this.fire(pick(cmds), pick(['Mia', 'Ben', 'Lea', 'Tom', 'Kai']), 'chat');
+        await this.tick();
+        const cur = oneRow('chat_control', CC0);
+        const tally = { ...(cur.round_ends_at ? cur.tally : {}) };
+        for (let i = 0; i < n; i++) { const k = String(pick(cmds).id); tally[k] = (tally[k] ?? 0) + 1; }
+        return put('chat_control', CC0, {
+          tally, voters: (cur.round_ends_at ? cur.voters : 0) + n,
+          round: cur.round_ends_at ? cur.round : cur.round + 1,
+          round_ends_at: cur.round_ends_at ?? new Date(Date.now() + cur.vote_seconds * 1000).toISOString(),
+        });
+      },
+      async sync() { throw new Error('Im Demo-Modus gibt es keine Kanalpunkte – dafür Supabase und Twitch verbinden.'); },
     },
     heart: {
       get: async () => oneRow('heart_rate', HR0),

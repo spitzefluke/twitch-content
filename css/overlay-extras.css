@@ -246,3 +246,22 @@
 @keyframes hro-alarm { 50% { transform: translateX(-.06em) rotate(-.6deg); } }
 @media (prefers-reduced-motion: reduce) { .hro-heart, .ov-x-heart.is-alarm, .cto-row.is-up, .ov-x-gamewheel.is-done .sgo-result { animation: none; } }
 
+/* ---------- Chat-Kommandos ---------- */
+.ov-x-chatcontrol { --c: #3ddc84; font-size: calc(16px * var(--cms, 1)); width: 20em; border-color: rgba(61, 220, 132, .55); text-align: center; }
+.cmo-show { display: grid; justify-items: center; gap: .15em; padding: .7em .9em .8em; }
+.cmo-emoji { font-size: 3em; line-height: 1; }
+.cmo-label { font-family: var(--font-display); font-size: 2.1em; font-weight: 900; line-height: 1.05; text-transform: uppercase; letter-spacing: .02em; color: #9ff0c3; overflow-wrap: anywhere; }
+.cmo-who { font-size: .85em; opacity: .75; }
+.cmo-show.is-in { animation: cmo-in .55s var(--ease-spring) both; }
+.cmo-show.is-in .cmo-emoji { animation: cmo-jump .8s var(--ease-spring) .1s both; }
+@keyframes cmo-in { from { opacity: 0; transform: scale(.6) rotate(-3deg); } }
+@keyframes cmo-jump { 0% { transform: translateY(.4em) scale(.6); } 60% { transform: translateY(-.25em) scale(1.15); } }
+.cmo-left { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: #9ff0c3; }
+.cmo-list { list-style: none; margin: 0; padding: .5em .7em .7em; display: grid; gap: .35em; text-align: left; }
+.cmo-row { position: relative; display: grid; grid-template-columns: 1.5em minmax(0, 1fr) auto; align-items: center; gap: .5em; padding: .35em .6em; border-radius: .55em; overflow: hidden; background: rgba(255, 255, 255, .06); }
+.cmo-row::before { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, rgba(61, 220, 132, .55), rgba(61, 220, 132, .2)); transition: transform .5s var(--ease-spring); }
+.cmo-row > * { position: relative; }
+.cmo-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmo-n { font-family: var(--font-mono); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .cmo-show.is-in, .cmo-show.is-in .cmo-emoji { animation: none; } .cmo-row::before { transition: none; } }
+
