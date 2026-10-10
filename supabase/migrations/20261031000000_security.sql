@@ -396,7 +396,7 @@ declare
   r record;
   skip text[] := array['audit_log', 'chat_cooldowns', 'pet_cooldowns', 'pet_chat_cooldowns', 'prank_cooldowns',
     'pause_cooldowns', 'watchtime', 'watch_state', 'hotword_hits', 'hotword_counts', 'bot_outbox', 'twitch_health',
-    'platform_stats_cache', 'quiz_answers', 'card_players', 'idea_votes', 'stream_days'];
+    'platform_stats_cache', 'quiz_answers', 'card_players', 'idea_votes', 'stream_days', 'watch_imports'];
 begin
   for r in
     select c.relname from pg_class c

@@ -295,10 +295,13 @@ export class HelixError extends Error {
 export async function helix(
   path: string,
   token: string,
-  init: { method?: string; query?: Record<string, string>; body?: unknown } = {},
+  init: { method?: string; query?: Record<string, string | string[]>; body?: unknown } = {},
 ) {
   const url = new URL(`https://api.twitch.tv/helix/${path}`);
-  for (const [k, v] of Object.entries(init.query ?? {})) url.searchParams.set(k, v);
+  // Listen werden als wiederholter Parameter geschickt (z. B. users?id=1&id=2)
+  for (const [k, v] of Object.entries(init.query ?? {})) {
+    for (const one of Array.isArray(v) ? v : [v]) url.searchParams.append(k, one);
+  }
   const res = await fetch(url, {
     method: init.method ?? "GET",
     headers: {

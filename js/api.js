@@ -789,6 +789,11 @@ async function createSupabaseApi() {
       remove: async (id) => unwrap(await sb.from('bot_commands').delete().eq('id', id)),
     },
     async watchTop(limit = 10) { return unwrap(await sb.rpc('watch_top', { p_limit: limit })); },
+    // Watchtime-Import und Twitch-Daten (Migration …_watchtime_import.sql)
+    async watchInfo() { return unwrap(await sb.rpc('watch_info')); },
+    async watchImport(rows, source) { return unwrap(await sb.rpc('watch_import', { p_rows: rows, p_source: source })); },
+    async watchImportClear() { return unwrap(await sb.rpc('watch_import_clear')); },
+    async watchDates() { return invoke('stream-tools', { action: 'watch_dates' }); },
     async watchState() { return unwrap(await sb.from('watch_state').select('*').eq('id', 1).maybeSingle()); },
     // Chat-Bot-Konto (Streamer, Admins, freigegebene Mods)
     async botConnect() {
@@ -1969,13 +1974,38 @@ function createLocalApi() {
       },
       async remove(id) { await requireAdmin(); store.set('bot_commands', (await this.list()).filter((x) => x.id !== id)); },
     },
-    async watchTop() {
-      return [
-        { display_name: 'NightOwl_Mia', seconds: 184320, pretty: '2 Tage 3 Std 12 Min' },
-        { display_name: 'PixelPaul', seconds: 96000, pretty: '1 Tag 2 Std 40 Min' },
-        { display_name: 'GG_Gina', seconds: 30600, pretty: '8 Std 30 Min' },
+    async watchTop(limit = 10) {
+      const base = [
+        { display_name: 'NightOwl_Mia', login: 'nightowl_mia', seconds: 184320, followed_at: '2021-03-14T18:00:00Z', account_created_at: '2019-06-02T10:00:00Z' },
+        { display_name: 'PixelPaul', login: 'pixelpaul', seconds: 96000, followed_at: '2023-11-02T20:00:00Z', account_created_at: '2020-01-20T10:00:00Z' },
+        { display_name: 'GG_Gina', login: 'gg_gina', seconds: 30600, followed_at: null, account_created_at: '2024-05-01T10:00:00Z' },
       ];
+      const imports = store.get('watch_imports', []);
+      const all = new Map(base.map((w) => [w.login, { ...w, imported: 0 }]));
+      for (const i of imports) {
+        const w = all.get(i.login) ?? { display_name: i.name || i.login, login: i.login, seconds: 0, followed_at: null, account_created_at: null, imported: 0 };
+        all.set(i.login, { ...w, seconds: w.seconds + i.seconds, imported: i.seconds });
+      }
+      const fmt = (s) => { const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return [d && `${d} ${d === 1 ? 'Tag' : 'Tage'}`, h && `${h} Std`, m && `${m} Min`].filter(Boolean).join(' ') || '0 Min'; };
+      return [...all.values()].sort((a, b) => b.seconds - a.seconds).slice(0, limit).map((w) => ({ ...w, pretty: fmt(w.seconds) }));
     },
+    async watchInfo() {
+      const imports = store.get('watch_imports', []);
+      return {
+        counting_since: new Date(Date.now() - 21 * 86400000).toISOString(),
+        imported: { count: imports.length, seconds: imports.reduce((a, i) => a + i.seconds, 0), source: store.get('watch_import_source', null), at: store.get('watch_import_at', null) },
+        viewers: 3,
+      };
+    },
+    async watchImport(rows, source) {
+      await requireAdmin();
+      store.set('watch_imports', rows.slice(0, 50000));
+      store.set('watch_import_source', source);
+      store.set('watch_import_at', new Date().toISOString());
+      return { count: rows.length, seconds: rows.reduce((a, i) => a + i.seconds, 0) };
+    },
+    async watchImportClear() { await requireAdmin(); store.set('watch_imports', []); },
+    async watchDates() { return { updated: 0 }; },
     async watchState() { return { live: false, last_tick_at: null, source: '', viewers: 0 }; },
     async botDisconnect() {},
     // Demo: zeigt, wie ein Problem aussieht

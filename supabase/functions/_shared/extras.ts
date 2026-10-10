@@ -3,6 +3,7 @@
 //   · Bot-Nachrichten aus bot_outbox verschicken (Quiz-Frage, Mitspieler gezogen, Zahl erraten …)
 //   · Kanalpunkte: Text-to-Speech und Karten-Packs (Belohnungen anlegen, Einlösungen)
 import { db, getConnection, helix, HelixError, CodedError, sendChat, type Connection } from "./twitch.ts";
+import { refreshWatchDates } from "./watchtime.ts";
 
 const OUTBOX_MAX_AGE_MS = 3 * 60_000;
 
@@ -43,6 +44,8 @@ type ChatEvent = {
 export async function handleExtraCommand(event: ChatEvent) {
   const text = (event.message?.text ?? "").trim();
   if (!text.startsWith("!")) return;
+  // !watchtime nennt „Follower seit …“ – das Datum vorher bei Twitch nachholen (höchstens 1× pro Woche)
+  if (/^!watchtime\b/i.test(text)) await refreshForWatchtime(event.chatter_user_id, text).catch((e) => console.warn("Watchtime-Daten:", e));
   const { data, error } = await db.rpc("chat_command", {
     p_user_id: event.chatter_user_id,
     p_name: event.chatter_user_name || event.chatter_user_login,
@@ -58,6 +61,16 @@ export async function handleExtraCommand(event: ChatEvent) {
   if (!conn) return;
   if (data?.reply) await sendChat(conn, String(data.reply)).catch((e) => console.warn("Chat:", e.message));
   await flushOutbox(conn).catch((e) => console.warn("Bot-Nachrichten:", e.message));
+}
+
+async function refreshForWatchtime(chatterId: string, text: string) {
+  const name = text.split(/\s+/)[1]?.replace(/^@/, "").toLowerCase();
+  const ids = [chatterId];
+  if (name && /^[a-z0-9_]{3,25}$/.test(name)) {
+    const { data } = await db.from("watchtime").select("twitch_id").eq("login", name).maybeSingle();
+    if (data?.twitch_id) ids.push(data.twitch_id);
+  }
+  await refreshWatchDates(ids);
 }
 
 // ---------- Kanalpunkte ----------
