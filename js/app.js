@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { createApi, germanError } from './api.js';
+import { createApi, germanError, missingFunction } from './api.js';
 import { Wheel } from './wheel.js';
 import { DEFAULT_TILES, RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
@@ -28,9 +28,13 @@ import {
 } from './channel.js';
 import { h } from './extras-core.js';
 import { startTour } from './tour.js';
+import { applyI18n, initI18n, langPicker, t as tr } from './i18n.js';
+import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
+import { markStart, renderStart, showStartAgain } from './dash-start.js';
+import { renderStats } from './dash-stats.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -142,6 +146,13 @@ if (guardFrame()) boot();
 // ============================================================
 async function boot() {
   const params = new URLSearchParams(location.search);
+  // Sprache für Startseite und Anmeldung (js/i18n.js) – vor allem anderen, die Startseite liest ihre Texte beim Aufbau
+  await initI18n();
+  applyI18n($('#landing'));
+  applyI18n($('#auth'));
+  document.title = tr(document.title);
+  $('#landing .lp-login')?.before(langPicker('lang-pick--nav'));
+  $('#auth .auth-back')?.after(langPicker('lang-pick--auth'));
 
   // Rückweg vom Chat-Bot-Verbinden im Admin-Bereich: Das Ergebnis gehört dorthin,
   // auch wenn die Weiterleitung hier gelandet ist. Aus dem Dashboard verbundene
@@ -220,11 +231,38 @@ async function boot() {
     if (user && !state.user) enterApp(user, { animate: !$('#auth').hidden });
     if (!user && state.user) leaveApp();
   });
+  setupInstall();
+  // Als Handy-App gestartet (manifest.webmanifest): Abkürzungen wie #stats öffnen gleich die Seite,
+  // und ohne Anmeldung geht es direkt zur Anmeldung statt zur Startseite.
+  const appStart = params.has('app');
+  const appPage = location.hash.slice(1);
+  if (appStart && Object.hasOwn(PAGE_TITLES, appPage)) state.pendingPage = appPage;
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
+  else if (appStart && !OBS_PAGE) showAuth();
   else if ((oauthLogin || oauthTokens) && !oauthError && !params.has('error')) showLoginReturnError(oauthLogin, oauthTokens);
   else if (location.hash === '#login' || oauthError || params.has('error') || OBS_PAGE) showAuth();
   else showLanding();
+}
+
+// Handy-App (PWA): Service Worker (sw.js – nur Offline-Notfall) und „App installieren“ in der Leiste
+function setupInstall() {
+  if (OBS_PAGE) return;
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service Worker:', err));
+  }
+  const btn = $('#install-btn');
+  if (!btn) return;
+  let prompt = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; btn.hidden = false; });
+  addEventListener('appinstalled', () => { btn.hidden = true; prompt = null; toast('StreamHelp ist jetzt als App installiert.', 'ok'); });
+  btn.addEventListener('click', async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    await prompt.userChoice.catch(() => null);
+    prompt = null;
+    btn.hidden = true;
+  });
 }
 
 // Vom Anbieter zurück, aber keine Sitzung: Grund und Abhilfe anzeigen
@@ -306,6 +344,7 @@ function showLanding() {
   $('#auth').hidden = true;
   $('#landing').hidden = false;
   setupLanding($('#landing'), { stats: () => state.api.platformStats(), facts: landingFacts() });
+  setupHelp($('#landing'), state.api);
   renderLandingChannels();
   document.body.classList.remove('in-app');
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
@@ -319,7 +358,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit',
+  security: 'Sicherheit', stats: 'Statistik',
 };
 
 function setupShell() {
@@ -483,6 +522,7 @@ function applyView(want) {
   let view = 'viewer';
   if (isTeam()) view = canStreamerView() && want !== 'mod' ? 'streamer' : 'mod';
   app.dataset.view = view;
+  if (state.page === 'ideas') renderStart(START);
   sw.hidden = !isTeam();
   sw.classList.toggle('is-locked', isTeam() && !canStreamerView());
   sw.querySelectorAll('[data-view]').forEach((b) => {
@@ -496,7 +536,21 @@ function applyView(want) {
   renderTwitchPanel();
 }
 
+// Einstiegs-Checkliste (js/dash-start.js): was sie über den Kanal wissen muss
+const START = {
+  userId: () => state.user?.id,
+  channelId: () => state.channel?.id,
+  isStreamer: () => !OBS_PAGE && canStreamerView() && $('#app')?.dataset.view !== 'viewer',
+  twitchConnected: () => !!state.twitch?.connected,
+  modsEnabled: () => !!state.access?.mods_enabled,
+  mfaStatus: () => state.api.mfaStatus(),
+  setPage: (name) => setPage(name),
+  openObs: () => openObsWindow(),
+};
+
 function setPage(name) {
+  // Nur bekannte Seiten (der Name kann aus der Adresse kommen, z. B. #stats)
+  if (!Object.hasOwn(PAGE_TITLES, name)) name = 'ideas';
   const item = $(`.sb-item[data-page="${name}"]`);
   if (!item || getComputedStyle(item).display === 'none') name = 'ideas';
   document.querySelectorAll('.sb-item[data-page]').forEach((b) => {
@@ -506,7 +560,7 @@ function setPage(name) {
   document.querySelectorAll('.page[data-page]').forEach((p) => { p.hidden = p.dataset.page !== name; });
   $('#page-title').textContent = PAGE_TITLES[name] ?? 'StreamHelp';
   state.page = name;
-  PAGE_ENTER[name]?.();
+  if (Object.hasOwn(PAGE_ENTER, name)) PAGE_ENTER[name]();
   if (name !== 'alerts' && state.health.data) renderHealth();
   if (!$('#app').hidden) scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
 }
@@ -520,8 +574,10 @@ const PAGE_ENTER = {
   library: () => openLibrary(),
   guard: () => renderGuard(),
   mods: () => { loadMods(); renderModSecurity(); },
-  twitch: () => renderTwitchPanel(),
+  twitch: () => { renderTwitchPanel(); loadShowcase(); },
   security: () => renderSecurityPage(),
+  stats: () => renderStats($('#stats-slot'), state.api),
+  ideas: () => renderStart(START),
 };
 
 function setupAuthForms() {
@@ -606,7 +662,7 @@ function setupAuthForms() {
       if (needsConfirmation) {
         select('login');
         forms.login.email.value = email;
-        formMsg(forms.login, 'Fast geschafft! Bestätige den Link in deiner E-Mail und melde dich dann an.', true);
+        formMsg(forms.login, tr('Fast geschafft! Bestätige den Link in deiner E-Mail und melde dich dann an.'), true);
       }
     });
   });
@@ -685,7 +741,7 @@ async function withLoading(form, fn) {
 
 // Anmeldeseite: Fehler zeigen – Karte wackelt kurz, das betroffene Feld bekommt eine Akzentlinie
 function authError(form, text, field = null) {
-  formMsg(form, text);
+  formMsg(form, tr(text));
   form.querySelectorAll('.field.is-invalid').forEach((f) => f.classList.remove('is-invalid'));
   const input = field && form.elements[field];
   if (input) {
@@ -888,7 +944,7 @@ function applyStreamer(info) {
   if (info?.login) state.streamer.login = info.login;
   if (info) state.streamer.connected = !!info.connected;
   document.querySelectorAll('[data-streamer]').forEach((el) => { el.textContent = streamerName(); });
-  if (!OBS_PAGE) document.title = state.streamer.connected ? `StreamHelp · ${streamerName()}` : PAGE_TITLE;
+  if (!OBS_PAGE) document.title = state.streamer.connected ? `StreamHelp · ${streamerName()}` : tr(PAGE_TITLE);
 }
 async function loadStreamer() {
   try {
@@ -1144,8 +1200,8 @@ async function renderLandingChannels() {
   document.querySelectorAll('[data-for-channels]').forEach((el) => { el.hidden = false; });
   const here = state.channel && !state.channel.is_default ? state.channel : null;
   if (here) {
-    $('#lp-channels-title').textContent = `Willkommen bei ${channelLabel(here)}!`;
-    $('#lp-channels-hint').textContent = 'Melde dich an und mach im Stream mit – oder schau dir die anderen Streamer an.';
+    $('#lp-channels-title').textContent = tr('Willkommen bei {name}!', { name: channelLabel(here) });
+    $('#lp-channels-hint').textContent = tr('Melde dich an und mach im Stream mit – oder schau dir die anderen Streamer an.');
   }
   $('#lp-channels').replaceChildren(...list.map((c) => {
     const ava = h('span', { class: 'nc-channel-ava', 'aria-hidden': 'true' });
@@ -1350,23 +1406,37 @@ function renderGrid() {
     prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
     ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
   };
-  const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
-  const make = (tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i);
+  const all = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
+  // Suche (Titel + Beschreibung) und Favoriten zuerst – beides nur in diesem Browser
+  const query = ($('#grid-search')?.value ?? '').trim().toLowerCase();
+  const favs = favTiles();
+  const shown = all
+    .filter((t) => !query || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(query))
+    .sort((a, b) => favs.has(b.id) - favs.has(a.id));
+  const make = (tile, i) => withFav(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i), favs);
   // Games: je Game erst die passenden Ideen, dann was zu jedem Game passt
   const game = gameById(selectedGame());
   $('#grid-title').textContent = game ? `Content-Ideen für ${game.name}` : 'Alle Content-Ideen';
   $('#wheel-card').hidden = !!game && !game.ideas.includes('wheel');
-  if (!game) {
+  if (query && !shown.length) {
+    grid.replaceChildren(h('p', { class: 'grid-empty' }, `Keine Kachel passt zu „${query}“.`));
+  } else if (!game || query) {
     grid.replaceChildren(...shown.map(make));
   } else {
+    const isFav = (t) => favs.has(t.id);
     const planned = shown.filter(isPlanned);
     const { mine, general } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
+    // Favoriten (die zu diesem Game passen) als eigene Gruppe ganz oben
+    const starred = [...planned, ...mine, ...general].filter(isFav);
+    const rest = (list) => list.filter((t) => !isFav(t));
     let i = 0;
     grid.replaceChildren(
-      ...planned.map((t) => make(t, i++)),
+      ...(starred.length ? [gridHead('★ Deine Favoriten'), ...starred.map((t) => make(t, i++))] : []),
+      ...(starred.length && planned.some((t) => !isFav(t)) ? [gridHead('⏰ Geplant')] : []),
+      ...rest(planned).map((t) => make(t, i++)),
       gridHead(`${game.icon} Passt zu ${game.name}`),
-      ...(mine.length ? mine.map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
-      ...(general.length ? [gridHead('🎮 Passt zu jedem Game'), ...general.map((t) => make(t, i++))] : []),
+      ...(mine.length ? rest(mine).map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
+      ...(rest(general).length ? [gridHead('🎮 Passt zu jedem Game'), ...rest(general).map((t) => make(t, i++))] : []),
     );
   }
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -1429,7 +1499,7 @@ function setupTour() {
   dlg.addEventListener('close', () => {
     try { if (!localStorage.getItem(tourKey())) localStorage.setItem(tourKey(), 'no'); } catch { /* egal */ }
   });
-  $('#tour-btn').addEventListener('click', runTour);
+  $('#tour-btn').addEventListener('click', () => { showStartAgain(START); runTour(); });
 }
 
 // ============================================================
@@ -1498,6 +1568,28 @@ function renderGames() {
       ? `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“.`
       : `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“ – für dieses Game gibt es noch keine eigene Auswahl.`;
   }
+}
+
+// Favoriten-Stern: liegt neben der Kachel (Kacheln sind selbst Knöpfe – Knopf im Knopf geht nicht)
+const favKey = () => `sh_favs_${state.user?.id ?? ''}_${state.channel?.id ?? 'default'}`;
+function favTiles() {
+  try { return new Set(JSON.parse(localStorage.getItem(favKey())) ?? []); } catch { return new Set(); }
+}
+function withFav(tile, el, favs) {
+  if (!el.classList.contains('tile') || el.classList.contains('tile--placeholder')) return el;
+  const on = favs.has(tile.id);
+  const star = h('button', {
+    type: 'button', class: `tile-fav${on ? ' is-on' : ''}`, 'aria-pressed': String(on),
+    'aria-label': on ? `„${tile.title}“ aus den Favoriten nehmen` : `„${tile.title}“ als Favorit markieren`,
+    title: on ? 'Favorit – steht immer vorne' : 'Als Favorit nach vorne holen',
+  }, on ? '★' : '☆');
+  star.addEventListener('click', () => {
+    const next = favTiles();
+    if (next.has(tile.id)) next.delete(tile.id); else next.add(tile.id);
+    try { localStorage.setItem(favKey(), JSON.stringify([...next])); } catch { /* privater Modus */ }
+    renderGrid();
+  });
+  return h('div', { class: `tile-wrap${on ? ' is-fav' : ''}` }, el, star);
 }
 
 function gridHead(text) {
@@ -1782,7 +1874,10 @@ function setupDialogs() {
   $('#games-edit').addEventListener('click', openGamesDialog);
   setupTour();
   $('#games-form').addEventListener('submit', saveGames);
-  $('#wheel-card').addEventListener('click', openWheel);
+  $('#wheel-card').addEventListener('click', () => { markStart(START, 'idea'); openWheel(); });
+  $('#grid').addEventListener('click', (e) => { if (e.target.closest('.tile') && !e.target.closest('.tile--placeholder')) markStart(START, 'idea'); });
+  let searchTimer = 0;
+  $('#grid-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderGrid, 120); });
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
@@ -5525,6 +5620,7 @@ function setupObs() {
   $('#obs-allow-admins').addEventListener('change', allowAdminsObs);
   $('#obs-mods-toggle').addEventListener('change', toggleMods);
   $('#obs-mods-sync').addEventListener('click', syncMods);
+  $('#showcase-toggle').addEventListener('change', toggleShowcase);
   $('#obs-content-list').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-content-open], [data-content-unlock]');
     const tile = btn && state.tiles.find((t) => t.id === (btn.dataset.contentOpen ?? btn.dataset.contentUnlock));
@@ -6244,6 +6340,7 @@ function saveObs(values) {
 
 // Die OBS-Einstellungen laufen in einem eigenen Fenster (index.html?obs), nicht als Pop-up
 function openObsWindow() {
+  markStart(START, 'obs');
   const url = withChannelParam(new URL(location.pathname, location.href));
   url.searchParams.set('obs', '1');
   const win = window.open(url.href, 'streamhelp-obs');
@@ -6507,6 +6604,35 @@ async function unlockTile(tile, btn) {
     toast(`Freischalten fehlgeschlagen: ${germanError(err)}`, 'error');
   } finally {
     renderObsContent();
+  }
+}
+
+// Showcase auf der Startseite: Zustimmung des Streamers (Migration …_contact_showcase.sql)
+async function loadShowcase() {
+  const box = $('#showcase-toggle');
+  const status = $('#showcase-status');
+  box.disabled = true;
+  try {
+    box.checked = await state.api.channelShowcase();
+    box.disabled = !(state.access?.is_owner || state.api.demo);
+  } catch (err) {
+    status.textContent = missingFunction(err)
+      ? 'Einmal nötig: supabase/migrations/20261101000000_contact_showcase.sql im SQL Editor ausführen.'
+      : germanError(err);
+  }
+}
+
+async function toggleShowcase(e) {
+  const box = e.currentTarget;
+  box.disabled = true;
+  try {
+    box.checked = await state.api.setChannelShowcase(box.checked);
+    toast(box.checked ? 'Dein Kanal steht jetzt auf der Startseite.' : 'Dein Kanal steht nicht mehr auf der Startseite.', 'ok');
+  } catch (err) {
+    box.checked = !box.checked;
+    toast(germanError(err), 'error');
+  } finally {
+    box.disabled = false;
   }
 }
 

@@ -215,3 +215,12 @@
 .security-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .security-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .03); }
 .security-list small { flex-basis: 100%; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Postfach (Kontaktformular) */
+.inbox-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.inbox { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.inbox-item { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .06); }
+.inbox-item.is-done { opacity: .6; }
+.inbox-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.inbox-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.inbox-actions { display: flex; flex-wrap: wrap; gap: 8px; }

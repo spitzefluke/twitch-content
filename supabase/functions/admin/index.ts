@@ -6,6 +6,8 @@
 //   POST {action:"mfa_setup", token}        → neues Geheimnis + QR-Code (nur solange noch kein Code aktiv ist)
 //   POST {action:"mfa_enable", token, code} → Code bestätigen, danach volles Token
 //   POST {action:"security_report", token}  → Sicherheits-Check der Datenbank (Migration …_security.sql)
+//   POST {action:"messages", token}         → Postfach: Nachrichten aus dem Kontaktformular (…_contact_showcase.sql)
+//   POST {action:"message_set", token, id, status|delete} → als erledigt/neu markieren oder löschen
 //   POST {action:"overview", token}         → Live-Daten für das Dashboard
 //   POST {action:"twitch_check", token}     → Status des EventSub-Webhooks direkt bei Twitch
 //   POST {action:"set_admin", token, user_id, is_admin}
@@ -153,6 +155,8 @@ Deno.serve(async (req) => {
     // Alles andere erst mit Zwei-Faktor-Code
     if (!session.mfa) return json({ error: "Bitte zuerst den Zwei-Faktor-Code einrichten.", mfa_setup: true }, 403);
     if (body.action === "security_report") return await securityReport();
+    if (body.action === "messages") return await messages();
+    if (body.action === "message_set") return await messageSet(body.id, body.status, body.delete === true);
     if (body.action === "overview") return json(await overview());
     if (body.action === "twitch_check") return json(await twitchCheck());
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
@@ -223,6 +227,31 @@ async function mfaEnable(code: unknown) {
   const { error } = await db.from("admin_mfa").update({ enabled: true, enabled_at: new Date().toISOString(), last_step: step }).eq("id", 1);
   if (error) throw error;
   return json(await createToken());
+}
+
+// ---------- Postfach (Kontaktformular) ----------
+const CONTACT_MISSING = "In der Datenbank fehlt das Kontaktformular: supabase/migrations/20261101000000_contact_showcase.sql ausführen.";
+
+async function messages() {
+  const { data, error } = await db.from("contact_messages")
+    .select("id, created_at, name, email, topic, message, lang, channel, status, done_at")
+    .order("created_at", { ascending: false }).limit(200);
+  if (error) return /contact_messages/.test(error.message) ? json({ error: CONTACT_MISSING, missing: true }, 400) : Promise.reject(error);
+  return json({ messages: data });
+}
+
+async function messageSet(id: unknown, status: unknown, remove: boolean) {
+  if (typeof id !== "number" || !Number.isInteger(id)) return json({ error: "Ungültige Nachricht" }, 400);
+  if (remove) {
+    const { error } = await db.from("contact_messages").delete().eq("id", id);
+    if (error) throw error;
+    return json({ ok: true });
+  }
+  if (status !== "new" && status !== "done") return json({ error: "Ungültiger Status" }, 400);
+  const { error } = await db.from("contact_messages")
+    .update({ status, done_at: status === "done" ? new Date().toISOString() : null }).eq("id", id);
+  if (error) throw error;
+  return json({ ok: true });
 }
 
 async function securityReport() {

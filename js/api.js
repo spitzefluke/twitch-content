@@ -203,6 +203,19 @@ async function createSupabaseApi() {
       return unwrap(await sb.rpc('audit_list', { p_limit: limit, p_before: before, p_role: role }));
     },
     async channelExport() { return unwrap(await sb.rpc('channel_export')); },
+
+    // ---------- Startseite: KI-Hilfe, Kontakt, Showcase (Migration …_contact_showcase.sql) ----------
+    async helpAsk(question, lang, history) { return invoke('help-chat', { question, lang, history }); },
+    async contactSend(m) {
+      return unwrap(await sb.rpc('contact_send', {
+        p_name: m.name, p_email: m.email, p_topic: m.topic, p_message: m.message, p_lang: m.lang, p_website: m.website,
+      }));
+    },
+    async showcaseList() { return unwrap(await sb.rpc('showcase_list')); },
+    async channelShowcase() { return unwrap(await sb.rpc('channel_showcase')); },
+    async setChannelShowcase(on) { return unwrap(await sb.rpc('channel_showcase_set', { p_on: on })); },
+    // Dashboard → Statistik (Migration …_dashboard.sql)
+    async channelStats(days) { return unwrap(await sb.rpc('channel_stats', { p_days: days })); },
     async getProfile(user) {
       const { data } = await sb.from('profiles').select('username, is_admin').eq('id', user.id).maybeSingle();
       return data ?? { username: user.user_metadata?.username ?? user.email.split('@')[0], is_admin: false };
@@ -1128,6 +1141,51 @@ function createLocalApi() {
       ];
       return [...store.get('audit_log', []), ...sample]
         .filter((x) => (before === null || x.id < before) && (!role || x.role === role));
+    },
+    // Demo: keine KI – die Seite antwortet aus den FAQ
+    async helpAsk() { return { fallback: true }; },
+    async contactSend(m) {
+      if (String(m.message ?? '').trim().length < 10) throw new Error('Bitte schreib etwas mehr (mindestens 10 Zeichen).');
+      const list = store.get('contact_messages', []);
+      list.unshift({ id: Date.now(), created_at: new Date().toISOString(), name: m.name, email: m.email, topic: m.topic,
+        message: m.message, lang: m.lang, channel: '', status: 'new' });
+      store.set('contact_messages', list.slice(0, 100));
+      return true;
+    },
+    async showcaseList() {
+      const on = store.get('showcase', true);
+      return on ? [{ login: 'streamhelp', display_name: 'StreamHelp', avatar_url: '', live: true, category: 'Fortnite' },
+        { login: 'retrolena', display_name: 'RetroLena', avatar_url: '', live: false, category: '' }] : [];
+    },
+    async channelShowcase() { return store.get('showcase', true); },
+    async setChannelShowcase(on) { await requireAdmin(); store.set('showcase', !!on); return !!on; },
+    // Demo: Beispielzahlen, die je Tag gleich bleiben (kein Zufall – sonst springt die Statistik)
+    async channelStats(days = 7) {
+      await requireAdmin();
+      const n = Math.min(Math.max(Number(days) || 7, 1), 90);
+      const series = Array.from({ length: n }, (_, i) => {
+        const d = new Date(Date.now() - (n - 1 - i) * 86400000);
+        const seed = d.getDate() * 31 + d.getMonth() * 7;
+        const live = d.getDay() % 3 !== 0;
+        const peak = live ? 18 + (seed % 40) : 0;
+        return {
+          day: d.toISOString().slice(0, 10), live_minutes: live ? 90 + (seed % 150) : 0, peak_viewers: peak, avg_viewers: Math.round(peak * 0.7),
+          follows: live ? seed % 9 : 0, subs: live ? seed % 4 : 0, bits: live ? (seed % 5) * 100 : 0, redeems: live ? seed % 12 : 0,
+          spins: live ? seed % 6 : 0, pranks: live ? seed % 5 : 0, actions: live ? seed % 7 : 0,
+        };
+      });
+      const sum = (k) => series.reduce((a, d) => a + d[k], 0);
+      const lives = series.filter((d) => d.avg_viewers);
+      return {
+        days: n, series,
+        totals: {
+          live_minutes: sum('live_minutes'), peak_viewers: Math.max(0, ...series.map((d) => d.peak_viewers)),
+          avg_viewers: lives.length ? Math.round(sum('avg_viewers') / lives.length) : 0,
+          follows: sum('follows'), subs: sum('subs'), bits: sum('bits'), redeems: sum('redeems'), spins: sum('spins'), pranks: sum('pranks'), actions: sum('actions'),
+        },
+        top_viewers: [{ name: 'PixelPaul', seconds: 61200 }, { name: 'NightOwl_Mia', seconds: 48300 }, { name: 'LootLukas', seconds: 30120 }, { name: 'gg_sina', seconds: 21900 }],
+        chatters: 37,
+      };
     },
     async channelExport() {
       await requireAdmin();

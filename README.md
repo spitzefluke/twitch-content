@@ -153,6 +153,7 @@ npx deno test --allow-env --allow-net supabase/functions/twitch-eventsub/signatu
 | `REWARD_TITLE` *(optional)* | Name der Belohnung, Standard `Glücksrad` |
 | `REWARD_COST` *(optional)* | Kosten in Kanalpunkten beim ersten Verbinden, Standard `10000` – danach im Glücksrad-Dialog änderbar |
 | `HEALTH_CHECK_KEY` *(empfohlen)* | beliebige zufällige Zeichenkette (mindestens 20 Zeichen). Damit prüft die GitHub Action „Twitch-Gesundheitscheck“ alle 30 Minuten die Twitch-Verbindung – denselben Wert als GitHub-Secret `HEALTH_CHECK_KEY` eintragen (siehe „Twitch-Gesundheitscheck“). |
+| `HELP_AI_URL` / `HELP_AI_KEY` / `HELP_AI_MODEL` *(optional)* | KI-Hilfe auf der Startseite (OpenAI-kompatibler Dienst, siehe „Sprachen, Kontakt & KI-Hilfe, Showcase“). Ohne sie antwortet die Seite aus den FAQ. |
 
 ### 5. Der Streamer verbindet Twitch
 
@@ -714,6 +715,27 @@ Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-j
 - **Vorschau-Szene:** Alerts mit Funken, Abos und Bits verlängern den Subathon-Timer, Glücksrad mit Konfetti, Chat mit hervorgehobenen `!Befehlen`, das Haustier hüpft bei `!füttern`, ab und zu ein Raid.
 - Mit „Bewegung reduzieren“ (Systemeinstellung) bleibt die Seite ruhig wie vorher; Live-Zahlen und Streamer-Liste funktionieren unverändert.
 
+## Sprachen, Kontakt & KI-Hilfe, Showcase
+
+- **10 Sprachen** auf Startseite und Anmeldung: Deutsch, Englisch, Spanisch, Französisch, Italienisch, Niederländisch, Polnisch, Portugiesisch, Türkisch, Russisch. Die Seite nimmt die Browsersprache, oben rechts lässt sie sich wechseln (gemerkt in diesem Browser). Das Dashboard bleibt vorerst deutsch.
+  - Quelle ist immer der deutsche Text: `js/i18n-keys.js` (Liste), Übersetzungen in `js/i18n-<sprache>.js` in derselben Reihenfolge. Neuer Text: in `i18n-keys.js` **ans Ende** hängen und in jeder Sprachdatei am Ende ergänzen. `node tools/check-i18n.mjs` prüft Anzahl, HTML-Tags und Platzhalter (läuft auch in den GitHub-Checks).
+  - Vorlage für neue Texte: Startseite mit `?i18n-dump` öffnen, in der Konsole `i18nKeys()`.
+- **Kontaktformular** statt öffentlicher E-Mail-Adresse (Startseite → „Kontakt“). Nachrichten landen im Admin-Bereich unter **Postfach**; mit Bot-Falle und Grenzen (3 pro Stunde je Person, 300 am Tag insgesamt).
+- **KI-Hilfe** daneben: beantwortet Fragen zu StreamHelp. Ohne eingerichteten KI-Dienst (oder wenn er hakt) sucht die Seite selbst die passende Antwort in den FAQ – kostenlos, auch auf Deutsch gefragt bei englischer Seite.
+  - KI einschalten (optional, kostenlose Stufen z. B. bei Google Gemini oder Groq): in Supabase unter **Edge Functions → Secrets** `HELP_AI_URL` (OpenAI-kompatible Adresse, z. B. `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` oder `https://api.groq.com/openai/v1/chat/completions`), `HELP_AI_KEY` (der API-Schlüssel – **nur dort eintragen, nie in den Code oder einen Chat**) und `HELP_AI_MODEL` (z. B. `gemini-2.0-flash` bzw. `llama-3.1-8b-instant`).
+  - Grenzen: 8 Fragen pro Minute und 60 am Tag je Besucher, 3000 am Tag insgesamt. Was die KI über StreamHelp weiß, steht in `supabase/functions/_shared/help-kb.ts`.
+- **Showcase** „Diese Streamer nutzen StreamHelp“ auf der Startseite: nur Kanäle, deren Streamer zugestimmt haben (Dashboard → Twitch-Verbindung → „Auf der Startseite zeigen“), live zuerst.
+- **Preise:** in den FAQ – aktuell kostenlos, ein optionales Abo kommt später.
+- Einmal nötig: Migration **`supabase/migrations/20261101000000_contact_showcase.sql`** (nach der Sicherheits-Migration). Die Edge Function `help-chat` kommt mit dem nächsten Deploy.
+
+## Dashboard: Einstieg, Kacheln, Statistik, Handy-App
+
+- **Dein Start:** Streamer sehen oben bei den Content-Ideen eine Checkliste – Twitch verbinden, Overlay in OBS, erste Idee ausprobieren, Mods freigeben, Zwei-Faktor einschalten. Erledigtes hakt sich von selbst ab; „Ausblenden“ blendet sie aus, „❓ Einführung“ holt sie zurück.
+- **Kacheln:** Suchfeld über den Content-Ideen und ein ☆ an jeder Kachel – Favoriten stehen vorne (in der Game-Ansicht als eigene Gruppe). Beides merkt sich dieser Browser. Die Countdown-Kachel „Subathon“ heißt jetzt „Countdown zum Subathon“, damit sie nicht mit dem Subathon-Timer verwechselt wird.
+- **📈 Statistik** (Streamer und freigegebene Mods): Sendezeit, Zuschauer (Spitze und Ø), Follows, Abos, Bits, aktive Chatter, Glücksrad, Streiche, Kanalpunkte – für 7, 30 oder 90 Tage, je Tag als Balken, dazu die treuesten Zuschauer. Sendezeit und Zuschauer zählen ab dem Einspielen der Migration mit (die Watchtime-Zählung tickt alle ~5 Minuten, solange das Overlay in OBS läuft).
+  Einmal nötig: Migration **`supabase/migrations/20261102000000_dashboard.sql`**.
+- **Handy-App:** StreamHelp lässt sich auf dem Handy (und am PC) als App installieren – im Browser „Zum Startbildschirm hinzufügen“ bzw. links „📲 App installieren“. Gestartet als App geht es direkt zur Anmeldung, Abkürzungen führen zu Statistik und Raid-Schutz. `sw.js` holt immer die neueste Fassung und springt nur ohne Netz mit der zuletzt geladenen ein; das OBS-Overlay fasst er nie an.
+
 ## Suchmaschinen & Teilen
 
 - **Vorschaubild:** `assets/og-image.png` (1200 × 630) erscheint, wenn jemand den Link auf Discord, X oder WhatsApp teilt (Open-Graph-/Twitter-Tags in `index.html` und `datenschutz.html`). Discord merkt sich Vorschauen eine Weile – ein neues Bild greift dort evtl. erst nach Stunden.
@@ -753,11 +775,11 @@ Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `tw
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
    - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
 4. **Erweiterungs-Secret**: in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets oder `npx supabase secrets set EXTENSION_SECRET=…`). Nicht ins Repo und nicht in den Chat. Damit prüft `twitch-ext`, dass Anfragen wirklich von Twitch kommen.
-5. **Dateien hochladen**: `panel.html`, `panel.css` und `panel.js` aus `extension/` als ZIP (die drei Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
+5. **Dateien hochladen**: `panel.html`, `panel.css`, `panel-i18n.js` und `panel.js` aus `extension/` als ZIP (die vier Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
 6. **Gehosteter Test**: Im Creator-Dashboard des eigenen Kanals unter Erweiterungen → Meine Erweiterungen installieren und als Panel aktivieren.
 7. Für alle anderen Streamer: **Zur Prüfung einreichen**. Nach der Freigabe durch Twitch kann jeder Streamer das Panel in seinem Creator-Dashboard aktivieren.
 
-Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Das Panel spricht die Sprache des Zuschauers (Twitch gibt sie mit; zum Ausprobieren `panel.html?language=en`); die Texte stehen in `extension/panel-i18n.js`. **Nach diesem Update die Dateien neu hochladen** (neue Version im Twitch-Entwickler-Bereich). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

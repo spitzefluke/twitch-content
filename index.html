@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S6A9GPzz+JP+F3Dma67LMa7/gM/0uyyZfQ0CcApzOFk=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WFR+O5CbZVfJCPY4RK2YKL+fNmvt53d0hmOwtmnan6U=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -45,13 +45,14 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=c984ff8222">
+  <link rel="stylesheet" href="css/style.css?v=b88e737cb5">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
-  <link rel="stylesheet" href="css/landing.css?v=c15fc8ef35">
-  <link rel="stylesheet" href="css/shell.css?v=7147144031">
+  <link rel="stylesheet" href="css/landing.css?v=1141db800a">
+  <link rel="stylesheet" href="css/shell.css?v=16f8f62142">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -61,16 +62,18 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=dee8f0c2ff",
+      "./js/admin.js": "./js/admin.js?v=b3e38fed9d",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=528d4d1368",
-      "./js/app.js": "./js/app.js?v=5f751ade23",
+      "./js/api.js": "./js/api.js?v=d3ee3a259a",
+      "./js/app.js": "./js/app.js?v=bd97d99ad1",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
       "./js/config.js": "./js/config.js?v=93f6ab2ed3",
-      "./js/defaults.js": "./js/defaults.js?v=d43c86eeb2",
+      "./js/dash-start.js": "./js/dash-start.js?v=c5fe8053c6",
+      "./js/dash-stats.js": "./js/dash-stats.js?v=83145278a1",
+      "./js/defaults.js": "./js/defaults.js?v=d1d89a0148",
       "./js/extras-api.js": "./js/extras-api.js?v=383428e1f6",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
@@ -82,8 +85,20 @@
       "./js/extras.js": "./js/extras.js?v=d16d5d0cf2",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=f051a4c3f0",
-      "./js/landing-journey.js": "./js/landing-journey.js?v=499d67a6bf",
-      "./js/landing.js": "./js/landing.js?v=eadbd6ba3f",
+      "./js/help.js": "./js/help.js?v=e8bfa8ed5c",
+      "./js/i18n-en.js": "./js/i18n-en.js?v=fa54418308",
+      "./js/i18n-es.js": "./js/i18n-es.js?v=be3c94f614",
+      "./js/i18n-fr.js": "./js/i18n-fr.js?v=768d3faeb6",
+      "./js/i18n-it.js": "./js/i18n-it.js?v=1322e571b7",
+      "./js/i18n-keys.js": "./js/i18n-keys.js?v=30106f7db0",
+      "./js/i18n-nl.js": "./js/i18n-nl.js?v=f6682c1996",
+      "./js/i18n-pl.js": "./js/i18n-pl.js?v=e79dd9d121",
+      "./js/i18n-pt.js": "./js/i18n-pt.js?v=7a6b2c1f3a",
+      "./js/i18n-ru.js": "./js/i18n-ru.js?v=15617c276b",
+      "./js/i18n-tr.js": "./js/i18n-tr.js?v=6d7614e617",
+      "./js/i18n.js": "./js/i18n.js?v=268ccfe713",
+      "./js/landing-journey.js": "./js/landing-journey.js?v=970f04d442",
+      "./js/landing.js": "./js/landing.js?v=46a4e712ab",
       "./js/library.js": "./js/library.js?v=0290fc401c",
       "./js/obs-ws.js": "./js/obs-ws.js?v=b2a626829a",
       "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
@@ -145,6 +160,7 @@
       <a href="#start" data-nav="start">So startest du</a>
       <a href="#sicherheit" data-nav="sicherheit">Sicherheit</a>
       <a href="#faq" data-nav="faq">FAQ</a>
+      <a href="#kontakt" data-nav="kontakt">Kontakt</a>
       <button type="button" class="nc-btn nc-btn-ghost lp-login" data-go="login">Anmelden</button>
     </nav>
     <nav class="nc-rail" data-fx-rail aria-label="Kapitel">
@@ -303,6 +319,11 @@
       <!-- Alle freigeschalteten Kanäle (Plattform) – wer einen anklickt, landet nach dem Anmelden dort -->
       <section id="streamer" class="nc-sec nc-sec--channels" hidden>
         <p class="nc-eyebrow nc-rv">Streamer auf StreamHelp</p>
+        <!-- Showcase: nur Kanäle, deren Streamer zugestimmt haben (js/help.js, showcase_list) -->
+        <div class="nc-showcase" id="lp-showcase" hidden>
+          <p class="nc-mono-label">Diese Streamer nutzen StreamHelp</p>
+          <ul class="nc-showcase-list" id="lp-showcase-list"></ul>
+        </div>
         <h2 class="nc-h2 nc-rv" style="--i: 1" id="lp-channels-title">Such dir deinen Stream aus</h2>
         <p class="nc-text nc-rv" style="--i: 2" id="lp-channels-hint">Klick auf einen Kanal, melde dich an und mach bei Glücksrad, Bingo, Verlosung &amp; Co. mit.</p>
         <ul class="nc-channels nc-rv" style="--i: 2" id="lp-channels"></ul>
@@ -350,6 +371,10 @@
         </div>
         <div class="nc-faq-list nc-rv" style="--i: 1" data-scrub data-fx-faqlist>
           <details data-fx-faq>
+            <summary>Was kostet StreamHelp?</summary>
+            <p>Aktuell nichts – StreamHelp ist kostenlos. Später kommt ein optionales Abo mit Extras. Bevor sich etwas ändert, sagen wir rechtzeitig Bescheid.</p>
+          </details>
+          <details data-fx-faq>
             <summary>Was ist StreamHelp?</summary>
             <p>Eine Stream-Zentrale für Twitch: OBS-Overlay, Alerts, Chat-Bot, Kanalpunkte und Content-Ideen wie Glücksrad, Bingo, Verlosung oder Quiz an einem Ort. Zuschauer machen über die Seite oder den Chat mit, Mods steuern mit, der Streamer behält den Überblick.</p>
           </details>
@@ -373,6 +398,63 @@
             <summary>Ist mein Twitch-Konto sicher?</summary>
             <p>Die Anmeldung läuft direkt über Twitch – dein Passwort sehen wir nie. Ergebnisse schreibt der StreamHelp-Bot, nie dein eigenes Konto, und die Verbindung kannst du jederzeit in den Twitch-Einstellungen unter „Verbindungen“ trennen. Was gespeichert wird, steht in den <a href="datenschutz.html">Datenschutzhinweisen</a>.</p>
           </details>
+          <details data-fx-faq>
+            <summary>Wie erreiche ich euch?</summary>
+            <p>Frag zuerst die KI-Hilfe unten – sie kennt StreamHelp. Für alles andere gibt es das Kontaktformular; wir antworten per E-Mail, wenn du eine angibst.</p>
+          </details>
+        </div>
+      </section>
+
+      <!-- Kontakt: KI-Hilfe und Formular (js/help.js) -->
+      <section id="kontakt" class="nc-sec nc-contact" aria-labelledby="contact-title">
+        <div class="nc-rv">
+          <p class="nc-eyebrow">Kontakt</p>
+          <h2 class="nc-h2 nc-h2--short" id="contact-title">Fragen? Frag uns.</h2>
+          <p class="nc-text">Die KI-Hilfe antwortet sofort. Bei Problemen mit deinem Konto, Fehlern oder Ideen schreib uns über das Formular.</p>
+        </div>
+        <div class="nc-contact-grid nc-rv" style="--i: 1">
+          <article class="nc-card nc-help" aria-labelledby="help-title">
+            <p class="nc-card-kicker"><i class="ph ph-robot" aria-hidden="true"></i>Sofort</p>
+            <h3 class="nc-group-title" id="help-title">KI-Hilfe</h3>
+            <ol class="nc-help-log" id="help-log" aria-live="polite">
+              <li class="nc-help-msg nc-help-msg--bot">Hi! Frag mich alles zu StreamHelp – zum Beispiel, wie du das Overlay in OBS einfügst.</li>
+            </ol>
+            <div class="nc-help-chips" id="help-chips">
+              <button type="button" class="nc-chip" data-help-q>Wie füge ich das Overlay in OBS ein?</button>
+              <button type="button" class="nc-chip" data-help-q>Was kostet StreamHelp?</button>
+              <button type="button" class="nc-chip" data-help-q>Was dürfen meine Mods?</button>
+            </div>
+            <form class="nc-help-form" id="help-form">
+              <input name="q" type="text" maxlength="500" autocomplete="off" required placeholder="Deine Frage …" aria-label="Deine Frage">
+              <button class="nc-btn nc-btn-solid" type="submit"><i class="ph ph-arrow-right" aria-hidden="true"></i><span>Fragen</span></button>
+            </form>
+            <p class="nc-small nc-help-note">Antworten kommen von einer KI und können Fehler enthalten.</p>
+          </article>
+          <article class="nc-card nc-form" aria-labelledby="form-title">
+            <p class="nc-card-kicker"><i class="ph ph-heart" aria-hidden="true"></i>Persönlich</p>
+            <h3 class="nc-group-title" id="form-title">Nachricht schreiben</h3>
+            <form class="nc-contact-form" id="contact-form" novalidate>
+              <div class="nc-form-row">
+                <label class="nc-field"><span>Name (optional)</span><input name="name" type="text" maxlength="60" autocomplete="name"></label>
+                <label class="nc-field"><span>E-Mail für die Antwort</span><input name="email" type="email" maxlength="120" autocomplete="email" placeholder="du@beispiel.de"></label>
+              </div>
+              <label class="nc-field"><span>Worum geht’s?</span>
+                <select name="topic">
+                  <option value="question">Frage</option>
+                  <option value="bug">Fehler melden</option>
+                  <option value="idea">Idee oder Wunsch</option>
+                  <option value="channel">Kanal &amp; Freischaltung</option>
+                  <option value="privacy">Datenschutz</option>
+                  <option value="other">Etwas anderes</option>
+                </select>
+              </label>
+              <label class="nc-field"><span>Nachricht</span><textarea name="message" rows="5" maxlength="2000" required placeholder="Was können wir für dich tun?"></textarea></label>
+              <label class="nc-trap" aria-hidden="true">Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+              <p class="nc-small">Mit dem Absenden speichern wir deine Nachricht, um sie zu beantworten. Mehr dazu im <a href="datenschutz.html#kontakt">Datenschutz</a>.</p>
+              <p class="nc-form-msg" role="status"></p>
+              <button class="nc-btn nc-btn-solid" type="submit"><i class="ph ph-arrow-right" aria-hidden="true"></i>Absenden</button>
+            </form>
+          </article>
         </div>
       </section>
     </div>
@@ -391,7 +473,7 @@
     <footer class="nc-foot">
       <div class="nc-wrap nc-foot-inner">
         <span class="nc-foot-brand"><img class="nc-logo" src="assets/favicon.svg" width="18" height="18" alt="">StreamHelp</span>
-        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="#faq">FAQ</a><a href="datenschutz.html">Datenschutz</a><a href="admin.html">Admin-Zugang</a></div>
+        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="#faq">FAQ</a><a href="#kontakt">Kontakt</a><a href="datenschutz.html">Datenschutz</a><a href="admin.html">Admin-Zugang</a></div>
       </div>
     </footer>
   </div>
@@ -484,6 +566,7 @@
         <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><span class="sb-ico" aria-hidden="true">🤖</span><span class="sb-label">Bot &amp; Chat</span></button>
         <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><span class="sb-ico" aria-hidden="true">🎟️</span><span class="sb-label">Kanalpunkte</span></button>
         <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><span class="sb-ico" aria-hidden="true">🔔</span><span class="sb-label">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
+        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><span class="sb-ico" aria-hidden="true">📈</span><span class="sb-label">Statistik</span></button>
         <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><span class="sb-ico" aria-hidden="true">🎛️</span><span class="sb-label">Overlay &amp; OBS</span></button>
         <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Video aufnehmen</span></button>
         <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><span class="sb-ico" aria-hidden="true">📚</span><span class="sb-label">Design-Bibliothek</span></button>
@@ -493,6 +576,7 @@
         <button class="sb-item" type="button" data-page="security" title="Sicherheit"><span class="sb-ico" aria-hidden="true">🔐</span><span class="sb-label">Sicherheit</span></button>
       </nav>
       <div class="sb-foot">
+        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><span class="sb-ico" aria-hidden="true">📲</span><span class="sb-label">App installieren</span></button>
         <button id="tour-btn" class="sb-item" type="button" title="Einführung"><span class="sb-ico" aria-hidden="true">❓</span><span class="sb-label">Einführung</span></button>
         <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><span class="sb-ico" aria-hidden="true">⚙️</span><span class="sb-label">Admin-Bereich</span></a>
       </div>
@@ -545,6 +629,8 @@
       <main class="dashboard">
         <!-- Content-Ideen: die Startseite im Dashboard -->
         <section class="page" data-page="ideas" aria-labelledby="page-title">
+          <!-- Ruhiger Einstieg für Streamer (js/dash-start.js) -->
+          <div id="start-slot" hidden></div>
           <div class="dash-hero">
             <article class="next-departure" id="next-departure">
               <span class="nd-bg" aria-hidden="true"></span>
@@ -580,7 +666,10 @@
           <div class="section">
             <div class="section-head">
               <h2 id="grid-title">Alle Content-Ideen</h2>
-              <span id="plan-count"></span>
+              <div class="grid-tools">
+                <input class="grid-search" id="grid-search" type="search" placeholder="Kachel suchen …" aria-label="Content-Ideen durchsuchen" autocomplete="off">
+                <span id="plan-count"></span>
+              </div>
             </div>
             <div id="grid" class="grid" aria-live="polite"></div>
           </div>
@@ -910,6 +999,11 @@
           </div>
         </section>
 
+        <!-- Stream-Statistik (js/dash-stats.js) -->
+        <section class="page" data-page="stats" hidden>
+          <div class="dash-cards" id="stats-slot"></div>
+        </section>
+
         <!-- Sicherheit: Zwei-Faktor-Anmeldung, Geräte, Export (js/security.js) -->
         <section class="page" data-page="security" hidden>
           <div class="dash-cards" id="security-slot"></div>
@@ -921,6 +1015,11 @@
             <article class="dash-card dash-card--wide">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🟣</span><div><h2>Twitch-Kanal</h2><p class="dash-status" id="twitch-state">…</p></div></header>
               <div id="twitch-dialog-body" class="twitch-dialog-body"></div>
+            </article>
+            <!-- Showcase auf der Startseite (Migration …_contact_showcase.sql) -->
+            <article class="dash-card dash-card--wide" id="showcase-card">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🌟</span><div><h2>Auf der Startseite zeigen</h2><p class="dash-status" id="showcase-status">Dein Kanal erscheint auf der StreamHelp-Startseite unter „Diese Streamer nutzen StreamHelp“ – mit Live-Anzeige, wenn du streamst.</p></div></header>
+              <label class="toggle"><input type="checkbox" id="showcase-toggle"><span class="toggle-ui" aria-hidden="true"></span>Kanal auf der Startseite zeigen</label>
             </article>
           </div>
         </section>

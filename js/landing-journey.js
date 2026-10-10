@@ -8,6 +8,7 @@
 // Chat mit !Befehlen, Haustier hüpft bei !füttern, Subathon-Timer, ab und zu ein Raid.
 // Nur wenn keine reduzierte Bewegung gewünscht ist (sonst bleibt die Seite ruhig, siehe landing.js).
 import { dinoSvg } from './pet.js';
+import { t } from './i18n.js';
 
 const LAYERS = { bar: 24, alert: 160, chat: 110, wheel: 135, ticker: 70, timer: 95, fx: 175, raid: 200 };
 const ALERTS = [
@@ -639,7 +640,7 @@ class Journey {
         alert.dataset.kind = a.kind;
         alert.querySelector('.ph').className = `ph ${a.icon}`;
         alert.querySelector('[data-pv-alert-name]').textContent = a.name;
-        alert.querySelector('[data-pv-alert-sub]').textContent = a.sub;
+        alert.querySelector('[data-pv-alert-sub]').textContent = t(a.sub);
         alert.style.setProperty('--dur', `${(ALERT_EVERY - 900) / 1000}s`);
         alert.classList.remove('is-out', 'is-in');
         void alert.offsetWidth;
@@ -671,7 +672,7 @@ class Journey {
         disc.getAnimations().forEach((an) => an.cancel());
         disc.style.setProperty('--rot', `${rot}deg`);
         wheel.classList.replace('is-spinning', 'is-done');
-        result.textContent = WHEEL[Math.floor(Math.random() * WHEEL.length)];
+        result.textContent = t(WHEEL[Math.floor(Math.random() * WHEEL.length)]);
         const r = rel(disc);
         confetti(r.x + r.w / 2, r.y + r.h / 2, 22);
         await wait(3200);
@@ -685,7 +686,7 @@ class Journey {
       for (;;) {
         await until();
         const [who, text, bot] = CHAT[n++ % CHAT.length];
-        if (!raiding) pushChat(who, text, bot);
+        if (!raiding) pushChat(who, t(text), bot);
         await wait(1700 + Math.random() * 1300);
       }
     })();

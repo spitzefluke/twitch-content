@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
-const SECRET_TABLES = ['twitch_connection', 'pause_secret', 'quiz_secret', 'bot_outbox', 'twitch_bot', 'oauth_states', 'admin_login_failures', 'admin_mfa', 'rate_hits'];
+const SECRET_TABLES = ['twitch_connection', 'pause_secret', 'quiz_secret', 'bot_outbox', 'twitch_bot', 'oauth_states', 'admin_login_failures', 'admin_mfa', 'rate_hits', 'contact_messages'];
 const problems = [];
 
 for (const file of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {

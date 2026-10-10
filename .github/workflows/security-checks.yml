@@ -1,5 +1,6 @@
 # Sicherheits-Prüfungen bei jeder PR und jedem Push auf main:
-#   · Webseite: Versionsnummern/CSP aktuell, JS-Syntax, keine geheimen Schlüssel im Code
+#   · Webseite: Versionsnummern/CSP aktuell, JS-Syntax, keine geheimen Schlüssel im Code,
+#     Übersetzungen vollständig (gleiche Tags/Platzhalter) – tools/check-i18n.mjs
 #   · Datenbank: Migrationen (security definer mit search_path, RLS für neue Tabellen, keine
 #     Rechte auf geheime Tabellen) – tools/check-sql.mjs
 #   · Edge Functions: Typprüfung und Tests mit Deno
@@ -32,11 +33,13 @@ jobs:
       - name: Versionsnummern und Content-Security-Policy
         run: node tools/stamp-versions.mjs --check
       - name: JavaScript-Syntax
-        run: for f in js/*.js extension/*.js tools/*.mjs; do node --check "$f" || exit 1; done
+        run: for f in js/*.js extension/*.js tools/*.mjs sw.js; do node --check "$f" || exit 1; done
       - name: Keine geheimen Schlüssel im Code
         run: node tools/check-secrets.mjs
       - name: Migrationen
         run: node tools/check-sql.mjs
+      - name: Übersetzungen
+        run: node tools/check-i18n.mjs
 
   functions:
     name: Edge Functions
