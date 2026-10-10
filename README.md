@@ -753,11 +753,11 @@ Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `tw
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
    - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
 4. **Erweiterungs-Secret**: in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets oder `npx supabase secrets set EXTENSION_SECRET=…`). Nicht ins Repo und nicht in den Chat. Damit prüft `twitch-ext`, dass Anfragen wirklich von Twitch kommen.
-5. **Dateien hochladen**: `panel.html`, `panel.css` und `panel.js` aus `extension/` als ZIP (die drei Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
+5. **Dateien hochladen**: `panel.html`, `panel.css`, `panel-i18n.js` und `panel.js` aus `extension/` als ZIP (die vier Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
 6. **Gehosteter Test**: Im Creator-Dashboard des eigenen Kanals unter Erweiterungen → Meine Erweiterungen installieren und als Panel aktivieren.
 7. Für alle anderen Streamer: **Zur Prüfung einreichen**. Nach der Freigabe durch Twitch kann jeder Streamer das Panel in seinem Creator-Dashboard aktivieren.
 
-Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Das Panel spricht die Sprache des Zuschauers (Twitch gibt sie mit; zum Ausprobieren `panel.html?language=en`); die Texte stehen in `extension/panel-i18n.js`. **Nach diesem Update die Dateien neu hochladen** (neue Version im Twitch-Entwickler-Bereich). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

@@ -12,12 +12,32 @@
   // Direkt im Browser geöffnet (nicht bei Twitch im Rahmen): Beispieldaten
   var DEMO = !ext || window.self === window.top || /[?&]demo\b/.test(location.search);
 
+  // Sprache: Twitch hängt ?language=… an die Panel-Adresse und meldet sie in onContext
+  var I18N = window.PANEL_I18N || { dicts: {} };
+  var LOCALES = { de: 'de-DE', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', nl: 'nl-NL', pl: 'pl-PL', pt: 'pt-BR', tr: 'tr-TR', ru: 'ru-RU' };
+  var lang = 'de';
+  function setLang(code) {
+    var c = String(code || '').slice(0, 2).toLowerCase();
+    var next = I18N.dicts[c] || c === 'de' ? c : 'de';
+    if (next === lang) return false;
+    lang = next;
+    document.documentElement.lang = lang;
+    return true;
+  }
+  setLang(new URLSearchParams(location.search).get('language') || navigator.language);
+  function T(source, vars) {
+    var out = (I18N.dicts[lang] || {})[source] || source;
+    if (vars) out = out.replace(/\{(\w+)\}/g, function (m, k) { return k in vars ? String(vars[k]) : m; });
+    return out;
+  }
+
   var token = null;
   var data = null;
   var pending = null;   // Aktion, die nach der Freigabe der Twitch-ID ausgeführt wird
   var msgs = {};        // Rückmeldung je Bereich (giveaway, queue)
   var timer = 0;
 
+  // Texte auf Deutsch – T() übersetzt beim Anzeigen (extension/panel-i18n.js)
   var REASONS = {
     share: 'Gib deine Twitch-ID frei (Twitch fragt gleich nach) – dann klappt’s.',
     closed: 'Gerade geschlossen.',
@@ -42,7 +62,7 @@
       body: JSON.stringify(Object.assign({ action: action }, extra || {})),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) {
-        if (!res.ok) { var e = new Error(body.message || ('Fehler ' + res.status)); e.reason = body.error; throw e; }
+        if (!res.ok) { var e = new Error(body.message || T('Fehler {n}', { n: res.status })); e.reason = body.error; throw e; }
         return body;
       });
     });
@@ -55,7 +75,7 @@
       data = d;
       render();
     }).catch(function (e) {
-      renderError(REASONS[e.reason] || e.message);
+      renderError(T(REASONS[e.reason] || e.message));
     }).then(function () {
       timer = setTimeout(load, POLL_MS);
     });
@@ -65,7 +85,7 @@
     if (!DEMO && data && data.me && !data.me.shared) {
       // Twitch-ID freigeben lassen, danach automatisch weiter
       pending = { kind: kind, extra: extra };
-      msgs[kind] = { text: REASONS.share };
+      msgs[kind] = { text: T(REASONS.share) };
       render();
       ext.actions.requestIdShare();
       return;
@@ -74,13 +94,13 @@
     render();
     call(kind, extra).then(function (res) {
       if (res.ok) {
-        msgs[kind] = { ok: true, text: kind === 'giveaway' ? '🍀 Du bist dabei – viel Glück!' : (res.picked ? '🎮 Du bist dran!' : '🎮 Du stehst auf Platz ' + res.position + '.') };
+        msgs[kind] = { ok: true, text: kind === 'giveaway' ? T('🍀 Du bist dabei – viel Glück!') : (res.picked ? T('🎮 Du bist dran!') : T('🎮 Du stehst auf Platz {n}.', { n: res.position })) };
       } else {
-        msgs[kind] = { error: true, text: REASONS[res.reason] || 'Hat nicht geklappt.' };
+        msgs[kind] = { error: true, text: T(REASONS[res.reason] || 'Hat nicht geklappt.') };
       }
       load();
     }).catch(function (e) {
-      msgs[kind] = { error: true, text: REASONS[e.reason] || e.message };
+      msgs[kind] = { error: true, text: T(REASONS[e.reason] || e.message) };
       render();
     });
   }
@@ -101,8 +121,9 @@
 
   function when(iso) {
     var d = new Date(iso);
-    return d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' +
-      d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
+    var loc = LOCALES[lang] || 'de-DE';
+    return d.toLocaleDateString(loc, { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' +
+      d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }) + (lang === 'de' ? ' Uhr' : '');
   }
 
   function render() {
@@ -116,25 +137,29 @@
       var g = el('section', 'card game');
       g.append(el('span', 'game-ico', data.game.icon));
       var t = el('div');
-      t.append(el('small', null, data.game.live ? 'Gerade im Stream' : 'Heute dran'), el('b', null, data.game.name));
+      t.append(el('small', null, data.game.live ? T('Gerade im Stream') : T('Heute dran')), el('b', null, data.game.name));
       g.append(t);
-      if (data.game.live) g.append(el('span', 'live', 'Live'));
+      if (data.game.live) {
+        var live = el('span', 'live', 'Live');
+        live.lang = 'en'; // sonst macht text-transform auf Türkisch „LİVE“ daraus
+        g.append(live);
+      }
       parts.push(g);
     }
 
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
       var v = el('section', 'card');
-      v.append(el('h2', null, '🍀 Verlosung'));
-      v.append(el('p', null, data.giveaway.prize || 'Mach mit!'));
-      v.append(el('p', 'muted', data.giveaway.entries + ' im Lostopf' + (data.giveaway.followers_only ? ' · nur Follower' : '') +
-        (data.giveaway.command ? ' · oder im Chat: ' + data.giveaway.command : '')));
+      v.append(el('h2', null, T('🍀 Verlosung')));
+      v.append(el('p', null, data.giveaway.prize || T('Mach mit!')));
+      v.append(el('p', 'muted', T('{n} im Lostopf', { n: data.giveaway.entries }) + (data.giveaway.followers_only ? ' · ' + T('nur Follower') : '') +
+        (data.giveaway.command ? ' · ' + T('oder im Chat: {name}', { name: data.giveaway.command }) : '')));
       if (me.giveaway) {
-        var done = el('button', 'btn btn--ok', '✓ Du bist dabei');
+        var done = el('button', 'btn btn--ok', T('✓ Du bist dabei'));
         done.disabled = true;
         v.append(done);
       } else {
-        var join = el('button', 'btn', 'Mitmachen');
+        var join = el('button', 'btn', T('Mitmachen'));
         join.type = 'button';
         join.addEventListener('click', function () { act('giveaway'); });
         v.append(join);
@@ -147,19 +172,19 @@
     // Mitspieler-Warteschlange
     if (data.queue && data.queue.open) {
       var q = el('section', 'card');
-      q.append(el('h2', null, '🎮 Mitspielen'));
-      q.append(el('p', 'muted', data.queue.waiting + ' warten' + (data.queue.note ? ' · ' + data.queue.note : '')));
+      q.append(el('h2', null, T('🎮 Mitspielen')));
+      q.append(el('p', 'muted', T('{n} warten', { n: data.queue.waiting }) + (data.queue.note ? ' · ' + data.queue.note : '')));
       if (typeof me.queue === 'number' && me.queue > 0) {
-        q.append(el('p', 'msg is-ok', 'Du stehst auf Platz ' + me.queue + '.'));
+        q.append(el('p', 'msg is-ok', T('Du stehst auf Platz {n}.', { n: me.queue })));
       } else {
         var form = el('form', 'row');
         var input = el('input');
         input.name = 'epic';
         input.maxLength = 32;
-        input.placeholder = 'Dein Epic-Name';
-        input.setAttribute('aria-label', 'Epic-Name');
+        input.placeholder = T('Dein Epic-Name');
+        input.setAttribute('aria-label', T('Epic-Name'));
         input.value = me.epic || '';
-        var go = el('button', 'btn', 'Anstellen');
+        var go = el('button', 'btn', T('Anstellen'));
         go.type = 'submit';
         form.append(input, go);
         form.addEventListener('submit', function (e) {
@@ -176,15 +201,15 @@
     // Als Nächstes
     if (data.next) {
       var n = el('section', 'card');
-      n.append(el('h2', null, '⏰ Als Nächstes'));
+      n.append(el('h2', null, T('⏰ Als Nächstes')));
       n.append(el('p', null, data.next.title), el('p', 'muted', when(data.next.at)));
       parts.push(n);
     }
 
     // Content-Ideen
     var ideas = el('section', 'card');
-    ideas.append(el('h2', null, data.game ? '💡 Passt zu ' + data.game.name : '💡 Content-Ideen'));
-    if (data.placeholder) ideas.append(el('p', 'muted', 'Wir arbeiten an einer Content-Idee für dieses Game. Bis dahin passt das hier zu jedem Game:'));
+    ideas.append(el('h2', null, data.game ? T('💡 Passt zu {name}', { name: data.game.name }) : T('💡 Content-Ideen')));
+    if (data.placeholder) ideas.append(el('p', 'muted', T('Wir arbeiten an einer Content-Idee für dieses Game. Bis dahin passt das hier zu jedem Game:')));
     if (data.ideas.length) {
       var ul = el('ul', 'ideas');
       data.ideas.forEach(function (i) {
@@ -195,13 +220,13 @@
       });
       ideas.append(ul);
     } else {
-      ideas.append(el('p', 'muted', 'Gerade keine Ideen aktiv.'));
+      ideas.append(el('p', 'muted', T('Gerade keine Ideen aktiv.')));
     }
     parts.push(ideas);
 
     // Link zur Seite
     if (data.channel.link) {
-      var a = el('a', 'link', 'Mitmachen auf StreamHelp →');
+      var a = el('a', 'link', T('Mitmachen auf StreamHelp →'));
       a.href = data.channel.link;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -217,6 +242,8 @@
   }
 
   // ---------- Start ----------
+  var loading = document.querySelector('#content p');
+  if (loading) loading.textContent = T('Lädt …');
   if (DEMO) {
     load();
     return;
@@ -233,6 +260,7 @@
   });
   ext.onContext(function (ctx) {
     if (ctx && ctx.theme) document.documentElement.dataset.theme = ctx.theme;
+    if (ctx && ctx.language && setLang(ctx.language) && data) render();
   });
   if (ext.onVisibilityChanged) {
     ext.onVisibilityChanged(function (visible) {
