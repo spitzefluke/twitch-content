@@ -33,6 +33,8 @@ import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
+import { markStart, renderStart, showStartAgain } from './dash-start.js';
+import { renderStats } from './dash-stats.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -329,7 +331,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit',
+  security: 'Sicherheit', stats: 'Statistik',
 };
 
 function setupShell() {
@@ -493,6 +495,7 @@ function applyView(want) {
   let view = 'viewer';
   if (isTeam()) view = canStreamerView() && want !== 'mod' ? 'streamer' : 'mod';
   app.dataset.view = view;
+  if (state.page === 'ideas') renderStart(START);
   sw.hidden = !isTeam();
   sw.classList.toggle('is-locked', isTeam() && !canStreamerView());
   sw.querySelectorAll('[data-view]').forEach((b) => {
@@ -505,6 +508,18 @@ function applyView(want) {
   if (current && getComputedStyle(current).display === 'none') setPage('ideas');
   renderTwitchPanel();
 }
+
+// Einstiegs-Checkliste (js/dash-start.js): was sie über den Kanal wissen muss
+const START = {
+  userId: () => state.user?.id,
+  channelId: () => state.channel?.id,
+  isStreamer: () => !OBS_PAGE && canStreamerView() && $('#app')?.dataset.view !== 'viewer',
+  twitchConnected: () => !!state.twitch?.connected,
+  modsEnabled: () => !!state.access?.mods_enabled,
+  mfaStatus: () => state.api.mfaStatus(),
+  setPage: (name) => setPage(name),
+  openObs: () => openObsWindow(),
+};
 
 function setPage(name) {
   const item = $(`.sb-item[data-page="${name}"]`);
@@ -532,6 +547,8 @@ const PAGE_ENTER = {
   mods: () => { loadMods(); renderModSecurity(); },
   twitch: () => { renderTwitchPanel(); loadShowcase(); },
   security: () => renderSecurityPage(),
+  stats: () => renderStats($('#stats-slot'), state.api),
+  ideas: () => renderStart(START),
 };
 
 function setupAuthForms() {
@@ -1360,23 +1377,37 @@ function renderGrid() {
     prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
     ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
   };
-  const shown = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
-  const make = (tile, i) => (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i);
+  const all = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
+  // Suche (Titel + Beschreibung) und Favoriten zuerst – beides nur in diesem Browser
+  const query = ($('#grid-search')?.value ?? '').trim().toLowerCase();
+  const favs = favTiles();
+  const shown = all
+    .filter((t) => !query || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(query))
+    .sort((a, b) => favs.has(b.id) - favs.has(a.id));
+  const make = (tile, i) => withFav(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i), favs);
   // Games: je Game erst die passenden Ideen, dann was zu jedem Game passt
   const game = gameById(selectedGame());
   $('#grid-title').textContent = game ? `Content-Ideen für ${game.name}` : 'Alle Content-Ideen';
   $('#wheel-card').hidden = !!game && !game.ideas.includes('wheel');
-  if (!game) {
+  if (query && !shown.length) {
+    grid.replaceChildren(h('p', { class: 'grid-empty' }, `Keine Kachel passt zu „${query}“.`));
+  } else if (!game || query) {
     grid.replaceChildren(...shown.map(make));
   } else {
+    const isFav = (t) => favs.has(t.id);
     const planned = shown.filter(isPlanned);
     const { mine, general } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
+    // Favoriten (die zu diesem Game passen) als eigene Gruppe ganz oben
+    const starred = [...planned, ...mine, ...general].filter(isFav);
+    const rest = (list) => list.filter((t) => !isFav(t));
     let i = 0;
     grid.replaceChildren(
-      ...planned.map((t) => make(t, i++)),
+      ...(starred.length ? [gridHead('★ Deine Favoriten'), ...starred.map((t) => make(t, i++))] : []),
+      ...(starred.length && planned.some((t) => !isFav(t)) ? [gridHead('⏰ Geplant')] : []),
+      ...rest(planned).map((t) => make(t, i++)),
       gridHead(`${game.icon} Passt zu ${game.name}`),
-      ...(mine.length ? mine.map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
-      ...(general.length ? [gridHead('🎮 Passt zu jedem Game'), ...general.map((t) => make(t, i++))] : []),
+      ...(mine.length ? rest(mine).map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
+      ...(rest(general).length ? [gridHead('🎮 Passt zu jedem Game'), ...rest(general).map((t) => make(t, i++))] : []),
     );
   }
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
@@ -1439,7 +1470,7 @@ function setupTour() {
   dlg.addEventListener('close', () => {
     try { if (!localStorage.getItem(tourKey())) localStorage.setItem(tourKey(), 'no'); } catch { /* egal */ }
   });
-  $('#tour-btn').addEventListener('click', runTour);
+  $('#tour-btn').addEventListener('click', () => { showStartAgain(START); runTour(); });
 }
 
 // ============================================================
@@ -1508,6 +1539,28 @@ function renderGames() {
       ? `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“.`
       : `🔴 ${streamerName()} ist gerade live in „${g.data.live_category}“ – für dieses Game gibt es noch keine eigene Auswahl.`;
   }
+}
+
+// Favoriten-Stern: liegt neben der Kachel (Kacheln sind selbst Knöpfe – Knopf im Knopf geht nicht)
+const favKey = () => `sh_favs_${state.user?.id ?? ''}_${state.channel?.id ?? 'default'}`;
+function favTiles() {
+  try { return new Set(JSON.parse(localStorage.getItem(favKey())) ?? []); } catch { return new Set(); }
+}
+function withFav(tile, el, favs) {
+  if (!el.classList.contains('tile') || el.classList.contains('tile--placeholder')) return el;
+  const on = favs.has(tile.id);
+  const star = h('button', {
+    type: 'button', class: `tile-fav${on ? ' is-on' : ''}`, 'aria-pressed': String(on),
+    'aria-label': on ? `„${tile.title}“ aus den Favoriten nehmen` : `„${tile.title}“ als Favorit markieren`,
+    title: on ? 'Favorit – steht immer vorne' : 'Als Favorit nach vorne holen',
+  }, on ? '★' : '☆');
+  star.addEventListener('click', () => {
+    const next = favTiles();
+    if (next.has(tile.id)) next.delete(tile.id); else next.add(tile.id);
+    try { localStorage.setItem(favKey(), JSON.stringify([...next])); } catch { /* privater Modus */ }
+    renderGrid();
+  });
+  return h('div', { class: `tile-wrap${on ? ' is-fav' : ''}` }, el, star);
 }
 
 function gridHead(text) {
@@ -1792,7 +1845,10 @@ function setupDialogs() {
   $('#games-edit').addEventListener('click', openGamesDialog);
   setupTour();
   $('#games-form').addEventListener('submit', saveGames);
-  $('#wheel-card').addEventListener('click', openWheel);
+  $('#wheel-card').addEventListener('click', () => { markStart(START, 'idea'); openWheel(); });
+  $('#grid').addEventListener('click', (e) => { if (e.target.closest('.tile') && !e.target.closest('.tile--placeholder')) markStart(START, 'idea'); });
+  let searchTimer = 0;
+  $('#grid-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderGrid, 120); });
   $('#idea-form').addEventListener('submit', submitIdea);
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
@@ -6255,6 +6311,7 @@ function saveObs(values) {
 
 // Die OBS-Einstellungen laufen in einem eigenen Fenster (index.html?obs), nicht als Pop-up
 function openObsWindow() {
+  markStart(START, 'obs');
   const url = withChannelParam(new URL(location.pathname, location.href));
   url.searchParams.set('obs', '1');
   const win = window.open(url.href, 'streamhelp-obs');

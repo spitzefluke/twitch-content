@@ -1985,3 +1985,25 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 #obs-dialog.guide-hidden .obs-help, #obs-dialog.guide-hidden .obs-manual { display: none; }
 .obs-connect-head .obs-guide-btn { margin-left: auto; align-self: flex-start; flex: none; }
 #obs-dialog.is-mod .obs-guide-btn { display: none; }
+
+/* Kacheln: Suche und Favoriten (js/app.js renderGrid) */
+.grid-tools { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.grid-search {
+  width: min(240px, 100%); padding: 8px 12px; border-radius: 999px;
+  border: 1px solid var(--line-soft); background: rgba(255, 255, 255, .04); color: var(--text); font: inherit; font-size: 14px;
+}
+.grid-search:focus { outline: none; border-color: rgba(169, 112, 255, .55); }
+.tile-wrap { position: relative; display: grid; min-width: 0; }
+.tile-wrap > .tile { min-width: 0; }
+.tile-fav {
+  position: absolute; top: 12px; right: 12px; z-index: 3;
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(10, 13, 19, .55); color: #e8ecf4; font-size: 17px; line-height: 1; cursor: pointer;
+  opacity: 0; transition: opacity .2s, transform .2s, background .2s;
+}
+.tile-wrap:hover .tile-fav, .tile-fav:focus-visible, .tile-fav.is-on { opacity: 1; }
+.tile-fav:hover { transform: scale(1.08); background: rgba(10, 13, 19, .8); }
+.tile-fav.is-on { color: #ffd166; border-color: rgba(255, 209, 102, .5); }
+@media (hover: none) { .tile-fav { opacity: .85; } }
+.grid-empty { grid-column: 1 / -1; color: var(--dim, #8a93a6); padding: 18px 0; }
+@media (max-width: 640px) { .grid-search { width: 100%; } .section-head:has(.grid-tools) { flex-wrap: wrap; } }
