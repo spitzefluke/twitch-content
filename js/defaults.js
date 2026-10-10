@@ -258,8 +258,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'poll',
     position: 17,
+    kind: 'poll',
+    title: 'Umfrage',
+    description: 'Der Chat entscheidet: Frage stellen, abstimmen im Panel unter dem Stream oder mit !vote im Chat.',
+    theme: 'poll',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 18,
     kind: 'countdown',
     title: 'Late-Night-Marathon',
     description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
@@ -269,7 +279,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 18,
+    position: 19,
     kind: 'countdown',
     title: 'Countdown zum Subathon',
     description: 'Der nächste Subathon kommt! Jeder Sub verlängert den Stream – wie lange geht es diesmal?',

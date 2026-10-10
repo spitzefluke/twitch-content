@@ -1,17 +1,18 @@
 // Chat-Befehle aus dem Twitch-Chat des Streamers (EventSub channel.chat.message).
 // Gelesen wird über den Chat-Bot: Er hat user:read:chat freigegeben, der Streamer channel:bot.
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
-// Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds); alles andere (auch !watchtime und
-// eigene Befehle) beantwortet chat_command in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
+// Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
+// laufenden Umfrage „!vote 2“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
+// in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
 import { channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
 import { noteHotwords } from "./hotwords.ts";
+import { feedPet } from "./pet.ts";
 
 const CHAT_EVENT = "channel.chat.message";
-const FEED_COOLDOWN_MS = 10 * 60_000; // pro Zuschauer
-const FEED_GAP_MS = 15_000; // zwischen zwei Fütterungen insgesamt – sonst frisst er nur noch
+const VOTE_COMMANDS = new Set(["vote", "abstimmen"]);
 
 // Kostüme in fester Reihenfolge („!change“ allein nimmt das nächste) und was Zuschauer dafür tippen dürfen
 const COSTUMES = ["schaffner", "lok", "bau"] as const;
@@ -79,6 +80,11 @@ export async function handleChatMessage(event: ChatMessage) {
     if (await handleSoundList().catch((e) => { console.warn("!sounds:", e); return false; })) return;
   }
 
+  // Umfrage: „!vote 2“ – nur solange eine läuft (sonst darf ein eigener Befehl !vote antworten)
+  if ((!self || event.chatter_user_id !== self.user_id) && VOTE_COMMANDS.has(normalize(command))) {
+    if (await handleVote(event, arg).catch((e) => { console.warn("Umfrage:", e); return false; })) return;
+  }
+
   // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
   // Zahlenraten, !watchtime, !befehle, eigene Befehle)
   if (!self || event.chatter_user_id !== self.user_id) {
@@ -90,48 +96,28 @@ export async function handleChatMessage(event: ChatMessage) {
 
   if (normalize(command) === "change") return await changeCostume(event, arg);
 
-  // stage gibt es erst mit …_pet_species.sql – ohne die Spalte ist es einfach undefined
-  const { data: pet } = await db.from("pet").select("*").eq("id", 1).maybeSingle();
+  const { data: pet } = await db.from("pet").select("feed_command").eq("id", 1).maybeSingle();
   if (!pet) return;
   // "!füttern" und "!fuettern" zählen gleich
   if (normalize(command) !== normalize(pet.feed_command ?? "!füttern")) return;
-
-  const bot = await getBot();
-  if (bot && event.chatter_user_id === bot.user_id) return;
-
-  // Vor dem Startdatum für Zuschauer passiert nichts
-  const { data: tile } = await db.from("tiles").select("target_at").eq("kind", "pet").order("position").limit(1).maybeSingle();
-  if (!tile || (tile.target_at && Date.parse(tile.target_at) > Date.now())) return;
-
-  const now = Date.now();
-  if (pet.last_fed_at && now - Date.parse(pet.last_fed_at) < FEED_GAP_MS) return;
-  const { data: cd } = await db.from("pet_chat_cooldowns").select("last_at").eq("twitch_user_id", event.chatter_user_id).maybeSingle();
-  if (cd && now - Date.parse(cd.last_at) < FEED_COOLDOWN_MS) return;
-
-  const at = new Date(now).toISOString();
-  const who = event.chatter_user_name || event.chatter_user_login;
-  await db.from("pet_chat_cooldowns").upsert({ twitch_user_id: event.chatter_user_id, last_at: at }, { onConflict: await channelKey("twitch_user_id") });
-  const { data: fed, error } = await db.from("pet")
-    .update({ last_fed_at: at, last_fed_by: who, fed_count: (pet.fed_count ?? 0) + 1 })
-    .eq("id", 1).select("*").single();
-  if (error) throw error;
-  await db.from("pet_events").insert({ kind: "feed", who });
-  // Ei geschlüpft oder Baby erwachsen (Trigger …_pet_species.sql): der Bot dankt den Helfern
-  if (fed?.stage && pet.stage && fed.stage !== pet.stage) await announceStage(fed).catch((e) => console.warn("Haustier-Stadium:", e));
-  await db.from("pet_events").delete().lt("created_at", new Date(now - 2 * 86400_000).toISOString());
+  if (self && event.chatter_user_id === self.user_id) return;
+  // Abklingzeiten, Starttermin und Stadium: _shared/pet.ts (gilt genauso fürs Twitch-Panel)
+  await feedPet(event.chatter_user_id, event.chatter_user_name || event.chatter_user_login);
 }
 
-// Neues Stadium im Chat verkünden (nur mit verbundenem Chat-Bot)
-async function announceStage(pet: { name?: string; stage?: string }) {
-  const { data: ev } = await db.from("pet_events").select("who").eq("kind", "stage").eq("text", pet.stage ?? "")
-    .order("created_at", { ascending: false }).limit(1).maybeSingle();
-  const helpers = ev?.who ? ` Danke an ${ev.who}!` : "";
-  const name = pet.name || "Das Haustier";
-  const text = pet.stage === "baby"
-    ? `🐣 ${name} ist geschlüpft!${helpers} Ab jetzt füttern – nach ein paar Streams mit guter Laune wird es groß.`
-    : `🎉 ${name} ist erwachsen!${helpers}`;
-  const conn = await getConnection().catch(() => null);
-  if (conn) await sendChat(conn, text);
+// ---------- Umfrage (Migration …_polls.sql) ----------
+// Liefert true, wenn eine Umfrage läuft und die Stimme damit erledigt ist. Der Bot antwortet nicht
+// (sonst flutet er den Chat) – den Stand zeigen Overlay und Panel.
+async function handleVote(event: ChatMessage, arg: string) {
+  const n = Number.parseInt(arg.replace(/[^0-9]/g, ""), 10);
+  const { data, error } = await db.rpc("poll_vote", {
+    p_key: `tw:${event.chatter_user_id}`, p_choice: Number.isFinite(n) ? n : 0, p_source: "chat",
+  });
+  if (error) {
+    if (!/poll_vote/.test(error.message)) console.warn("poll_vote:", error.message); // Migration fehlt: nichts tun
+    return false;
+  }
+  return data?.ok === true || data?.reason === "choice" || data?.reason === "paused";
 }
 
 // !change [kostüm]: Rexi zieht sich um. Eine Pause für alle (Abklingzeit im OBS-Fenster).

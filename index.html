@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-6VHmBsgnZKpSamH796jd7YX2I1zAgGnHwxS2UiAvdsE=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-+XrHQfTc39TElPcueAe8LrNjEQ8KKSwGUU0Rngt9t/g=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -58,7 +58,7 @@
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
   <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
-  <link rel="stylesheet" href="css/extras.css?v=8b82a25aa1">
+  <link rel="stylesheet" href="css/extras.css?v=d91d76987e">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
@@ -66,15 +66,15 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=5d08d9e818",
-      "./js/app.js": "./js/app.js?v=a11d9750d5",
+      "./js/app.js": "./js/app.js?v=cf45453098",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
       "./js/config.js": "./js/config.js?v=93f6ab2ed3",
       "./js/dash-start.js": "./js/dash-start.js?v=c5fe8053c6",
       "./js/dash-stats.js": "./js/dash-stats.js?v=83145278a1",
-      "./js/defaults.js": "./js/defaults.js?v=d1d89a0148",
-      "./js/extras-api.js": "./js/extras-api.js?v=383428e1f6",
+      "./js/defaults.js": "./js/defaults.js?v=44af276a94",
+      "./js/extras-api.js": "./js/extras-api.js?v=6201b18413",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
       "./js/extras-giveaway.js": "./js/extras-giveaway.js?v=107cd80a12",
@@ -82,7 +82,8 @@
       "./js/extras-hotwords.js": "./js/extras-hotwords.js?v=fea8926ca1",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
-      "./js/extras.js": "./js/extras.js?v=d16d5d0cf2",
+      "./js/extras-poll.js": "./js/extras-poll.js?v=9d625d0b37",
+      "./js/extras.js": "./js/extras.js?v=8339345331",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=f051a4c3f0",
       "./js/help.js": "./js/help.js?v=e8bfa8ed5c",
@@ -102,20 +103,20 @@
       "./js/library.js": "./js/library.js?v=0290fc401c",
       "./js/obs-ws.js": "./js/obs-ws.js?v=b2a626829a",
       "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
-      "./js/overlay-extras.js": "./js/overlay-extras.js?v=b550517afc",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=946b1ac393",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
-      "./js/overlay.js": "./js/overlay.js?v=5fe344dc49",
+      "./js/overlay.js": "./js/overlay.js?v=a6719a2572",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
-      "./js/record.js": "./js/record.js?v=d11f0b361f",
+      "./js/record.js": "./js/record.js?v=c7e80ac9d0",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
       "./js/secret-store.js": "./js/secret-store.js?v=086d5c4808",
-      "./js/security.js": "./js/security.js?v=1a5e0d7259",
+      "./js/security.js": "./js/security.js?v=cf01508e6b",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
@@ -2398,6 +2399,20 @@
                   <p class="obs-row-hint">Die (höchstens 5) Wörter, die im Chat am häufigsten geschrieben werden – mit Zähler. Wie viele, stellst du im Dialog „Hot Words“ ein. Unsichtbar, solange noch nichts gezählt ist.</p>
                 </div>
               </div>
+              <div class="obs-layer" data-layer="poll" style="--lc: #4f7cff">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="poll_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Umfrage zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Umfrage</button>
+                  <span class="obs-layer-size" data-size-for="poll"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="plsize" min="50" max="200" step="5" value="100"><output name="plsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="poll"></span><button class="obs-mini-btn" type="button" data-reset-pos="poll">Zurück an den Standardplatz</button></span></div>
+                  <p class="obs-row-hint">Solange eine Umfrage läuft: Frage, Antworten mit Balken und Restzeit. Danach bleibt das Ergebnis stehen, bis du es im Dialog „Umfrage“ ausblendest.</p>
+                </div>
+              </div>
               <div class="obs-layer" data-layer="pause" style="--lc: #ffb81c">
                 <div class="obs-layer-head">
                   <label class="toggle obs-switch"><input type="checkbox" name="pause"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Pausen-Bildschirm zeigen</span></label>
@@ -2507,6 +2522,7 @@
           <input type="text" name="cards" value="br" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="giveaway" value="tc" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="hotwords" value="2,36" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="poll" value="74,36" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="recent" value="tl" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="chat" value="76,22" hidden aria-hidden="true" tabindex="-1">

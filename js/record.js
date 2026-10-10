@@ -39,7 +39,7 @@ const LAYERS = [
   ['wheel', 'Glücksrad'], ['prank', 'Würfe & Sounds', 'flag'], ['pet', 'Haustier', 'flag'], ['quest', 'Unangenehme Fragen'],
   ['bingo', 'Fortnite-Bingo'], ['shop', 'Kisten-Shop'], ['challenge', 'Win-Challenge'], ['forbid', 'Verbotenes Wort'],
   ['subathon', 'Subathon-Timer'], ['quiz', 'Quiz'], ['queue', 'Mitspielen'], ['tts', 'Vorlesen'], ['cards', 'Sammelkarten'],
-  ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
+  ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['poll', 'Umfrage'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
 ];
 
 const form = $('rec-form');

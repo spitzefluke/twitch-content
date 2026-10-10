@@ -2,7 +2,8 @@
 
 Die Stream-Zentrale für Twitch-Streamer – Content-Ideen, Chat-Bot, Kanalpunkte, Alerts und OBS-Overlay an einem Ort (wie StreamElements und ein Chat-Bot zusammen). Seit der **Plattform** (siehe „Plattform: viele Streamer“) hat jeder Streamer seinen eigenen Kanal mit eigenen Inhalten; alle teilen sich den StreamHelp-Bot:
 
-- **Twitch-Panel** unter dem Stream: aktuelles Game mit passenden Ideen, Mitmachen per Klick (Verlosung, Warteschlange) und Link zur Seite.
+- **Twitch-Panel** unter dem Stream: aktuelles Game mit passenden Ideen, **Umfragen**, **Haustier füttern**, Mitmachen per Klick (Verlosung, Warteschlange) und Link zur Seite – mit echtem Kanalnamen, hell/dunkel wie Twitch und auch in der Twitch-App.
+- **Umfragen**: Frage mit 2–5 Antworten, abstimmen im Panel, mit `!vote 2` im Chat oder auf der Seite; Ergebnis live im Overlay.
 - **Games im Dashboard**: Fortnite, Minecraft, Just Chatting und Retro-Games – je Game die passenden Content-Ideen, auf Wunsch automatisch nach der Twitch-Kategorie. Dazu eine kurze **Einführung** (erst wird gefragt).
 - **Plattform für viele Streamer**: Streamer melden sich mit Twitch an und bewerben sich, du schaltest sie im Admin-Bereich frei. Jeder Kanal hat einen eigenen Link (`#/c/<twitch-name>`), die Startseite zeigt alle Streamer. Nach der ersten Anmeldung fragt die Seite einmal: „Bist du Streamer?“
 
@@ -618,6 +619,18 @@ Die (höchstens) **5 Wörter, die im Twitch-Chat am häufigsten geschrieben werd
 
 Einmal nötig: Migration `supabase/migrations/20261026000000_hotwords.sql` ausführen (braucht `…_stream_extras.sql`). Die Edge Function `twitch-eventsub` kommt mit dem nächsten Merge automatisch zu Supabase.
 
+## Umfragen
+
+Kachel **„Umfrage“** im Dashboard: **Streamer und Mods** stellen eine Frage mit **2–5 Antworten** (Knopf „Ja / Nein“ füllt beides aus), wählen eine **Dauer** (1–60 Minuten oder „bis ich beende“) und ob im **Chat** abgestimmt werden darf.
+
+- **Abstimmen:** im **Twitch-Panel** unter dem Stream (ein Tipp auf die Antwort), im Chat mit **`!vote 2`** (auch `!abstimmen 2`) oder auf der Seite. Jeder hat **eine Stimme** und kann sie bis zum Ende **ändern**. Der Bot antwortet nicht auf jede Stimme (sonst flutet er den Chat) – er **kündigt die Umfrage an** und nennt am Ende das **Ergebnis**.
+- **Im Stream:** OBS-Ebene **„Umfrage“** (im OBS-Fenster einschalten): Frage, Balken mit Prozent, Restzeit. Danach bleibt das Ergebnis stehen, bis du im Dialog **Ausblenden** drückst. Ist die Zeit um, beendet sich die Umfrage von selbst.
+- **Letzte Umfragen** mit Ergebnis stehen im Dialog (die letzten 20 je Kanal werden gemerkt).
+- Raid-Schutz pausiert auch das Abstimmen. Mods brauchen den Bereich **„Mitmach-Spiele“** (Mod-Rechte).
+- Im Demo-Modus füllt **🗳️ 10 Test-Stimmen** die Umfrage.
+
+Einmal nötig: Migration `supabase/migrations/20261105000000_polls.sql` ausführen (nach `…_watchtime_import.sql`). Die Edge Functions `twitch-eventsub` (für `!vote`) und `twitch-ext` (Panel) kommen mit dem nächsten Merge automatisch zu Supabase.
+
 ## Sicherheit
 
 Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.
@@ -767,15 +780,19 @@ Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.htm
 
 Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`):
 
+- Oben der **Kanalname, wie er bei Twitch heißt** (direkt von Twitch geholt, eine Stunde gemerkt).
 - **Aktuelles Game** (mit „Live“, wenn die Twitch-Kategorie passt) und die **passenden Content-Ideen** – wie im Dashboard; Games ohne eigene Idee zeigen „Wir arbeiten an einer Content-Idee für dieses Game“.
-- **Mitmachen per Klick**: bei der **Verlosung** (gleiche Regeln wie `!mitmachen` im Chat, auch „nur Follower“) und in der **Mitspieler-Warteschlange** (mit Epic-Name). Dafür gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
+- **📊 Umfrage** (siehe „Umfragen“): Antworten mit Balken, Restzeit, die eigene Stimme ist markiert und lässt sich ändern. Nach dem Ende steht das Ergebnis da, bis der Streamer es ausblendet.
+- **🦖 Haustier füttern** (sobald die Kachel für Zuschauer freigeschaltet ist): zeigt, ob es Hunger hat, wie oft und von wem es zuletzt gefüttert wurde. Es gelten **dieselben Regeln wie `!füttern` im Chat** – jeder alle 10 Minuten, insgesamt höchstens alle 15 Sekunden, Raid-Schutz beachtet; der Knopf zählt die Wartezeit herunter.
+- **Mitmachen per Klick**: bei der **Verlosung** (gleiche Regeln wie `!mitmachen` im Chat, auch „nur Follower“) und in der **Mitspieler-Warteschlange** (mit Epic-Name). Für Abstimmen, Füttern und Mitmachen gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
 - **Als Nächstes** mit Termin und ein Link **zur Seite** (direkt in den Kanal, `#/c/<name>`).
-- Hell/Dunkel wie Twitch. Das Panel erkennt den Kanal selbst – jeder freigeschaltete Streamer mit Twitch-Verbindung kann es nutzen.
+- **Hell/Dunkel wie Twitch** (folgt dem Twitch-Design des Zuschauers). Das Panel erkennt den Kanal selbst – jeder freigeschaltete Streamer mit Twitch-Verbindung kann es nutzen.
+- **Twitch-App (Handy):** Dieselbe Seite mit größeren Knöpfen (Twitch hängt `platform=mobile` an). Der Link zur Seite fällt dort weg, weil Twitch in der App keine Links nach draußen öffnet.
 
 **Einmal einrichten (Plattform-Admin, bei Twitch):**
 
 1. [dev.twitch.tv/console/extensions](https://dev.twitch.tv/console/extensions) → **Erweiterung erstellen**: Name z. B. „StreamHelp“, Typ **Panel**.
-2. Version → **Asset-Hosting**: Pfad für die Panel-Ansicht `panel.html`, Panel-Höhe `500`. Konfigurationsseite: keine.
+2. Version → **Asset-Hosting**: Pfad für die Panel-Ansicht `panel.html`, Panel-Höhe `500`. Konfigurationsseite: keine. **Für die Twitch-App** zusätzlich „Mobil“ ankreuzen und als Pfad für die mobile Ansicht ebenfalls `panel.html` eintragen.
 3. Version → **Funktionen**:
    - **Identitätsverknüpfung** (Zuschauer-ID anfordern) einschalten – nötig für „Mitmachen“.
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
@@ -785,7 +802,7 @@ Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `tw
 6. **Gehosteter Test**: Im Creator-Dashboard des eigenen Kanals unter Erweiterungen → Meine Erweiterungen installieren und als Panel aktivieren.
 7. Für alle anderen Streamer: **Zur Prüfung einreichen**. Nach der Freigabe durch Twitch kann jeder Streamer das Panel in seinem Creator-Dashboard aktivieren.
 
-Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Das Panel spricht die Sprache des Zuschauers (Twitch gibt sie mit; zum Ausprobieren `panel.html?language=en`); die Texte stehen in `extension/panel-i18n.js`. **Nach diesem Update die Dateien neu hochladen** (neue Version im Twitch-Entwickler-Bereich). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Zum Ausprobieren: `panel.html?theme=light` (hell), `panel.html?platform=mobile` (Handy). Das Panel spricht die Sprache des Zuschauers (Twitch gibt sie mit; zum Ausprobieren `panel.html?language=en`); die Texte stehen in `extension/panel-i18n.js`. **Nach diesem Update die Dateien neu hochladen** (neue Version im Twitch-Entwickler-Bereich). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

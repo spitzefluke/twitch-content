@@ -1,5 +1,7 @@
 // Twitch-Panel von StreamHelp: aktuelles Game mit passenden Content-Ideen, Mitmachen per Klick
-// (Verlosung, Mitspieler-Warteschlange) und Link zur Seite. Daten kommen von der Edge Function
+// (Umfrage, Haustier füttern, Verlosung, Mitspieler-Warteschlange) und Link zur Seite.
+// Hell/Dunkel folgt Twitch (onContext → theme), auf dem Handy (Twitch hängt ?platform=mobile an)
+// werden die Knöpfe größer und der Link nach draußen fällt weg. Daten kommen von der Edge Function
 // twitch-ext – sie prüft den Ausweis, den Twitch dem Panel gibt (Twitch.ext.onAuthorized).
 // Ohne Twitch (direkt im Browser geöffnet) zeigt das Panel Beispieldaten.
 (function () {
@@ -11,6 +13,10 @@
   var ext = window.Twitch && window.Twitch.ext;
   // Direkt im Browser geöffnet (nicht bei Twitch im Rahmen): Beispieldaten
   var DEMO = !ext || window.self === window.top || /[?&]demo\b/.test(location.search);
+  var QUERY = new URLSearchParams(location.search);
+  var MOBILE = QUERY.get('platform') === 'mobile';
+  if (MOBILE) document.documentElement.classList.add('is-mobile');
+  if (QUERY.get('theme') === 'light') document.documentElement.dataset.theme = 'light';
 
   // Sprache: Twitch hängt ?language=… an die Panel-Adresse und meldet sie in onContext
   var I18N = window.PANEL_I18N || { dicts: {} };
@@ -24,7 +30,7 @@
     document.documentElement.lang = lang;
     return true;
   }
-  setLang(new URLSearchParams(location.search).get('language') || navigator.language);
+  setLang(QUERY.get('language') || navigator.language);
   function T(source, vars) {
     var out = (I18N.dicts[lang] || {})[source] || source;
     if (vars) out = out.replace(/\{(\w+)\}/g, function (m, k) { return k in vars ? String(vars[k]) : m; });
@@ -34,8 +40,11 @@
   var token = null;
   var data = null;
   var pending = null;   // Aktion, die nach der Freigabe der Twitch-ID ausgeführt wird
-  var msgs = {};        // Rückmeldung je Bereich (giveaway, queue)
+  var msgs = {};        // Rückmeldung je Bereich (giveaway, queue, vote, feed)
   var timer = 0;
+  var ticker = 0;       // Sekundentakt für Countdown und Hunger
+  var busy = {};        // Aktion läuft gerade (Knöpfe gesperrt)
+  var PET_ICON = { dino: '🦖', cat: '🐱', fox: '🦊', axolotl: '🦎', penguin: '🐧', dragon: '🐉' };
 
   // Texte auf Deutsch – T() übersetzt beim Anzeigen (extension/panel-i18n.js)
   var REASONS = {
@@ -51,6 +60,10 @@
     auth: 'Bitte die Seite neu laden.',
     unknown: 'Dieser Kanal ist (noch) nicht bei StreamHelp.',
     setup: 'StreamHelp ist für dieses Panel noch nicht fertig eingerichtet.',
+    paused: 'Gerade pausiert – gleich geht’s weiter.',
+    choice: 'Diese Antwort gibt es nicht.',
+    busy: 'Kaut noch – in ein paar Sekunden wieder.',
+    rate: 'Zu viele Klicks – kurz warten.',
   };
 
   // ---------- Daten ----------
@@ -72,6 +85,8 @@
     if (!token && !DEMO) return;
     clearTimeout(timer);
     call('state').then(function (d) {
+      // Neue Umfrage: alte Rückmeldung weg
+      if (data && data.poll && (!d.poll || d.poll.round !== data.poll.round)) delete msgs.vote;
       data = d;
       render();
     }).catch(function (e) {
@@ -90,19 +105,49 @@
       ext.actions.requestIdShare();
       return;
     }
+    if (busy[kind]) return;
+    busy[kind] = true;
     msgs[kind] = { text: '…' };
     render();
     call(kind, extra).then(function (res) {
+      busy[kind] = false;
       if (res.ok) {
-        msgs[kind] = { ok: true, text: kind === 'giveaway' ? T('🍀 Du bist dabei – viel Glück!') : (res.picked ? T('🎮 Du bist dran!') : T('🎮 Du stehst auf Platz {n}.', { n: res.position })) };
+        msgs[kind] = { ok: true, text: okText(kind, res) };
+        // Umfrage: Stand sofort zeigen, nicht erst nach dem Neuladen
+        if (kind === 'vote' && data && data.poll && res.counts) {
+          data.poll.counts = res.counts;
+          data.poll.total = res.total;
+          data.me.vote = res.choice;
+        }
+      } else if (res.reason === 'cooldown' && res.wait) {
+        if (data && data.me) data.me.feed_wait = res.wait;
+        msgs[kind] = { error: true, text: T('Du kannst in {n} wieder füttern.', { n: span(res.wait) }) };
       } else {
         msgs[kind] = { error: true, text: T(REASONS[res.reason] || 'Hat nicht geklappt.') };
       }
       load();
     }).catch(function (e) {
+      busy[kind] = false;
       msgs[kind] = { error: true, text: T(REASONS[e.reason] || e.message) };
       render();
     });
+  }
+
+  function okText(kind, res) {
+    if (kind === 'giveaway') return T('🍀 Du bist dabei – viel Glück!');
+    if (kind === 'vote') return T('✓ Deine Stimme zählt.');
+    if (kind === 'feed') return T('😋 Danke, das hat geschmeckt!');
+    return res.picked ? T('🎮 Du bist dran!') : T('🎮 Du stehst auf Platz {n}.', { n: res.position });
+  }
+
+  // 135 → „2:15“, 3700 → „1:01:40“
+  function span(sec) {
+    var s = Math.max(0, Math.round(sec));
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var r = s % 60;
+    var two = function (n) { return (n < 10 ? '0' : '') + n; };
+    return h ? h + ':' + two(m) + ':' + two(r) : m + ':' + two(r);
   }
 
   // ---------- Darstellung (nur Text, nie HTML aus den Daten) ----------
@@ -128,7 +173,10 @@
 
   function render() {
     var box = document.getElementById('content');
-    document.getElementById('channel').textContent = data.channel.name;
+    var name = data.channel.name || 'StreamHelp';
+    document.getElementById('channel').textContent = name;
+    document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
+    document.title = name + ' · StreamHelp';
     var parts = [];
     var me = data.me || {};
 
@@ -146,6 +194,12 @@
       }
       parts.push(g);
     }
+
+    // Umfrage
+    if (data.poll) parts.push(pollCard(data.poll, me));
+
+    // Haustier füttern
+    if (data.pet) parts.push(petCard(data.pet, me));
 
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
@@ -224,8 +278,8 @@
     }
     parts.push(ideas);
 
-    // Link zur Seite
-    if (data.channel.link) {
+    // Link zur Seite (nicht auf dem Handy: Twitch lässt dort keine Links nach draußen zu)
+    if (data.channel.link && !MOBILE) {
       var a = el('a', 'link', T('Mitmachen auf StreamHelp →'));
       a.href = data.channel.link;
       a.target = '_blank';
@@ -234,6 +288,106 @@
     }
 
     box.replaceChildren.apply(box, parts);
+    tick();
+  }
+
+  function pollCard(poll, me) {
+    var open = poll.status === 'open' && !(poll.ends_at && Date.parse(poll.ends_at) <= Date.now());
+    var c = el('section', 'card poll');
+    var head = el('h2', null, T('📊 Umfrage'));
+    if (open && poll.ends_at) {
+      var left = el('span', 'poll-time');
+      left.dataset.ends = poll.ends_at;
+      head.append(left);
+    } else if (!open) {
+      head.append(el('span', 'poll-time is-done', T('beendet')));
+    }
+    c.append(head, el('p', 'poll-q', poll.question));
+    var max = Math.max.apply(null, poll.counts.concat([0]));
+    var list = el('div', 'poll-opts');
+    list.setAttribute('role', 'group');
+    list.setAttribute('aria-label', poll.question);
+    poll.options.forEach(function (label, i) {
+      var n = poll.counts[i] || 0;
+      var pct = poll.total ? Math.round((100 * n) / poll.total) : 0;
+      var mine = me.vote === i + 1;
+      var b = el('button', 'poll-opt' + (mine ? ' is-mine' : '') + (!open && n === max && n > 0 ? ' is-win' : ''));
+      b.type = 'button';
+      b.disabled = !open || !!busy.vote;
+      b.setAttribute('aria-pressed', String(mine));
+      b.style.setProperty('--p', pct + '%');
+      b.append(el('span', 'poll-n', String(i + 1)), el('span', 'poll-label', label), el('span', 'poll-pct', pct + ' %'));
+      b.addEventListener('click', function () { if (!mine) act('vote', { choice: i + 1 }); });
+      list.append(b);
+    });
+    c.append(list);
+    var info = T('Stimmen: {n}', { n: poll.total });
+    if (open && poll.chat) info += ' · ' + T('oder im Chat: {name}', { name: '!vote 1–' + poll.options.length });
+    c.append(el('p', 'muted', info));
+    if (open && !me.vote && !msgs.vote) c.append(el('p', 'muted', T('Tippe auf eine Antwort – ändern geht bis zum Ende.')));
+    var m = msgEl('vote');
+    if (m && open) c.append(m);
+    return c;
+  }
+
+  function petCard(pet, me) {
+    var c = el('section', 'card pet');
+    var egg = pet.stage === 'egg';
+    var hungry = !pet.last_fed_at || Date.now() - Date.parse(pet.last_fed_at) > pet.hungry_after * 60000;
+    var head = el('div', 'game');
+    head.append(el('span', 'game-ico' + (hungry ? ' is-hungry' : ''), egg ? '🥚' : (PET_ICON[pet.species] || '🦖')));
+    var t = el('div');
+    t.append(el('small', null, egg ? T('Das Ei braucht Futter, damit es schlüpft.') : hungry ? T('{name} hat Hunger!', { name: pet.name }) : T('{name} ist satt.', { name: pet.name })),
+      el('b', null, pet.name));
+    head.append(t);
+    c.append(head);
+    var sub = T('{n}× gefüttert', { n: pet.fed_count });
+    if (pet.last_fed_by) sub += ' · ' + T('zuletzt von {name}', { name: pet.last_fed_by });
+    c.append(el('p', 'muted', sub));
+    var wait = me.feed_wait || 0;
+    var b = el('button', 'btn', T('🍖 Füttern'));
+    b.type = 'button';
+    b.disabled = wait > 0 || !!busy.feed;
+    if (wait > 0) {
+      b.dataset.wait = String(Date.now() + wait * 1000);
+      b.textContent = T('🍖 Wieder in {n}', { n: span(wait) });
+    }
+    b.addEventListener('click', function () { act('feed'); });
+    var row = el('div', 'row');
+    row.append(b, el('span', 'muted pet-cmd', T('oder im Chat: {name}', { name: pet.command })));
+    c.append(row);
+    var m = msgEl('feed');
+    if (m) c.append(m);
+    return c;
+  }
+
+  // Jede Sekunde: Restzeit der Umfrage, Wartezeit beim Füttern
+  function tick() {
+    clearInterval(ticker);
+    var run = function () {
+      var still = false;
+      document.querySelectorAll('[data-ends]').forEach(function (n) {
+        var s = (Date.parse(n.dataset.ends) - Date.now()) / 1000;
+        if (s <= 0) { n.removeAttribute('data-ends'); load(); return; }
+        n.textContent = T('noch {n}', { n: span(s) });
+        still = true;
+      });
+      document.querySelectorAll('[data-wait]').forEach(function (n) {
+        var s = (Number(n.dataset.wait) - Date.now()) / 1000;
+        if (s <= 0) {
+          n.removeAttribute('data-wait');
+          n.disabled = false;
+          n.textContent = T('🍖 Füttern');
+          if (data && data.me) data.me.feed_wait = 0;
+          return;
+        }
+        n.textContent = T('🍖 Wieder in {n}', { n: span(s) });
+        still = true;
+      });
+      if (!still) clearInterval(ticker);
+    };
+    run();
+    ticker = setInterval(run, 1000);
   }
 
   function renderError(text) {
@@ -283,10 +437,28 @@
       next: { title: 'Subathon', at: new Date(Date.now() + 2 * 86400000).toISOString() },
       giveaway: { open: true, prize: 'Fortnite-Skin nach Wahl', command: '!mitmachen', followers_only: true, entries: 12, round: 1 },
       queue: { open: true, waiting: 4, note: 'Squads ab 20 Uhr' },
-      me: { shared: true, giveaway: false, queue: null, epic: '' },
+      poll: { status: 'open', round: 1, question: 'Was spielen wir als Nächstes?', options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [7, 4, 2], total: 13, ends_at: new Date(Date.now() + 5 * 60000).toISOString(), chat: true },
+      pet: { name: 'Rexi', species: 'dino', stage: 'adult', command: '!füttern', fed_count: 128, last_fed_by: 'Mia', last_fed_at: new Date(Date.now() - 60 * 60000).toISOString(), hungry_after: 45 },
+      me: { shared: true, giveaway: false, queue: null, epic: '', vote: null, feed_wait: 0 },
     });
     var reply;
-    if (action === 'giveaway') {
+    if (action === 'vote') {
+      var p = store.poll;
+      var old = store.me.vote;
+      if (old) p.counts[old - 1] -= 1; else p.total += 1;
+      p.counts[extra.choice - 1] += 1;
+      store.me.vote = extra.choice;
+      reply = { ok: true, choice: extra.choice, counts: p.counts.slice(), total: p.total };
+    } else if (action === 'feed') {
+      if (store.me.feed_wait > 0) reply = { ok: false, reason: 'cooldown', wait: store.me.feed_wait };
+      else {
+        store.pet.fed_count += 1;
+        store.pet.last_fed_by = 'Demo-Zuschauer';
+        store.pet.last_fed_at = new Date().toISOString();
+        store.me.feed_wait = 600;
+        reply = { ok: true, fed_count: store.pet.fed_count };
+      }
+    } else if (action === 'giveaway') {
       store.me.giveaway = true;
       store.giveaway.entries += 1;
       reply = { ok: true };
