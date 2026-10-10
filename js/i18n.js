@@ -125,7 +125,7 @@ function collectKeys(doc) {
     if (!root) continue;
     for (const el of textElements(root)) {
       const k = 'i18nMixed' in el.dataset ? mixedKey(el) : norm([...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim()).textContent);
-      if (/[a-zäöüß]{2}/i.test(k.replace(/<[^>]+>/g, ''))) keys.add(k);
+      if (/[a-zäöüß]{2}/i.test(el.textContent)) keys.add(k);
     }
     for (const el of root.querySelectorAll(ATTRS.map((a) => `[${a}]`).join(','))) {
       for (const a of ATTRS) { const v = el.getAttribute(a); if (v && /[a-zäöüß]{3}/i.test(v)) keys.add(norm(v)); }

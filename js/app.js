@@ -235,7 +235,8 @@ async function boot() {
   // Als Handy-App gestartet (manifest.webmanifest): Abkürzungen wie #stats öffnen gleich die Seite,
   // und ohne Anmeldung geht es direkt zur Anmeldung statt zur Startseite.
   const appStart = params.has('app');
-  if (appStart && PAGE_TITLES[location.hash.slice(1)]) state.pendingPage = location.hash.slice(1);
+  const appPage = location.hash.slice(1);
+  if (appStart && Object.hasOwn(PAGE_TITLES, appPage)) state.pendingPage = appPage;
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
   else if (appStart && !OBS_PAGE) showAuth();
@@ -548,6 +549,8 @@ const START = {
 };
 
 function setPage(name) {
+  // Nur bekannte Seiten (der Name kann aus der Adresse kommen, z. B. #stats)
+  if (!Object.hasOwn(PAGE_TITLES, name)) name = 'ideas';
   const item = $(`.sb-item[data-page="${name}"]`);
   if (!item || getComputedStyle(item).display === 'none') name = 'ideas';
   document.querySelectorAll('.sb-item[data-page]').forEach((b) => {
@@ -557,7 +560,7 @@ function setPage(name) {
   document.querySelectorAll('.page[data-page]').forEach((p) => { p.hidden = p.dataset.page !== name; });
   $('#page-title').textContent = PAGE_TITLES[name] ?? 'StreamHelp';
   state.page = name;
-  PAGE_ENTER[name]?.();
+  if (Object.hasOwn(PAGE_ENTER, name)) PAGE_ENTER[name]();
   if (name !== 'alerts' && state.health.data) renderHealth();
   if (!$('#app').hidden) scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
 }
