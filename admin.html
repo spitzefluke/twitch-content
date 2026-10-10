@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1mzrkQl+N0exzBLTVsZDCBOrpBkoS5qGFBX7AHhNz0Q=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m8eEVrxcSYfjioRh6KGDW8PBXJ+NlNLg56luQBsdF2E=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
@@ -15,19 +15,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=c984ff8222">
-  <link rel="stylesheet" href="css/admin.css?v=e3a3a4b1dc">
+  <link rel="stylesheet" href="css/admin.css?v=0b6dcb244a">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=9d676ff62d",
+      "./js/admin.js": "./js/admin.js?v=dee8f0c2ff",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=bdfa8cbcc5",
-      "./js/app.js": "./js/app.js?v=46277f0fcd",
+      "./js/api.js": "./js/api.js?v=93b990a09e",
+      "./js/app.js": "./js/app.js?v=a60be615f4",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
-      "./js/config.js": "./js/config.js?v=ffb743d9ae",
+      "./js/config.js": "./js/config.js?v=93f6ab2ed3",
       "./js/defaults.js": "./js/defaults.js?v=d43c86eeb2",
       "./js/extras-api.js": "./js/extras-api.js?v=964f8a40b5",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
@@ -56,6 +56,7 @@
       "./js/record.js": "./js/record.js?v=d11f0b361f",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
+      "./js/security.js": "./js/security.js?v=1a5e0d7259",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
@@ -91,9 +92,35 @@
         <span>Admin-Passwort</span>
         <input name="password" type="password" autocomplete="current-password" required placeholder="••••••••••••">
       </label>
+      <label class="field">
+        <span>Zwei-Faktor-Code</span>
+        <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6 Ziffern aus der App">
+        <small class="field-hint">Beim allerersten Login leer lassen – danach richtest du den Code ein.</small>
+      </label>
       <p class="form-msg" role="alert"></p>
       <button class="btn btn--primary btn--block" type="submit">Einloggen</button>
       <a class="back-link" href="./">← Zur Webseite</a>
+    </form>
+  </main>
+
+  <!-- ============ ZWEI-FAKTOR-CODE EINRICHTEN (Pflicht) ============ -->
+  <main id="admin-mfa" class="admin-login" hidden>
+    <form id="mfa-form" class="auth-card admin-card admin-mfa" novalidate>
+      <p class="eyebrow">Einmal nötig · Pflicht</p>
+      <h1>Zwei-Faktor-Code</h1>
+      <p class="admin-lead">Der Admin-Bereich verlangt zusätzlich zum Passwort einen Code aus einer Authenticator-App
+        (z. B. Google Authenticator, Microsoft Authenticator, 2FAS, Aegis). Ohne ihn geht es hier nicht weiter.</p>
+      <div class="mfa-setup" id="mfa-setup">
+        <img id="mfa-qr" class="mfa-qr" alt="QR-Code für die Authenticator-App" width="200" height="200" hidden>
+        <p class="mfa-secret">Oder von Hand eintragen: <code id="mfa-secret">…</code></p>
+      </div>
+      <label class="field">
+        <span>Code aus der App</span>
+        <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" required>
+      </label>
+      <p class="form-msg" role="alert"></p>
+      <button class="btn btn--primary btn--block" type="submit">Bestätigen &amp; weiter</button>
+      <button class="btn btn--ghost btn--block" type="button" id="mfa-cancel">Abmelden</button>
     </form>
   </main>
 
@@ -186,6 +213,17 @@
               <tbody id="channels"></tbody>
             </table>
           </div>
+        </section>
+
+        <section class="panel panel--wide" aria-labelledby="security-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="security-title">Sicherheits-Check</h2>
+              <p class="panel-sub">Prüft die Datenbank wie die Supabase-Advisors: RLS, Funktionen, geheime Tabellen, Rate-Limit, 2FA.</p>
+            </div>
+            <button id="security-check" class="btn btn--outline btn--sm" type="button">Jetzt prüfen</button>
+          </div>
+          <ul id="security" class="security-list"><li class="muted">Noch nicht geprüft.</li></ul>
         </section>
 
         <section class="panel panel--wide" aria-labelledby="providers-title">

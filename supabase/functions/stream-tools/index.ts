@@ -7,7 +7,7 @@
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import {
-  channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json,
+  audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, tooMany,
 } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
@@ -30,19 +30,21 @@ Deno.serve(channelServe(async (req) => {
   }
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Bitte anmelden." }, 401);
+  if (!(await rateLimit(`stream-tools:${user.id}`, 60))) return tooMany();
   try {
     if (action === "flush") return json({ sent: await flushOutbox() });
 
     if (action === "settle") {
-      if (!(await isAdminUser(user.id))) return json({ error: "Nur der Streamer und die Mods." }, 403);
+      if (!(await isAdminUser(user.id, "pranks"))) return json({ error: "Nur der Streamer und die Mods." }, 403);
       const conn = await getConnection();
       return json({ settled: conn ? await settleTts(conn) : 0 });
     }
 
     if (action === "sync_reward") {
       // Kanalpunkte: Streamer, Admins und freigegebene Mods
-      if (!(await isAdminUser(user.id))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
+      if (!(await isAdminUser(user.id, "points"))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
       if (key !== "tts" && key !== "cards") return json({ error: "Unbekannte Belohnung" }, 400);
+      await audit(user.id, "sync_reward", { key });
       const conn = await getConnection();
       if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);
       const result = await syncExtraReward(conn, key as RewardKey);
@@ -54,7 +56,8 @@ Deno.serve(channelServe(async (req) => {
       return json(result);
     }
     if (action === "anniversary") {
-      if (!(await isAdminUser(user.id))) return json({ error: "Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods." }, 403);
+      if (!(await isAdminUser(user.id, "overlay"))) return json({ error: "Das Kanal-Jubiläum starten nur der Streamer, Admins und freigegebene Mods." }, 403);
+      await audit(user.id, "anniversary", { start: typeof start === "string" ? start : null });
       const conn = await getConnection();
       if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst mit Twitch verbinden." }, 400);
       const { data: profile } = await db.from("profiles").select("username").eq("id", user.id).maybeSingle();

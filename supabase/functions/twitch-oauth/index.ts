@@ -15,9 +15,9 @@
 // Alles gilt für den Kanal aus dem Header x-channel (Migration …_platform.sql); der
 // Twitch-Rückweg merkt sich den Kanal im state.
 import {
-  activeChannels, channelKey, channelServe, CodedError, corsHeaders, currentChannel, db, env, getAppToken, getConnection,
+  activeChannels, audit, channelKey, channelServe, CodedError, corsHeaders, currentChannel, db, env, getAppToken, getConnection,
   getUserFromRequest, helix, HelixError, isAdminUser, isChannelOwner, isPlatformAdmin, json, oauthRedirectUri,
-  startTwitchLogin, twitchToken, withChannel,
+  rateLimit, startTwitchLogin, tooMany, twitchToken, withChannel,
 } from "../_shared/twitch.ts";
 import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
@@ -43,6 +43,7 @@ Deno.serve(channelServe(async (req) => {
     }
     const user = await getUserFromRequest(req);
     if (!user) return json({ error: "Nicht angemeldet" }, 401);
+    if (!(await rateLimit(`twitch-oauth:${user.id}`, 30))) return tooMany();
     try {
       if (action === "health") return await health(user.id, body.force === true);
       if (action === "bot_start") {
@@ -50,7 +51,10 @@ Deno.serve(channelServe(async (req) => {
         return json({ url: await startTwitchLogin(user.id, "bot") });
       }
       if (action === "bot_disconnect") return await botDisconnect(user.id);
-      if (action === "start") return json({ url: await startTwitchLogin(user.id, "broadcaster") });
+      if (action === "start") {
+        await audit(user.id, "twitch_connect");
+        return json({ url: await startTwitchLogin(user.id, "broadcaster") });
+      }
       if (action === "disconnect") return await disconnect(user.id);
       if (action === "sync_pranks") return await syncPranks(user.id);
       if (action === "wheel_cost") return await setWheelCost(user.id, cost);
@@ -191,6 +195,7 @@ async function finishCallback(url: URL, st: any) {
     try {
       await syncPrankRewards({
         ...base,
+        refresh_token: base.refresh_token ?? "",
         subscription_id: null,
         prank_throw_reward_id: previous?.prank_throw_reward_id ?? null,
         prank_sound_reward_id: previous?.prank_sound_reward_id ?? null,
@@ -262,7 +267,7 @@ async function alertSubscriptions(broadcasterId: string, scopes: string[]) {
 // Admin: Stehen die Alert-Abos bei Twitch? Fehlende oder von Twitch abgeschaltete
 // werden neu angelegt. Antwort je Art (channel.follow …): ok, pending, missing_scope, error.
 async function checkAlerts(userId: string) {
-  if (!(await isAdminUser(userId))) return json({ error: "Nur Admins und freigegebene Mods dürfen die Alerts prüfen." }, 403);
+  if (!(await isAdminUser(userId, "overlay"))) return json({ error: "Nur Admins und freigegebene Mods dürfen die Alerts prüfen." }, 403);
   const conn = await getConnection();
   if (!conn) return json({ connected: false, types: {} });
   const types = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"), conn.scopes ?? []);
@@ -302,6 +307,7 @@ async function syncModsAction(userId: string) {
   if (!(await isChannelOwner(userId))) {
     return json({ error: "Die Mods holen dürfen nur der Streamer und Admins." }, 403);
   }
+  await audit(userId, "sync_mods");
   const conn = await getConnection();
   if (!conn) return json({ error: "Twitch ist noch nicht verbunden." }, 400);
   try {
@@ -371,7 +377,8 @@ async function ensureReward(broadcasterId: string, token: string, knownId?: stri
 // Admin: Belohnungen fürs Ärgern jetzt auf den Stand der Einstellungen bringen
 // (Kosten, Abklingzeit, an/aus, Startdatum) – und das Einlösungs-Abo prüfen.
 async function syncPranks(userId: string) {
-  if (!(await isAdminUser(userId))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
+  if (!(await isAdminUser(userId, "points"))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Belohnungen ändern." }, 403);
+  await audit(userId, "sync_pranks");
   const conn = await getConnection();
   if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
   try {
@@ -390,11 +397,12 @@ async function syncPranks(userId: string) {
 // Admin: Kosten fürs Drehen auf Twitch ändern (1 bis 1.000.000 Kanalpunkte)
 async function setWheelCost(userId: string, raw: unknown) {
   // Kanalpunkte-Kosten: Streamer, Admins und freigegebene Mods
-  if (!(await isAdminUser(userId))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Kosten ändern." }, 403);
+  if (!(await isAdminUser(userId, "points"))) return json({ error: "Nur der Streamer, Admins und freigegebene Mods dürfen die Kosten ändern." }, 403);
   const cost = Math.round(Number(raw));
   if (!Number.isFinite(cost) || cost < 1 || cost > 1_000_000) {
     return json({ error: "Die Kosten müssen zwischen 1 und 1.000.000 Kanalpunkten liegen." }, 400);
   }
+  await audit(userId, "wheel_cost", { cost });
   const conn = await getConnection();
   if (!conn) return json({ error: "Twitch ist noch nicht verbunden. Der Streamer muss sich zuerst auf der Webseite mit Twitch verbinden." }, 400);
   try {
@@ -413,6 +421,7 @@ async function setWheelCost(userId: string, raw: unknown) {
 
 async function disconnect(userId: string) {
   if (!(await isChannelOwner(userId))) return json({ error: "Nur der Streamer darf Twitch trennen." }, 403);
+  await audit(userId, "twitch_disconnect");
 
   const conn = await getConnection();
   if (conn) {

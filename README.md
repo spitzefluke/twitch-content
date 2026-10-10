@@ -620,7 +620,23 @@ Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQ
 - **Kein Einbetten in fremde Seiten** (Schutz gegen Clickjacking), Referrer nur innerhalb der Seite.
 - **OBS sieht weniger:** Das Overlay (ohne Anmeldung) bekommt keine Konto-IDs oder Twitch-Einlösungs-IDs mehr.
 - **Uploads:** höchstens 10 Sound-Dateien pro Person; neue Passwörter brauchen mindestens 10 Zeichen und dürfen nicht den Namen enthalten.
-- Siehe auch `SECURITY.md` (Lücken privat melden).
+- Siehe auch `SECURITY.md` (Lücken privat melden) und **`NOTFALLPLAN.md`** (was tun, wenn …, Schlüssel austauschen).
+
+### Sicherheits-Paket (Migration `20261031000000_security.sql`)
+
+Einmal nötig: `supabase/migrations/20261031000000_security.sql` im SQL Editor ausführen (nach der Plattform-Migration).
+
+- **🔐 Zwei-Faktor-Anmeldung** (Dashboard → **Sicherheit**): QR-Code mit einer Authenticator-App scannen, Code bestätigen. Danach fragt StreamHelp beim Anmelden nach dem Code – auch nach „Mit Twitch anmelden“. Hat ein Konto 2FA, zählen Streamer-, Mod- und Admin-Rechte **nur** nach bestätigtem Code (Datenbank: `mfa_ok()`, Edge Functions: `getUserFromRequest`). In Supabase muss unter **Authentication → Multi-Factor** „TOTP“ an sein (Standard).
+- **Admin-Bereich: 2FA ist Pflicht.** Beim ersten Login nur mit Passwort zeigt `admin.html` einen QR-Code; erst nach bestätigtem Code gibt es Daten. Danach immer Passwort + Code. Code-Fenster gelten nur einmal. Zurücksetzen: `NOTFALLPLAN.md`, Abschnitt 4.
+- **Angemeldete Geräte** (Dashboard → Sicherheit): alle eigenen Anmeldungen mit Gerät, IP und letzter Aktivität; einzeln oder „alle anderen“ abmelden.
+- **Rechte je Mod** (Dashboard → Mods): Der Streamer nimmt einzelnen Mods Bereiche weg – Content-Ideen, Glücksrad, Bingo, Mitmach-Spiele, Verlosung, Ärgern/Sounds/Vorlesen, Haustier, Overlay/Alerts, Chat-Bot, Kanalpunkte, Raid-Schutz. Die Datenbank erkennt den Bereich an der aufgerufenen Funktion bzw. Tabelle (`request_area()`), die Edge Functions fragen `is_admin_user_in()`. Bilder/Sounds hochladen hängt weiter nur an der Mod-Freigabe.
+- **Mod-Protokoll** (Dashboard → Mods, nur Streamer): Wer mit Streamer-/Mod-/Admin-Rechten etwas ändert, landet mit Zeit, Rolle und Aktion in `core.audit_log` (90 Tage). Zuschauer-Aktionen nicht.
+- **Daten-Export** (Dashboard → Sicherheit, nur Streamer): alle Kanal-Daten als JSON, ohne Tokens und Quiz-/Pausen-Lösungen.
+- **Rate-Limits:** höchstens 300 schreibende API-Anfragen pro Minute und Konto bzw. IP (PostgREST `db-pre-request` → `api_guard()`); dazu Grenzen in den Edge Functions (Glücksrad 10/Min, Twitch-Panel: Mitmachen 6/Min, Stand 30/Min je Zuschauer …). Abschalten: `NOTFALLPLAN.md`, Abschnitt 8.
+- **Härtung:** Tabellen mit Geheimnissen (Twitch-Tokens, Lösungen, OAuth-Anfragen) haben keine Tabellenrechte mehr für Besucher – bisher schützte sie allein RLS.
+- **Sicherheits-Check** im Admin-Bereich: prüft wie der Supabase Security Advisor (RLS, `search_path`, geheime Tabellen, Rate-Limit, Streamer ohne 2FA).
+- **Bot-Schutz:** verstecktes Fangfeld und Mindestzeit beim Registrieren; optional **Cloudflare Turnstile**: Site Key in `js/config.js` (`TURNSTILE_SITE_KEY`), Secret Key **nur** in Supabase unter Authentication → Attack Protection → Captcha. Erst beides eintragen, dann einschalten.
+- **GitHub-Checks** bei jeder PR (`.github/workflows/security-checks.yml`): Versionsnummern/CSP, JS-Syntax, keine geheimen Schlüssel im Code (`tools/check-secrets.mjs`), Migrationen (`tools/check-sql.mjs`), Typprüfung und Tests der Edge Functions, Secret-Scan der ganzen Git-Historie (gitleaks, `.gitleaks.toml`). Dazu **CodeQL** (`.github/workflows/codeql.yml`, Funde unter Security → Code scanning).
 
 ### Checkliste im Supabase-Dashboard (geht nur dort)
 
@@ -759,7 +775,7 @@ Unter **`/admin.html`** (auch verlinkt unter dem Login-Formular) gibt es einen A
 - **Streamer-Kanäle**: Bewerbungen neuer Streamer mit Nachricht – **Freischalten**, **Sperren** oder **Zurückstellen** (siehe „Plattform: viele Streamer“)
 - Nutzerliste mit Suche. Hier lassen sich Admin-Rechte vergeben, also wer die Kacheln bearbeiten darf (gilt nur im Standard-Kanal; in den anderen Kanälen sind es Inhaber und freigegebene Mods).
 
-Mit **„Webseite als Admin öffnen“** (oben rechts) landest du direkt auf der Webseite, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
+Mit **„Webseite als Admin öffnen“** (oben rechts) öffnet sich die Webseite in einem neuen Tab, als interner Account „StreamHelp-Admin“ mit allen Admin-Rechten: Glücksrad drehen, Kacheln bearbeiten, Twitch verbinden. Dieser Account hat kein Passwort und ist nur über den Admin-Bereich erreichbar. Auf der Webseite führt der Button „Admin“ zurück.
 
 Das Passwort steht **nicht** im Code, weil das Repo öffentlich ist. Es liegt als Secret `ADMIN_PASSWORD` in Supabase und wird im Setup-Skript abgefragt. Später ändern:
 
@@ -767,7 +783,9 @@ Das Passwort steht **nicht** im Code, weil das Repo öffentlich ist. Es liegt al
 npx supabase secrets set "ADMIN_PASSWORD='neues-langes-passwort'"
 ```
 
-Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen in 15 Minuten ist der Login für 15 Minuten gesperrt. Im Demo-Modus lautet das Passwort `demo`.
+Ein neues Passwort meldet alle offenen Admin-Sitzungen ab. Nach 10 Fehlversuchen in 15 Minuten ist der Login für 15 Minuten gesperrt. Im Demo-Modus lautet das Passwort `demo` (2FA-Code `123456`).
+
+**Zwei-Faktor-Code (Pflicht, Migration …_security.sql):** Beim ersten Login nur mit Passwort zeigt der Admin-Bereich einen QR-Code für die Authenticator-App. Nach dem Bestätigen gilt: Passwort **und** Code. Das Geheimnis liegt in `public.admin_mfa` (nur die Edge Function liest es). Handy verloren: `NOTFALLPLAN.md`, Abschnitt 4. Die Admin-Sitzung liegt nur im Arbeitsspeicher des Tabs (nicht im Browser-Speicher) – nach dem Neuladen oder nach „Twitch-Bot verbinden“ einfach wieder einloggen. Unter **Sicherheits-Check** prüft der Admin-Bereich die Datenbank.
 
 ## Wichtig zu wissen
 

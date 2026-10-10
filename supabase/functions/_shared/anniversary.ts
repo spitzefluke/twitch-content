@@ -8,7 +8,7 @@ import { type Connection, db, getAppToken, helix } from "./twitch.ts";
 
 const COOLDOWN_MS = 150_000; // der Film dauert zwei Minuten
 const cut = (s: unknown, n: number) => String(s ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
-const soft = <T>(p: Promise<T>) => p.catch((e) => { console.warn("anniversary:", e?.message ?? e); return null; });
+const soft = <T>(p: PromiseLike<T>) => Promise.resolve(p).catch((e) => { console.warn("anniversary:", e?.message ?? e); return null; });
 
 export async function startAnniversary(conn: Connection, who: string, start?: string) {
   const { data: last } = await db.from("pranks").select("created_at")

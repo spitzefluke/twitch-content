@@ -28,6 +28,7 @@ import {
 } from './channel.js';
 import { h } from './extras-core.js';
 import { startTour } from './tour.js';
+import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -317,6 +318,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
+  security: 'Sicherheit',
 };
 
 function setupShell() {
@@ -516,8 +518,9 @@ const PAGE_ENTER = {
   overlay: () => { $('#dash-obs-url').value = obsLiveUrl(); },
   library: () => openLibrary(),
   guard: () => renderGuard(),
-  mods: () => loadMods(),
+  mods: () => { loadMods(); renderModSecurity(); },
   twitch: () => renderTwitchPanel(),
+  security: () => renderSecurityPage(),
 };
 
 function setupAuthForms() {
@@ -533,7 +536,7 @@ function setupAuthForms() {
     }
   };
   tabs.login.addEventListener('click', () => select('login'));
-  tabs.register.addEventListener('click', () => select('register'));
+  tabs.register.addEventListener('click', () => { select('register'); forms.register.dataset.shownAt = String(Date.now()); });
 
   // Nach dem Einsteigen alles leeren: Sonst steht das Passwort nach dem
   // Abmelden noch im Formular, und ein Klick meldet wieder an.
@@ -545,15 +548,26 @@ function setupAuthForms() {
     select('login');
   };
 
+  // Bot-Schutz: verstecktes Fangfeld, beim Registrieren Mindestzeit, optional Cloudflare Turnstile (js/security.js)
+  botTrap(forms.login);
+  botTrap(forms.register);
+  forms.login.addEventListener('focusin', () => mountCaptcha(forms.login), { once: true });
+  forms.register.addEventListener('focusin', () => mountCaptcha(forms.register), { once: true });
+
   forms.login.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
     const email = f.email.value.trim();
     const password = f.password.value;
     if (!email || !password) return authError(f, 'Bitte E-Mail und Passwort eingeben.', email ? 'password' : 'email');
+    if (f.website?.value) return authError(f, 'E-Mail oder Passwort ist falsch.');
     setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
-      await state.api.signIn(email, password);
+      try {
+        await state.api.signIn(email, password, await captchaToken(f));
+      } finally {
+        resetCaptcha(f);
+      }
     });
   });
 
@@ -578,9 +592,16 @@ function setupAuthForms() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return authError(f, 'Bitte eine gültige E-Mail eingeben.', 'email');
     const weak = passwordProblem(password, [username, email.split('@')[0]]);
     if (weak) return authError(f, weak, 'password');
+    if (looksLikeBot(f)) return authError(f, 'Das ging verdächtig schnell – bitte noch einmal absenden.');
     setWarpOrigin(f.querySelector('[type=submit]'));
     await withLoading(f, async () => {
-      const { needsConfirmation } = await state.api.signUp(username, email, password);
+      let result;
+      try {
+        result = await state.api.signUp(username, email, password, await captchaToken(f));
+      } finally {
+        resetCaptcha(f);
+      }
+      const { needsConfirmation } = result;
       if (needsConfirmation) {
         select('login');
         forms.login.email.value = email;
@@ -706,6 +727,12 @@ function formMsg(form, text, ok = false) {
 // ============================================================
 async function enterApp(user, { animate = false } = {}) {
   state.user = user;
+  // Zwei-Faktor-Anmeldung: erst der Code aus der App, dann das Dashboard (js/security.js)
+  if (!(await mfaGate())) {
+    if (state.user === user) state.user = null;
+    return;
+  }
+  if (state.user !== user) return;
   // Anmelde-Animation: Karte fliegt weg, lila Kreis füllt den Bildschirm, dann das Dashboard
   if (animate && !reducedMotion && !OBS_PAGE) {
     $('#auth').classList.add('is-leaving');
@@ -1740,6 +1767,7 @@ setInterval(() => {
 function setupDialogs() {
   // Die neueren Content-Ideen legen ihre Dialoge selbst an (js/extras.js) – vor dem Verdrahten unten
   setupExtras({ state, toast, germanError, buildActionTile, tileByKind, isLocked, openTile });
+  setupSecurity({ state, toast, germanError, setPage });
   document.querySelectorAll('dialog').forEach((dlg) => {
     dlg.addEventListener('click', (e) => {
       // Klick daneben schließt nur Pop-ups – das OBS-Fenster ist eine eigene Seite

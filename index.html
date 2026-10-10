@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1mzrkQl+N0exzBLTVsZDCBOrpBkoS5qGFBX7AHhNz0Q=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-m8eEVrxcSYfjioRh6KGDW8PBXJ+NlNLg56luQBsdF2E=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -51,7 +51,7 @@
   <link rel="stylesheet" href="css/style.css?v=c984ff8222">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=c15fc8ef35">
-  <link rel="stylesheet" href="css/shell.css?v=b14941aad3">
+  <link rel="stylesheet" href="css/shell.css?v=7147144031">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -61,15 +61,15 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=9d676ff62d",
+      "./js/admin.js": "./js/admin.js?v=dee8f0c2ff",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=bdfa8cbcc5",
-      "./js/app.js": "./js/app.js?v=46277f0fcd",
+      "./js/api.js": "./js/api.js?v=93b990a09e",
+      "./js/app.js": "./js/app.js?v=a60be615f4",
       "./js/bingo.js": "./js/bingo.js?v=08756e57a5",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=550327c428",
-      "./js/config.js": "./js/config.js?v=ffb743d9ae",
+      "./js/config.js": "./js/config.js?v=93f6ab2ed3",
       "./js/defaults.js": "./js/defaults.js?v=d43c86eeb2",
       "./js/extras-api.js": "./js/extras-api.js?v=964f8a40b5",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
@@ -98,6 +98,7 @@
       "./js/record.js": "./js/record.js?v=d11f0b361f",
       "./js/rexi-sfx.js": "./js/rexi-sfx.js?v=a1036a43c2",
       "./js/screen-holes.js": "./js/screen-holes.js?v=ebb20f0416",
+      "./js/security.js": "./js/security.js?v=1a5e0d7259",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
@@ -487,6 +488,7 @@
         <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz"><span class="sb-ico" aria-hidden="true">🛡️</span><span class="sb-label">Raid-Schutz</span></button>
         <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><span class="sb-ico" aria-hidden="true">👥</span><span class="sb-label">Mods</span></button>
         <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><span class="sb-ico" aria-hidden="true">🟣</span><span class="sb-label">Twitch-Verbindung</span></button>
+        <button class="sb-item" type="button" data-page="security" title="Sicherheit"><span class="sb-ico" aria-hidden="true">🔐</span><span class="sb-label">Sicherheit</span></button>
       </nav>
       <div class="sb-foot">
         <button id="tour-btn" class="sb-item" type="button" title="Einführung"><span class="sb-ico" aria-hidden="true">❓</span><span class="sb-label">Einführung</span></button>
@@ -900,7 +902,15 @@
               </div>
               <p class="form-hint">Mods melden sich hier mit „Mit Twitch anmelden“ an – StreamHelp erkennt sie an ihrem Twitch-Konto.</p>
             </section>
+            <!-- Rechte je Mod und Mod-Protokoll (js/security.js) -->
+            <section class="dash-card dash-card--wide sec-card" id="mod-rights" hidden></section>
+            <section class="dash-card dash-card--wide sec-card" id="mod-audit" hidden></section>
           </div>
+        </section>
+
+        <!-- Sicherheit: Zwei-Faktor-Anmeldung, Geräte, Export (js/security.js) -->
+        <section class="page" data-page="security" hidden>
+          <div class="dash-cards" id="security-slot"></div>
         </section>
 
         <!-- Twitch-Verbindung (nur Streameransicht) -->
