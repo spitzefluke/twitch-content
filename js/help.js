@@ -3,7 +3,7 @@
 //     eingerichtet oder hakt es, sucht die Seite selbst die passende Antwort in den FAQ – kostenlos.
 //   · Kontaktformular: contact_send (Migration …_contact_showcase.sql), Nachrichten landen im Admin-Bereich.
 //   · Showcase: showcase_list – nur Kanäle, deren Streamer zugestimmt haben.
-import { currentLang, t } from './i18n.js';
+import { currentLang, sourceOf, t } from './i18n.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 let api = null;
@@ -71,8 +71,9 @@ export function faqAnswer(root, question) {
   for (const d of root.querySelectorAll('#faq details')) {
     const title = $('summary', d)?.textContent ?? '';
     const body = $('p', d)?.textContent ?? '';
-    const tw = words(title);
-    const bw = words(body);
+    // In der angezeigten Sprache und auf Deutsch suchen (wer auf Deutsch fragt, findet's auch auf der englischen Seite)
+    const tw = new Set([...words(title), ...words(sourceOf(title))]);
+    const bw = new Set([...words(body), ...words(sourceOf(body))]);
     let score = 0;
     for (const w of q) {
       if (tw.has(w)) score += 3;

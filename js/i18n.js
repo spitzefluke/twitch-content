@@ -24,6 +24,7 @@ const KEY = 'sh_lang';
 
 let lang = 'de';
 let dict = {};
+let reverse = {}; // übersetzter Text → deutscher Text (für die FAQ-Suche der KI-Hilfe)
 
 const norm = (s) => String(s).replace(/\s+/g, ' ').trim();
 // Den Streamer-Namen setzt die Seite erst später ein – im Schlüssel steht immer „Streamer“
@@ -44,6 +45,7 @@ export async function initI18n() {
     try {
       const [keys, vals] = await Promise.all([import('./i18n-keys.js'), import(`./i18n-${lang}.js`)]);
       dict = Object.fromEntries(keys.default.map((k, i) => [norm(k), vals.default[i]]).filter(([, v]) => v));
+      reverse = Object.fromEntries(Object.entries(dict).map(([k, v]) => [norm(v), k]));
     } catch (err) {
       console.warn('Übersetzung nicht geladen:', err);
       lang = 'de';
@@ -56,6 +58,8 @@ export async function initI18n() {
 }
 
 export const currentLang = () => lang;
+// Deutscher Ausgangstext zu einem (übersetzten) Text – oder der Text selbst
+export const sourceOf = (text) => reverse[norm(text)] ?? norm(text);
 export const locale = () => LOCALES[lang] ?? 'de-DE';
 
 export function setLang(code) {
