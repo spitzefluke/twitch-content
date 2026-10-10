@@ -23,7 +23,7 @@ alter table core.tiles drop constraint if exists tiles_kind_check;
 alter table core.tiles add constraint tiles_kind_check
   check (kind in ('wheel', 'countdown', 'prank', 'bingo', 'questions', 'pet', 'shop', 'challenge',
                   'forbidden', 'subathon', 'pause', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll',
-                  'counter', 'gamewheel', 'heart'));  -- die letzten drei kommen mit …_game_packs.sql (so bleibt die Datei mehrfach ausführbar)
+                  'counter', 'gamewheel', 'heart', 'chatcontrol'));  -- die letzten drei kommen mit …_game_packs.sql (so bleibt die Datei mehrfach ausführbar)
 
 -- In jeden Kanal, der schon Kacheln hat (neue Kanäle bekommen sie mit der Vorlage des Standard-Kanals).
 -- Wie bei den anderen Ideen: vor die Countdowns.

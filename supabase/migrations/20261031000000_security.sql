@@ -160,7 +160,7 @@ returns text language sql stable set search_path = '' as $$
     when p ~ '^(spins?($|_)|wheel|overlay_spins)' then 'wheel'
     when p ~ '^bingo' then 'bingo'
     when p ~ '^(tiles?($|_)|ideas?($|_)|idea_votes|feature_open|games_|questions?($|_)|question_)' then 'ideas'
-    when p ~ '^(quiz|shop|challenge|win_challenge|queue|cards?_|forbidden|hotword|pause|poll|counter|gamewheel|heart)' then 'games'
+    when p ~ '^(quiz|shop|challenge|win_challenge|queue|cards?_|forbidden|hotword|pause|poll|counter|gamewheel|heart|cc_|chat_control)' then 'games'
     when p ~ '^(send_prank|prank|sounds($|_)|tts)' then 'pranks'
     when p ~ '^pet' then 'pet'
     when p ~ '^(overlay|alert|ticker|stream_alerts|subathon|anniversary)' then 'overlay'
@@ -396,7 +396,7 @@ declare
   r record;
   skip text[] := array['audit_log', 'chat_cooldowns', 'pet_cooldowns', 'pet_chat_cooldowns', 'prank_cooldowns',
     'pause_cooldowns', 'watchtime', 'watch_state', 'hotword_hits', 'hotword_counts', 'bot_outbox', 'twitch_health',
-    'platform_stats_cache', 'quiz_answers', 'card_players', 'idea_votes', 'stream_days', 'watch_imports', 'polls', 'poll_votes', 'counters', 'heart_rate'];
+    'platform_stats_cache', 'quiz_answers', 'card_players', 'idea_votes', 'stream_days', 'watch_imports', 'polls', 'poll_votes', 'counters', 'heart_rate', 'chat_control', 'cc_commands', 'cc_events', 'cc_votes'];
 begin
   for r in
     select c.relname from pg_class c

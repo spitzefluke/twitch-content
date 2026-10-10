@@ -12,6 +12,7 @@
 //   counter=tl|…     Zähler: Tode, Kills, Versuche … (nur die mit „im Stream zeigen“)   ctsize=100
 //   gamewheel=tc|…   Spiel-Rad: erscheint beim Drehen, zeigt das Ergebnis ein paar Sekunden   sgsize=100
 //   heart=tr|…       Herzfrequenz: schlagendes Herz mit Puls (nur solange Werte kommen)   hrsize=100
+//   chatcontrol=bc|… Chat-Kommandos: groß, was der Streamer tun muss; im Abstimm-Modus die laufende Runde   cmsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { rtSpec } from './channel.js';
@@ -37,8 +38,9 @@ export function setupOverlayExtras(o) {
     counter: o.position(o.params.get('counter'), null),
     gamewheel: o.position(o.params.get('gamewheel'), null),
     heart: o.position(o.params.get('heart'), null),
+    chatcontrol: o.position(o.params.get('chatcontrol'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -55,6 +57,7 @@ export function setupOverlayExtras(o) {
   if (cfg.counter) setupCounters(ctx, card('ov-x-counter', 'counter', cfg.counter, o));
   if (cfg.gamewheel) setupGamewheel(ctx, card('ov-x-gamewheel', 'gamewheel', cfg.gamewheel, o));
   if (cfg.heart) setupHeart(ctx, card('ov-x-heart', 'heart', cfg.heart, o));
+  if (cfg.chatcontrol) setupChatControl(ctx, card('ov-x-chatcontrol', 'chatcontrol', cfg.chatcontrol, o));
 }
 
 function card(id, key, pos, o) {
@@ -132,6 +135,10 @@ function liveData(sb) {
     },
     // Umfrage: Zeit um → beenden lassen (darf jeder, passiert nur, wenn sie wirklich abgelaufen ist)
     pollTick: () => rows(sb.rpc('poll_tick')).catch(() => null),
+    ccCommands: () => rows(sb.from('cc_commands').select('id, word, label, emoji').eq('enabled', true)),
+    ccEvents: (after) => rows(sb.from('cc_events').select('id, word, label, emoji, who, source, votes, created_at').gt('id', after).order('id').limit(10)),
+    ccLast: async () => (await rows(sb.from('cc_events').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
+    ccTick: () => rows(sb.rpc('cc_tick')).catch(() => null),
     counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
@@ -145,6 +152,10 @@ function demoData() {
     giveawayNames: async (round, limit) => read('giveaway_entries', []).filter((e) => e.round === round && !e.kicked).reverse().slice(0, limit).map(({ id, name }) => ({ id, name })),
     ttsRecent: async () => [],
     pollTick: async () => null,
+    ccCommands: async () => read('cc_commands', []).filter((c) => c.enabled),
+    ccEvents: async (after) => read('cc_events', []).filter((e) => e.id > after).slice(-10),
+    ccLast: async () => read('cc_events', []).at(-1)?.id ?? 0,
+    ccTick: async () => null,
     counters: async () => read('counters', []).filter((c) => c.show).sort((a, b) => a.position - b.position).slice(0, 8),
     on(table, cb) {
       addEventListener('storage', (e) => {
@@ -955,5 +966,104 @@ async function setupHeart({ src, opt, editTests }, el) {
   src.on('heart_rate', (row) => { if (row) { hr = { ...hr, ...row }; paint(); } });
   setInterval(paint, 5000);
   setInterval(reload, 30000);
+}
+
+// ============================================================
+// Chat-Kommandos (…_chat_control.sql): Ein Kommando nach dem anderen groß einblenden (Warteschlange);
+// im Abstimm-Modus die laufende Runde mit Balken und Restzeit, danach den Gewinner.
+// ============================================================
+const CC_SOURCE = { chat: '', points: '🪙 ', vote: '🗳️ ', web: '' };
+async function setupChatControl({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <div class="cmo-show" data-show hidden><span class="cmo-emoji" data-emoji></span><b class="cmo-label" data-label></b><small class="cmo-who" data-who></small></div>
+    <div class="cmo-vote" data-vote hidden>
+      <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🗳️ Chat stimmt ab</span><span class="ov-sep">·</span><span class="cmo-left" data-left></span></header>
+      <ol class="cmo-list" data-list></ol>
+    </div>`;
+  const $ = (sel) => el.querySelector(sel);
+  let cfg = { enabled: true, mode: 'direct', show_seconds: 6, tally: {} };
+  let cmds = new Map();
+  const queue = [];
+  let showing = false;
+  let lastId = 0;
+  let ticked = 0;
+
+  const visible = () => { el.hidden = !(showing || (!$('[data-vote]').hidden) || opt.edit); };
+  const next = () => {
+    const ev = queue.shift();
+    if (!ev) { showing = false; $('[data-show]').hidden = true; visible(); return; }
+    showing = true;
+    $('[data-emoji]').textContent = ev.emoji;
+    $('[data-label]').textContent = ev.label;
+    $('[data-who]').textContent = `${CC_SOURCE[ev.source] ?? ''}!${ev.word}${ev.who ? ` · ${ev.who}` : ''}${ev.votes ? ` · ${ev.votes} Stimmen` : ''}`;
+    const box = $('[data-show]');
+    box.hidden = false;
+    box.classList.remove('is-in');
+    void box.offsetWidth; // Animation neu starten
+    box.classList.add('is-in');
+    visible();
+    setTimeout(next, Math.max(2, Number(cfg.show_seconds) || 6) * 1000);
+  };
+  const push = (ev) => {
+    if (queue.length >= 5) queue.shift(); // zu viel auf einmal: ältere fallen weg
+    queue.push(ev);
+    if (!showing) next();
+  };
+  const paintVote = () => {
+    const running = cfg.enabled && cfg.mode === 'vote' && cfg.round_ends_at && Date.parse(cfg.round_ends_at) > Date.now() - 1000;
+    $('[data-vote]').hidden = !running || showing;
+    if (running && !showing) {
+      const tally = cfg.tally ?? {};
+      const rows = Object.entries(tally).map(([id, n]) => ({ c: cmds.get(Number(id)), n: Number(n) })).filter((r) => r.c && r.n > 0)
+        .sort((a, b) => b.n - a.n).slice(0, 4);
+      const max = Math.max(1, ...rows.map((r) => r.n));
+      $('[data-list]').replaceChildren(...rows.map((r) => {
+        const li = document.createElement('li');
+        li.className = 'cmo-row';
+        li.style.setProperty('--p', (r.n / max).toFixed(3));
+        li.innerHTML = `<span>${esc(r.c.emoji)}</span><b>!${esc(r.c.word)}</b><span class="cmo-n">${r.n}</span>`;
+        return li;
+      }));
+      const left = Math.max(0, Math.ceil((Date.parse(cfg.round_ends_at) - Date.now()) / 1000));
+      $('[data-left]').textContent = `${left} s`;
+      if (left === 0 && Date.now() - ticked > 5000) { ticked = Date.now(); src.ccTick(); }
+    }
+    visible();
+  };
+
+  if (opt.test || opt.edit) {
+    const demo = [['🦘', 'Spring!', 'springen'], ['⬅️', 'Nach links!', 'links'], ['🔦', 'Licht aus!', 'licht'], ['🧱', 'Bau eine Wand!', 'bauen']];
+    const fire = () => { const [emoji, label, word] = demo[Math.floor(Math.random() * demo.length)]; push({ emoji, label, word, who: 'Mia', source: 'chat' }); };
+    if (editTests) editTests.chatcontrol = fire;
+    if (opt.edit) { cfg = { ...cfg, show_seconds: 30 }; fire(); }
+    if (opt.test && !opt.edit) { fire(); setInterval(fire, 8000); }
+    return;
+  }
+
+  const loadCfg = async () => {
+    const c = await src.one('chat_control').catch(() => null);
+    if (c) cfg = c;
+    paintVote();
+  };
+  const loadCmds = async () => {
+    const list = await src.ccCommands().catch(() => null);
+    if (list) cmds = new Map(list.map((c) => [Number(c.id), c]));
+  };
+  const loadEvents = async () => {
+    const list = await src.ccEvents(lastId).catch(() => null);
+    for (const ev of list ?? []) {
+      if (ev.id <= lastId) continue;
+      lastId = ev.id;
+      if (cfg.enabled !== false) push(ev);
+    }
+  };
+  await Promise.all([loadCfg(), loadCmds()]);
+  lastId = await src.ccLast().catch(() => 0); // alte Kommandos nicht noch einmal zeigen
+  let t1 = 0;
+  src.on('cc_events', () => { clearTimeout(t1); t1 = setTimeout(loadEvents, 80); });
+  src.on('chat_control', (row) => { if (row && !Array.isArray(row)) { cfg = { ...cfg, ...row }; paintVote(); } else loadCfg(); });
+  src.on('cc_commands', () => loadCmds());
+  setInterval(paintVote, 1000);
+  setInterval(() => { loadEvents(); loadCfg(); }, 15000);
 }
 

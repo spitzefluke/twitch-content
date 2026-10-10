@@ -156,6 +156,8 @@ async function handleRedemption(event: Redemption) {
   if (fixed) return handlePrank(conn, event, "sound", fixed);
   // Vorlesen (Text-to-Speech) und Karten-Packs (Migration …_stream_extras.sql)
   if (await handleExtraRedemption(conn, event)) return;
+  // Chat-Kommandos mit Kanalpunkten (Migration …_chat_control.sql)
+  if (await handleChatControlRedemption(conn, event)) return;
   if (event.reward.id !== conn.reward_id) return; // andere Belohnungen gehen uns nichts an
 
   let spin;
@@ -173,6 +175,25 @@ async function handleRedemption(event: Redemption) {
     console.error("Chat-Nachricht fehlgeschlagen:", e);
   }
   await setStatus(conn, event, "FULFILLED").catch(console.error);
+}
+
+// Liefert true, wenn die Belohnung ein Chat-Kommando war (dann ist alles erledigt)
+async function handleChatControlRedemption(conn: Connection, event: Redemption) {
+  const { data, error } = await db.rpc("cc_redeem", { p_reward_id: event.reward.id, p_name: event.user_name || event.user_login });
+  if (error) {
+    if (!/cc_redeem/.test(error.message)) console.warn("cc_redeem:", error.message); // Migration fehlt: nichts tun
+    return false;
+  }
+  if (data?.reason === "unknown") return false;
+  if (!data?.ok) {
+    await setStatus(conn, event, "CANCELED").catch(console.error); // Punkte zurück
+    const why = data?.reason === "paused" ? "Gerade ist alles kurz pausiert (Raid-Schutz)." : "Die Chat-Kommandos sind gerade aus.";
+    await sendChat(conn, `@${event.user_login} ${why} Deine Kanalpunkte sind zurück.`).catch((e) => console.warn(e));
+    return true;
+  }
+  await sendChat(conn, `${data.emoji ?? "🎮"} ${event.user_name}: ${data.label}`).catch((e) => console.warn("Chat:", e));
+  await setStatus(conn, event, "FULFILLED").catch(console.error);
+  return true;
 }
 
 function setStatus(conn: Connection, event: Redemption, status: "FULFILLED" | "CANCELED") {

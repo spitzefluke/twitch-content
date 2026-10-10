@@ -25,27 +25,33 @@ export const GAMES = [
 export const GAME_GROUPS = [['top', 'Beliebt'], ['retro', 'Retro']];
 
 // Game-Pakete (Migration …_game_packs.sql): Zähler-Vorlagen und Challenges fürs Spiel-Rad.
-// command = Chat-Befehl ohne „!“ (Mods zählen mit „!tode +“). Eigene Challenges je Game speichert die
+// command = Chat-Befehl ohne „!“ (Mods zählen mit „!tode +“).
+// commands = Chat-Kommandos (…_chat_control.sql): [Befehl, was der Streamer tun muss, Symbol, Abklingzeit s, Kanalpunkte?]. Eigene Challenges je Game speichert die
 // Datenbank (gamewheel.challenges); ohne eigene gelten diese hier.
 export const PACKS = {
   fortnite: {
     counters: [['Kills', '🔫', 'kills'], ['Wins', '👑', 'wins'], ['Tode', '💀', 'tode']],
+    commands: [['springen', 'Spring!', '🦘', 10], ['bauen', 'Bau eine Wand!', '🧱', 20], ['tanzen', 'Tanz-Emote!', '💃', 30], ['heilen', 'Heil dich!', '🩹', 30], ['drop', 'Waffe wegwerfen', '🗑️', 120, 500]],
     challenges: ['Nur graue Waffen', 'Landen, wo der Chat sagt', 'Keine Heilung', 'Nur Pistolen', 'Kein Bauen', 'Erste Kiste = Loadout', 'Nur Sniper', 'Rückwärts laufen bis zur Zone'],
   },
   minecraft: {
     counters: [['Tode', '💀', 'tode'], ['Diamanten', '💎', 'diamanten'], ['Creeper', '💥', 'creeper']],
+    commands: [['springen', 'Spring!', '🦘', 10], ['schleichen', 'Schleichen!', '🐢', 15], ['graben', 'Grab nach unten!', '⛏️', 30], ['essen', 'Iss was!', '🍖', 30], ['inventar', 'Wirf ein Item weg', '🎒', 120, 300]],
     challenges: ['Nur Holzwerkzeuge', 'Keine Rüstung bis zum Nether', 'Kein Sprinten', 'Nur Fleisch essen', 'Chat wählt das nächste Ziel', 'Ein Haus in 5 Minuten', 'Kein Springen für 5 Minuten', 'Nur auf Blöcken laufen, die du platzierst'],
   },
   'just-chatting': {
     counters: [['Lacher', '😂', 'lacher'], ['Ähms', '🤔', 'aehm']],
+    commands: [['winken', 'Wink in die Kamera!', '👋', 20], ['lachen', 'Lach!', '😂', 20], ['tanzen', 'Tanz kurz!', '💃', 60], ['wasser', 'Trink einen Schluck!', '💧', 120], ['akzent', '1 Minute mit Akzent', '🗣️', 300, 500]],
     challenges: ['Erzähl eine peinliche Geschichte', 'Chat wählt das nächste Thema', '5 Minuten nur Englisch', 'Lies die letzte Chat-Nachricht dramatisch vor', 'Sing den Refrain deines Lieblingslieds', 'Beantworte 3 Fragen aus dem Chat ehrlich', 'Imitiere eine Person aus dem Chat', 'Ein Witz – lacht der Chat nicht, gibt’s eine Strafe'],
   },
   speedrun: {
     counters: [['Versuche', '🔁', 'versuche'], ['Resets', '♻️', 'resets'], ['Bestzeiten', '🏆', 'pb']],
+    commands: [['schneller', 'Schneller!', '⚡', 20], ['pause', 'Kurz Pause!', '⏸️', 120], ['reset', 'Reset!', '♻️', 600, 2000]],
     challenges: ['Kein Glitch erlaubt', 'Nur ein Leben', 'Mit der schwächsten Figur', 'Alles einsammeln (100 %)', 'Ohne Pause bis zum Ende', 'Chat wählt die Route', 'Blind: ohne Karte und Splits', 'Nächster Run rückwärts im Menü starten'],
   },
   horror: {
     counters: [['Jumpscares', '😱', 'jumpscares'], ['Tode', '💀', 'tode'], ['Schreie', '🗣️', 'schreie']],
+    commands: [['umdrehen', 'Dreh dich um!', '🔄', 20], ['licht', 'Licht aus!', '🔦', 60], ['rennen', 'Renn!', '🏃', 20], ['verstecken', 'Versteck dich!', '🫣', 30], ['schrei', 'Schrei!', '😱', 120, 500]],
     challenges: ['Licht aus im Zimmer', 'Lautstärke hoch', 'Ohne Taschenlampe', 'Nur flüstern', 'Bei jedem Jumpscare: 5 Liegestütze', 'Kamera näher ran', 'Kein Wegschauen – sonst Strafe', 'Chat wählt die nächste Tür'],
   },
 };
