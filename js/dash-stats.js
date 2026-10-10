@@ -1,7 +1,9 @@
 // Stream-Statistik (Dashboard → 📈 Statistik): Sendezeit, Zuschauer, Follows, Abos, Bits und
 // was im Stream los war – je Tag als Balken. Daten: public.channel_stats (Migration …_dashboard.sql),
-// nur für Streamer und freigegebene Mods.
+// nur für Streamer und freigegebene Mods. Darunter „OBS & Daten“ (js/dash-obsdata.js).
+// opts: { obs: () => ObsSocket|null, openObs: () => void } aus js/app.js
 import { h } from './extras-core.js';
+import { renderObsLive, renderOverlayUsage } from './dash-obsdata.js';
 
 let range = 7;
 
@@ -16,27 +18,31 @@ const METRICS = [
   { id: 'subs', label: 'Abos', fmt: fmtNum },
 ];
 let metric = 'live_minutes';
+let renderGen = 0; // schnelles Umschalten: nur die neueste Abfrage zeichnet
 
-export async function renderStats(root, api) {
+export async function renderStats(root, api, opts = {}) {
   if (!root) return;
+  const gen = ++renderGen;
   root.replaceChildren(h('p', { class: 'stats-muted' }, 'Lädt …'));
   let data;
   try {
     data = await api.channelStats(range);
   } catch (err) {
+    if (gen !== renderGen) return;
     root.replaceChildren(h('article', { class: 'dash-card dash-card--wide' },
       h('p', {}, /channel_stats|could not find/i.test(err?.message ?? '')
         ? 'In der Datenbank fehlt die Statistik: supabase/migrations/20261102000000_dashboard.sql im SQL Editor ausführen.'
         : `Statistik nicht geladen: ${err?.message ?? err}`)));
     return;
   }
+  if (gen !== renderGen) return;
   const t = data.totals ?? {};
   const series = data.series ?? [];
 
   const rangeBtns = h('div', { class: 'stats-range', role: 'group', 'aria-label': 'Zeitraum' },
     ...[7, 30, 90].map((d) => {
       const b = h('button', { type: 'button', class: `stats-chip${d === range ? ' is-on' : ''}`, 'aria-pressed': String(d === range) }, `${d} Tage`);
-      b.addEventListener('click', () => { range = d; renderStats(root, api); });
+      b.addEventListener('click', () => { range = d; renderStats(root, api, opts); });
       return b;
     }));
 
@@ -62,7 +68,7 @@ export async function renderStats(root, api) {
   const tabs = h('div', { class: 'stats-tabs', role: 'tablist', 'aria-label': 'Kennzahl' },
     ...METRICS.map((x) => {
       const b = h('button', { type: 'button', role: 'tab', class: 'stats-chip', 'aria-selected': String(x.id === m.id) }, x.label);
-      b.addEventListener('click', () => { metric = x.id; renderStats(root, api); });
+      b.addEventListener('click', () => { metric = x.id; renderStats(root, api, opts); });
       return b;
     }));
   const bars = h('div', { class: 'stats-bars' },
@@ -92,5 +98,13 @@ export async function renderStats(root, api) {
     h('article', { class: 'dash-card' },
       h('div', { class: 'dash-card-head' }, h('span', { class: 'dash-ico', 'aria-hidden': 'true' }, '🏆'), h('div', {}, h('h2', {}, 'Treueste Zuschauer'), h('p', { class: 'dash-status' }, 'Watchtime insgesamt'))),
       top),
+  );
+  // OBS & Daten: eigener Abschnitt, lädt danach (die Zahlen oben sollen nicht darauf warten)
+  const usage = await renderOverlayUsage(api, range);
+  if (gen !== renderGen || !root.isConnected) return;
+  root.append(
+    h('h2', { class: 'stats-section', id: 'stats-obsdata' }, '🎛️ OBS & Daten'),
+    renderObsLive(opts),
+    ...usage,
   );
 }

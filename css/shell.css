@@ -678,3 +678,31 @@
 .watch-import:empty { display: none; }
 .watch-import-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .watch-import-info { margin: 0; flex: 1 1 100%; font-size: 13px; color: var(--text-2); }
+
+/* ---------- Statistik → OBS & Daten (js/dash-obsdata.js) ---------- */
+.stats-section { grid-column: 1 / -1; margin: 18px 0 0; font-size: 22px; text-transform: none; }
+.usage-chart { display: grid; gap: 12px; }
+.usage-stack { align-self: end; display: flex; flex-direction: column-reverse; gap: 2px; min-height: 2px; border-radius: 6px 6px 2px 2px; overflow: hidden; }
+.usage-stack i { display: block; min-height: 2px; flex-basis: 0; }
+.usage-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--text-2); }
+.usage-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.usage-legend b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+.usage-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.usage-sub { margin: 16px 0 8px; font-size: 15px; text-transform: none; color: var(--text-2); }
+.usage-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.usage-table th, .usage-table td { padding: 8px 6px; border-bottom: 1px solid var(--line-soft); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.usage-table th:first-child { text-align: left; white-space: normal; }
+.usage-table thead th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.obslive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.obslive-row { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgba(10, 13, 19, .45); border: 1px solid var(--line-soft); }
+.obslive-row small { color: var(--text-2); font-size: 12px; }
+.obslive-row b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.obslive-row.is-warn { border-color: rgba(255, 176, 32, .55); }
+.obslive-row.is-warn b::after { content: " ⚠️"; font-size: 13px; }
+.obslive-body > .btn { margin-top: 4px; }
+@media (max-width: 640px) {
+  .usage-table th:nth-child(4), .usage-table td:nth-child(4), .usage-table th:nth-child(5), .usage-table td:nth-child(5) { display: none; }
+}
+.obslive-connect { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 10px; }
+.obslive-connect label { flex: 1 1 220px; }
+.obslive-connect input { width: 100%; }

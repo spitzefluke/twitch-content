@@ -75,6 +75,8 @@
 //   test=1                     Probe-Drehungen und -Würfe, zum Einrichten in OBS
 //   edit=1                     nur für die Vorschau im OBS-Dialog: alle Karten stehen still und
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
+import { cleanModuleId, limitLayers } from './overlay-modules.js';
+import { reportUsage, startUsageMeter } from './overlay-usage.js';
 import { CONFIG } from './config.js';
 import { channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
@@ -104,6 +106,9 @@ const TEST_EVERY_MS = 20000;
 const TILES_REFRESH_MS = 15000;
 const CONFIG_POLL_MS = 3000; // Live-Einstellungen aus dem OBS-Fenster
 const STALE_MS = 2 * 60 * 1000; // ältere Drehungen (z. B. nach Pause) nicht mehr zeigen
+
+// Datenverbrauch zählen (js/overlay-usage.js) – vor der ersten Abfrage
+startUsageMeter(CONFIG.SUPABASE_URL);
 
 // Kanal (Plattform, js/channel.js): overlay.html?c=<Twitch-Login>; ohne c der Standard-Kanal.
 // Muss vor allem anderen feststehen – jede Abfrage schickt ihn mit.
@@ -141,12 +146,12 @@ if (params.get('scene') === 'chat') {
 // Aufnahme-Studio (record.html): rec=<Ebenen> zeigt nur diese Ebenen – ohne Ton (spielt schon OBS)
 // und ohne Watchtime-Anstoß. Den Stream ändert das nicht, es ist eine zweite, stille Kopie.
 const REC = urlParams.has('rec') ? new Set((urlParams.get('rec') ?? '').split(',').filter(Boolean)) : null;
+// Modul (js/overlay-modules.js): only=<Ebenen> zeigt nur diese Ebenen – eine von mehreren Browserquellen in OBS.
+// m=<Modul> nennt das Modul für die Datenverbrauchs-Statistik.
+const ONLY = !REC && urlParams.has('only') ? new Set((urlParams.get('only') ?? '').split(',').filter(Boolean)) : null;
+if (ONLY) limitLayers(params, ONLY);
 if (REC) {
-  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon',
-    'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'labels', 'goal']) if (!REC.has(key)) params.set(key, '0');
-  for (const key of ['prank', 'pet', 'camframe', 'pause']) if (!REC.has(key)) params.set(key, '0');
-  if (!REC.has('ticker')) params.set('ticker_show', '0');
-  if (!REC.has('scene')) params.delete('scene');
+  limitLayers(params, REC);
   params.set('sound', '0');
   params.delete('edit');
   params.delete('test');
@@ -455,6 +460,7 @@ async function start() {
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
   if (LIVE) watchOverlayConfig(source);
   startWatchtime();
+  startUsageReports();
   if (!opt.edit) watchForUpdate();
 }
 
@@ -490,6 +496,21 @@ function startWatchtime() {
   }).catch(() => {});
   setTimeout(tick, 60_000);
   setInterval(tick, WATCH_TICK_MS);
+}
+
+// Datenverbrauch melden (Statistik im Dashboard): nur die echte Quelle in OBS, nicht Vorschau, Test oder Aufnahme-Studio
+function startUsageReports() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || !LIVE || opt.edit || opt.test || REC) return;
+  const module = cleanModuleId(urlParams.get('m')) || (ONLY ? 'custom' : 'all');
+  reportUsage(async (d, keepalive) => {
+    const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/overlay_usage_add`, {
+      method: 'POST',
+      keepalive,
+      headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
+      body: JSON.stringify({ p_module: module, p_files: d.files, p_db: d.db, p_live: d.live, p_chat: d.chat, p_other: d.other, p_seconds: d.seconds }),
+    });
+    return res.ok && (await res.json().catch(() => false)) === true;
+  });
 }
 
 function watchOverlayConfig(source) {
