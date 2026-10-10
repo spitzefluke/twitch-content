@@ -35,6 +35,7 @@ import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, s
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
+import { renderBotPlus } from './bot-plus.js';
 import { LAYERS, MODULES, layerName, moduleUrl } from './overlay-modules.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -5586,11 +5587,11 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws'; // früher Klartext in localStorage – wird beim ersten Lesen verschlüsselt umgezogen
-const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'scene', 'labels', 'goal'];
+const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', sosize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
-  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', hotwords: 'hwsize', poll: 'plsize', counter: 'ctsize', gamewheel: 'sgsize', heart: 'hrsize', chatcontrol: 'cmsize', labels: 'lbsize', goal: 'gsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', hotwords: 'hwsize', poll: 'plsize', counter: 'ctsize', gamewheel: 'sgsize', heart: 'hrsize', chatcontrol: 'cmsize', songs: 'sosize', labels: 'lbsize', goal: 'gsize',
 };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [], previewSound: false, presets: null };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
@@ -5844,7 +5845,7 @@ function paintObsHistory() {
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
 const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: 'ticker_show',
-  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', hotwords: 'hotwords_on', poll: 'poll_on', counter: 'counter_on', gamewheel: 'gamewheel_on', heart: 'heart_on', chatcontrol: 'chatcontrol_on', pause: 'pause',
+  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', hotwords: 'hotwords_on', poll: 'poll_on', counter: 'counter_on', gamewheel: 'gamewheel_on', heart: 'heart_on', chatcontrol: 'chatcontrol_on', songs: 'songs_on', pause: 'pause',
   scene: 'scene_on', camframe: 'camframe', labels: 'labels_on', goal: 'goal_on',
 };
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize' };
@@ -5911,7 +5912,7 @@ function setupObsLayers() {
 
 // ---------- Aussehen je Ebene: Farbe, Schrift, Einblenden (Parameter lc_/lcc_/lf_/la_/ls_, siehe js/overlay.js) ----------
 const LOOK_LAYERS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'ticker', 'forbid', 'subathon',
-  'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'labels', 'goal'];
+  'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'labels', 'goal'];
 const LOOK_NO_ANIM = new Set(['wheel', 'alerts', 'ticker']); // haben eigene Effekte (Rad-Auftritt, Alert-Designer, Lauftext)
 const LOOK_COLORS = [['', 'Design-Farbe'], ['ffb81c', 'Gold'], ['9146ff', 'Twitch-Lila'], ['ff4fd8', 'Pink'], ['ff5a4e', 'Rot'], ['ff7a28', 'Orange'],
   ['3ddc84', 'Grün'], ['35c7ff', 'Türkis'], ['4f7cff', 'Blau'], ['ffffff', 'Weiß'], ['custom', 'Eigene Farbe …']];
@@ -7351,6 +7352,7 @@ function renderBotPanel() {
   renderCommands();
   loadBotCommands();
   loadWatchtime();
+  renderBotPlus({ api: state.api, toast, germanError });
 }
 
 function renderCommands() {
@@ -7365,6 +7367,11 @@ function renderCommands() {
     ['!change [Kostüm]', 'Dino-Kostüm wechseln (Kapitän, Mechaniker, Bauarbeiter)'],
     ['!erwischt', 'Verbotenes Wort: den Streamer erwischt'],
     ['!rate [Tipp]', 'Pausen-Bildschirm: mitraten'],
+    ['!uptime !game !title', 'Stream-Infos (unten an- und ausschalten)'],
+    ['!followage', 'Seit wann man folgt'],
+    ['!so @name', 'Mods: Shoutout'],
+    ['!permit @name', 'Mods: einen Link erlauben (Moderation)'],
+    ['!sr [YouTube-Link]', 'Song wünschen – dazu !song, !queue, !wrongsong, Mods: !skip'],
   ];
   $('#cmd-list').replaceChildren(...cmds.map(([cmd, text]) => {
     const li = document.createElement('li');
@@ -7409,9 +7416,11 @@ async function disconnectBot() {
 
 // ---------- Eigene Befehle ----------
 const cmdError = (err) => (/duplicate key|bot_commands_command_key/i.test(err.message) ? 'Diesen Befehl gibt es schon.'
-  : /check constraint|violates check/i.test(err.message) ? 'Ungültig: Befehl mit ! und 2–25 Kleinbuchstaben, Ziffern oder _ (eingebaute wie !join gehen nicht), Antwort 1–400 Zeichen.'
-    : /bot_commands|relation .* does not exist|schema cache/i.test(err.message) ? 'Einmal nötig: supabase/migrations/20261017000000_chat_bot_commands.sql im SQL Editor ausführen.'
-      : germanError(err));
+  : /aliases_check/i.test(err.message) ? 'Aliase: höchstens 5, jeweils mit ! und 2–25 Kleinbuchstaben, Ziffern oder _.'
+    : /check constraint|violates check/i.test(err.message) ? 'Ungültig: Befehl mit ! und 2–25 Kleinbuchstaben, Ziffern oder _ (eingebaute wie !join gehen nicht), Antwort 1–400 Zeichen.'
+      : /aliases|permission|user_cooldown|reply_type|live_only/i.test(err.message) ? 'Für die neuen Einstellungen einmal supabase/migrations/20261109000000_chat_bot_plus.sql im SQL Editor ausführen.'
+        : /bot_commands|relation .* does not exist|schema cache/i.test(err.message) ? 'Einmal nötig: supabase/migrations/20261017000000_chat_bot_commands.sql im SQL Editor ausführen.'
+          : germanError(err));
 const cleanCommand = (v) => `!${String(v ?? '').trim().toLowerCase().replace(/^!+/, '').replace(/\s+/g, '_')}`;
 
 async function loadBotCommands() {
@@ -7444,16 +7453,29 @@ function renderBotCommands() {
       <label class="toggle cmd-on" title="An/aus"><input type="checkbox" name="enabled"><span class="toggle-ui" aria-hidden="true"></span></label>
       <input class="cmd-name" name="command" maxlength="26" aria-label="Befehl">
       <input class="cmd-resp" name="response" maxlength="400" aria-label="Antwort">
-      <label class="cmd-cd" title="Pause zwischen zwei Antworten"><input type="number" name="cooldown" min="0" max="3600" aria-label="Pause in Sekunden"><span>s</span></label>
-      <label class="toggle cmd-modonly" title="Nur Mods und Streamer"><input type="checkbox" name="mod_only"><span class="toggle-ui" aria-hidden="true"></span><span>Mods</span></label>
+      <label class="cmd-cd" title="Pause zwischen zwei Antworten (für alle)"><input type="number" name="cooldown" min="0" max="3600" aria-label="Pause in Sekunden"><span>s</span></label>
+      <select class="cmd-perm" name="permission" aria-label="Wer darf" title="Wer darf den Befehl benutzen">
+        <option value="everyone">Alle</option><option value="sub">Abos</option><option value="vip">VIPs</option><option value="mod">Mods</option><option value="streamer">Streamer</option>
+      </select>
       <span class="cmd-uses" title="So oft benutzt"></span>
+      <button class="icon-btn cmd-more" type="button" data-cmd-more aria-expanded="false" aria-label="Mehr Einstellungen" title="Mehr Einstellungen">⚙️</button>
       <button class="btn btn--primary btn--sm cmd-save" type="button" data-cmd-save>Speichern</button>
-      <button class="icon-btn cmd-del" type="button" data-cmd-del aria-label="Befehl löschen">🗑</button>`;
+      <button class="icon-btn cmd-del" type="button" data-cmd-del aria-label="Befehl löschen">🗑</button>
+      <div class="cmd-extra" hidden>
+        <label class="field"><span>Weitere Namen (Aliase, mit Komma)</span><input name="aliases" maxlength="140" placeholder="!dc, !disc" autocomplete="off"></label>
+        <label class="field"><span>Pause je Zuschauer</span><span class="bp-unit"><input type="number" name="user_cooldown" min="0" max="3600"><em>s</em></span></label>
+        <label class="field"><span>Antwort</span><select name="reply_type"><option value="say">Normal in den Chat</option><option value="reply">Als Antwort auf die Nachricht</option><option value="mention">Mit @Name davor</option></select></label>
+        <label class="toggle"><input type="checkbox" name="live_only"><span class="toggle-ui" aria-hidden="true"></span>Nur während des Streams</label>
+      </div>`;
     li.querySelector('[name="enabled"]').checked = !!c.enabled;
     li.querySelector('[name="command"]').value = c.command;
     li.querySelector('[name="response"]').value = c.response;
     li.querySelector('[name="cooldown"]').value = c.cooldown_seconds ?? 10;
-    li.querySelector('[name="mod_only"]').checked = !!c.mod_only;
+    li.querySelector('[name="permission"]').value = c.permission ?? (c.mod_only ? 'mod' : 'everyone');
+    li.querySelector('[name="aliases"]').value = (c.aliases ?? []).join(', ');
+    li.querySelector('[name="user_cooldown"]').value = c.user_cooldown ?? 0;
+    li.querySelector('[name="reply_type"]').value = c.reply_type ?? 'say';
+    li.querySelector('[name="live_only"]').checked = !!c.live_only;
     li.querySelector('.cmd-uses').textContent = `${Number(c.uses ?? 0).toLocaleString('de-DE')}×`;
     li.classList.toggle('is-off', !c.enabled);
     return li;
@@ -7467,8 +7489,13 @@ function readCommandRow(li) {
     command: cleanCommand(val('command').value),
     response: val('response').value.trim(),
     enabled: val('enabled').checked,
-    mod_only: val('mod_only').checked,
+    mod_only: ['mod', 'streamer'].includes(val('permission').value),
     cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(val('cooldown').value) || 0))),
+    permission: val('permission').value,
+    aliases: [...new Set(val('aliases').value.split(/[\s,]+/).filter(Boolean).map(cleanCommand))].slice(0, 5),
+    user_cooldown: Math.max(0, Math.min(3600, Math.round(Number(val('user_cooldown').value) || 0))),
+    reply_type: val('reply_type').value,
+    live_only: val('live_only').checked,
   };
 }
 
@@ -7481,6 +7508,7 @@ async function addBotCommand(e) {
     enabled: true,
     mod_only: form.mod_only.checked,
     cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(form.cooldown.value) || 0))),
+    ...(form.mod_only.checked ? { permission: 'mod' } : {}),
   };
   if (c.command.length < 3 || !c.response) return formMsg(form, 'Bitte Befehl und Antwort eintragen.');
   const btn = form.querySelector('button[type="submit"]');
@@ -7521,6 +7549,13 @@ async function botCommandClick(e) {
   const li = e.target.closest('.cmd-row');
   if (!li) return;
   if (e.target.closest('[data-cmd-save]')) return saveBotCommand(li);
+  const more = e.target.closest('[data-cmd-more]');
+  if (more) {
+    const box = li.querySelector('.cmd-extra');
+    box.hidden = !box.hidden;
+    more.setAttribute('aria-expanded', String(!box.hidden));
+    return;
+  }
   if (e.target.closest('[data-cmd-del]')) {
     const c = readCommandRow(li);
     if (!confirm(`${c.command} wirklich löschen?`)) return;

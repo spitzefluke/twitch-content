@@ -12,7 +12,7 @@ export const LAYERS = [
   ['bingo', 'Fortnite-Bingo'], ['shop', 'Kisten-Shop'], ['challenge', 'Win-Challenge'], ['forbid', 'Verbotenes Wort'],
   ['subathon', 'Subathon-Timer'], ['quiz', 'Quiz'], ['queue', 'Mitspielen'], ['tts', 'Vorlesen'], ['cards', 'Sammelkarten'],
   ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['poll', 'Umfrage'], ['counter', 'Zähler'], ['gamewheel', 'Spiel-Rad'],
-  ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
+  ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['songs', 'Song-Wünsche'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
 ];
 export const LAYER_KEYS = LAYERS.map(([key]) => key);
 export const layerName = (key) => LAYERS.find(([k]) => k === key)?.[1] ?? key;
@@ -22,6 +22,7 @@ export const MODULES = [
   { id: 'alerts', icon: '🔔', name: 'Alerts & Ziele', layers: ['alerts', 'recent', 'goal', 'labels'], hint: 'In jede Szene – Follower, Abos, Bits, Ziel-Balken.' },
   { id: 'chat', icon: '💬', name: 'Chat', layers: ['chat'], hint: 'Twitch- und YouTube-Chat.' },
   { id: 'ticker', icon: '📢', name: 'Laufband', layers: ['ticker'], hint: 'Die Laufschrift unten.' },
+  { id: 'songs', icon: '🎵', name: 'Song-Wünsche', layers: ['songs'], hint: 'Was gerade läuft und die nächsten Wünsche (!sr).' },
   { id: 'cam', icon: '🎥', name: 'Kamera & Haustier', layers: ['camframe', 'prank', 'pet', 'tts'], hint: 'Kamera-Rahmen, Würfe & Sounds, Haustier, Vorlesen.' },
   {
     id: 'games', icon: '🎮', name: 'Spiele & Mitmachen',

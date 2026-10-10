@@ -13,6 +13,7 @@
 //   gamewheel=tc|…   Spiel-Rad: erscheint beim Drehen, zeigt das Ergebnis ein paar Sekunden   sgsize=100
 //   heart=tr|…       Herzfrequenz: schlagendes Herz mit Puls (nur solange Werte kommen)   hrsize=100
 //   chatcontrol=bc|… Chat-Kommandos: groß, was der Streamer tun muss; im Abstimm-Modus die laufende Runde   cmsize=100
+//   songs=bl|…       Song-Wünsche (!sr): laufender Song mit Namen und die nächsten drei (nur solange es Wünsche gibt)   sosize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { rtSpec } from './channel.js';
@@ -39,8 +40,9 @@ export function setupOverlayExtras(o) {
     gamewheel: o.position(o.params.get('gamewheel'), null),
     heart: o.position(o.params.get('heart'), null),
     chatcontrol: o.position(o.params.get('chatcontrol'), null),
+    songs: o.position(o.params.get('songs'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -58,6 +60,7 @@ export function setupOverlayExtras(o) {
   if (cfg.gamewheel) setupGamewheel(ctx, card('ov-x-gamewheel', 'gamewheel', cfg.gamewheel, o));
   if (cfg.heart) setupHeart(ctx, card('ov-x-heart', 'heart', cfg.heart, o));
   if (cfg.chatcontrol) setupChatControl(ctx, card('ov-x-chatcontrol', 'chatcontrol', cfg.chatcontrol, o));
+  if (cfg.songs) setupSongs(ctx, card('ov-x-songs', 'songs', cfg.songs, o));
 }
 
 function card(id, key, pos, o) {
@@ -140,6 +143,7 @@ function liveData(sb) {
     ccLast: async () => (await rows(sb.from('cc_events').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
     ccTick: () => rows(sb.rpc('cc_tick')).catch(() => null),
     counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
+    songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
 }
@@ -157,6 +161,7 @@ function demoData() {
     ccLast: async () => read('cc_events', []).at(-1)?.id ?? 0,
     ccTick: async () => null,
     counters: async () => read('counters', []).filter((c) => c.show).sort((a, b) => a.position - b.position).slice(0, 8),
+    songs: async () => read('bot_songs', []).filter((s) => ['queued', 'playing'].includes(s.status)).sort((a, b) => a.position - b.position || a.id - b.id),
     on(table, cb) {
       addEventListener('storage', (e) => {
         if (e.key !== `zd_${table}`) return;
@@ -1067,3 +1072,44 @@ async function setupChatControl({ src, opt, editTests }, el) {
   setInterval(() => { loadEvents(); loadCfg(); }, 15000);
 }
 
+// ============================================================
+// Song-Wünsche (…_chat_bot_plus.sql): „Jetzt läuft“ mit Namen und die nächsten drei. Abgespielt wird im
+// Dashboard – das Overlay zeigt nur an (sonst liefe der Song doppelt).
+// ============================================================
+async function setupSongs({ src, opt }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🎵 Song-Wünsche</span><span class="ov-sep">·</span><span class="ov-who">!sr Link</span></header>
+    <div class="sgo-now" data-now><span class="sgo-eq" aria-hidden="true"><i></i><i></i><i></i></span><div><b data-title></b><small data-who></small></div></div>
+    <ol class="sgo-next" data-next></ol>`;
+  const $ = (sel) => el.querySelector(sel);
+  const paint = (list) => {
+    const playing = list.find((s) => s.status === 'playing');
+    const next = list.filter((s) => s.status === 'queued').slice(0, 3);
+    $('[data-now]').hidden = !playing;
+    if (playing) {
+      $('[data-title]').textContent = playing.title;
+      $('[data-who]').textContent = playing.who ? `gewünscht von ${playing.who}` : '';
+    }
+    $('[data-next]').replaceChildren(...next.map((s, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="sgo-n">${i + 1}</span><span class="sgo-t"></span><small></small>`;
+      li.querySelector('.sgo-t').textContent = s.title;
+      li.querySelector('small').textContent = s.who ?? '';
+      return li;
+    }));
+    el.hidden = !(playing || next.length || opt.edit);
+  };
+  if (opt.test || opt.edit) {
+    paint([
+      { id: 1, title: 'Rick Astley – Never Gonna Give You Up', who: 'PixelPaul', status: 'playing' },
+      { id: 2, title: 'Daft Punk – Harder, Better, Faster, Stronger', who: 'Mia', status: 'queued' },
+      { id: 3, title: 'Lofi Beats zum Zocken', who: 'NightOwl', status: 'queued' },
+    ]);
+    return;
+  }
+  const load = async () => { const list = await src.songs().catch(() => null); if (list) paint(list); };
+  await load();
+  let t = 0;
+  src.on('bot_songs', () => { clearTimeout(t); t = setTimeout(load, 120); });
+  setInterval(load, 30000);
+}

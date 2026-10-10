@@ -785,10 +785,37 @@ async function createSupabaseApi() {
       list: async () => unwrap(await sb.from('bot_commands').select('*').order('command')),
       async save(c) {
         const row = { command: c.command, response: c.response, enabled: c.enabled, mod_only: c.mod_only, cooldown_seconds: c.cooldown_seconds };
+        // Mehr Einstellungen (Migration …_chat_bot_plus.sql) – nur mitschicken, wenn gesetzt
+        for (const k of ['aliases', 'permission', 'user_cooldown', 'reply_type', 'live_only']) if (c[k] !== undefined) row[k] = c[k];
         if (c.id) return unwrap(await sb.from('bot_commands').update({ ...row, updated_at: new Date().toISOString() }).eq('id', c.id).select('*').single());
         return unwrap(await sb.from('bot_commands').insert(row).select('*').single());
       },
       remove: async (id) => unwrap(await sb.from('bot_commands').delete().eq('id', id)),
+    },
+    // Chat-Bot: Einstellungen, Auto-Nachrichten, Song-Wünsche (Migration …_chat_bot_plus.sql)
+    botPlus: {
+      get: async () => unwrap(await sb.rpc('bot_settings_get')),
+      save: async (p) => unwrap(await sb.rpc('bot_settings_save', { p })),
+      timers: {
+        list: async () => unwrap(await sb.from('bot_timers').select('id, text, interval_min, min_lines, enabled, sent, last_at, position').order('position').order('id')),
+        async save(t) {
+          const row = { text: t.text, interval_min: t.interval_min, min_lines: t.min_lines, enabled: t.enabled };
+          if (t.id) return unwrap(await sb.from('bot_timers').update(row).eq('id', t.id).select('id, text, interval_min, min_lines, enabled, sent, last_at, position').single());
+          return unwrap(await sb.from('bot_timers').insert({ ...row, position: Date.now() % 1000000 }).select('id, text, interval_min, min_lines, enabled, sent, last_at, position').single());
+        },
+        remove: async (id) => unwrap(await sb.from('bot_timers').delete().eq('id', id)),
+      },
+      songs: {
+        list: async () => unwrap(await sb.from('bot_songs').select('id, video_id, title, seconds, who, source, status, position, played_at')
+          .in('status', ['queued', 'playing']).order('position').order('id').limit(200)),
+        history: async () => unwrap(await sb.from('bot_songs').select('id, video_id, title, seconds, who, status, played_at')
+          .in('status', ['done', 'skipped']).order('played_at', { ascending: false, nullsFirst: false }).limit(15)),
+        control: async (action, id = null) => unwrap(await sb.rpc('bot_song_control', { p_action: action, p_id: id })),
+        add: (url) => invoke('stream-tools', { action: 'song_add', url }),
+        on(cb) {
+          sb.channel('bot-songs').on('postgres_changes', rtSpec('bot_songs', '*'), () => cb()).subscribe();
+        },
+      },
     },
     async watchTop(limit = 10) { return unwrap(await sb.rpc('watch_top', { p_limit: limit })); },
     // Watchtime-Import und Twitch-Daten (Migration …_watchtime_import.sql)
@@ -924,6 +951,19 @@ function createLocalApi() {
 
   // Fragen und Dino im Demo-Modus: in localStorage, Overlay im selben Browser liest mit
   const demoListeners = {};
+  // Chat-Bot-Einstellungen wie in …_chat_bot_plus.sql (Standardwerte)
+  const BOT_DEFAULTS = {
+    info_on: true, info_cooldown: 15, so_text: 'Schaut unbedingt bei {target} vorbei – zuletzt lief {game}: https://twitch.tv/{login} 💜',
+    greet_mode: 'off', greet_text: 'Willkommen im Chat, {user}! Schön, dass du da bist 💜', greet_back_text: 'Hey {user}, schön dass du wieder da bist! 👋',
+    thank_follow: false, thank_follow_text: 'Danke fürs Folgen, {user}! 💜', thank_sub: true, thank_sub_text: 'Danke für dein Abo, {user}! 🎉',
+    thank_resub_text: 'Danke für {months} Monate, {user}! 🎉', thank_gift_text: '{user} verschenkt {amount} Abos – vielen Dank! 🎁',
+    thank_bits: true, thank_bits_min: 100, thank_bits_text: 'Danke für {amount} Bits, {user}! 💎', thank_raid: true,
+    thank_raid_text: 'RAID! Willkommen {user} und alle {amount} Leute! 🚀', raid_shoutout: true,
+    mod_on: false, mod_links: true, mod_link_allow: ['twitch.tv', 'clips.twitch.tv', 'youtube.com', 'youtu.be'], mod_caps: true, mod_caps_pct: 70,
+    mod_caps_min: 15, mod_spam: true, mod_repeat: 12, mod_emotes: 15, mod_words: [], mod_action: 'delete', mod_timeout: 60, mod_warn: true,
+    mod_exempt_vip: true, mod_exempt_sub: false, mod_permit_seconds: 60,
+    song_on: false, song_who: 'everyone', song_max_user: 2, song_max_queue: 30, song_max_minutes: 8, song_cooldown: 30, timer_gap: 120,
+  };
   const emitDemo = (key, payload) => setTimeout(() => (demoListeners[key] ?? []).forEach((cb) => cb(payload)), 30);
   const isAdminNow = () => !!store.get('users', {})[current?.email]?.is_admin;
   const demoStage = () => ({ ...DEFAULT_STAGE, ...store.get('question_stage', {}) });
@@ -2005,6 +2045,84 @@ function createLocalApi() {
         return row;
       },
       async remove(id) { await requireAdmin(); store.set('bot_commands', (await this.list()).filter((x) => x.id !== id)); },
+    },
+    // Demo: Chat-Bot-Einstellungen, Auto-Nachrichten und Song-Wünsche im Browser (Overlay liest zd_bot_songs)
+    botPlus: {
+      async get() {
+        await requireAdmin();
+        return { settings: { ...BOT_DEFAULTS, ...store.get('bot_settings', {}) }, connected: false, missing: { moderation: false, shoutout: false, followage: false } };
+      },
+      async save(p) {
+        await requireAdmin();
+        const s = { ...BOT_DEFAULTS, ...store.get('bot_settings', {}), ...p };
+        const host = (a) => String(a).trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
+        s.mod_link_allow = [...new Set((s.mod_link_allow ?? []).map(host).filter((x) => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(x)))];
+        s.mod_words = [...new Set((s.mod_words ?? []).map((w) => String(w).trim().toLowerCase().slice(0, 40)).filter(Boolean))];
+        if (!['off', 'new', 'stream'].includes(s.greet_mode)) throw new Error('Ungültige Begrüßung.');
+        store.set('bot_settings', s);
+        return this.get();
+      },
+      timers: {
+        async list() {
+          return store.get('bot_timers', [
+            { id: 1, text: 'Gefällt dir der Stream? Ein Follow hilft enorm 💜', interval_min: 20, min_lines: 5, enabled: true, sent: 4, last_at: null, position: 1 },
+            { id: 2, text: 'Alle Befehle: !befehle · Song wünschen: !sr <YouTube-Link>', interval_min: 30, min_lines: 10, enabled: false, sent: 0, last_at: null, position: 2 },
+          ]);
+        },
+        async save(t) {
+          await requireAdmin();
+          if (!String(t.text ?? '').trim()) throw new Error('Bitte einen Text eintragen.');
+          const all = await this.list();
+          const row = { sent: 0, last_at: null, position: all.length + 1, ...all.find((x) => x.id === t.id), ...t, id: t.id ?? Date.now() };
+          store.set('bot_timers', t.id ? all.map((x) => (x.id === t.id ? row : x)) : [...all, row]);
+          return row;
+        },
+        async remove(id) { await requireAdmin(); store.set('bot_timers', (await this.list()).filter((x) => x.id !== id)); },
+      },
+      songs: {
+        all: () => store.get('bot_songs', [
+          { id: 1, video_id: 'dQw4w9WgXcQ', title: 'Rick Astley – Never Gonna Give You Up', seconds: 213, who: 'PixelPaul', source: 'chat', status: 'queued', position: 1 },
+          { id: 2, video_id: 'jfKfPfyJRdk', title: 'lofi hip hop radio – beats to relax/study to', seconds: 0, who: 'NightOwl_Mia', source: 'chat', status: 'queued', position: 2 },
+        ]),
+        put(list) { store.set('bot_songs', list); emitDemo('bot_songs', null); },
+        async list() { return this.all().filter((s) => ['queued', 'playing'].includes(s.status)).sort((a, b) => a.position - b.position || a.id - b.id); },
+        async history() { return this.all().filter((s) => ['done', 'skipped'].includes(s.status)).reverse().slice(0, 15); },
+        async control(action, id = null) {
+          await requireAdmin();
+          let list = this.all();
+          const queued = () => list.filter((s) => s.status === 'queued').sort((a, b) => a.position - b.position || a.id - b.id);
+          const startNext = () => { const n = queued()[0]; if (n) { n.status = 'playing'; n.played_at = new Date().toISOString(); } };
+          if (action === 'next' || action === 'skip') {
+            list.forEach((s) => { if (s.status === 'playing') s.status = action === 'skip' ? 'skipped' : 'done'; });
+            startNext();
+          } else if (action === 'stop') list.forEach((s) => { if (s.status === 'playing') s.status = 'done'; });
+          else if (action === 'play') {
+            list.forEach((s) => { if (s.status === 'playing') s.status = 'done'; });
+            const s = list.find((x) => x.id === id);
+            if (s) { s.status = 'playing'; s.played_at = new Date().toISOString(); }
+          } else if (action === 'remove') list = list.map((s) => (s.id === id && s.status === 'queued' ? { ...s, status: 'skipped' } : s));
+          else if (action === 'clear') list = list.map((s) => (s.status === 'queued' ? { ...s, status: 'skipped' } : s));
+          else if (action === 'up' || action === 'down') {
+            const q = queued();
+            const i = q.findIndex((s) => s.id === id);
+            const j = action === 'up' ? i - 1 : i + 1;
+            if (i >= 0 && q[j]) [q[i].position, q[j].position] = [q[j].position, q[i].position];
+          }
+          this.put(list.slice(-80));
+          return { ok: true, playing: list.find((s) => s.status === 'playing') ?? null };
+        },
+        async add(url) {
+          await requireAdmin();
+          const m = String(url ?? '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:\S*?&)?v=|shorts\/|embed\/|live\/))([A-Za-z0-9_-]{11})/) ?? String(url ?? '').trim().match(/^([A-Za-z0-9_-]{11})$/);
+          if (!m) return { ok: false, error: 'Das ist kein YouTube-Link.' };
+          const list = this.all();
+          if (list.some((s) => s.video_id === m[1] && ['queued', 'playing'].includes(s.status))) return { ok: false, error: 'Der Song ist schon drin.' };
+          const row = { id: Date.now(), video_id: m[1], title: `YouTube-Video ${m[1]}`, seconds: 0, who: current?.username ?? 'Demo', source: 'web', status: 'queued', position: Math.max(0, ...list.map((s) => s.position)) + 1 };
+          this.put([...list, row]);
+          return { ok: true, position: list.filter((s) => s.status === 'queued').length + 1, title: row.title };
+        },
+        on(cb) { (demoListeners.bot_songs ??= []).push(cb); addEventListener('storage', (e) => { if (e.key === 'zd_bot_songs') cb(); }); },
+      },
     },
     async watchTop(limit = 10) {
       const base = [
