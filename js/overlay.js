@@ -67,7 +67,7 @@
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
-//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize, hwsize, plsize)
+//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize, hwsize, plsize, ctsize, sgsize, hrsize)
 //                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   otheme, scene, camframe, labels, goal (+ sctitle, scsub, sctime, cfstyle, cflabel, lbitems, lbsize,
 //   gtype, gtarget, gtitle, gsince, gsize)
@@ -132,7 +132,7 @@ const params = LIVE ? new URLSearchParams(liveConfig) : urlParams;
 if (LIVE) for (const key of ['test', 'edit', 'scene']) if (urlParams.has(key)) params.set(key, urlParams.get(key));
 // Chatting-Szene (scene=chat): große Kamera links, Chat rechts – Spiel-Ebenen bleiben weg
 if (params.get('scene') === 'chat') {
-  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'recent', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'hotwords', 'poll', 'goal']) params.delete(key);
+  for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'recent', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'hotwords', 'poll', 'counter', 'gamewheel', 'goal']) params.delete(key);
   params.set('camframe', '1');
   params.set('cam', '3,7,62,76');
   params.set('chat', 'tr');
@@ -143,7 +143,7 @@ if (params.get('scene') === 'chat') {
 const REC = urlParams.has('rec') ? new Set((urlParams.get('rec') ?? '').split(',').filter(Boolean)) : null;
 if (REC) {
   for (const key of ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon',
-    'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'labels', 'goal']) if (!REC.has(key)) params.set(key, '0');
+    'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'labels', 'goal']) if (!REC.has(key)) params.set(key, '0');
   for (const key of ['prank', 'pet', 'camframe', 'pause']) if (!REC.has(key)) params.set(key, '0');
   if (!REC.has('ticker')) params.set('ticker_show', '0');
   if (!REC.has('scene')) params.delete('scene');
@@ -275,7 +275,7 @@ const LAYER_LOOK = {
   shop: ['#ov-shop', '.ov-shop'], challenge: ['#ov-challenge', '.ov-challenge'], alerts: ['#ov-alert', null], recent: ['#ov-recent', '.ov-recent'],
   chat: ['#ov-chat', '.ov-chat'], ticker: ['#ov-ticker', null], forbid: ['#ov-x-forbid', '.ov-x-forbid'], subathon: ['#ov-x-subathon', '.ov-x-subathon'],
   quiz: ['#ov-x-quiz', '.ov-x-quiz'], queue: ['#ov-x-queue', '.ov-x-queue'], tts: ['#ov-x-tts', '.ov-x-tts'], cards: ['#ov-x-cards', '.ov-x-cards'],
-  giveaway: ['#ov-x-giveaway', '.ov-x-giveaway'], hotwords: ['#ov-x-hotwords', '.ov-x-hotwords'], poll: ['#ov-x-poll', '.ov-x-poll'], labels: ['.ov-labels', '.ov-labels'], goal: ['.ov-goal', '.ov-goal'],
+  giveaway: ['#ov-x-giveaway', '.ov-x-giveaway'], hotwords: ['#ov-x-hotwords', '.ov-x-hotwords'], poll: ['#ov-x-poll', '.ov-x-poll'], counter: ['#ov-x-counter', '.ov-x-counter'], gamewheel: ['#ov-x-gamewheel', '.ov-x-gamewheel'], heart: ['#ov-x-heart', '.ov-x-heart'], labels: ['.ov-labels', '.ov-labels'], goal: ['.ov-goal', '.ov-goal'],
 };
 const LOOK_FONTS = {
   display: '"Barlow Condensed", "Arial Narrow", sans-serif', barlow: '"Barlow", system-ui, sans-serif', inter: '"Inter", system-ui, sans-serif',

@@ -1,6 +1,6 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
 // Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
-// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql).
+// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
@@ -178,6 +178,26 @@ function liveExtras({ sb, unwrap, invoke }) {
       addTest: null, // nur im Demo-Modus
     },
 
+    // ---------- Game-Pakete (…_game_packs.sql) ----------
+    counters: {
+      list: async () => unwrap(await sb.from('counters').select('*').order('position').order('id')),
+      save: ({ id = null, label, emoji, command, show = true, game = '' }) => rpc('counter_save', { p_id: id, p_label: label, p_emoji: emoji, p_command: command || null, p_show: show, p_game: game }),
+      add: (id, delta = 1, set = null) => rpc('counter_add', { p_id: id, p_delta: delta, p_set: set }),
+      remove: (id) => rpc('counter_delete', { p_id: id }),
+      order: (ids) => rpc('counter_order', { p_ids: ids }),
+    },
+    gamewheel: {
+      get: () => one('gamewheel'),
+      spin: ({ mode, options, ids = null, game = '' }) => rpc('gamewheel_spin', { p_mode: mode, p_options: options, p_ids: ids, p_game: game }),
+      save: ({ game = null, challenges = null, auto = null }) => rpc('gamewheel_save', { p_game: game, p_challenges: challenges, p_auto: auto }),
+      announce: flush, // Bot-Nachricht erst, wenn das Rad steht
+    },
+    heart: {
+      get: () => one('heart_rate'),
+      push: (bpm) => rpc('heart_push', { p_bpm: bpm }),
+      settings: ({ alarm = null, stop = false }) => rpc('heart_settings', { p_alarm: alarm, p_stop: stop }),
+    },
+
     // ---------- Vorlesen ----------
     tts: {
       settings: () => one('tts_settings'),
@@ -269,6 +289,8 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const T0 = { id: 1, need_approval: true, max_chars: 200, blocked_words: [] };
   const CS0 = { id: 1, pack_size: 3, daily: true, weights: [55, 25, 12, 6, 2] };
   const HW0 = { id: 1, enabled: true, max_words: 5, min_length: 3, round: 1, top: [], started_at: now(), updated_at: now() };
+  const GWH0 = { id: 1, challenges: {}, auto_switch: true, n: 0, mode: 'game', game: '', options: [], result_index: null, result: '', spun_by: '', spun_at: null };
+  const HR0 = { id: 1, bpm: null, at: null, alarm: 140, session_at: null, s_min: null, s_max: null, s_sum: 0, s_n: 0 };
   const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
@@ -728,6 +750,93 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         }
         store.set('giveaway_entries', list);
         return put('giveaway', GW0, { entries: g.entries + added });
+      },
+    },
+    // Game-Pakete: wie counter_*/gamewheel_*/heart_* in der Migration
+    counters: {
+      list: async () => [...store.get('counters', [])].sort((a, b) => a.position - b.position || a.id - b.id),
+      async save({ id = null, label, emoji, command, show = true, game = '' }) {
+        await requireAdmin();
+        const list = store.get('counters', []);
+        const cmd = String(command ?? '').replace(/^!+/, '').trim().toLowerCase() || null;
+        if (!String(label ?? '').trim() || String(label).trim().length > 24) throw new Error('Der Name braucht 1 bis 24 Zeichen.');
+        if (cmd && !/^[a-z0-9äöüß]{2,20}$/.test(cmd)) throw new Error('Der Chat-Befehl darf nur Buchstaben und Zahlen haben (2–20 Zeichen), z. B. tode.');
+        if (cmd && list.some((c) => c.command === cmd && c.id !== id)) throw new Error(`Den Befehl !${cmd} hat schon ein anderer Zähler.`);
+        if (id === null) {
+          if (list.length >= 12) throw new Error('Höchstens 12 Zähler.');
+          const row = { id: nextId++, label: label.trim(), emoji: emoji?.trim() || '🔢', command: cmd, value: 0, game, show, position: list.length + 1, last_delta: 0, last_by: '', updated_at: now() };
+          store.set('counters', [...list, row]);
+          emit('counters', row);
+          return row;
+        }
+        const next = list.map((c) => (c.id === id ? { ...c, label: label.trim(), emoji: emoji?.trim() || '🔢', command: cmd, show, updated_at: now() } : c));
+        store.set('counters', next);
+        emit('counters', next.find((c) => c.id === id));
+        return next.find((c) => c.id === id);
+      },
+      async add(id, delta = 1, set = null) {
+        await requireAdmin();
+        let row = null;
+        const next = store.get('counters', []).map((c) => {
+          if (c.id !== id) return c;
+          const value = Math.max(-999999, Math.min(999999, set !== null ? set : c.value + delta));
+          row = { ...c, value, last_delta: value - c.value, last_by: name(), updated_at: now() };
+          return row;
+        });
+        if (!row) throw new Error('Diesen Zähler gibt es nicht.');
+        store.set('counters', next);
+        emit('counters', row);
+        return row;
+      },
+      async remove(id) { await requireAdmin(); store.set('counters', store.get('counters', []).filter((c) => c.id !== id)); emit('counters', { id }); },
+      async order(ids) {
+        await requireAdmin();
+        store.set('counters', store.get('counters', []).map((c) => ({ ...c, position: ids.indexOf(c.id) + 1 || c.position })));
+        emit('counters', {});
+      },
+    },
+    gamewheel: {
+      get: async () => oneRow('gamewheel', GWH0),
+      async spin({ mode, options, ids = null, game = '' }) {
+        await requireAdmin();
+        const opts = (options ?? []).map((o) => String(o).trim().slice(0, 80)).filter(Boolean);
+        if (opts.length < 2 || opts.length > 16) throw new Error('Das Rad braucht 2 bis 16 Felder.');
+        const i = randomInt(opts.length);
+        const g = oneRow('gamewheel', GWH0);
+        return put('gamewheel', GWH0, { n: g.n + 1, mode, game, options: opts, result_index: i, result: opts[i], spun_by: name(), spun_at: now(), ids });
+      },
+      async save({ game = null, challenges = null, auto = null }) {
+        await requireAdmin();
+        const g = oneRow('gamewheel', GWH0);
+        const all = { ...g.challenges };
+        if (game) {
+          const list = (challenges ?? []).map((c) => String(c).trim().slice(0, 80)).filter(Boolean);
+          if (list.length > 16) throw new Error('Höchstens 16 Challenges je Game.');
+          if (list.length === 1) throw new Error('Mindestens 2 Challenges (oder keine für die Vorlage).');
+          if (list.length) all[game] = list; else delete all[game];
+        }
+        return put('gamewheel', GWH0, { challenges: all, auto_switch: auto ?? g.auto_switch });
+      },
+      announce: async () => {},
+    },
+    heart: {
+      get: async () => oneRow('heart_rate', HR0),
+      async push(bpm) {
+        await requireAdmin();
+        if (!(bpm >= 25 && bpm <= 250)) throw new Error(`Unplausibler Puls: ${bpm}`);
+        const h = oneRow('heart_rate', HR0);
+        if (h.at && Date.now() - Date.parse(h.at) < 2000) return { ok: false, reason: 'fast' };
+        const fresh = !h.at || Date.now() - Date.parse(h.at) > 600000;
+        put('heart_rate', HR0, fresh
+          ? { bpm, at: now(), session_at: now(), s_min: bpm, s_max: bpm, s_sum: bpm, s_n: 1 }
+          : { bpm, at: now(), s_min: Math.min(h.s_min, bpm), s_max: Math.max(h.s_max, bpm), s_sum: h.s_sum + bpm, s_n: h.s_n + 1 });
+        return { ok: true };
+      },
+      async settings({ alarm = null, stop = false }) {
+        await requireAdmin();
+        if (alarm !== null && (alarm < 60 || alarm > 220)) throw new Error('Die Warnschwelle kann 60 bis 220 sein.');
+        const h = oneRow('heart_rate', HR0);
+        return put('heart_rate', HR0, { alarm: alarm ?? h.alarm, ...(stop ? { at: null, bpm: null } : {}) });
       },
     },
     // Umfrage: wie poll_start/poll_vote/poll_finish in der Migration

@@ -102,6 +102,7 @@ type Shared = {
   queue: { open: boolean; waiting: number; note: string } | null;
   poll: Poll | null;
   pet: Pet | null;
+  counters: { emoji: string; label: string; value: number; command: string | null }[];
 };
 type Poll = {
   status: "open" | "closed"; round: number; question: string; options: string[]; counts: number[]; total: number;
@@ -142,7 +143,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  const [ch, conn, games, tiles, giveaway, queue, waiting, poll, pet, petOpen, realName] = await Promise.all([
+  const [ch, conn, games, tiles, giveaway, queue, waiting, poll, pet, petOpen, realName, counters] = await Promise.all([
     currentChannel().catch(() => null),
     db.from("twitch_connection").select("display_name, broadcaster_login").eq("id", 1).maybeSingle(),
     db.from("stream_games").select("active, current, live_game, live_category, live_at").eq("id", 1).maybeSingle(),
@@ -155,6 +156,8 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     db.from("pet").select("name, species, stage, feed_command, fed_count, last_fed_by, last_fed_at, hungry_after").eq("id", 1).maybeSingle(),
     petStarted().catch(() => false),
     twitchName(twitchId),
+    // Zähler (…_game_packs.sql), die im Stream zu sehen sind
+    db.from("counters").select("emoji, label, value, command").eq("show", true).order("position").limit(8),
   ]);
 
   // Game: gerade live → Standard-Game → erstes aktives
@@ -206,6 +209,10 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
         last_fed_at: p.last_fed_at ?? null, hungry_after: p.hungry_after ?? 45,
       }
       : null,
+    counters: counters.error || !all.some((t) => t.kind === "counter")
+      ? []
+      : (counters.data ?? []).map((c: { emoji: string; label: string; value: number; command: string | null }) =>
+        ({ emoji: c.emoji, label: c.label, value: c.value, command: c.command })),
   };
   cache.set(key, { at: Date.now(), data });
   return data;

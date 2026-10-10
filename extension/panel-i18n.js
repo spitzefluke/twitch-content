@@ -62,6 +62,8 @@
     'Kaut noch – in ein paar Sekunden wieder.',
     'Gerade pausiert – gleich geht’s weiter.',
     'Zu viele Klicks – kurz warten.',
+    '🔢 Zähler',
+    'Stand im Chat: {name}',
   ];
   var L = {
     en: [
@@ -123,6 +125,8 @@
       'Still chewing – try again in a few seconds.',
       'Paused right now – back soon.',
       'Too many clicks – wait a moment.',
+      '🔢 Counters',
+      'Count in chat: {name}',
     ],
     es: [
       'Cargando …',
@@ -183,6 +187,8 @@
       'Aún está masticando – inténtalo en unos segundos.',
       'En pausa ahora mismo – enseguida seguimos.',
       'Demasiados clics – espera un momento.',
+      '🔢 Contadores',
+      'Ver en el chat: {name}',
     ],
     fr: [
       'Chargement …',
@@ -243,6 +249,8 @@
       'Il mâche encore – réessaie dans quelques secondes.',
       'En pause pour le moment – ça reprend bientôt.',
       'Trop de clics – attends un instant.',
+      '🔢 Compteurs',
+      'Dans le chat : {name}',
     ],
     it: [
       'Caricamento …',
@@ -303,6 +311,8 @@
       'Sta ancora masticando – riprova tra qualche secondo.',
       'In pausa al momento – si riparte a breve.',
       'Troppi clic – aspetta un attimo.',
+      '🔢 Contatori',
+      'In chat: {name}',
     ],
     nl: [
       'Laden …',
@@ -363,6 +373,8 @@
       'Nog aan het kauwen – probeer het over een paar seconden.',
       'Even gepauzeerd – zo weer verder.',
       'Te veel klikken – even wachten.',
+      '🔢 Tellers',
+      'In de chat: {name}',
     ],
     pl: [
       'Ładowanie …',
@@ -423,6 +435,8 @@
       'Jeszcze żuje – spróbuj za kilka sekund.',
       'Chwilowo wstrzymane – zaraz wracamy.',
       'Za dużo kliknięć – poczekaj chwilę.',
+      '🔢 Liczniki',
+      'Na czacie: {name}',
     ],
     pt: [
       'Carregando …',
@@ -483,6 +497,8 @@
       'Ainda mastigando – tente em alguns segundos.',
       'Pausado agora – já voltamos.',
       'Cliques demais – espere um pouco.',
+      '🔢 Contadores',
+      'No chat: {name}',
     ],
     tr: [
       'Yükleniyor …',
@@ -543,6 +559,8 @@
       'Hâlâ çiğniyor – birkaç saniye sonra tekrar dene.',
       'Şu an duraklatıldı – birazdan devam.',
       'Çok fazla tıklama – biraz bekle.',
+      '🔢 Sayaçlar',
+      'Sohbette: {name}',
     ],
     ru: [
       'Загрузка …',
@@ -603,6 +621,8 @@
       'Ещё жуёт – попробуй через пару секунд.',
       'Сейчас пауза – скоро продолжим.',
       'Слишком много кликов – подожди немного.',
+      '🔢 Счётчики',
+      'В чате: {name}',
     ],
   };
   var dicts = {};

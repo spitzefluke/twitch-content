@@ -9,8 +9,11 @@ import { guard } from './extras-guard.js';
 import { giveaway } from './extras-giveaway.js';
 import { hotwords } from './extras-hotwords.js';
 import { poll } from './extras-poll.js';
+import { counter } from './extras-counter.js';
+import { gamewheel } from './extras-gamewheel.js';
+import { heart } from './extras-heart.js';
 
-export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll];
+export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart];
 export const EXTRA_KINDS = EXTRAS.map((f) => f.kind);
 const byKind = Object.fromEntries(EXTRAS.map((f) => [f.kind, f]));
 

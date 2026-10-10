@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101a34"/><stop offset="1" stop-color="#070a16"/></linearGradient>
+<radialGradient id="glow" cx=".66" cy=".52" r=".5"><stop offset="0" stop-color="#ff4fd8" stop-opacity=".35"/><stop offset="1" stop-color="#ff4fd8" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g transform="translate(540 260)">
+<path d="M0 0 L0 -170 A170 170 0 0 1 147 -85 Z" fill="#4f7cff"/>
+<path d="M0 0 L147 -85 A170 170 0 0 1 147 85 Z" fill="#ff4fd8"/>
+<path d="M0 0 L147 85 A170 170 0 0 1 0 170 Z" fill="#35c7ff"/>
+<path d="M0 0 L0 170 A170 170 0 0 1 -147 85 Z" fill="#ffb81c"/>
+<path d="M0 0 L-147 85 A170 170 0 0 1 -147 -85 Z" fill="#3ddc84"/>
+<path d="M0 0 L-147 -85 A170 170 0 0 1 0 -170 Z" fill="#9146ff"/>
+<circle r="170" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="6"/>
+<circle r="26" fill="#0c0f17" stroke="#ffffff" stroke-width="5"/>
+<text y="-60" x="70" font-size="40" text-anchor="middle">⛏️</text><text y="40" x="80" font-size="40" text-anchor="middle">👻</text><text y="95" x="-10" font-size="40" text-anchor="middle">⏱️</text><text y="20" x="-95" font-size="40" text-anchor="middle">💬</text>
+</g>
+<path d="M540 70 l-18 -30 h36 z" fill="#ffffff"/>
+</svg>
