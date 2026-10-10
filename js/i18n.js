@@ -139,10 +139,16 @@ export function langPicker(cls = '') {
   for (const l of LANGS) {
     const o = document.createElement('option');
     o.value = l.code;
-    o.textContent = `${l.flag} ${l.name}`;
     o.selected = l.code === lang;
     sel.append(o);
   }
+  // Auf dem Handy nur Flagge + Kürzel (sonst schiebt die Auswahl den Anmelde-Knopf aus dem Bild)
+  const narrow = matchMedia('(max-width: 640px)');
+  const label = () => [...sel.options].forEach((o, i) => {
+    o.textContent = narrow.matches ? `${LANGS[i].flag} ${LANGS[i].code.toUpperCase()}` : `${LANGS[i].flag} ${LANGS[i].name}`;
+  });
+  label();
+  narrow.addEventListener('change', label);
   sel.addEventListener('change', () => setLang(sel.value));
   return sel;
 }

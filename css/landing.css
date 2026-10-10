@@ -449,3 +449,7 @@ main.nc-wrap { flex: 1; }
 .nc-showcase-list .nc-channel-ava { width: 30px; height: 30px; }
 .nc-showcase-list small { opacity: .65; }
 .nc-showcase-live { padding: 1px 7px; border-radius: 999px; background: #e91916; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .06em; }
+@media (max-width: 640px) {
+  .lang-pick { padding: 5px 22px 5px 8px; background-position: right 8px center; font-size: 12px; }
+  .lang-pick--nav { margin-right: 6px; }
+}
