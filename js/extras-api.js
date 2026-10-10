@@ -5,6 +5,7 @@
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
 import { TTS_VOICES } from './tts-voice.js';
+import { pickRandom, randomFloat, randomInt, shuffled } from './random.js';
 
 export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 export { TTS_VOICES };
@@ -239,7 +240,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
     emit(table, next);
     return next;
   };
-  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  const pick = pickRandom;
   const clampInt = (v, lo, hi, fb) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : fb);
 
   const F0 = { id: 1, words: ['Digga', 'Sorry', 'Eigentlich', 'Krass', 'Bruder', 'Safe', 'Alter', 'Genau', 'Ehrlich gesagt', 'Lag'], word: '', running: false, count: 0, penalty_each: 10, penalty_what: 'Liegestütze', report_command: '!erwischt', pending: 0, last_event: {} };
@@ -289,7 +290,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
     const avail = RARITY_ORDER.map((r, i) => ({ r, w: active.some((c) => c.rarity === r) ? Math.max(0, w[i]) : 0 }));
     const total = avail.reduce((s, a) => s + a.w, 0);
     if (!total) return pick(active);
-    let roll = Math.random() * total;
+    let roll = randomFloat() * total;
     const r = avail.find((a) => (roll -= a.w) < 0)?.r ?? avail.find((a) => a.w)?.r;
     return pick(active.filter((c) => c.rarity === r));
   }
@@ -416,7 +417,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       async start({ minutes, title, message, game }) {
         await requireAdmin();
         const p = oneRow('pause_screen', P0);
-        if (!p.active) store.set('pause_secret', 1 + Math.floor(Math.random() * p.game_max));
+        if (!p.active) store.set('pause_secret', 1 + randomInt(p.game_max));
         return put('pause_screen', P0, {
           active: true, started_at: p.active ? p.started_at : now(),
           ends_at: minutes > 0 ? new Date(Date.now() + Math.min(600, minutes) * 60000).toISOString() : null,
@@ -431,7 +432,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         if (!cmd.startsWith('!')) cmd = `!${cmd}`;
         if (!/^![a-zäöüß0-9_]{2,20}$/.test(cmd)) throw new Error('Der Befehl darf nur Buchstaben und Zahlen haben, z. B. !rate.');
         const m = clampInt(max, 10, 10000, 100);
-        store.set('pause_secret', 1 + Math.floor(Math.random() * m));
+        store.set('pause_secret', 1 + randomInt(m));
         return put('pause_screen', P0, { game_max: m, guess_command: cmd, game_low: 1, game_high: m, game_guesses: 0 });
       },
       async guess(n) {
@@ -440,7 +441,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         if (!p.active || !p.game_on) throw new Error('Gerade läuft keine Pause mit Zahlenraten.');
         const g = Math.round(Number(n));
         if (!(g >= 1 && g <= p.game_max)) throw new Error(`Eine Zahl zwischen 1 und ${p.game_max}.`);
-        let secret = store.get('pause_secret', null) ?? 1 + Math.floor(Math.random() * p.game_max);
+        let secret = store.get('pause_secret', null) ?? 1 + randomInt(p.game_max);
         const hint = g === secret ? 'hit' : g < secret ? 'higher' : 'lower';
         const patch = {
           game_guesses: p.game_guesses + 1,
@@ -453,7 +454,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
             game_winners: [{ who: name(), round: p.game_round, guesses: p.game_guesses + 1, number: secret, at: now() }, ...p.game_winners].slice(0, 5),
             game_round: p.game_round + 1, game_low: 1, game_high: p.game_max, game_guesses: 0,
           });
-          secret = 1 + Math.floor(Math.random() * p.game_max);
+          secret = 1 + randomInt(p.game_max);
         }
         store.set('pause_secret', secret);
         put('pause_screen', P0, patch);
@@ -476,7 +477,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const list = questions();
         if (!list.length) throw new Error('Es gibt noch keine Quizfragen.');
         const q = questionId ? list.find((x) => x.id === questionId)
-          : [...list].sort((a, b) => (a.used_at ? Date.parse(a.used_at) : 0) - (b.used_at ? Date.parse(b.used_at) : 0) || Math.random() - 0.5)[0];
+          : shuffled(list).sort((a, b) => (a.used_at ? Date.parse(a.used_at) : 0) - (b.used_at ? Date.parse(b.used_at) : 0))[0];
         store.set('quiz_questions', list.map((x) => (x.id === q.id ? { ...x, used_at: now() } : x)));
         store.set('quiz_secret', q.correct);
         const secs = clampInt(seconds, 10, 300, 30);
@@ -585,8 +586,8 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const list = store.get('queue_entries', []);
         let order = this._order(list);
         if (cfg.mode === 'random') {
-          const subs = order.filter((e) => cfg.sub_priority && e.is_sub).sort(() => Math.random() - 0.5);
-          const rest = order.filter((e) => !(cfg.sub_priority && e.is_sub)).sort(() => Math.random() - 0.5);
+          const subs = shuffled(order.filter((e) => cfg.sub_priority && e.is_sub));
+          const rest = shuffled(order.filter((e) => !(cfg.sub_priority && e.is_sub)));
           order = [...subs, ...rest];
         }
         const chosen = order.slice(0, clampInt(count, 1, 20, cfg.squad_size));
@@ -699,7 +700,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const list = store.get('giveaway_entries', []);
         const taken = new Set(list.filter((e) => e.round === g.round).map((e) => e.key));
         let added = 0;
-        for (const name of NAMES.sort(() => Math.random() - 0.5)) {
+        for (const name of shuffled(NAMES)) {
           if (added >= n) break;
           const k = `demo:${name}`;
           if (taken.has(k)) continue;
@@ -758,7 +759,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const blocked = new Set(store.get('hotword_blocks', []).map((b) => b.word));
         const counts = store.get('hotword_counts', []);
         for (let i = 0; i < n; i++) {
-          let roll = Math.random() * sum;
+          let roll = randomFloat() * sum;
           const label = POOL[weights.findIndex((w) => (roll -= w) < 0)] ?? POOL[0];
           const w = label.toLowerCase();
           if (w.length < h.min_length || blocked.has(w)) continue;

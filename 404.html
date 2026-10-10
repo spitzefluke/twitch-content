@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ejyXWcYxn4LC09zTsipjFh4KwTEZkoid7Y+6wSHTAcc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hlB8/JCyPHsQ/R6ciCMzc0Jzr5NqbYQ5KOS68uud5yA='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
@@ -62,19 +62,22 @@
     <h1>Dieser Stream ist offline</h1>
     <p>Unter <span class="path" id="path">dieser Adresse</span> gibt es nichts zu sehen – vielleicht ein Tippfehler im Link oder die Seite ist umgezogen.</p>
     <div class="actions">
-      <a class="btn btn-primary" href="./" data-base="">🏠 Zur Startseite</a>
-      <a class="btn btn-ghost" href="./#dashboard" data-base="#dashboard">📊 Zum Dashboard</a>
+      <a class="btn btn-primary" href="./" id="go-home">🏠 Zur Startseite</a>
+      <a class="btn btn-ghost" href="./#dashboard" id="go-dashboard">📊 Zum Dashboard</a>
     </div>
     <footer>StreamHelp · Content-Ideen für deinen Stream</footer>
   </main>
   <script>
     // Grundadresse der Seite: bei GitHub Pages (Projektseite) der erste Pfadteil, sonst „/“
     (function () {
-      var parts = location.pathname.split('/').filter(Boolean);
-      var base = /\.github\.io$/.test(location.hostname) && parts.length ? '/' + parts[0] + '/' : '/';
-      document.querySelectorAll('[data-base]').forEach(function (a) { a.href = base + a.getAttribute('data-base'); });
-      var path = document.getElementById('path');
-      path.textContent = decodeURIComponent(location.pathname + location.search).slice(0, 120);
+      // (nur Buchstaben, Ziffern, Punkt, Minus, Unterstrich – alles andere fällt auf „/“ zurück)
+      var first = location.pathname.split('/').filter(Boolean)[0] || '';
+      var base = /\.github\.io$/.test(location.hostname) && /^[\w.-]+$/.test(first) ? '/' + first + '/' : '/';
+      document.getElementById('go-home').setAttribute('href', base);
+      document.getElementById('go-dashboard').setAttribute('href', base + '#dashboard');
+      var shown = location.pathname + location.search;
+      try { shown = decodeURIComponent(shown); } catch (e) { /* kaputte %-Folge: roh anzeigen */ }
+      document.getElementById('path').textContent = shown.slice(0, 120);
     })();
   </script>
 </body>

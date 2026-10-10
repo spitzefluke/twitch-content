@@ -10,6 +10,7 @@ import {
   audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, tooMany,
 } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
+import { errorText } from "../_shared/errors.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
 import { watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
@@ -64,12 +65,12 @@ Deno.serve(channelServe(async (req) => {
       try {
         return json(await startAnniversary(conn, profile?.username ?? "Mod", typeof start === "string" ? start : undefined));
       } catch (e) {
-        return json({ error: String((e as Error)?.message ?? e).slice(0, 300) }, 409);
+        return json({ error: errorText(e, 300) }, 409);
       }
     }
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {
     console.error("stream-tools:", e);
-    return json({ error: String((e as Error)?.message ?? e).slice(0, 300) }, 500);
+    return json({ error: errorText(e, 300) }, 500);
   }
 }));

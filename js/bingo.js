@@ -1,4 +1,5 @@
 // Fortnite-Bingo: gemeinsame Helfer für die Webseite (Dialog) und das OBS-Overlay.
+import { shuffled } from './random.js';
 
 // Seltenheit wie in Fortnite – Farben stehen in css/bingo.css (.r-common …)
 export const RARITIES = [
@@ -185,11 +186,7 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
 const nameKey = (item) => String(item.name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 const imageOf = (item) => item.image_key || item.path;
 export function pickDistinct(items, need = Infinity) {
-  const pool = items.filter((i) => !i.vault);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
+  const pool = shuffled(items.filter((i) => !i.vault));
   const names = new Set();
   const images = new Set();
   const out = [];

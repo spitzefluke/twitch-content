@@ -5,6 +5,7 @@ import { channelFetch, current as channel, rtSpec, storageFolder } from './chann
 import { BOARD } from './prank-fx.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, drawCard, fullBetLines } from './bingo.js';
+import { randomInt, shuffled } from './random.js';
 import { COSTUMES, DEFAULT_PET } from './pet.js';
 import { advanceStage, isSpecies } from './pet-species.js';
 import { DEFAULT_STAGE } from './questions.js';
@@ -810,7 +811,6 @@ function createLocalApi() {
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
   const emit = () => listeners.forEach((cb) => cb(current));
-  const randomInt = (max) => Math.floor(Math.random() * max);
 
   function makeSpin(variant, source, requestedBy) {
     const index = randomInt(variant.segments.length);
@@ -920,7 +920,7 @@ function createLocalApi() {
     return next;
   }
   // Kisten-Shop im Demo-Modus
-  const demoChests = () => [45 + randomInt(21), 90 + randomInt(31), 140 + randomInt(31), 200 + randomInt(41)].sort(() => Math.random() - 0.5);
+  const demoChests = () => shuffled([45 + randomInt(21), 90 + randomInt(31), 140 + randomInt(31), 200 + randomInt(41)]);
   const shopScore = (items) => { const f = items.filter((i) => i.found).length; return f + (items.length && f === items.length ? 10 : 0); };
   function saveRuns(runs) {
     store.set('shop_runs', runs.slice(0, 200));

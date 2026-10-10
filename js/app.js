@@ -30,6 +30,7 @@ import { h } from './extras-core.js';
 import { startTour } from './tour.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
+import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 // index.html?obs: nur die OBS-Einstellungen, als eigenes Fenster
@@ -5488,7 +5489,7 @@ function toLocalInput(d) {
 // js/overlay.js – beide gleich halten. Positionen setzt die Vorschau: Karten
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
-const OBS_WS_KEY = 'zd_obs_ws';
+const OBS_WS_KEY = 'zd_obs_ws'; // früher Klartext in localStorage – wird beim ersten Lesen verschlüsselt umgezogen
 const OBS_UNITS = { lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
@@ -6304,14 +6305,13 @@ async function openObsDialog({ page = false } = {}) {
   loadObsLive();
   paintObsConnection();
   paintStreamerView({ firstOpen: true });
-  // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt nur in diesem Browser.
-  const saved = readObsLogin();
-  if (saved && !obs.ws?.connected) {
-    $('#obs-ws-form').password.value = saved.password ?? '';
+  // Schon einmal verbunden? Dann gleich wieder – das Passwort liegt verschlüsselt nur in diesem Browser.
+  if (obs.ws?.connected) pollObsShot();
+  else readObsLogin().then((password) => {
+    if (password === null || obs.ws?.connected) return;
+    $('#obs-ws-form').password.value = password;
     connectObs({ quiet: true });
-  } else if (obs.ws?.connected) {
-    pollObsShot();
-  }
+  });
 
   const note = $('#obs-note');
   if (state.api.demo) {
@@ -6836,8 +6836,16 @@ async function copyObsUrl() {
 }
 
 // ---------- Verbindung zu OBS (WebSocket) ----------
-function readObsLogin() {
-  try { return JSON.parse(localStorage.getItem(OBS_WS_KEY)); } catch { return null; }
+async function readObsLogin() {
+  let legacy = null;
+  try { legacy = localStorage.getItem(OBS_WS_KEY); } catch { /* kein Zugriff */ }
+  if (legacy !== null) {
+    try { localStorage.removeItem(OBS_WS_KEY); } catch { /* egal */ }
+    let old = null;
+    try { old = JSON.parse(legacy)?.password ?? null; } catch { /* kaputt */ }
+    if (typeof old === 'string') await saveSecret(OBS_WS_KEY, old);
+  }
+  return loadSecret(OBS_WS_KEY);
 }
 
 async function connectObs({ quiet = false } = {}) {
@@ -6854,7 +6862,7 @@ async function connectObs({ quiet = false } = {}) {
     obs.ws.onClose = () => { disconnectObs(false); msg.textContent = 'Verbindung zu OBS getrennt.'; };
     const password = form.password.value;
     await obs.ws.connect({ password });
-    try { localStorage.setItem(OBS_WS_KEY, JSON.stringify({ password })); } catch { /* nur Komfort */ }
+    saveSecret(OBS_WS_KEY, password); // nur Komfort – klappt es nicht, fragt die Seite beim nächsten Mal wieder
     stopObsShare();
     obs.scene = await obs.ws.programScene();
     await loadObsSources({ pick: true });
@@ -6878,6 +6886,7 @@ function disconnectObs(forget) {
   obs.scene = null;
   if (forget) {
     try { localStorage.removeItem(OBS_WS_KEY); } catch { /* egal */ }
+    forgetSecret(OBS_WS_KEY);
     $('#obs-ws-form').password.value = '';
   }
   $('#obs-shot').hidden = true;
