@@ -4,6 +4,7 @@
 //   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
 //   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
 //   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
+//   POST {action:"watch_dates"}         → „Follower seit“/„Konto seit“ für die Watchtime-Rangliste nachholen (Admins, Mods mit Bereich Chat)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import {
@@ -12,7 +13,7 @@ import {
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { errorText } from "../_shared/errors.ts";
 import { ensureRedemptionSubscription } from "../_shared/pranks.ts";
-import { watchTick } from "../_shared/watchtime.ts";
+import { refreshWatchDates, watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
 
 Deno.serve(channelServe(async (req) => {
@@ -34,6 +35,13 @@ Deno.serve(channelServe(async (req) => {
   if (!(await rateLimit(`stream-tools:${user.id}`, 60))) return tooMany();
   try {
     if (action === "flush") return json({ sent: await flushOutbox() });
+
+    if (action === "watch_dates") {
+      // Watchtime-Rangliste im Dashboard: „Follower seit“/„Konto seit“ der Top 20 nachholen
+      if (!(await isAdminUser(user.id, "chat"))) return json({ error: "Nur der Streamer und freigegebene Mods." }, 403);
+      const { data } = await db.from("watchtime").select("twitch_id").order("seconds", { ascending: false }).limit(20);
+      return json({ updated: await refreshWatchDates((data ?? []).map((w) => w.twitch_id as string)) });
+    }
 
     if (action === "settle") {
       if (!(await isAdminUser(user.id, "pranks"))) return json({ error: "Nur der Streamer und die Mods." }, 403);

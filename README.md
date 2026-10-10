@@ -212,6 +212,12 @@ Im Dashboard unter **🤖 Bot & Chat** legen Streamer, Admins und freigegebene M
 
 Einmal nötig: Migration `20261017000000_chat_bot_commands.sql`.
 
+**Alte Watchtime, Twitch-Daten, „zählt seit“** (Migration `20261104000000_watchtime_import.sql`):
+
+- Twitch gibt die bisherige Zuschauzeit eines Zuschauers **nicht** heraus – dafür gibt es keine Schnittstelle. StreamHelp (wie jedes Tool) zählt ab dem ersten Stream mit Overlay; die Watchtime-Karte zeigt, **seit wann**.
+- **Import:** Unter Bot & Chat → Watchtime lädt der Streamer den Watchtime-Export eines früheren Bots als CSV hoch (StreamElements, Streamlabs, Nightbot, WizeBot …). Erkannt werden eine Namens-Spalte (`username`, `name`, `login` …) und eine Zeit-Spalte (`minutes`, `hours`, `watchtime` …, auch Texte wie „12h 30m“ oder „1:23:45“). Vor dem Speichern zeigt die Seite, wie viele Zuschauer und Stunden gefunden wurden. Ein neuer Import ersetzt den alten, „Import entfernen“ nimmt ihn wieder heraus. Gezählt wird beides zusammen – in der Rangliste, bei `!watchtime` und im Platzhalter `{watchtime}`.
+- **Twitch-Daten:** `!watchtime` nennt zusätzlich „Follower seit …“, die Rangliste zeigt „Follower seit“ und „Twitch seit“ (Konto erstellt). Geholt wird das bei Twitch höchstens einmal pro Woche je Zuschauer; „Follower seit“ braucht das Recht `moderator:read:followers` (hat die Verbindung schon für die Verlosung).
+
 ## Social-Logins für Zuschauer
 
 Auf der Anmeldeseite gibt es Buttons für **Twitch, Discord, Google, Spotify und GitHub**. Ein Button erscheint automatisch, sobald der Anbieter in Supabase eingeschaltet ist. Im Admin-Bereich unter „Anmelde-Möglichkeiten“ siehst du, welche schon aktiv sind.

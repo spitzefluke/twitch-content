@@ -7426,29 +7426,87 @@ async function botCommandClick(e) {
 }
 
 // ---------- Watchtime ----------
+// Rangliste (StreamHelp + Import), „zählt seit“, Twitch-Daten (Follower seit, Konto seit) und der
+// Import alter Zahlen aus einem anderen Bot (js/watch-import.js).
+const watchDay = (iso) => (iso ? new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '');
+let watchDatesAsked = false;
+
 async function loadWatchtime() {
   const status = $('#watch-status');
   const list = $('#watch-top');
   try {
-    const [top, ws] = await Promise.all([state.api.watchTop(10), state.api.watchState()]);
+    const [top, ws, info] = await Promise.all([
+      state.api.watchTop(10), state.api.watchState(), state.api.watchInfo?.().catch(() => null) ?? null,
+    ]);
     const ago = ws?.last_tick_at ? Math.round((Date.now() - Date.parse(ws.last_tick_at)) / 60000) : null;
-    status.textContent = ws?.live
-      ? `🔴 Live – zählt gerade ${ws.viewers ?? 0} ${ws.viewers === 1 ? 'Zuschauer' : 'Zuschauer'}${ws.source === 'chat' ? ' (nur Schreibende – Twitch neu verbinden für alle)' : ''}`
-      : ago !== null ? `Offline – zuletzt geprüft vor ${ago < 1 ? 'weniger als 1' : ago} Min` : 'Zählt ab dem nächsten Stream (OBS-Overlay muss laufen).';
+    const since = info?.counting_since ? ` · zählt seit ${watchDay(info.counting_since)}` : '';
+    status.textContent = (ws?.live
+      ? `🔴 Live – zählt gerade ${ws.viewers ?? 0} Zuschauer${ws.source === 'chat' ? ' (nur Schreibende – Twitch neu verbinden für alle)' : ''}`
+      : ago !== null ? `Offline – zuletzt geprüft vor ${ago < 1 ? 'weniger als 1' : ago} Min`
+        : info?.counting_since ? 'Offline' : 'Zählt ab dem nächsten Stream (OBS-Overlay muss laufen).') + since;
     list.replaceChildren(...(top ?? []).map((w) => {
-      const li = document.createElement('li');
-      const b = document.createElement('b');
-      b.textContent = w.display_name || w.login;
-      const span = document.createElement('span');
-      span.textContent = w.pretty;
-      li.append(b, span);
-      return li;
+      const extra = [
+        w.followed_at && `Follower seit ${watchDay(w.followed_at)}`,
+        w.account_created_at && `Twitch seit ${watchDay(w.account_created_at)}`,
+        w.imported > 0 && 'inkl. Import',
+      ].filter(Boolean).join(' · ');
+      return h('li', {},
+        h('div', { class: 'watch-who' }, h('b', {}, w.display_name || w.login), extra ? h('small', { title: extra }, extra) : null),
+        h('span', {}, w.pretty));
     }));
     if (!top?.length) list.innerHTML = '<li class="cmd-empty">Noch keine Watchtime erfasst.</li>';
+    renderWatchImport(info);
+    // Twitch-Daten der Rangliste einmal nachholen lassen (die Edge Function fragt höchstens 1× pro Woche)
+    if (!watchDatesAsked && (top ?? []).some((w) => w.twitch_id && !w.account_created_at)) {
+      watchDatesAsked = true;
+      state.api.watchDates?.().then((r) => { if (r?.updated) loadWatchtime(); }).catch(() => {});
+    }
   } catch (err) {
     status.textContent = cmdError(err);
     list.replaceChildren();
   }
+}
+
+function renderWatchImport(info) {
+  const box = $('#watch-import');
+  if (!box) return;
+  const imp = info?.imported;
+  const file = h('input', { type: 'file', accept: '.csv,.txt,text/csv', hidden: true });
+  const pick = h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, imp?.count ? '📥 Neuen Import hochladen' : '📥 Alte Watchtime importieren (CSV)');
+  pick.addEventListener('click', () => file.click());
+  const msg = h('p', { class: 'form-msg', role: 'status' });
+  const parts = [];
+  if (imp?.count) {
+    const clear = h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, '🗑️ Import entfernen');
+    clear.addEventListener('click', async () => {
+      if (!confirm('Importierte Watchtime entfernen? Die von StreamHelp gezählte Zeit bleibt.')) return;
+      try { await state.api.watchImportClear(); toast('Import entfernt.', 'ok'); loadWatchtime(); } catch (err) { msg.textContent = cmdError(err); }
+    });
+    parts.push(h('p', { class: 'watch-import-info' },
+      `Importiert: ${imp.count.toLocaleString('de-DE')} Zuschauer · ${Math.round(imp.seconds / 3600).toLocaleString('de-DE')} Std${imp.source ? ` aus ${imp.source}` : ''}${imp.at ? ` (${watchDay(imp.at)})` : ''}`), clear);
+  }
+  file.addEventListener('change', async () => {
+    const f = file.files?.[0];
+    file.value = '';
+    if (!f) return;
+    msg.textContent = '';
+    if (f.size > 8 * 1024 * 1024) { msg.textContent = 'Die Datei ist zu groß (höchstens 8 MB).'; return; }
+    try {
+      const { parseWatchCsv } = await import('./watch-import.js');
+      const res = parseWatchCsv(await f.text(), f.name);
+      if (!res.rows.length) { msg.textContent = 'In der Datei steht keine Watchtime, die sich lesen lässt.'; return; }
+      const hours = Math.round(res.rows.reduce((a, r) => a + r.seconds, 0) / 3600);
+      const top = res.rows.slice(0, 3).map((r) => `${r.name} (${Math.round(r.seconds / 3600)} Std)`).join(', ');
+      const ok = confirm(`${res.rows.length.toLocaleString('de-DE')} Zuschauer mit zusammen ${hours.toLocaleString('de-DE')} Std gefunden (Quelle: ${res.source})${res.skipped ? `, ${res.skipped} Zeilen übersprungen` : ''}.\n\nGanz vorne: ${top}\n\nImportieren? Ein früherer Import wird dabei ersetzt.`);
+      if (!ok) return;
+      const r = await state.api.watchImport(res.rows.slice(0, 50000), res.source);
+      toast(`Importiert: ${Number(r?.count ?? res.rows.length).toLocaleString('de-DE')} Zuschauer.`, 'ok');
+      loadWatchtime();
+    } catch (err) {
+      msg.textContent = err?.message ? cmdError(err) : String(err);
+    }
+  });
+  box.replaceChildren(h('div', { class: 'watch-import-row' }, ...parts, pick), file, msg);
 }
 
 // ============================================================
