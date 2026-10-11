@@ -110,6 +110,34 @@ function demoCall(action, extra) {
     }
     return { channels: list.map((c) => ({ note: '', admin_note: '', owner: c.owner ?? '', connected: false, created_at: c.created_at ?? new Date().toISOString(), ...c })) };
   }
+  if (action === 'channel_moderate') {
+    const list = read('channels', null) ?? demoCall('channels', {}).channels;
+    const now = Date.now();
+    const at = (min) => (min ? new Date(now + min * 60000).toISOString() : '9999-12-31T00:00:00+00:00');
+    for (const c of list.filter((x) => extra.channel_ids.includes(x.id))) {
+      if (extra.mod_action === 'timeout') { if (!c.is_default) Object.assign(c, { blocked_until: at(extra.minutes), admin_note: extra.reason || c.admin_note || '' }); }
+      if (extra.mod_action === 'untimeout') c.blocked_until = null;
+      if (extra.mod_action === 'overlay_off') Object.assign(c, { overlay_off_until: at(extra.minutes), overlay_off_reason: extra.reason ?? '' });
+      if (extra.mod_action === 'overlay_on') Object.assign(c, { overlay_off_until: null, overlay_off_reason: '' });
+      if (extra.mod_action === 'warn') Object.assign(c, { warning: extra.reason, warning_at: new Date().toISOString(), warning_seen_at: null });
+      if (extra.mod_action === 'unwarn') Object.assign(c, { warning: null, warning_at: null, warning_seen_at: null });
+    }
+    localStorage.setItem('zd_channels', JSON.stringify(list));
+    return demoCall('channels', {});
+  }
+  if (['platform_state', 'platform_switch', 'platform_maintenance', 'platform_reload', 'update_post', 'update_delete'].includes(action)) {
+    const p = read('platform_state', { overlays_off: false, bots_off: false, maint_on: false });
+    const until = (min) => (min ? new Date(Date.now() + min * 60000).toISOString() : null);
+    if (action === 'platform_switch') Object.assign(p, { [`${extra.what}_off`]: extra.minutes !== 0, [`${extra.what}_until`]: until(extra.minutes), [`${extra.what}_reason`]: extra.reason ?? '' });
+    if (action === 'platform_maintenance') Object.assign(p, { maint_on: extra.minutes !== 0, maint_until: until(extra.minutes), maint_message: extra.message ?? '', maint_overlays_off: !!extra.overlays_off });
+    if (action === 'platform_reload') p.reload_at = new Date().toISOString();
+    let updates = read('platform_updates', []);
+    if (action === 'update_post') updates = [...updates, { id: Date.now(), title: extra.title, body: extra.body, created_at: new Date().toISOString() }];
+    if (action === 'update_delete') updates = updates.filter((u) => u.id !== extra.id);
+    localStorage.setItem('zd_platform_state', JSON.stringify(p));
+    localStorage.setItem('zd_platform_updates', JSON.stringify(updates));
+    return { platform: { ...p, updates: updates.slice().reverse().map((u) => ({ ...u, reads: 0 })) } };
+  }
   if (action === 'bot_start') throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
   if (action === 'bot_disconnect') return { ok: true };
   if (action === 'site_session') {
@@ -415,6 +443,7 @@ function showApp() {
   loadInbox();
   refresh();
   loadChannels();
+  loadPlatform();
 }
 
 // ============================================================
@@ -445,7 +474,7 @@ function renderChannels() {
   $('#channels-count').textContent = list.length ? `(${nf.format(list.length)}${pending ? ` · ${pending} warten` : ''})` : '';
   const tbody = $('#channels');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="muted">Noch keine Kanäle.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="muted">Noch keine Kanäle.</td></tr>';
     return;
   }
   tbody.innerHTML = list.map((c) => {
@@ -454,12 +483,17 @@ function renderChannels() {
     if (c.status !== 'active') actions.push(`<button class="btn btn--primary btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="active">Freischalten</button>`);
     if (c.status !== 'blocked' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="blocked">Sperren</button>`);
     if (c.status === 'active' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="pending">Zurückstellen</button>`);
+    const mods = [];
+    if (c.blocked_until) mods.push(`<span class="chip chip--bad ch-mod">⏱️ Timeout bis ${escapeHtml(fmtUntil(c.blocked_until))}</span>`);
+    if (c.overlay_off_until) mods.push(`<span class="chip chip--warn ch-mod">📺 Overlay aus ${c.overlay_off_until.startsWith('9999') ? 'bis zum Aufheben' : `bis ${escapeHtml(fmtUntil(c.overlay_off_until))}`}</span>`);
+    if (c.warning) mods.push(`<span class="chip chip--warn ch-mod" title="${escapeAttr(c.warning)}">⚠️ Verwarnt${c.warning_seen_at && c.warning_seen_at >= c.warning_at ? ' · gelesen' : ' · ungelesen'}</span>`);
     return `
     <tr>
+      <td><input type="checkbox" data-pick="${escapeAttr(c.id)}" aria-label="${escapeAttr(c.display_name || c.login || 'Kanal')} auswählen"${state.picked?.has(c.id) ? ' checked' : ''}></td>
       <td><span class="u-name"><span class="avatar" aria-hidden="true">${escapeHtml((c.display_name || c.login || '?').slice(0, 1).toUpperCase())}</span>
         <span>${escapeHtml(c.display_name || c.login || '–')}${c.is_default ? ' <span class="chip">Standard</span>' : ''}<br>
         <small class="muted">${c.login ? `twitch.tv/${escapeHtml(c.login)}` : ''}${c.owner ? ` · Konto: ${escapeHtml(c.owner)}` : ''}</small></span></span></td>
-      <td><span class="chip ${cls}">${label}</span>${c.admin_note ? `<br><small class="muted">${escapeHtml(c.admin_note)}</small>` : ''}</td>
+      <td><span class="chip ${cls}">${label}</span>${mods.join('')}${c.admin_note ? `<br><small class="muted">${escapeHtml(c.admin_note)}</small>` : ''}</td>
       <td class="muted">${escapeHtml(c.note || '–')}</td>
       <td class="mono">${fmtDate(c.created_at)}</td>
       <td>${c.connected ? '<span class="chip chip--ok">verbunden</span>' : '<span class="muted">–</span>'}</td>
@@ -467,7 +501,151 @@ function renderChannels() {
     </tr>`;
   }).join('');
   tbody.querySelectorAll('button[data-status]').forEach((btn) => btn.addEventListener('click', () => setChannelStatus(btn)));
+  tbody.querySelectorAll('input[data-pick]').forEach((box) => box.addEventListener('change', () => {
+    state.picked ??= new Set();
+    if (box.checked) state.picked.add(box.dataset.pick); else state.picked.delete(box.dataset.pick);
+    paintBulk();
+  }));
+  paintBulk();
 }
+
+// ---------- Mehrere Kanäle moderieren (Migration …_channel_moderation.sql) ----------
+const fmtUntil = (iso) => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+function paintBulk() {
+  const ids = [...(state.picked ?? [])].filter((id) => (state.channels ?? []).some((c) => c.id === id));
+  state.picked = new Set(ids);
+  $('#ch-bulk-count').textContent = ids.length ? `${ids.length} Kanal${ids.length === 1 ? '' : 'e'} ausgewählt` : 'Keine Kanäle ausgewählt';
+  $('#ch-bulk').classList.toggle('has-selection', ids.length > 0);
+  const all = $('#ch-all');
+  all.checked = ids.length > 0 && ids.length === (state.channels ?? []).length;
+  all.indeterminate = ids.length > 0 && !all.checked;
+}
+
+const BULK_TEXT = {
+  timeout: ['⏱️ Timeout', 'gesperrt'], overlay_off: ['📺 Overlay aus', 'Overlay pausiert'], warn: ['⚠️ Verwarnung', 'verwarnt'],
+  untimeout: ['Timeout aufheben', 'Timeout aufgehoben'], overlay_on: ['Overlay an', 'Overlay läuft wieder'], unwarn: ['Verwarnung weg', 'Verwarnung entfernt'],
+};
+
+async function bulkModerate(btn) {
+  const action = btn.dataset.bulk;
+  const ids = [...(state.picked ?? [])];
+  if (!ids.length) { toast('Erst Kanäle auswählen (Häkchen links).', 'error'); return; }
+  const minutes = $('#ch-bulk-minutes').value;
+  const reason = $('#ch-bulk-reason').value.trim();
+  if (action === 'timeout' && !minutes) { toast('Für einen Timeout bitte eine Dauer wählen.', 'error'); return; }
+  if (action === 'warn' && !reason) { toast('Bitte den Text der Verwarnung eintragen.', 'error'); return; }
+  const names = ids.map((id) => state.channels.find((c) => c.id === id)).map((c) => c?.display_name || c?.login).join(', ');
+  const dur = minutes ? $('#ch-bulk-minutes').selectedOptions[0].textContent : 'bis zum Aufheben';
+  const what = { timeout: `${dur} sperren`, overlay_off: `Overlay ${dur} pausieren`, warn: 'verwarnen' }[action];
+  if (what && !confirm(`${names}: ${what}?${reason ? `\n\nText: ${reason}` : ''}`)) return;
+  btn.disabled = true;
+  try {
+    const data = await call('channel_moderate', {
+      channel_ids: ids, mod_action: action, minutes: ['timeout', 'overlay_off'].includes(action) && minutes ? Number(minutes) : null, reason,
+    });
+    state.channels = data.channels ?? state.channels;
+    renderChannels();
+    toast(`${ids.length} Kanal${ids.length === 1 ? '' : 'e'}: ${BULK_TEXT[action][1]}.`, 'ok');
+  } catch (err) {
+    toast(err.message, 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.querySelectorAll('#ch-bulk [data-bulk]').forEach((btn) => btn.addEventListener('click', () => bulkModerate(btn)));
+$('#ch-all')?.addEventListener('change', (e) => {
+  state.picked = new Set(e.target.checked ? (state.channels ?? []).filter((c) => !c.is_default).map((c) => c.id) : []);
+  renderChannels();
+});
+
+// ---------- Plattform steuern: Notfall-Schalter, Wartung, Neu laden, Neuigkeiten ----------
+async function loadPlatform() {
+  try {
+    const data = await call('platform_state');
+    state.platformState = data.platform;
+    $('#platform-note').textContent = '';
+  } catch (err) {
+    if (err.status === 401) return;
+    $('#platform-note').textContent = err.message;
+  }
+  renderPlatform();
+}
+
+function renderPlatform() {
+  const p = state.platformState;
+  if (!p) return;
+  const until = (iso) => (iso ? `bis ${fmtUntil(iso)}` : 'bis zum Aufheben');
+  for (const [key, label] of [['overlays', 'pausiert'], ['bots', 'stumm']]) {
+    const box = document.querySelector(`[data-switch="${key}"]`);
+    const on = p[`${key}_off`];
+    box.classList.toggle('is-on', !!on);
+    box.querySelector('[data-state]').textContent = on ? `🔴 ${label} ${until(p[`${key}_until`])}${p[`${key}_reason`] ? ` – ${p[`${key}_reason`]}` : ''}` : '🟢 läuft normal';
+  }
+  const m = $('#pf-maint');
+  m.classList.toggle('is-on', !!p.maint_on);
+  m.querySelector('[data-state]').textContent = p.maint_on
+    ? `🔴 Wartung ${until(p.maint_until)}${p.maint_overlays_off ? ' · Overlays leer' : ''}${p.maint_message ? ` – ${p.maint_message}` : ''}` : '🟢 keine Wartung';
+  $('#pf-reload [data-state]').textContent = p.reload_at ? `Zuletzt ausgerollt: ${fmtUntil(p.reload_at)}` : 'Noch nie ausgerollt';
+  const list = $('#pf-updates');
+  list.innerHTML = (p.updates ?? []).map((u) => `
+    <li><b>${escapeHtml(u.title)}</b><span><small>${escapeHtml(fmtUntil(u.created_at))} · ${nf.format(u.reads ?? 0)}× gelesen</small>
+      <button class="btn btn--ghost btn--sm" type="button" data-update-del="${escapeAttr(u.id)}">Löschen</button></span>
+      <p>${escapeHtml(u.body)}</p></li>`).join('') || '<li class="muted">Noch keine Neuigkeiten.</li>';
+  list.querySelectorAll('[data-update-del]').forEach((btn) => btn.addEventListener('click', async () => {
+    if (!confirm('Diese Neuigkeit löschen?')) return;
+    await platformCall(btn, 'update_delete', { id: Number(btn.dataset.updateDel) }, 'Gelöscht.');
+  }));
+}
+
+async function platformCall(btn, action, extra, okText) {
+  btn.disabled = true;
+  try {
+    const data = await call(action, extra);
+    state.platformState = data.platform ?? state.platformState;
+    renderPlatform();
+    if (okText) toast(okText, 'ok');
+    return true;
+  } catch (err) {
+    toast(err.message, 'error', 7000);
+    return false;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.querySelectorAll('[data-switch]').forEach((box) => {
+  const what = box.dataset.switch;
+  const label = what === 'overlays' ? 'Alle Overlays pausieren' : 'Den Chat-Bot in allen Kanälen stummschalten';
+  box.querySelector('[data-on]').addEventListener('click', (e) => {
+    const minutes = box.querySelector('[data-minutes]').value;
+    if (!confirm(`${label} – ${minutes ? box.querySelector('[data-minutes]').selectedOptions[0].textContent : 'bis zum Aufheben'}?`)) return;
+    platformCall(e.currentTarget, 'platform_switch', { what, minutes: minutes ? Number(minutes) : null, reason: box.querySelector('[data-reason]').value.trim() },
+      what === 'overlays' ? 'Alle Overlays pausiert.' : 'Chat-Bot überall stumm.');
+  });
+  box.querySelector('[data-off]').addEventListener('click', (e) => platformCall(e.currentTarget, 'platform_switch', { what, minutes: 0 }, 'Aufgehoben.'));
+});
+$('#pf-maint [data-on]')?.addEventListener('click', (e) => {
+  const box = $('#pf-maint');
+  const minutes = box.querySelector('[data-minutes]').value;
+  platformCall(e.currentTarget, 'platform_maintenance', {
+    minutes: minutes ? Number(minutes) : null, message: box.querySelector('[data-message]').value.trim(), overlays_off: box.querySelector('[data-overlays]').checked,
+  }, 'Wartung läuft.');
+});
+$('#pf-maint [data-off]')?.addEventListener('click', (e) => platformCall(e.currentTarget, 'platform_maintenance', { minutes: 0 }, 'Wartung beendet – alle laden die neue Version.'));
+$('#pf-reload [data-reload]')?.addEventListener('click', (e) => {
+  if (!confirm('Alle offenen Overlays und Dashboards neu laden? (Overlays flackern einmal kurz.)')) return;
+  platformCall(e.currentTarget, 'platform_reload', {}, 'Ausgerollt – alle laden innerhalb einer Minute neu.');
+});
+$('#pf-update-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const title = form.title.value.trim();
+  const body = form.body.value.trim();
+  if (!title || !body) { toast('Bitte Titel und Text eintragen.', 'error'); return; }
+  if (await platformCall(form.querySelector('button[type="submit"]'), 'update_post', { title, body }, 'Veröffentlicht.')) form.reset();
+});
 
 async function setChannelStatus(btn) {
   const c = (state.channels ?? []).find((x) => x.id === btn.dataset.channel);

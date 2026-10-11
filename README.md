@@ -763,6 +763,20 @@ Alles im Dashboard unter **🤖 Bot & Chat** (Streamer und freigegebene Mods mit
 
 Nebenbei repariert die Migration die Rechte der Edge Functions auf neuere Tabellen (z. B. Chat-Kommandos, Umfragen): Die Service-Rolle darf jetzt alle Tabellen in `core` lesen und schreiben.
 
+## Plattform steuern: Kanäle moderieren, Notfall-Schalter, Wartung, Updates
+
+Im **Admin-Bereich** (`admin.html`, nur der Plattform-Admin). Einmal nötig: Migration **`supabase/migrations/20261110000000_channel_moderation.sql`** (nach `…_chat_bot_plus.sql`).
+
+- **Kanäle moderieren** (Tabelle „Streamer-Kanäle“, Häkchen links – auch mehrere oder alle auf einmal):
+  - **⏱️ Timeout:** Kanal 15 Minuten bis 30 Tage sperren. Solange ist er für Zuschauer, Overlay, Panel und Chat-Bot weg; danach automatisch wieder da. Der Grund erscheint beim Streamer im Dashboard. Dauerhaft sperren geht weiter mit „Sperren“. Der Standard-Kanal bekommt keinen Timeout.
+  - **📺 Overlay aus:** Das OBS-Overlay des Kanals zeigt auf Zeit oder bis zum Aufheben nichts (kein Bild, kein Ton, keine Abfragen) und läuft danach von selbst weiter. In der Vorschau des OBS-Fensters steht ein Hinweis.
+  - **⚠️ Verwarnen:** Text, den der Streamer oben im Dashboard sieht, bis er „Verstanden“ klickt (im Admin-Bereich: gelesen/ungelesen).
+- **Notfall-Schalter für alle Kanäle:** „Alle Overlays“ pausieren und „Chat-Bot (alle Kanäle)“ stummschalten – auf Zeit oder bis zum Aufheben. Der stumme Bot liest und schreibt nichts (keine Befehle, keine Moderation, kein Danke).
+- **Wartung:** Hinweis mit Text oben im Dashboard aller Streamer, Overlays auf Wunsch solange leer. Beim Beenden laden alle die neue Version.
+- **Update ausrollen:** „Alle Overlays & Dashboards neu laden“ – offene Overlays in OBS laden innerhalb einer Minute neu, Dashboards nach einem 10-Sekunden-Hinweis.
+- **Neue Version:** Das Dashboard (auch das OBS-Fenster) prüft alle 10 Minuten, ob auf der Seite eine neuere Fassung liegt, und zeigt dann „Neue Version – Jetzt aktualisieren“.
+- **Was ist neu:** Neuigkeiten (Titel und Text) für Streamer und ihre freigegebenen Mods. Ungelesene öffnen sich einmal von selbst, danach links unter „🆕 Was ist neu“. Im Admin-Bereich steht, wie oft eine Neuigkeit gelesen wurde.
+
 ## Overlay in Module aufteilen
 
 Statt einer Browserquelle mit allem kann das Overlay auf mehrere Quellen verteilt werden – z. B. **Alerts** in jede Szene, den **Chat** nur in der Chatting-Szene, **Spiele** nur beim Zocken. OBS-Fenster → Reiter **„Module“**:

@@ -7,7 +7,7 @@
 // Dazu Danke für Follow, Abo, Bits und Raid (aus twitch-eventsub) und die Platzhalter {uptime} {game}
 // {title} {followage} in eigenen Befehlen. Was entschieden wird, steht in SQL (bot_chat, bot_event) –
 // hier passiert nur, was Twitch oder YouTube braucht.
-import { db, getAppToken, getConnection, helix, sendChat, type Connection } from "./twitch.ts";
+import { botsOff, db, getAppToken, getConnection, helix, sendChat, type Connection } from "./twitch.ts";
 import { lookupVideo, parseVideoId } from "./songs.ts";
 
 type Fragment = { type: string; text: string };
@@ -239,7 +239,7 @@ export async function thankEvent(type: string, event: TwitchEvent, messageId: st
   else if (type === "channel.subscription.gift") { kind = "gift"; amount = event.total ?? 1; if (event.is_anonymous) name = "Anonym"; }
   else if (type === "channel.cheer") { kind = "bits"; amount = event.bits ?? 0; if (event.is_anonymous) name = "Anonym"; }
   else if (type === "channel.raid") { kind = "raid"; name = event.from_broadcaster_user_name || event.from_broadcaster_user_login || ""; amount = event.viewers ?? 0; }
-  if (!kind) return;
+  if (!kind || await botsOff().catch(() => false)) return;
   // Twitch stellt manchmal doppelt zu: jede Meldung nur einmal bedanken
   if (messageId) {
     const { error } = await db.from("chat_cooldowns").insert({ slot: `ev:${messageId}`.slice(0, 80) });

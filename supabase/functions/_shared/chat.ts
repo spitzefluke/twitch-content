@@ -5,7 +5,7 @@
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
 // laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“) und „!puls“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
 // in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
-import { channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
+import { botsOff, channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
 import { handleExtraCommand } from "./extras.ts";
 import { noteChatter } from "./watchtime.ts";
@@ -62,6 +62,8 @@ type ChatMessage = {
 };
 
 export async function handleChatMessage(event: ChatMessage) {
+  // Notfall-Schalter im Admin-Bereich: Chat-Bot plattformweit aus – keine Befehle, keine Moderation
+  if (await botsOff().catch(() => false)) return;
   const text = (event.message?.text ?? "").trim();
   const self = await getBot();
   // Chat-Bot zuerst (…_chat_bot_plus.sql): Moderation, Begrüßung (fragt, ob jemand neu ist – darum vor der

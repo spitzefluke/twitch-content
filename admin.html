@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-EjlHcGZromtdmohZZdtS+UQpfqt1MtPZk9kHymPNjt4=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-UD/tOIcinGsazbG02MNMOEOT1m/6MH8WY5WeYgQfHh0=' 'sha256-1ui2VcY3Yi8XsSAiEp60aGoilmBOTdTRqWU9HU02x90='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
@@ -15,15 +15,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=da803a8c8d">
-  <link rel="stylesheet" href="css/admin.css?v=3e3af38802">
+  <link rel="stylesheet" href="css/admin.css?v=a5f72ef970">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=b3e38fed9d",
+      "./js/admin.js": "./js/admin.js?v=c78bb82299",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=6256ecb648",
-      "./js/app.js": "./js/app.js?v=8a186d8cfc",
+      "./js/api.js": "./js/api.js?v=6f1f01332f",
+      "./js/app.js": "./js/app.js?v=68c33f6ee9",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=ee0032b243",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
@@ -71,9 +71,11 @@
       "./js/overlay-modules.js": "./js/overlay-modules.js?v=c87ba0887a",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
       "./js/overlay-usage.js": "./js/overlay-usage.js?v=c51b368be2",
-      "./js/overlay.js": "./js/overlay.js?v=399181a0f1",
+      "./js/overlay.js": "./js/overlay.js?v=58af12c4d5",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
+      "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
+      "./js/platform-notices.js": "./js/platform-notices.js?v=2e1994fbf3",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
@@ -223,6 +225,65 @@
           <div id="variants" class="hbars"></div>
         </section>
 
+        <!-- Plattform steuern (js/admin.js, Migration …_channel_moderation.sql) -->
+        <section class="panel panel--wide" aria-labelledby="platform-title" id="platform-panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="platform-title">Plattform steuern</h2>
+              <p class="panel-sub">Notfall-Schalter für alle Kanäle, Wartung, Updates ausrollen und Neuigkeiten für Streamer und Mods.</p>
+            </div>
+          </div>
+          <p id="platform-note" class="check-result" role="status"></p>
+          <div class="pf-grid">
+            <div class="pf-box" data-switch="overlays">
+              <h3>📺 Alle Overlays</h3>
+              <p class="pf-state" data-state>–</p>
+              <div class="pf-row">
+                <select data-minutes aria-label="Dauer"><option value="">bis zum Aufheben</option><option value="15">15 Minuten</option><option value="60" selected>1 Stunde</option><option value="360">6 Stunden</option><option value="1440">24 Stunden</option><option value="4320">3 Tage</option><option value="10080">7 Tage</option><option value="43200">30 Tage</option></select>
+                <input data-reason maxlength="300" placeholder="Grund (für dich)" aria-label="Grund">
+              </div>
+              <div class="pf-row"><button class="btn btn--primary btn--sm" type="button" data-on>Pausieren</button><button class="btn btn--ghost btn--sm" type="button" data-off>Aufheben</button></div>
+              <p class="field-hint">Alle Overlays zeigen nichts (kein Bild, kein Ton) und laufen danach von selbst weiter.</p>
+            </div>
+            <div class="pf-box" data-switch="bots">
+              <h3>🤖 Chat-Bot (alle Kanäle)</h3>
+              <p class="pf-state" data-state>–</p>
+              <div class="pf-row">
+                <select data-minutes aria-label="Dauer"><option value="">bis zum Aufheben</option><option value="15">15 Minuten</option><option value="60" selected>1 Stunde</option><option value="360">6 Stunden</option><option value="1440">24 Stunden</option><option value="4320">3 Tage</option><option value="10080">7 Tage</option><option value="43200">30 Tage</option></select>
+                <input data-reason maxlength="300" placeholder="Grund (für dich)" aria-label="Grund">
+              </div>
+              <div class="pf-row"><button class="btn btn--primary btn--sm" type="button" data-on>Stummschalten</button><button class="btn btn--ghost btn--sm" type="button" data-off>Aufheben</button></div>
+              <p class="field-hint">Der Bot liest und schreibt nichts mehr – keine Befehle, keine Moderation, kein Danke.</p>
+            </div>
+            <div class="pf-box" id="pf-maint">
+              <h3>🛠️ Wartung</h3>
+              <p class="pf-state" data-state>–</p>
+              <div class="pf-row">
+                <select data-minutes aria-label="Dauer"><option value="">bis zum Beenden</option><option value="15">15 Minuten</option><option value="60" selected>1 Stunde</option><option value="360">6 Stunden</option><option value="1440">24 Stunden</option><option value="4320">3 Tage</option><option value="10080">7 Tage</option><option value="43200">30 Tage</option></select>
+                <input data-message maxlength="300" placeholder="Hinweis für Streamer, z. B. „Update läuft“" aria-label="Hinweis">
+              </div>
+              <label class="pf-check"><input type="checkbox" data-overlays> Overlays solange leer</label>
+              <div class="pf-row"><button class="btn btn--primary btn--sm" type="button" data-on>Wartung starten</button><button class="btn btn--ghost btn--sm" type="button" data-off>Beenden</button></div>
+              <p class="field-hint">Streamer sehen den Hinweis oben im Dashboard. Beim Beenden laden alle die neue Version.</p>
+            </div>
+            <div class="pf-box" id="pf-reload">
+              <h3>🔄 Update ausrollen</h3>
+              <p class="pf-state" data-state>–</p>
+              <div class="pf-row"><button class="btn btn--primary btn--sm" type="button" data-reload>Alle Overlays &amp; Dashboards neu laden</button></div>
+              <p class="field-hint">Offene Overlays in OBS und Dashboards holen sich innerhalb einer Minute die neue Version. Dashboards zeigen vorher 10 s einen Hinweis.</p>
+            </div>
+          </div>
+          <div class="pf-updates">
+            <h3>🆕 Was ist neu – Neuigkeiten für Streamer und ihre Mods</h3>
+            <form id="pf-update-form" class="pf-update-form" novalidate>
+              <input name="title" maxlength="120" placeholder="Titel, z. B. „Neu: Song-Wünsche“" aria-label="Titel" required>
+              <textarea name="body" maxlength="4000" rows="4" placeholder="Was ist neu? Kurz und verständlich." aria-label="Text" required></textarea>
+              <div class="pf-row"><button class="btn btn--primary btn--sm" type="submit">Veröffentlichen</button><span class="field-hint">Streamer und Mods sehen sie einmal beim nächsten Öffnen des Dashboards.</span></div>
+            </form>
+            <ul id="pf-updates" class="pf-update-list"></ul>
+          </div>
+        </section>
+
         <section class="panel panel--wide" aria-labelledby="channels-title" id="channels-panel">
           <div class="panel-head">
             <div>
@@ -231,10 +292,22 @@
             </div>
           </div>
           <p id="channels-note" class="check-result" role="status"></p>
+          <!-- Mehrere Kanäle auf einmal: Timeout, Overlay aus, Verwarnung -->
+          <div class="ch-bulk" id="ch-bulk">
+            <span class="ch-bulk-count" id="ch-bulk-count">Keine Kanäle ausgewählt</span>
+            <select id="ch-bulk-minutes" aria-label="Dauer"><option value="">bis zum Aufheben (nur Overlay)</option><option value="15">15 Minuten</option><option value="60" selected>1 Stunde</option><option value="360">6 Stunden</option><option value="1440">24 Stunden</option><option value="4320">3 Tage</option><option value="10080">7 Tage</option><option value="43200">30 Tage</option></select>
+            <input id="ch-bulk-reason" maxlength="500" placeholder="Grund / Text der Verwarnung (sieht der Streamer)" aria-label="Grund">
+            <button class="btn btn--primary btn--sm" type="button" data-bulk="timeout">⏱️ Timeout</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-bulk="overlay_off">📺 Overlay aus</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-bulk="warn">⚠️ Verwarnen</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-bulk="untimeout">Timeout aufheben</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-bulk="overlay_on">Overlay an</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-bulk="unwarn">Verwarnung weg</button>
+          </div>
           <div class="table-wrap">
             <table class="users channels">
               <thead>
-                <tr><th>Kanal</th><th>Status</th><th>Nachricht</th><th>Angemeldet</th><th>Twitch</th><th>Aktion</th></tr>
+                <tr><th><input type="checkbox" id="ch-all" aria-label="Alle auswählen"></th><th>Kanal</th><th>Status</th><th>Nachricht</th><th>Angemeldet</th><th>Twitch</th><th>Aktion</th></tr>
               </thead>
               <tbody id="channels"></tbody>
             </table>

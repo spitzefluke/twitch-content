@@ -17,6 +17,14 @@
 //   POST {action:"channels", token}         → alle Streamer-Kanäle mit Bewerbungen (Migration …_platform.sql)
 //   POST {action:"channel_status", token, channel_id, status, note?} → freischalten (active), sperren (blocked)
 //                                              oder zurück auf „wartet“ (pending)
+//   Kanäle moderieren und Plattform steuern (Migration …_channel_moderation.sql):
+//   POST {action:"channel_moderate", token, channel_ids[], mod_action, minutes?, reason?}
+//        mod_action: timeout | untimeout | overlay_off | overlay_on | warn | unwarn
+//   POST {action:"platform_state", token}   → Notfall-Schalter, Wartung, Neuigkeiten
+//   POST {action:"platform_switch", token, what: overlays|bots, minutes (0 = aufheben, null = bis Aufheben), reason?}
+//   POST {action:"platform_maintenance", token, minutes, message?, overlays_off?}
+//   POST {action:"platform_reload", token}  → alle Overlays und Dashboards laden neu
+//   POST {action:"update_post", token, title, body} · {action:"update_delete", token, id}
 import QRCode from "npm:qrcode@1.5.4";
 import { corsHeaders, db, env, getAppToken, helix, json, startTwitchLogin } from "../_shared/twitch.ts";
 
@@ -164,6 +172,10 @@ Deno.serve(async (req) => {
     if (body.action === "bot_start") return json({ url: await startTwitchLogin(await ensureSiteAdmin(), "bot") });
     if (body.action === "channels") return await channels();
     if (body.action === "channel_status") return await channelStatus(body.channel_id, body.status, body.note);
+    if (body.action === "channel_moderate") return await channelModerate(body);
+    if (["platform_state", "platform_switch", "platform_maintenance", "platform_reload", "update_post", "update_delete"].includes(body.action)) {
+      return await platform(body);
+    }
     if (body.action === "bot_disconnect") {
       const { error } = await db.from("twitch_bot").delete().eq("id", 1);
       if (error) throw error;
@@ -417,4 +429,45 @@ async function channelStatus(channelId: unknown, status: unknown, note: unknown)
     return json({ error: error.message }, 400);
   }
   return json({ channels: data });
+}
+
+// ---------- Kanäle moderieren, Notfall-Schalter, Wartung, Neuigkeiten (…_channel_moderation.sql) ----------
+const MODERATION_MISSING = "Einmal nötig: supabase/migrations/20261110000000_channel_moderation.sql im SQL Editor ausführen.";
+const minutesOf = (v: unknown) => (v === null || v === undefined || v === "" ? null : Math.round(Number(v)));
+const textOf = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+
+async function channelModerate(body: Record<string, unknown>) {
+  const ids = Array.isArray(body.channel_ids) ? body.channel_ids.filter((x) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)) : [];
+  if (!ids.length) return json({ error: "Keinen Kanal ausgewählt." }, 400);
+  const action = String(body.mod_action ?? "");
+  if (!["timeout", "untimeout", "overlay_off", "overlay_on", "warn", "unwarn"].includes(action)) return json({ error: "Unbekannte Aktion" }, 400);
+  const minutes = minutesOf(body.minutes);
+  if (minutes !== null && !Number.isFinite(minutes)) return json({ error: "Ungültige Dauer" }, 400);
+  const { data, error } = await db.rpc("channel_moderate", {
+    p_channels: ids.slice(0, 500), p_action: action, p_minutes: minutes, p_reason: textOf(body.reason, 500),
+  });
+  if (error) {
+    if (/channel_moderate/.test(error.message)) return json({ error: MODERATION_MISSING, missing: true }, 400);
+    return json({ error: error.message }, 400);
+  }
+  return json({ channels: data });
+}
+
+async function platform(body: Record<string, unknown>) {
+  const minutes = minutesOf(body.minutes);
+  if (minutes !== null && !Number.isFinite(minutes)) return json({ error: "Ungültige Dauer" }, 400);
+  const call = {
+    platform_state: () => db.rpc("platform_state_get"),
+    platform_switch: () => db.rpc("platform_switch", { p_what: String(body.what ?? ""), p_minutes: minutes, p_reason: textOf(body.reason, 300) }),
+    platform_maintenance: () => db.rpc("platform_maintenance", { p_minutes: minutes, p_message: textOf(body.message, 300), p_overlays_off: body.overlays_off === true }),
+    platform_reload: () => db.rpc("platform_reload"),
+    update_post: () => db.rpc("platform_update_post", { p_title: textOf(body.title, 120), p_body: textOf(body.body, 4000) }),
+    update_delete: () => db.rpc("platform_update_delete", { p_id: Number(body.id) || 0 }),
+  }[String(body.action)];
+  const { data, error } = await call!();
+  if (error) {
+    if (/platform_|function .* does not exist|schema cache/.test(error.message)) return json({ error: MODERATION_MISSING, missing: true }, 400);
+    return json({ error: error.message }, 400);
+  }
+  return json({ platform: data });
 }
