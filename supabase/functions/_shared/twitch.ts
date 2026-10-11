@@ -362,8 +362,19 @@ export async function getBot(): Promise<{ user_id: string; login: string; displa
 // wird mit dem App-Token: Dafür hat der Bot user:bot freigegeben und der Streamer
 // channel:bot (oder der Bot ist Moderator im Kanal). Twitch zeigt dann das
 // Bot-Abzeichen. Ohne verbundenen Bot bleibt der Chat still.
+// Notfall-Schalter (Migration …_channel_moderation.sql): Chat-Bot plattformweit still.
+// Höchstens alle 30 s nachfragen; fehlt die Migration, ist nichts aus.
+let botsGate: { off: boolean; at: number } | null = null;
+export async function botsOff(): Promise<boolean> {
+  if (botsGate && Date.now() - botsGate.at < 30_000) return botsGate.off;
+  const { data, error } = await db.rpc("bot_gate");
+  botsGate = { off: !error && data?.off === true, at: Date.now() };
+  return botsGate.off;
+}
+
 // replyTo: als Antwort auf diese Chat-Nachricht (Twitch zeigt sie dann verknüpft)
 export async function sendChat(conn: Connection, message: string, replyTo?: string) {
+  if (await botsOff()) return; // Notfall-Schalter: der Bot schweigt überall
   const bot = await getBot();
   if (!bot) throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
   const res = await helix("chat/messages", await getAppToken(), {

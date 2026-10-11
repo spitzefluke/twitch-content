@@ -36,6 +36,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
+import { loadUpdates, setMyChannel, startPlatformNotices } from './platform-notices.js';
 import { LAYERS, MODULES, layerName, moduleUrl } from './overlay-modules.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -845,6 +846,9 @@ async function enterApp(user, { animate = false } = {}) {
 
   renderHeader();
   renderChannelBar();
+  // Hinweise vom StreamHelp-Team, Wartung, „Alle neu laden“, neue Version und „Was ist neu“
+  startPlatformNotices({ api: state.api, toast, page: 'index.html', entry: 'app.js', isTeam });
+  loadUpdates();
   loadStreamer().then(channelNameFallback);
   maybeAskAccountType().finally(() => setTimeout(maybeAskTour, 700));
   let view = null;
@@ -1042,6 +1046,7 @@ function channelLink(c) {
 }
 
 function renderChannelBar() {
+  setMyChannel(state.platform ? state.myChannel : null); // Timeout, Overlay-Pause, Verwarnung (js/platform-notices.js)
   const btn = $('#channel-btn');
   btn.hidden = !state.platform || !state.channel || OBS_PAGE;
   if (!btn.hidden) {

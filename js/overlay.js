@@ -77,6 +77,7 @@
 //                              lassen sich mit der Maus verschieben, dazu der Kamera-Rahmen
 import { cleanModuleId, limitLayers } from './overlay-modules.js';
 import { reportUsage, startUsageMeter } from './overlay-usage.js';
+import { holdOverlayIfPaused, watchOverlayGate } from './platform-gate.js';
 import { CONFIG } from './config.js';
 import { channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
@@ -113,6 +114,8 @@ startUsageMeter(CONFIG.SUPABASE_URL);
 // Kanal (Plattform, js/channel.js): overlay.html?c=<Twitch-Login>; ohne c der Standard-Kanal.
 // Muss vor allem anderen feststehen – jede Abfrage schickt ihn mit.
 await useChannel(channelFromUrl());
+// Vom StreamHelp-Team pausiert (Kanal, Notfall-Schalter, Wartung – js/platform-gate.js)? Dann bleibt das Overlay leer.
+await holdOverlayIfPaused();
 async function useChannel(key) {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return;
   try {
@@ -459,6 +462,7 @@ async function start() {
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
   if (LIVE) watchOverlayConfig(source);
+  watchOverlayGate(); // pausiert oder „Alle neu laden“ im Admin-Bereich
   startWatchtime();
   startUsageReports();
   if (!opt.edit) watchForUpdate();

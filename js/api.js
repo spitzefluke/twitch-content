@@ -316,6 +316,14 @@ async function createSupabaseApi() {
       return error ? null : data;
     },
     async channelApply(note = '') { return unwrap(await sb.rpc('channel_apply', { p_note: note })); },
+    // Hinweise vom StreamHelp-Team (Migration …_channel_moderation.sql)
+    async channelWarningSeen() { return unwrap(await sb.rpc('channel_warning_seen')); },
+    async platformUpdates() {
+      const { data, error } = await sb.rpc('platform_updates_mine');
+      if (error) { if (missingFunction(error)) return []; throw error; }
+      return data ?? [];
+    },
+    async platformUpdatesRead(id = null) { return unwrap(await sb.rpc('platform_updates_read', { p_id: id })); },
     // Zuschauer oder Streamer? null = noch nie gefragt, 'unknown' = Migration fehlt (dann nicht fragen)
     async accountType() {
       const { data: session } = await sb.auth.getSession();
@@ -1379,7 +1387,14 @@ function createLocalApi() {
     },
     async channelMine() {
       const c = demoChannels().find((x) => x.owner && x.owner === current?.email);
-      return c ? { ...demoChannelPublic(c), note: c.note ?? '', admin_note: '', created_at: c.created_at } : null;
+      if (!c) return null;
+      const future = (iso) => (iso && Date.parse(iso) > Date.now() ? iso : null);
+      return {
+        ...demoChannelPublic(c), note: c.note ?? '', admin_note: c.admin_note ?? '', created_at: c.created_at,
+        blocked_until: future(c.blocked_until), overlay_off_until: future(c.overlay_off_until), overlay_off_reason: c.overlay_off_reason ?? '',
+        warning: c.warning || null, warning_at: c.warning_at ?? null,
+        warning_open: !!c.warning && (!c.warning_seen_at || c.warning_seen_at < c.warning_at),
+      };
     },
     async channelApply(note = '') {
       if (!current) throw new Error('Bitte zuerst anmelden.');
@@ -1394,6 +1409,22 @@ function createLocalApi() {
       return this.channelMine();
     },
     async accountType() { return current ? store.get(`account_type_${current.email}`, null) : 'unknown'; },
+    // Demo: Neuigkeiten schreibt der Admin-Bereich im selben Browser (zd_platform_updates)
+    async channelWarningSeen() {
+      const list = demoChannels();
+      const c = list.find((x) => x.owner && x.owner === current?.email);
+      if (c) { c.warning_seen_at = new Date().toISOString(); store.set('channels', list); }
+    },
+    async platformUpdates() {
+      if (!current) return [];
+      const read = store.get(`updates_read_${current.email}`, []);
+      return store.get('platform_updates', []).slice(-10).reverse().map((u) => ({ ...u, read: read.includes(u.id) }));
+    },
+    async platformUpdatesRead(id = null) {
+      if (!current) return;
+      const ids = store.get('platform_updates', []).map((u) => u.id).filter((x) => id === null || x === id);
+      store.set(`updates_read_${current.email}`, [...new Set([...store.get(`updates_read_${current.email}`, []), ...ids])]);
+    },
     async setAccountType(type) { if (current) store.set(`account_type_${current.email}`, type); },
     async hasTwitchLogin() { return true; }, // Demo: so tun, als wäre es ein Twitch-Konto
     // Demo: kein Twitch – der Streamer heißt wie der Kanal in js/config.js
