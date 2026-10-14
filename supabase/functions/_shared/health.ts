@@ -6,7 +6,9 @@
 //   · Chat-Bot verbunden? Secrets gesetzt?
 // Das Ergebnis steht in twitch_health (Migration …_streamhelp.sql); Streamer, Mods und
 // Admins sehen Probleme sofort im Dashboard.
-import { BROADCASTER_SCOPES, db, env, getAppToken, getBot, getConnection, helix } from "./twitch.ts";
+import {
+  AFFILIATE_ONLY_EVENTS, BROADCASTER_SCOPES, db, env, getAppToken, getBot, getConnection, helix, isAffiliateType, saveBroadcasterType,
+} from "./twitch.ts";
 import { ALERT_TYPES, ensureAlertSubscriptions } from "./alerts.ts";
 import { ensureRedemptionSubscription } from "./pranks.ts";
 import { ensureChatSubscription } from "./chat.ts";
@@ -88,17 +90,31 @@ export async function runHealthCheck({ repair = true } = {}) {
     }
   }
 
+  // Affiliate oder Partner? Ohne gibt es keine Kanalpunkte, Abos und Bits – das ist dann kein Fehler.
+  // Wird jemand Affiliate, merkt es der nächste Check und legt die fehlenden Abos an.
+  let affiliate = true;
+  try {
+    const me = (await helix("users", conn.access_token)).data?.[0];
+    if (me) {
+      affiliate = isAffiliateType(me.broadcaster_type);
+      await saveBroadcasterType(me.broadcaster_type);
+    }
+  } catch { /* Twitch nicht erreichbar: wie bisher prüfen */ }
+  details.affiliate = affiliate;
+
   // 2) Abos bei Twitch: reparieren, dann Stand lesen
   const subs: Record<string, { state: string; status?: string; message?: string }> = {};
   if (repair && secret) {
-    const alertState = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), secret, conn.scopes ?? []).catch((e) => {
+    const alertState = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), secret, conn.scopes ?? [], affiliate).catch((e) => {
       add({ code: "alerts_repair", level: "error", text: `Alert-Abos konnten nicht angelegt werden: ${(e as Error).message.slice(0, 120)}`, fix: "Später erneut prüfen" });
       return {} as Record<string, { state: string; message?: string }>;
     });
     Object.assign(subs, alertState);
-    await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), secret)
-      .then((id) => db.from("twitch_connection").update({ subscription_id: id }).eq("id", 1))
-      .catch((e) => add({ code: "redemptions_repair", level: "error", text: `Kanalpunkte-Abo fehlt: ${(e as Error).message.slice(0, 120)}`, fix: "Später erneut prüfen" }));
+    if (affiliate) {
+      await ensureRedemptionSubscription(conn.broadcaster_id, eventsubCallback(), secret)
+        .then((id) => db.from("twitch_connection").update({ subscription_id: id }).eq("id", 1))
+        .catch((e) => add({ code: "redemptions_repair", level: "error", text: `Kanalpunkte-Abo fehlt: ${(e as Error).message.slice(0, 120)}`, fix: "Später erneut prüfen" }));
+    }
     await ensureChatSubscription(conn.broadcaster_id, eventsubCallback(), secret).catch(() => null);
   }
   try {
@@ -107,6 +123,7 @@ export async function runHealthCheck({ repair = true } = {}) {
     const mine = (all.data ?? []) as { type: string; status: string; transport?: { callback?: string } }[];
     const needed = [...ALERT_TYPES.map((a) => a.type), "channel.channel_points_custom_reward_redemption.add", "channel.chat.message"];
     for (const type of needed) {
+      if (!affiliate && AFFILIATE_ONLY_EVENTS.includes(type)) { subs[type] = { state: "not_affiliate" }; continue; }
       const found = mine.filter((s) => s.type === type && s.transport?.callback === eventsubCallback());
       const good = found.find((s) => s.status === "enabled") ?? found.find((s) => s.status === "webhook_callback_verification_pending");
       const bad = found.find((s) => s !== good);
@@ -142,6 +159,7 @@ function label(type: string) {
     "channel.follow": "Follows", "channel.subscribe": "Abos", "channel.subscription.message": "Resubs",
     "channel.subscription.gift": "Abo-Geschenke", "channel.cheer": "Bits",
     "channel.channel_points_custom_reward_redemption.add": "Kanalpunkte", "channel.chat.message": "Chat",
+    "channel.raid": "Raids", "stream.online": "Stream-Start", "stream.offline": "Stream-Ende",
   } as Record<string, string>)[type] ?? type;
 }
 

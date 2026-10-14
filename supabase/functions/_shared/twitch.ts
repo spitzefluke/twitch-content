@@ -63,6 +63,11 @@ export function channelServe(handler: (req: Request) => Response | Promise<Respo
   return (req: Request) => withChannel(req.headers.get("x-channel"), async () => await handler(req));
 }
 
+// Kanal-Kennung dieser Anfrage, wie sie mitgeschickt wurde (EventSub: die Kanal-ID) – ohne Datenbank
+export function requestChannel(): string | null {
+  return channelStore.getStore()?.channel ?? null;
+}
+
 // ID des Kanals dieser Anfrage (null: Plattform-Migration fehlt noch oder Kanal unbekannt)
 export function currentChannelId(): Promise<string | null> {
   const store = channelStore.getStore();
@@ -72,6 +77,31 @@ export function currentChannelId(): Promise<string | null> {
   };
   if (!store) return load();
   return store.id ??= load();
+}
+
+// ---------- Affiliate (Migration …_live_sync.sql) ----------
+// Twitch-Status des Kanals: "" (normaler Kanal), "affiliate" oder "partner". Kanalpunkte, Abos, Bits und
+// Vorhersagen gibt es nur mit Affiliate/Partner – alles andere (Bot, Alerts für Follows und Raids,
+// Overlay, Content-Ideen) läuft für jeden Kanal. null = unbekannt (dann wird nichts gesperrt).
+export const AFFILIATE_ONLY_EVENTS = [
+  "channel.subscribe", "channel.subscription.message", "channel.subscription.gift", "channel.cheer",
+  "channel.channel_points_custom_reward_redemption.add",
+];
+export const isAffiliateType = (type: string | null | undefined) => type !== "";
+
+export async function saveBroadcasterType(type: unknown) {
+  if (typeof type !== "string" || !["", "affiliate", "partner"].includes(type)) return;
+  const id = await currentChannelId();
+  if (!id) return;
+  const { error } = await db.from("channels").update({ broadcaster_type: type }).eq("id", id);
+  if (error) console.warn("Twitch-Status nicht gespeichert (Migration …_live_sync.sql fehlt?):", error.message);
+}
+
+export async function broadcasterType(): Promise<string | null> {
+  const id = await currentChannelId();
+  if (!id) return null;
+  const { data, error } = await db.from("channels").select("broadcaster_type").eq("id", id).maybeSingle();
+  return error ? null : (data?.broadcaster_type ?? null);
 }
 
 export type Channel = {
@@ -112,12 +142,39 @@ export async function activeChannels(): Promise<Channel[]> {
 }
 
 // Kanal zu einer Twitch-ID (EventSub). Ohne Plattform: der Standard-Kanal (null).
+const twitchChannels = new Map<string, { id: string; at: number }>();
 export async function channelForTwitch(twitchId: string | undefined): Promise<{ known: boolean; id: string | null }> {
   if (!(await hasPlatform())) return { known: true, id: null };
   if (!twitchId) return { known: false, id: null };
+  // Kurz merken: Alerts kommen so ohne Umweg über die Datenbank durch (Sperren greifen nach höchstens 30 Sekunden)
+  const hit = twitchChannels.get(twitchId);
+  if (hit && Date.now() - hit.at < 30_000) return { known: true, id: hit.id };
   const { data, error } = await clientFor(null).rpc("channel_by_twitch", { p_twitch_id: twitchId });
   if (error) throw error;
-  return data ? { known: true, id: data as string } : { known: false, id: null };
+  if (!data) { twitchChannels.delete(twitchId); return { known: false, id: null }; }
+  twitchChannels.set(twitchId, { id: data as string, at: Date.now() });
+  return { known: true, id: data as string };
+}
+
+// Zurück auf die Webseite (nach Twitch- oder Google-Login), Ergebnis in der Adresse (?twitch=… bzw. ?youtube=…)
+export function backToSite(params: Record<string, string>, page = "") {
+  const site = Deno.env.get("SITE_URL");
+  if (!site) {
+    // Ohne SITE_URL gibt es kein Ziel für die Rückleitung. Dann wenigstens
+    // lesbar sagen, was passiert ist, statt mit einem nackten 500 zu enden.
+    const what = params.youtube ? "YouTube" : "Twitch";
+    const outcome = ["connected", "bot_connected"].includes(params.twitch ?? params.youtube ?? "")
+      ? `${what} ist verbunden.`
+      : `${what}-Verbindung fehlgeschlagen: ${params.detail ?? params.reason}`;
+    return new Response(`${outcome}\n\nIn Supabase fehlt das Secret SITE_URL – deshalb geht es nicht automatisch zurück zur Webseite.`, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+  // SITE_URL darf mit oder ohne "/" enden oder direkt auf index.html zeigen.
+  const base = site.endsWith("/") || /\.html?$/i.test(site) ? site : `${site}/`;
+  const target = page ? new URL(page, base) : new URL(site);
+  for (const [k, v] of Object.entries(params)) target.searchParams.set(k, v);
+  return Response.redirect(target.toString(), 302);
 }
 
 export function json(data: unknown, status = 200): Response {

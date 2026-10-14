@@ -9,7 +9,7 @@ import { shrinkImage } from './bingo.js';
 // Kanalpunkte-Belohnung (Kosten, Abklingzeit, an/aus, zu Twitch übernehmen) – nur Admins der Seite
 function rewardBox(key) {
   return `
-  <section class="bingo-box x-reward" data-reward="${key}">
+  <section class="bingo-box x-reward" data-reward="${key}" data-affiliate="Kanalpunkte">
     <h3 class="prank-h3">Kanalpunkte <small data-reward-state></small></h3>
     <form class="x-form" data-reward-form>
       <div class="x-grid2">

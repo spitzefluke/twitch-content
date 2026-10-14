@@ -5,6 +5,7 @@
 import { CONFIG } from './config.js';
 
 const OFFLINE_RETRY_MS = 60_000;
+const VIDEO_RETRY_MS = 10_000;
 const ERROR_RETRY_MS = 20_000;
 
 // Kanal aus Eingabe: „@name“, „youtube.com/@name“, „youtube.com/channel/UC…“ oder die Kanal-ID
@@ -49,18 +50,28 @@ async function call(body) {
   return data;
 }
 
+// channel: „@kanal“ (sucht die laufende Sendung) oder {video} (Sendung schon bekannt – YouTube mit StreamHelp
+// verbunden, dann alle 10 Sekunden nachsehen, bis der Chat offen ist).
 // on.message(msg), on.remove(id), on.clear(login), on.status(text). Liefert eine Stopp-Funktion.
 export function connectYouTubeChat(channel, on = {}) {
-  const ch = youtubeChannel(channel);
-  if (!ch || !CONFIG.SUPABASE_URL) return () => {};
+  const video = typeof channel === 'object' && /^[A-Za-z0-9_-]{11}$/.test(channel?.video ?? '') ? channel.video : null;
+  const ch = video ? null : youtubeChannel(channel);
+  if ((!ch && !video) || !CONFIG.SUPABASE_URL) return () => {};
+  // Bekannte Sendung: in den ersten Minuten oft nachsehen (sie startet gerade), danach wie sonst
+  let waited = 0;
+  const offlineRetry = () => {
+    const ms = video && waited < 3 * 60_000 ? VIDEO_RETRY_MS : OFFLINE_RETRY_MS;
+    waited += ms;
+    return ms;
+  };
   let stopped = false;
   let timer = 0;
   const next = (fn, ms) => { if (!stopped) timer = setTimeout(fn, ms); };
 
   const start = async () => {
     try {
-      const s = await call({ channel: ch });
-      if (!s.live) { on.status?.('offline'); next(start, OFFLINE_RETRY_MS); return; }
+      const s = await call(video ? { video } : { channel: ch });
+      if (!s.live) { on.status?.('offline'); next(start, offlineRetry()); return; }
       on.status?.('live');
       poll({ continuation: s.continuation, clientVersion: s.clientVersion, apiKey: s.apiKey }, true);
     } catch (err) {
@@ -74,7 +85,7 @@ export function connectYouTubeChat(channel, on = {}) {
     if (stopped) return;
     try {
       const r = await call(state);
-      if (r.ended || !r.continuation) { on.status?.('offline'); next(start, OFFLINE_RETRY_MS); return; }
+      if (r.ended || !r.continuation) { on.status?.('offline'); next(start, offlineRetry()); return; }
       // Die erste Antwort bringt die letzten Nachrichten vor dem Start mit – die nicht noch mal zeigen
       if (!first) for (const m of r.messages ?? []) on.message?.(youtubeMessage(m));
       for (const id of r.removed ?? []) on.remove?.(`yt-${id}`);

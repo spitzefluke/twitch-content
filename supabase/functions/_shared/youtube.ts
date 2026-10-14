@@ -162,6 +162,13 @@ export async function startChat(channel: string) {
   const path = channel.startsWith("@") ? channel : `channel/${channel}`;
   const videoId = liveVideoFromPage(await page(`https://www.youtube.com/${path}/live`));
   if (!videoId) return { live: false as const };
+  return await startChatForVideo(videoId);
+}
+
+// Video-ID schon bekannt (YouTube mit StreamHelp verbunden, youtube_live): direkt den Chat öffnen –
+// kein Suchen auf der Kanalseite, kein Verwechseln mit geplanten oder alten Streams
+export async function startChatForVideo(videoId: string) {
+  if (!VIDEO_RE.test(videoId)) return { live: false as const };
   const start = chatStartFromPage(await page(`https://www.youtube.com/live_chat?is_popout=1&v=${videoId}`));
   if (!start) return { live: false as const };
   return { live: true as const, videoId, ...start };

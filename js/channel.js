@@ -54,7 +54,8 @@ export function channelFetch(input, init = {}) {
   const url = typeof input === 'string' ? input : input?.url ?? String(input);
   if (!current.platform || !current.id || !NEEDS_CHANNEL.test(url)) return fetch(input, init);
   const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));
-  headers.set('x-channel', current.id);
+  // Schon gesetzt (z. B. Twitch für den eigenen, noch wartenden Kanal verbinden): so lassen
+  if (!headers.has('x-channel')) headers.set('x-channel', current.id);
   return fetch(input, { ...init, headers });
 }
 
@@ -63,6 +64,29 @@ export function rtSpec(table, event = '*') {
   return current.platform && current.id
     ? { event, schema: 'core', table, filter: `channel_id=eq.${current.id}` }
     : { event, schema: 'public', table };
+}
+
+// Neue Alerts so schnell wie möglich: Die Edge Function schickt jeden Alert per Realtime-Broadcast
+// (privates Thema alerts:<Kanal-ID>, Migration …_live_sync.sql) und speichert ihn gleichzeitig in
+// stream_alerts. Hier kommt an, was zuerst da ist – Doppelte fallen an der event_id raus.
+// Fehlt die Migration, bleibt es beim Weg über die Tabelle.
+export function alertFeed(sb, name, cb) {
+  const seen = new Set();
+  const pass = (a) => {
+    if (!a) return;
+    const key = a.event_id ? `e:${a.event_id}` : `i:${a.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (seen.size > 300) seen.delete(seen.values().next().value);
+    cb(a.id == null ? { ...a, id: key } : a);
+  };
+  sb.channel(name)
+    .on('postgres_changes', rtSpec('stream_alerts', 'INSERT'), (p) => pass(p.new))
+    .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Realtime-Kanal für Alerts fehlgeschlagen'); });
+  const topic = `alerts:${current.platform && current.id ? current.id : 'default'}`;
+  sb.channel(topic, { config: { private: true } })
+    .on('broadcast', { event: 'alert' }, (m) => pass(m.payload))
+    .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.info('Sofort-Alerts nicht verfügbar – Alerts kommen über die Datenbank'); });
 }
 
 // Ohne Anmeldung (Overlay, Startseite): Kanal über die Datenbank suchen.

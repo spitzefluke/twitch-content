@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-UD/tOIcinGsazbG02MNMOEOT1m/6MH8WY5WeYgQfHh0=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-CB2HlfiQXTkx15VzCgADQDsz6ejMcWRKcNwHnyESRIc=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -49,10 +49,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=da803a8c8d">
+  <link rel="stylesheet" href="css/style.css?v=d56be870ee">
   <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
   <link rel="stylesheet" href="css/landing.css?v=1141db800a">
-  <link rel="stylesheet" href="css/shell.css?v=1c7cde5cdd">
+  <link rel="stylesheet" href="css/shell.css?v=f0d941845b">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -63,24 +63,25 @@
   <script type="importmap">{
     "imports": {
       "./js/admin.js": "./js/admin.js?v=c78bb82299",
+      "./js/affiliate.js": "./js/affiliate.js?v=6a2436ccda",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=6f1f01332f",
-      "./js/app.js": "./js/app.js?v=68c33f6ee9",
+      "./js/api.js": "./js/api.js?v=03b9f3e1a2",
+      "./js/app.js": "./js/app.js?v=e7825471f3",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=ee0032b243",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
-      "./js/channel.js": "./js/channel.js?v=550327c428",
+      "./js/channel.js": "./js/channel.js?v=9ca5d517e8",
       "./js/config.js": "./js/config.js?v=93f6ab2ed3",
       "./js/dash-obsdata.js": "./js/dash-obsdata.js?v=800b31c135",
       "./js/dash-start.js": "./js/dash-start.js?v=c5fe8053c6",
       "./js/dash-stats.js": "./js/dash-stats.js?v=af175072ed",
       "./js/defaults.js": "./js/defaults.js?v=5748e675da",
       "./js/extras-api.js": "./js/extras-api.js?v=ab38b75a34",
-      "./js/extras-chatcontrol.js": "./js/extras-chatcontrol.js?v=ea363374e4",
+      "./js/extras-chatcontrol.js": "./js/extras-chatcontrol.js?v=58d325d442",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-counter.js": "./js/extras-counter.js?v=f5ef93b3a8",
-      "./js/extras-fun.js": "./js/extras-fun.js?v=b08fd66132",
+      "./js/extras-fun.js": "./js/extras-fun.js?v=dcf17541ef",
       "./js/extras-gamewheel.js": "./js/extras-gamewheel.js?v=f9e4229236",
       "./js/extras-giveaway.js": "./js/extras-giveaway.js?v=107cd80a12",
       "./js/extras-guard.js": "./js/extras-guard.js?v=6ef5d043e0",
@@ -114,7 +115,7 @@
       "./js/overlay-modules.js": "./js/overlay-modules.js?v=c87ba0887a",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=732e5b1d88",
       "./js/overlay-usage.js": "./js/overlay-usage.js?v=c51b368be2",
-      "./js/overlay.js": "./js/overlay.js?v=58af12c4d5",
+      "./js/overlay.js": "./js/overlay.js?v=41bf9e6713",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
@@ -138,7 +139,8 @@
       "./js/twitch-chat.js": "./js/twitch-chat.js?v=bc5184bc16",
       "./js/watch-import.js": "./js/watch-import.js?v=ee7e14f2c7",
       "./js/wheel.js": "./js/wheel.js?v=d81e65a827",
-      "./js/youtube-chat.js": "./js/youtube-chat.js?v=794cbfe644"
+      "./js/youtube-chat.js": "./js/youtube-chat.js?v=bf81b00d4e",
+      "./js/youtube-connect.js": "./js/youtube-connect.js?v=dee2b757f5"
     }
   }</script>
   <script type="module">import './js/app.js';</script>
@@ -777,7 +779,7 @@
         </section>
 
         <!-- Kanalpunkte -->
-        <section class="page" data-page="points" hidden>
+        <section class="page" data-page="points" data-affiliate="Kanalpunkte" hidden>
           <p class="page-intro">Alle Belohnungen, die StreamHelp auf Twitch anlegt. Kosten ändern Streamer und freigegebene Mods – die Änderung gilt sofort auf Twitch.</p>
           <div class="dash-cards" id="points-list"></div>
         </section>
@@ -785,7 +787,7 @@
         <!-- Alerts -->
         <section class="page" data-page="alerts" hidden>
           <div class="dash-cards">
-            <article class="dash-card dash-card--wide health-card" id="health-card" data-state="unknown">
+            <article class="dash-card dash-card--wide health-card" id="health-card" data-state="unknown" data-affiliate-soft="Abo-, Bits- und Kanalpunkte-Alerts">
               <header class="dash-card-head">
                 <span class="health-light" aria-hidden="true"></span>
                 <div><h2 id="health-title">Twitch-Verbindung wird geprüft …</h2><p class="dash-status" id="health-meta"></p></div>
@@ -1039,6 +1041,11 @@
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🟣</span><div><h2>Twitch-Kanal</h2><p class="dash-status" id="twitch-state">…</p></div></header>
               <div id="twitch-dialog-body" class="twitch-dialog-body"></div>
             </article>
+            <!-- YouTube mit Twitch live schalten (js/youtube-connect.js, Migration …_live_sync.sql) -->
+            <article class="dash-card dash-card--wide yt-card" id="yt-card" hidden>
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">▶️</span><div><h2>YouTube</h2><p class="dash-status" data-yt-status>…</p></div></header>
+              <div data-yt-body></div>
+            </article>
             <!-- Showcase auf der Startseite (Migration …_contact_showcase.sql) -->
             <article class="dash-card dash-card--wide" id="showcase-card">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🌟</span><div><h2>Auf der Startseite zeigen</h2><p class="dash-status" id="showcase-status">Dein Kanal erscheint auf der StreamHelp-Startseite unter „Diese Streamer nutzen StreamHelp“ – mit Live-Anzeige, wenn du streamst.</p></div></header>
@@ -1072,32 +1079,23 @@
           <button type="button" class="account-choice" data-account="streamer">
             <span class="account-choice-ico" aria-hidden="true">🎥</span>
             <b>Ja, ich streame</b>
-            <small>Eigener Kanal mit Content-Ideen, Overlay, Chat-Bot und Alerts. Wir schalten ihn kurz von Hand frei.</small>
+            <small>Eigener Kanal mit Content-Ideen, Overlay, Chat-Bot und Alerts – auch ohne Affiliate. Du verbindest gleich Twitch, wir schalten den Kanal kurz von Hand frei.</small>
           </button>
         </div>
       </div>
-      <div class="account-step" data-step="twitch" hidden>
-        <p class="account-lead">Streamer melden sich mit <b>Twitch</b> an – so ist sicher, dass der Kanal wirklich dir gehört.</p>
-        <p class="form-hint">Du bist gerade mit E-Mail oder einem anderen Konto angemeldet. Nach der Twitch-Anmeldung geht es hier direkt weiter.</p>
-        <div class="account-actions">
-          <button type="button" class="btn btn--ghost" data-account-back>← Zurück</button>
-          <button type="button" class="btn btn--primary" data-account-twitch>🟣 Mit Twitch anmelden</button>
-        </div>
+      <div class="account-step" data-step="connecting" hidden>
+        <p class="account-big" aria-hidden="true">🟣</p>
+        <p class="account-lead" data-connecting-text>Gleich geht es zu Twitch …</p>
+        <p class="form-hint">Twitch fragt einmal, ob StreamHelp deinen Kanal steuern darf – Chat-Bot, Alerts, Overlay und (wenn du Affiliate bist) Kanalpunkte. Danach geht es hier weiter.</p>
       </div>
-      <form class="account-step" data-step="apply" hidden>
-        <p class="account-lead">Dein Kanal: <b data-apply-name>dein Twitch-Kanal</b></p>
-        <label class="field"><span>Nachricht an uns (optional)</span>
-          <textarea name="note" maxlength="300" rows="3" placeholder="Was streamst du? Worauf freust du dich?"></textarea></label>
-        <p class="form-hint">Nach dem Absenden schalten wir deinen Kanal von Hand frei. Bis dahin kannst du dich bei anderen Streamern umsehen.</p>
-        <div class="account-actions">
-          <button type="button" class="btn btn--ghost" data-account-back>← Zurück</button>
-          <button type="submit" class="btn btn--primary">Kanal anmelden</button>
-        </div>
-      </form>
       <div class="account-step" data-step="done" hidden>
         <p class="account-big" aria-hidden="true">⏳</p>
-        <p class="account-lead"><b>Danke!</b> Dein Kanal wartet jetzt auf die Freischaltung. Sobald er frei ist, siehst du hier dein eigenes Dashboard.</p>
-        <div class="account-actions"><button type="button" class="btn btn--primary" data-close>Alles klar</button></div>
+        <p class="account-lead" data-done-text><b>Danke!</b> Dein Kanal wartet jetzt auf die Freischaltung. Sobald er frei ist, siehst du hier dein eigenes Dashboard.</p>
+        <p class="form-hint" data-done-connect-hint hidden>Twitch ist noch nicht verbunden – ohne Verbindung laufen Chat-Bot und Alerts nach der Freischaltung nicht.</p>
+        <div class="account-actions">
+          <button type="button" class="btn btn--twitch" data-account-connect hidden>🟣 Twitch jetzt verbinden</button>
+          <button type="button" class="btn btn--primary" data-close>Alles klar</button>
+        </div>
       </div>
     </div>
   </dialog>
@@ -1233,7 +1231,7 @@
       <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
     </div>
     <div class="we-body">
-      <form id="wheel-cost-form" class="we-card we-cost">
+      <form id="wheel-cost-form" class="we-card we-cost" data-affiliate="Kanalpunkte">
         <h3>Kosten auf Twitch</h3>
         <p class="we-hint" id="wheel-cost-hint"></p>
         <div class="we-cost-row">
@@ -1412,6 +1410,12 @@
         <form id="prank-admin" class="prank-admin" hidden>
           <h3 class="prank-h3">Für Admins</h3>
           <label class="toggle">
+            <input type="checkbox" name="allow_uploads">
+            <span class="toggle-ui" aria-hidden="true"></span>
+            Alle dürfen eigene Sounds hochladen
+          </label>
+          <div class="prank-points" data-affiliate="Kanalpunkte-Belohnungen">
+          <label class="toggle">
             <input type="checkbox" name="enabled">
             <span class="toggle-ui" aria-hidden="true"></span>
             Kanalpunkte-Belohnungen auf Twitch aktiv
@@ -1426,11 +1430,6 @@
             <p class="form-hint" id="prank-direct-note"></p>
             <ul class="prank-direct-list" id="prank-direct-list"></ul>
           </fieldset>
-          <label class="toggle">
-            <input type="checkbox" name="allow_uploads">
-            <span class="toggle-ui" aria-hidden="true"></span>
-            Alle dürfen eigene Sounds hochladen
-          </label>
           <label class="field"><span>Abklingzeit auf Twitch (nach jeder Einlösung)</span>
             <select name="cooldown_seconds">
               <option value="0">keine</option>
@@ -1448,6 +1447,7 @@
             <button class="btn btn--ghost btn--sm" type="button" id="prank-sync">Auf Twitch übernehmen</button>
           </div>
           <p class="form-hint">Änderungen gehen beim Speichern automatisch zu Twitch. Du als Admin löst hier direkt aus, ohne Kanalpunkte.</p>
+          </div>
           <div class="tile-start">
             <label class="field"><span>Für Zuschauer freigeschaltet ab</span>
               <input type="datetime-local" data-tile-start="prank">
@@ -1551,7 +1551,7 @@
           </div>
         </section>
 
-        <section class="bingo-box" id="bingo-bet-box">
+        <section class="bingo-box" id="bingo-bet-box" data-affiliate="Twitch-Vorhersagen (die Tipprunde)">
           <h3 class="prank-h3">🎯 Tipprunde <small>Kanalpunkte</small></h3>
           <p class="form-hint">Die Zuschauer tippen über eine Twitch-Vorhersage, welche Reihe zuerst voll wird. Wer richtig liegt, bekommt Kanalpunkte dazu. Ist eine getippte Reihe voll, löst die Seite die Vorhersage von selbst auf.</p>
           <div class="bingo-bet-start" id="bingo-bet-start">
@@ -2158,7 +2158,7 @@
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chtw" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch-Chat</label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chplat" checked><span class="toggle-ui" aria-hidden="true"></span>Twitch- bzw. YouTube-Logo vor jedem Namen</label>
                   <label class="toggle obs-row-toggle"><input type="checkbox" name="chstat" checked><span class="toggle-ui" aria-hidden="true"></span>Verbindung anzeigen (Twitch verbunden, YouTube live)</label>
-                  <label class="obs-row"><span>YouTube</span><input type="text" name="yt" maxlength="80" placeholder="@Kanalname – leer = ohne YouTube" autocomplete="off" spellcheck="false"></label>
+                  <label class="obs-row" title="Mit verbundenem YouTube-Kanal (Twitch-Verbindung → YouTube) kommt der Chat der laufenden Sendung von selbst dazu"><span>YouTube</span><input type="text" name="yt" maxlength="80" placeholder="@Kanalname – oder YouTube verbinden" autocomplete="off" spellcheck="false"></label>
                   <label class="obs-row"><span>Stil</span><select name="chstyle"><option value="card" selected>Karte</option><option value="bubble">Sprechblasen</option><option value="clean">Schlicht – nur Text</option></select></label>
                   <label class="obs-row" title="Ganz links: wächst mit den Nachrichten"><span>Höhe</span><input type="range" name="chh" min="15" max="95" step="5" value="15"><output name="chh-out"></output></label>
                   <label class="obs-row"><span>Zeilen</span><input type="range" name="chmax" min="3" max="50" step="1" value="8"><output name="chmax-out"></output></label>

@@ -2,9 +2,10 @@
 // Das Overlay kann youtube.com nicht selbst abfragen (der Browser verbietet das),
 // deshalb holt diese Funktion die Nachrichten und gibt sie weiter. Sie speichert nichts.
 //   POST {channel: "@kanal" | "UC…"}                     → {live:false} oder {live:true, videoId, continuation, clientVersion, apiKey}
+//   POST {video: "<Video-ID>"}                            → dasselbe für eine bekannte Sendung (YouTube verbunden)
 //   POST {continuation, clientVersion, apiKey}          → {ended:true} oder {messages, removed, removedAuthors, continuation, timeoutMs}
 // Ohne Anmeldung aufrufbar (OBS hat keine) – sie fragt nur fest vorgegebene YouTube-Adressen ab.
-import { CHANNEL_RE, CONTINUATION_RE, pollChat, startChat } from "../_shared/youtube.ts";
+import { CHANNEL_RE, CONTINUATION_RE, pollChat, startChat, startChatForVideo, VIDEO_RE } from "../_shared/youtube.ts";
 import { errorText } from "../_shared/errors.ts";
 
 const cors = {
@@ -23,6 +24,10 @@ Deno.serve(async (req) => {
     if (typeof body.continuation === "string") {
       if (!CONTINUATION_RE.test(body.continuation)) return json({ error: "Ungültiger Startpunkt" }, 400);
       return json(await pollChat(body.continuation, String(body.clientVersion ?? ""), body.apiKey ? String(body.apiKey) : null));
+    }
+    if (typeof body.video === "string") {
+      if (!VIDEO_RE.test(body.video)) return json({ error: "Ungültige Video-ID" }, 400);
+      return json(await startChatForVideo(body.video));
     }
     const channel = String(body.channel ?? "").trim();
     if (!CHANNEL_RE.test(channel)) return json({ error: "Kanal als @name oder Kanal-ID (UC…) angeben." }, 400);

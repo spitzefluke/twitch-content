@@ -79,7 +79,7 @@ import { cleanModuleId, limitLayers } from './overlay-modules.js';
 import { reportUsage, startUsageMeter } from './overlay-usage.js';
 import { holdOverlayIfPaused, watchOverlayGate } from './platform-gate.js';
 import { CONFIG } from './config.js';
-import { channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
+import { alertFeed, channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
 import { Wheel } from './wheel.js';
 import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
@@ -458,7 +458,7 @@ async function start() {
   if (opt.alerts || opt.recent) setupAlerts(source);
   if (opt.tickerOn) setupTicker(source);
   else { $('ov-ticker').hidden = true; $('ov-ticker').style.display = 'none'; }
-  if (opt.chat) setupChat();
+  if (opt.chat) setupChat(source);
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
   if (LIVE) watchOverlayConfig(source);
@@ -605,12 +605,15 @@ async function connect() {
         .on('postgres_changes', rtSpec('alert_config', 'UPDATE'), (p) => cb(p.new.config))
         .subscribe();
     },
-    alertMediaUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${path.split('/').map(encodeURIComponent).join('/')}`,
-    onAlert(cb) {
-      sb.channel('overlay-alerts')
-        .on('postgres_changes', rtSpec('stream_alerts', 'INSERT'), (p) => cb(p.new))
-        .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('Overlay: Realtime-Kanal für Alerts fehlgeschlagen'); });
+    // YouTube mit StreamHelp verbunden (…_live_sync.sql): Video-ID der laufenden Sendung für den Chat
+    youtubeLive: async () => (await rows(sb.from('youtube_live').select('video_id, status, chat_merge').eq('id', 1).maybeSingle())) ?? null,
+    onYoutubeLive(cb) {
+      sb.channel('overlay-youtube')
+        .on('postgres_changes', rtSpec('youtube_live', '*'), (p) => cb(p.new))
+        .subscribe();
     },
+    alertMediaUrl: (path) => `${CONFIG.SUPABASE_URL}/storage/v1/object/public/alert-media/${path.split('/').map(encodeURIComponent).join('/')}`,
+    onAlert: (cb) => alertFeed(sb, 'overlay-alerts', cb),
     onChallenge(cb) {
       sb.channel('overlay-challenge')
         .on('postgres_changes', rtSpec('win_challenge', 'UPDATE'), (p) => cb(p.new))
@@ -1732,7 +1735,7 @@ function burst(host, kind) {
 // ============================================================
 // Twitch-Chat
 // ============================================================
-function setupChat() {
+function setupChat(source) {
   const card = $('ov-chat');
   const list = $('ov-chat-list');
   card.classList.add(`chat-style-${opt.chstyle}`);
@@ -1807,7 +1810,25 @@ function setupChat() {
   };
   const twitchLogin = STREAMER.login || CONFIG.CHANNEL;
   if (opt.chtw && twitchLogin) { setStatus('twitch', 'connecting'); connectTwitchChat(twitchLogin, handlers); }
-  if (opt.yt) connectYouTubeChat(opt.yt, { ...handlers, status: (s) => setStatus('youtube', s) });
+  // YouTube: Ist der YouTube-Kanal mit StreamHelp verbunden (youtube_live), kommt der Chat der laufenden
+  // Sendung direkt über die Video-ID – sofort beim Twitch-Start, ohne Suchen. Sonst wie bisher über yt=@kanal.
+  const ytHandlers = { ...handlers, status: (s) => setStatus('youtube', s) };
+  let stopYt = null;
+  let ytKey = null;
+  const startYt = (row) => {
+    const video = row?.chat_merge && row.video_id && ['starting', 'live'].includes(row.status) ? row.video_id : null;
+    const key = video ? `v:${video}` : opt.yt ? `c:${opt.yt}` : null;
+    if (key === ytKey) return;
+    stopYt?.();
+    ytKey = key;
+    stopYt = video ? connectYouTubeChat({ video }, ytHandlers) : opt.yt ? connectYouTubeChat(opt.yt, ytHandlers) : null;
+  };
+  if (source?.youtubeLive) {
+    source.youtubeLive().catch(() => null).then((row) => {
+      startYt(row);
+      source.onYoutubeLive?.(startYt);
+    });
+  } else startYt(null);
   // Vorschau: so sieht die Anzeige aus, wenn alles läuft
   if (opt.edit || opt.test) {
     if (opt.chtw) setStatus('twitch', 'verbunden');

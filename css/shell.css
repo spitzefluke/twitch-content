@@ -392,6 +392,8 @@
 .health-subs li::before { content: "✓"; font-weight: 800; color: var(--green); }
 .health-subs li.is-bad::before { content: "✕"; color: #ff4d6d; }
 .health-subs li.is-wait::before { content: "…"; color: #ffb81c; }
+.health-subs li.is-off { opacity: .55; }
+.health-subs li.is-off::before { content: "–"; color: var(--text-2); }
 
 /* ---------- Mobil ---------- */
 @media (max-width: 1500px) {
@@ -803,3 +805,17 @@
 .upd header small { color: var(--muted); font-size: 12px; }
 .upd p { margin: 6px 0 0; white-space: pre-line; color: var(--text-2); font-size: 14px; }
 #updates-btn { position: relative; }
+
+/* YouTube-Karte (js/youtube-connect.js) */
+.yt-card [data-yt-body] { display: grid; gap: 12px; }
+.yt-form { display: grid; gap: 10px; }
+.yt-form .field { max-width: 320px; }
+.yt-live { margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(11, 7, 20, .5); border: 1px solid var(--line); }
+.yt-live a { margin-left: 6px; }
+.yt-live--live, .yt-live--starting { border-color: rgba(255, 64, 64, .5); }
+.yt-live--live b::before { content: "● "; color: #ff4040; }
+.yt-live--error { border-color: rgba(255, 77, 109, .5); }
+.yt-actions { flex-wrap: wrap; justify-content: flex-start; }
+.yt-key { display: grid; gap: 8px; }
+.yt-key-row { display: flex; gap: 8px; }
+.yt-key-row input { flex: 1; min-width: 0; }

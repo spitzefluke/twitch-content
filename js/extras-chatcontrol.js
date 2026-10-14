@@ -37,10 +37,14 @@ export const chatcontrol = {
               <label class="field"><span>So lange im Stream (Sekunden)</span><input type="number" name="show" min="2" max="30"></label>
             </form>
             <div class="x-row">
-              <button class="btn btn--outline btn--sm" type="button" data-sync>🪙 Kanalpunkte abgleichen</button>
               <button class="btn btn--outline btn--sm" type="button" data-sim hidden>💬 Chat simulieren (Demo)</button>
             </div>
-            <p class="form-hint" data-sync-hint>Kommandos mit Kanalpunkten bekommen eine eigene Belohnung bei Twitch („🎮 …“). Nach dem Ändern einmal abgleichen.</p>
+            <div data-affiliate="Kanalpunkte">
+              <div class="x-row">
+                <button class="btn btn--outline btn--sm" type="button" data-sync>🪙 Kanalpunkte abgleichen</button>
+              </div>
+              <p class="form-hint" data-sync-hint>Kommandos mit Kanalpunkten bekommen eine eigene Belohnung bei Twitch („🎮 …“). Nach dem Ändern einmal abgleichen.</p>
+            </div>
           </section>
           <section class="bingo-box">
             <h3 class="prank-h3" data-form-title>Neues Kommando</h3>
