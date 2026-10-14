@@ -24,3 +24,7 @@ verify_jwt = false
 # Twitch-Panel: prüft den Ausweis der Twitch-Erweiterung (Secret EXTENSION_SECRET) selbst
 [functions.twitch-ext]
 verify_jwt = false
+
+# YouTube verbinden: Google leitet ohne Supabase-Login zurück
+[functions.youtube]
+verify_jwt = false

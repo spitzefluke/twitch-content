@@ -1,7 +1,7 @@
 // Datenzugriff: Supabase (Live) oder localStorage (Demo).
 // Beide Varianten haben dieselbe Schnittstelle, damit app.js nichts davon wissen muss.
 import { CONFIG } from './config.js';
-import { channelFetch, current as channel, rtSpec, storageFolder } from './channel.js';
+import { alertFeed, channelFetch, current as channel, rtSpec, storageFolder } from './channel.js';
 import { BOARD } from './prank-fx.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, DEFAULT_IDEAS } from './defaults.js';
 import { betLines, drawCard, fullBetLines } from './bingo.js';
@@ -92,11 +92,12 @@ async function createSupabaseApi() {
   // versucht es die Seite bei twitch-oauth (nur Einstellungen und Prüfungen) einmal von selbst neu –
   // nicht bei spin oder bingo-bet, die würden sonst doppelt drehen bzw. starten.
   const RETRY_ON_NO_ANSWER = new Set(['twitch-oauth', 'stream-tools']);
-  async function invoke(name, body) {
-    let { data, error } = await sb.functions.invoke(name, { body });
+  async function invoke(name, body, headers) {
+    const opts = headers ? { body, headers } : { body };
+    let { data, error } = await sb.functions.invoke(name, opts);
     if (error?.name === 'FunctionsFetchError' && RETRY_ON_NO_ANSWER.has(name)) {
       await new Promise((r) => setTimeout(r, 1200));
-      ({ data, error } = await sb.functions.invoke(name, { body }));
+      ({ data, error } = await sb.functions.invoke(name, opts));
     }
     if (!error) return data;
     if (error.name === 'FunctionsFetchError') {
@@ -688,11 +689,7 @@ async function createSupabaseApi() {
     async getAlerts(limit = 10) {
       return unwrap(await sb.from('stream_alerts').select('*').order('created_at', { ascending: false }).limit(limit));
     },
-    onAlerts(cb) {
-      sb.channel('stream-alerts')
-        .on('postgres_changes', rtSpec('stream_alerts', 'INSERT'), (p) => cb(p.new))
-        .subscribe();
-    },
+    onAlerts: (cb) => alertFeed(sb, 'stream-alerts', cb),
     async testAlert(kind) { return unwrap(await sb.rpc('alert_test', { p_kind: kind })); },
     async alertsStatus() { return unwrap(await sb.rpc('alerts_status')); },
     // Twitch-Abos für die Alerts prüfen und fehlende neu anlegen (nur Admins)
@@ -781,8 +778,20 @@ async function createSupabaseApi() {
     async twitchStatus() {
       return unwrap(await sb.rpc('twitch_status'));
     },
-    async twitchConnect() {
-      const { url } = await invoke('twitch-oauth', { action: 'start' });
+    // YouTube verbinden und mit Twitch live schalten (Migration …_live_sync.sql, Edge Function youtube)
+    async youtubeStatus() { return unwrap(await sb.rpc('youtube_status')); },
+    async youtubeSave(p) { return unwrap(await sb.rpc('youtube_settings_save', { p })); },
+    async youtubeConnect() {
+      const { url } = await invoke('youtube', { action: 'start' });
+      location.href = url;
+    },
+    youtubeDisconnect: () => invoke('youtube', { action: 'disconnect' }),
+    youtubeStreamKey: () => invoke('youtube', { action: 'stream_key' }),
+    youtubeGoLive: () => invoke('youtube', { action: 'go_live' }),
+    youtubeEndLive: () => invoke('youtube', { action: 'end_live' }),
+    // channelId: für diesen Kanal verbinden statt für den gerade offenen (eigener Kanal, der noch wartet)
+    async twitchConnect({ channelId } = {}) {
+      const { url } = await invoke('twitch-oauth', { action: 'start' }, channelId ? { 'x-channel': channelId } : undefined);
       location.href = url;
     },
     async twitchDisconnect() {
@@ -2055,6 +2064,17 @@ function createLocalApi() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },
     async twitchDisconnect() {},
+    // Demo: YouTube „verbunden“, Einstellungen bleiben im Browser
+    async youtubeStatus() {
+      const cfg = store.get('youtube', { auto_start: true, auto_stop: true, chat_merge: true, privacy: 'public' });
+      return { connected: true, allowed: true, can_edit: !!current, title: 'Demo-Kanal', handle: '@demo', stream_ready: true, ...cfg, live: { status: 'idle' } };
+    },
+    async youtubeSave(p) { await requireAdmin(); store.set('youtube', { ...store.get('youtube', {}), ...p }); return this.youtubeStatus(); },
+    async youtubeConnect() { throw new Error('Im Demo-Modus nicht verfügbar. YouTube braucht Supabase und einen Google-Zugang (README).'); },
+    async youtubeDisconnect() { throw new Error('Im Demo-Modus nicht verfügbar.'); },
+    async youtubeStreamKey() { return { server: 'rtmp://a.rtmp.youtube.com/live2', key: 'demo-xxxx-xxxx-xxxx', status: 'inactive' }; },
+    async youtubeGoLive() { return { ok: false, reason: 'Im Demo-Modus startet keine echte Sendung.' }; },
+    async youtubeEndLive() { return { ok: true }; },
     async botConnect() {
       throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
     },

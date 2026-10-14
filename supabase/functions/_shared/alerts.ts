@@ -1,9 +1,12 @@
 // Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos und Bits.
 // Twitch meldet sie über EventSub an twitch-eventsub, hier landen sie in
 // stream_alerts – das Overlay liest die Tabelle per Realtime (auch ohne Login).
+// Schneller Weg: Gleichzeitig geht der Alert per Realtime-Broadcast direkt ans Overlay
+// (Thema alerts:<Kanal-ID>, nur lesbar – Migration …_instant_alerts.sql). Das Overlay nimmt,
+// was zuerst ankommt, und erkennt Doppelte an der event_id.
 // Der Streamer braucht dafür die Scopes moderator:read:followers, channel:read:subscriptions und bits:read
 // (einmal Twitch neu verbinden).
-import { db, getAppToken, helix, HelixError } from "./twitch.ts";
+import { AFFILIATE_ONLY_EVENTS, db, env, getAppToken, helix, HelixError, requestChannel } from "./twitch.ts";
 import { errorText } from "./errors.ts";
 
 type AlertType = {
@@ -22,18 +25,23 @@ export const ALERT_TYPES: AlertType[] = [
   { type: "channel.cheer", version: "1", scope: "bits:read", condition: (id) => ({ broadcaster_user_id: id }) },
   // Raids: kein Recht nötig – für das Danke und den Shoutout vom Chat-Bot (…_chat_bot_plus.sql), kein Alert
   { type: "channel.raid", version: "1", scope: "", condition: (id) => ({ to_broadcaster_user_id: id }) },
+  // Stream startet/endet: YouTube mitschalten und den Chat dazuholen (_shared/ytlive.ts), kein Alert
+  { type: "stream.online", version: "1", scope: "", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "stream.offline", version: "1", scope: "", condition: (id) => ({ broadcaster_user_id: id }) },
 ];
 export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === type);
 
 // Für jede Alert-Art genau ein Abo auf diesen Webhook. Fehlt dem Streamer ein Scope,
 // wird die Art übersprungen (Twitch würde das Abo sonst ablehnen).
 // Ergebnis je Art: ok (aktiv), pending (gerade angelegt, Twitch prüft den Webhook),
-// missing_scope (Twitch neu verbinden) oder error mit der Meldung von Twitch.
-export type AlertSubState = { state: "ok" | "pending" | "missing_scope" | "error"; message?: string };
-export async function ensureAlertSubscriptions(broadcasterId: string, callback: string, secret: string, scopes: string[] = []) {
+// missing_scope (Twitch neu verbinden), not_affiliate (Abos und Bits gibt es nur für Affiliates/Partner)
+// oder error mit der Meldung von Twitch.
+export type AlertSubState = { state: "ok" | "pending" | "missing_scope" | "not_affiliate" | "error"; message?: string };
+export async function ensureAlertSubscriptions(broadcasterId: string, callback: string, secret: string, scopes: string[] = [], affiliate = true) {
   const appToken = await getAppToken();
   const result: Record<string, AlertSubState> = {};
   for (const a of ALERT_TYPES) {
+    if (!affiliate && AFFILIATE_ONLY_EVENTS.includes(a.type)) { result[a.type] = { state: "not_affiliate" }; continue; }
     if (a.scope && !scopes.includes(a.scope)) { result[a.type] = { state: "missing_scope" }; continue; }
     try {
       const existing = await helix("eventsub/subscriptions", appToken, { query: { type: a.type } });
@@ -98,7 +106,37 @@ export async function handleAlert(type: string, event: AlertEvent, messageId: st
     row = { kind: "bits", user_name: event.is_anonymous ? "Anonym" : name, amount: event.bits ?? 0, message: messageText(event).slice(0, 300) };
   }
   if (!row) return;
-  const { error } = await db.from("stream_alerts").upsert({ ...row, event_id: messageId }, { onConflict: "event_id", ignoreDuplicates: true });
+  await saveAlert(row, messageId);
+}
+
+// Sofort ans Overlay schicken und gleichzeitig speichern (für „Zuletzt“, Ziele und Statistik)
+export async function saveAlert(row: Record<string, unknown>, messageId: string | null) {
+  const [, { error }] = await Promise.all([
+    messageId ? broadcastAlert({ ...row, event_id: messageId }) : null,
+    db.from("stream_alerts").upsert({ ...row, event_id: messageId }, { onConflict: "event_id", ignoreDuplicates: true }),
+  ]);
   if (error) throw error;
   await db.from("stream_alerts").delete().lt("created_at", new Date(Date.now() - 30 * 86400_000).toISOString());
+}
+
+// Realtime-Broadcast über die REST-Schnittstelle: kein Umweg über die Datenbank, typisch unter 100 ms.
+// Privates Thema – lesen darf jeder (Overlay ohne Login), senden nur der Server.
+// Klappt das nicht (Migration fehlt, Realtime hakt), kommt der Alert wie bisher über die Tabelle.
+export const alertTopic = (channel: string | null) => `alerts:${channel ?? "default"}`;
+export async function broadcastAlert(row: Record<string, unknown>) {
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  try {
+    const res = await fetch(`${env("SUPABASE_URL")}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ topic: alertTopic(requestChannel()), event: "alert", private: true, payload: { ...row, id: null, created_at: new Date().toISOString() } }],
+      }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) console.warn("Sofort-Alert nicht gesendet:", res.status, (await res.text()).slice(0, 200));
+    else await res.body?.cancel();
+  } catch (e) {
+    console.warn("Sofort-Alert nicht gesendet:", errorText(e));
+  }
 }

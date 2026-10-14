@@ -12,10 +12,11 @@ import {
 } from "../_shared/twitch.ts";
 import { matchThrow, pickSound, prankState, type SoundEntry, soundForReward, soundList, THROW_ITEMS } from "../_shared/pranks.ts";
 import { handleChatMessage } from "../_shared/chat.ts";
-import { handleAlert, isAlertType } from "../_shared/alerts.ts";
+import { handleAlert, isAlertType, saveAlert } from "../_shared/alerts.ts";
 import { handleExtraRedemption } from "../_shared/extras.ts";
 import { thankEvent } from "../_shared/bot.ts";
 import { noteEvent } from "../_shared/health.ts";
+import { youtubeOffline, youtubeOnline } from "../_shared/ytlive.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -87,6 +88,15 @@ async function handle(req: Request, type: string | null, payload: any): Promise<
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(note);
   }
 
+  // Stream an/aus: YouTube mitschalten (…_live_sync.sql) – ohne YouTube-Verbindung passiert nichts
+  if (type === "notification" && ["stream.online", "stream.offline"].includes(payload.subscription?.type)) {
+    const task = (payload.subscription.type === "stream.online" ? youtubeOnline() : youtubeOffline())
+      .catch((e) => console.error("YouTube-Abgleich fehlgeschlagen:", e));
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
+    else await task;
+    return new Response(null, { status: 204 });
+  }
+
   if (type === "notification" && isAlertType(payload.subscription?.type ?? "")) {
     const messageId = req.headers.get("Twitch-Eventsub-Message-Id");
     const task = Promise.all([
@@ -121,15 +131,17 @@ async function handle(req: Request, type: string | null, payload: any): Promise<
 
 // Jede Kanalpunkte-Einlösung (egal welche Belohnung) als Alert im Overlay – ohne den eingetippten Text
 async function redemptionAlert(event: Redemption, messageId: string | null) {
-  const { error } = await db.from("stream_alerts").upsert({
-    kind: "redeem",
-    user_name: (event.user_name || event.user_login || "Jemand").slice(0, 60),
-    amount: Math.max(0, Number(event.reward.cost) || 0),
-    message: String(event.reward.title ?? "").slice(0, 300),
-    event_id: messageId,
-  }, { onConflict: "event_id", ignoreDuplicates: true });
-  // Migration …_streamhelp.sql fehlt noch (kind 'redeem' unbekannt): kein Alert, sonst alles wie gehabt
-  if (error && !/stream_alerts_kind_check/.test(error.message)) throw error;
+  try {
+    await saveAlert({
+      kind: "redeem",
+      user_name: (event.user_name || event.user_login || "Jemand").slice(0, 60),
+      amount: Math.max(0, Number(event.reward.cost) || 0),
+      message: String(event.reward.title ?? "").slice(0, 300),
+    }, messageId);
+  } catch (e) {
+    // Migration …_streamhelp.sql fehlt noch (kind 'redeem' unbekannt): kein Alert, sonst alles wie gehabt
+    if (!/stream_alerts_kind_check/.test((e as { message?: string })?.message ?? "")) throw e;
+  }
 }
 
 type Redemption = {

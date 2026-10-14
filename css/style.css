@@ -963,6 +963,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
 
 .prank-admin { display: grid; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(169, 112, 255, .3); background: rgba(169, 112, 255, .05); }
 .prank-admin[hidden] { display: none; }
+.prank-points { display: grid; gap: 12px; }
 .prank-admin .prank-h3 { margin: 0; color: var(--amber-2); }
 
 /* Sound-Nummern (auf Twitch eintippen) und Sounds mit eigener Belohnung (⚡) */
@@ -2023,3 +2024,8 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .obs-modules-check { display: flex; align-items: center; gap: 6px; }
 .obs-modules-custom .x-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .obs-modules-custom input[type="text"] { flex: 1; min-width: 140px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); font: inherit; }
+
+/* Kanäle ohne Twitch-Affiliate (js/affiliate.js): Hinweis statt Fehler, gesperrter Bereich blass */
+.aff-note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid rgba(53, 199, 255, .35); background: rgba(53, 199, 255, .08); color: var(--text, inherit); font-size: .9rem; line-height: 1.45; grid-column: 1 / -1; }
+.aff-off > :not(.aff-note) { opacity: .45; filter: grayscale(.6); }

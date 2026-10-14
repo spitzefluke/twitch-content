@@ -15,9 +15,9 @@
 // Alles gilt für den Kanal aus dem Header x-channel (Migration …_platform.sql); der
 // Twitch-Rückweg merkt sich den Kanal im state.
 import {
-  activeChannels, audit, channelKey, channelServe, CodedError, corsHeaders, currentChannel, db, env, getAppToken, getConnection,
-  getUserFromRequest, helix, HelixError, isAdminUser, isChannelOwner, isPlatformAdmin, json, oauthRedirectUri,
-  rateLimit, startTwitchLogin, tooMany, twitchToken, withChannel,
+  activeChannels, audit, backToSite, channelKey, channelServe, CodedError, corsHeaders, currentChannel, db, env, getAppToken, getConnection,
+  broadcasterType, getUserFromRequest, helix, HelixError, isAdminUser, isAffiliateType, isChannelOwner, isPlatformAdmin, json,
+  oauthRedirectUri, rateLimit, saveBroadcasterType, startTwitchLogin, tooMany, twitchToken, withChannel,
 } from "../_shared/twitch.ts";
 import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
 import { ensureChatSubscription } from "../_shared/chat.ts";
@@ -87,25 +87,6 @@ async function healthAllChannels() {
 }
 
 // Der Streamer-Kanal kommt zurück auf die Webseite, der Chat-Bot in den Admin-Bereich.
-function backToSite(params: Record<string, string>, page = "") {
-  const site = Deno.env.get("SITE_URL");
-  if (!site) {
-    // Ohne SITE_URL gibt es kein Ziel für die Rückleitung. Dann wenigstens
-    // lesbar sagen, was passiert ist, statt mit einem nackten 500 zu enden.
-    const outcome = params.twitch === "connected" || params.twitch === "bot_connected"
-      ? "Twitch ist verbunden."
-      : `Twitch-Verbindung fehlgeschlagen: ${params.detail ?? params.reason}`;
-    return new Response(`${outcome}\n\nIn Supabase fehlt das Secret SITE_URL – deshalb geht es nicht automatisch zurück zur Webseite.`, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }
-  // SITE_URL darf mit oder ohne "/" enden oder direkt auf index.html zeigen.
-  const base = site.endsWith("/") || /\.html?$/i.test(site) ? site : `${site}/`;
-  const target = page ? new URL(page, base) : new URL(site);
-  for (const [k, v] of Object.entries(params)) target.searchParams.set(k, v);
-  return Response.redirect(target.toString(), 302);
-}
-
 async function handleCallback(url: URL) {
   // Erst den state einlösen: Er sagt, wohin es zurückgeht – auch wenn auf
   // Twitch abgebrochen wurde (dann kommt ?error=… mit dem state zurück) – und für welchen Kanal.
@@ -126,7 +107,8 @@ async function finishCallback(url: URL, st: any) {
   if (twitchError) return back({ twitch: "error", reason: twitchError });
 
   const code = url.searchParams.get("code");
-  if (!code || !st || Date.now() - Date.parse(st.created_at) > 10 * 60_000) {
+  // Anfragen fürs YouTube-Verbinden gehören zur Edge Function youtube, nicht hierher
+  if (!code || !st || st.kind === "youtube" || Date.now() - Date.parse(st.created_at) > 10 * 60_000) {
     return back({ twitch: "error", reason: "state" });
   }
 
@@ -154,8 +136,17 @@ async function finishCallback(url: URL, st: any) {
 
     const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
     if (previous && previous.broadcaster_id !== me.id && !starterIsAdmin) throw new CodedError("wrong_account");
+    // Kanalpunkte gibt es nur für Affiliates und Partner – alle anderen verbinden trotzdem
+    // (Bot, Follower-Alerts, Overlay …), nur ohne Belohnungen. Der Status steht am Kanal.
+    const affiliate = isAffiliateType(me.broadcaster_type);
     // Beim erneuten Verbinden bleiben die auf der Webseite eingestellten Kosten
-    const reward = await ensureReward(me.id, tok.access_token, previous?.reward_id, previous?.reward_cost);
+    const noReward = { id: null, title: previous?.reward_title ?? null, cost: previous?.reward_cost ?? null };
+    const reward = affiliate
+      ? await ensureReward(me.id, tok.access_token, previous?.reward_id, previous?.reward_cost).catch((e) => {
+        if (e instanceof CodedError && e.code === "not_affiliate") return noReward;
+        throw e;
+      })
+      : noReward;
 
     const base = {
       id: 1,
@@ -191,9 +182,10 @@ async function finishCallback(url: URL, st: any) {
         ...(channel.owner_id ? {} : { owner_id: st.user_id }),
       }).eq("id", channel.id);
     }
+    await saveBroadcasterType(me.broadcaster_type);
 
     // Belohnungen fürs Ärgern: Scheitert das, bleibt das Glücksrad trotzdem verbunden.
-    try {
+    if (affiliate) try {
       await syncPrankRewards({
         ...base,
         refresh_token: base.refresh_token ?? "",
@@ -205,11 +197,13 @@ async function finishCallback(url: URL, st: any) {
       console.error("Belohnungen fürs Ärgern nicht angelegt:", e);
     }
 
-    // Ein Abo für alle Einlösungen – Glücksrad und Ärgern
-    const subscriptionId = await ensureRedemptionSubscription(me.id, eventsubCallback(), env("EVENTSUB_SECRET"));
-    await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+    // Ein Abo für alle Einlösungen – Glücksrad und Ärgern (ohne Kanalpunkte keins)
+    if (affiliate) {
+      const subscriptionId = await ensureRedemptionSubscription(me.id, eventsubCallback(), env("EVENTSUB_SECRET"));
+      await db.from("twitch_connection").update({ subscription_id: subscriptionId }).eq("id", 1);
+    }
     await chatSubscription(me.id);
-    await alertSubscriptions(me.id, tok.scope ?? []);
+    await alertSubscriptions(me.id, tok.scope ?? [], affiliate);
     // Mods des Kanals holen – scheitert es, geht der Rest trotzdem
     await syncMods(me.id, tok.access_token, tok.scope ?? []).catch((e) => console.warn("Mods nicht geholt:", e));
     // Gesundheitscheck gleich mit dem neuen Stand (Rechte, Abos)
@@ -256,9 +250,10 @@ async function saveBot(me: { id: string; login: string; display_name: string }, 
 }
 
 // Alerts (Follower, Abos): scheitert es, läuft der Rest trotzdem
-async function alertSubscriptions(broadcasterId: string, scopes: string[]) {
+async function alertSubscriptions(broadcasterId: string, scopes: string[], affiliate?: boolean) {
   try {
-    return await ensureAlertSubscriptions(broadcasterId, eventsubCallback(), env("EVENTSUB_SECRET"), scopes);
+    affiliate ??= isAffiliateType(await broadcasterType());
+    return await ensureAlertSubscriptions(broadcasterId, eventsubCallback(), env("EVENTSUB_SECRET"), scopes, affiliate);
   } catch (e) {
     console.warn("Alert-Abos nicht angelegt:", e);
     return null;
@@ -271,7 +266,8 @@ async function checkAlerts(userId: string) {
   if (!(await isAdminUser(userId, "overlay"))) return json({ error: "Nur Admins und freigegebene Mods dürfen die Alerts prüfen." }, 403);
   const conn = await getConnection();
   if (!conn) return json({ connected: false, types: {} });
-  const types = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"), conn.scopes ?? []);
+  const types = await ensureAlertSubscriptions(conn.broadcaster_id, eventsubCallback(), env("EVENTSUB_SECRET"), conn.scopes ?? [],
+    isAffiliateType(await broadcasterType()));
   return json({ connected: true, types });
 }
 

@@ -37,6 +37,8 @@ import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
 import { loadUpdates, setMyChannel, startPlatformNotices } from './platform-notices.js';
+import { noAffiliate, setAffiliate } from './affiliate.js';
+import { renderYoutube } from './youtube-connect.js';
 import { LAYERS, MODULES, layerName, moduleUrl } from './overlay-modules.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -212,6 +214,23 @@ async function boot() {
   await previewChannel(linked);
   loadStreamer();
 
+  // Zurück vom Google-Login (Edge Function youtube)
+  const youtubeReturn = params.get('youtube');
+  if (youtubeReturn) {
+    history.replaceState(null, '', location.pathname);
+    state.pendingPage = 'twitch';
+    const reasons = {
+      access_denied: 'Die Freigabe bei Google wurde abgebrochen.',
+      state: 'Die Anfrage ist abgelaufen. Bitte noch einmal versuchen.',
+      scope: 'Ohne das Recht „YouTube-Konto verwalten“ kann StreamHelp keine Livestreams starten. Bitte noch einmal verbinden und alles erlauben.',
+      no_channel: 'Zu diesem Google-Konto gibt es keinen YouTube-Kanal.',
+      no_refresh: 'Google hat keinen dauerhaften Zugang geschickt. Unter myaccount.google.com → Sicherheit → Drittanbieter-Zugriff StreamHelp entfernen und neu verbinden.',
+    };
+    queueMicrotask(() => (youtubeReturn === 'connected'
+      ? toast('▶️ YouTube ist verbunden. Unter „Twitch-Verbindung“ stellst du ein, ob YouTube mit Twitch startet und endet.', 'ok', 9000)
+      : toast(`YouTube-Verbindung fehlgeschlagen: ${reasons[params.get('reason')] ?? params.get('detail') ?? params.get('reason') ?? 'unbekannter Fehler'}`, 'error', 15000)));
+  }
+
   const twitchReturn = params.get('twitch');
   if (twitchReturn) {
     history.replaceState(null, '', location.pathname);
@@ -287,9 +306,10 @@ function showLoginReturnError(provider, hadTokens) {
 
 function showTwitchReturn(status, reason, detail, bot) {
   if (status === 'connected') {
-    // Wer Twitch verbindet, ist der Streamer: gleich prüfen, ob alles läuft
+    // Wer Twitch verbindet, ist der Streamer: gleich prüfen, ob alles läuft. Wartet der eigene Kanal noch
+    // auf die Freischaltung (Anmelden und Verbinden in einem Schritt), sagt das stattdessen der Konto-Dialog.
     state.pendingPage = 'alerts';
-    toast(`Twitch ist verbunden. StreamHelp prüft jetzt Kanalpunkte, Alerts und Chat – das Ergebnis steht unter „Alerts“.`, 'ok', 9000);
+    state.twitchJustConnected = true;
     return;
   }
   if (status === 'bot_connected') {
@@ -577,7 +597,7 @@ const PAGE_ENTER = {
   library: () => openLibrary(),
   guard: () => renderGuard(),
   mods: () => { loadMods(); renderModSecurity(); },
-  twitch: () => { renderTwitchPanel(); loadShowcase(); },
+  twitch: () => { renderTwitchPanel(); loadShowcase(); renderYoutube($('#yt-card'), { api: state.api, toast, germanError }); },
   security: () => renderSecurityPage(),
   stats: () => renderStats($('#stats-slot'), state.api, STATS_OBS),
   ideas: () => renderStart(START),
@@ -844,6 +864,15 @@ async function enterApp(user, { animate = false } = {}) {
   state.bingo.on = bingo !== null;
   if (bingo) Object.assign(state.bingo, bingo, { lines: bingoState(bingo.card).count });
 
+  if (state.twitchJustConnected) {
+    state.twitchJustConnected = false;
+    if (state.myChannel?.status === 'pending') {
+      state.pendingPage = null;
+      openAccountDialog('done');
+    } else {
+      toast(`Twitch ist verbunden. StreamHelp prüft jetzt Alerts, Chat${noAffiliate() ? '' : ' und Kanalpunkte'} – das Ergebnis steht unter „Alerts“.`, 'ok', 9000);
+    }
+  }
   renderHeader();
   renderChannelBar();
   // Hinweise vom StreamHelp-Team, Wartung, „Alle neu laden“, neue Version und „Was ist neu“
@@ -1018,6 +1047,7 @@ async function chooseChannel() {
   }
   Object.assign(state, { platform: res.platform, channel: res.channel });
   setChannel(res.channel, res.platform);
+  setAffiliate(res.channel?.affiliate ?? null); // Kanal ohne Twitch-Affiliate: Hinweise statt Kanalpunkte (js/affiliate.js)
   if (!res.platform) return;
   rememberChannel(res.channel && !res.channel.is_default ? res.channel.login || res.channel.id : null);
   // Link zum Teilen in der Adresszeile
@@ -1097,7 +1127,7 @@ async function openChannelDialog() {
   } else {
     box.append(
       h('p', {}, h('b', {}, 'Du streamst selbst?'), ' Melde deinen Kanal an – wir schalten ihn kurz von Hand frei.'),
-      h('div', {}, h('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => { closeDialog(dlg); openAccountDialog('streamer'); } }, '🎥 Kanal anmelden')),
+      h('div', {}, h('button', { type: 'button', class: 'btn btn--primary btn--sm', onclick: () => { closeDialog(dlg); becomeStreamer(); } }, '🎥 Kanal anmelden')),
     );
   }
   const ul = $('#channels-list');
@@ -1113,27 +1143,82 @@ async function openChannelDialog() {
 }
 
 // ---------- Nach der ersten Anmeldung: Zuschauer oder Streamer? ----------
+// „Ja, ich streame“ ist ein einziger Schritt: mit Twitch anmelden (falls nötig), Kanal anmelden und gleich
+// danach auf Twitch freigeben (Chat-Bot, Alerts, ggf. Kanalpunkte) – auch solange der Kanal noch wartet.
+const CONNECT_ASKED = 'sh_connect_asked'; // pro Sitzung höchstens einmal an das Verbinden erinnern
 async function maybeAskAccountType() {
   if (!state.platform || OBS_PAGE) return;
   if (onceStore.get(WANTS_STREAMER) === '1') {
     onceStore.set(WANTS_STREAMER, null);
-    if (!state.myChannel) openAccountDialog('streamer');
+    if (state.myChannel?.status !== 'active') becomeStreamer();
     return;
   }
-  if (state.myChannel) return;
+  if (state.myChannel) {
+    // Auf Twitch abgebrochen? Dann den Knopf noch einmal anbieten
+    const mine = state.myChannel;
+    let asked = false;
+    try { asked = sessionStorage.getItem(CONNECT_ASKED) === '1'; sessionStorage.setItem(CONNECT_ASKED, '1'); } catch { asked = true; }
+    if (mine.status === 'pending' && mine.twitch_connected === false && !asked && !$('#account-dialog').open) openAccountDialog('done');
+    return;
+  }
   const type = await state.api.accountType().catch(() => 'unknown');
   if (type === null && state.user) openAccountDialog('ask');
 }
 
-async function openAccountDialog(step = 'ask') {
+function openAccountDialog(step = 'ask', text = '') {
   const dlg = $('#account-dialog');
-  if (step === 'streamer') step = (await state.api.hasTwitchLogin().catch(() => false)) ? 'apply' : 'twitch';
   dlg.querySelectorAll('[data-step]').forEach((el) => { el.hidden = el.dataset.step !== step; });
-  if (step === 'apply') {
-    const meta = state.user?.user_metadata ?? {};
-    dlg.querySelector('[data-apply-name]').textContent = meta.nickname || meta.preferred_username || meta.name || state.profile?.username || 'dein Twitch-Kanal';
+  if (step === 'connecting' && text) dlg.querySelector('[data-connecting-text]').textContent = text;
+  if (step === 'done') {
+    const mine = state.myChannel;
+    const needsTwitch = !state.api.demo && mine?.status === 'pending' && mine.twitch_connected === false;
+    dlg.querySelector('[data-done-text]').innerHTML = mine?.twitch_connected
+      ? '<b>Twitch ist verbunden ✓</b> Dein Kanal wartet jetzt nur noch auf die Freischaltung. Sobald er frei ist, siehst du hier dein eigenes Dashboard.'
+      : '<b>Danke!</b> Dein Kanal wartet jetzt auf die Freischaltung. Sobald er frei ist, siehst du hier dein eigenes Dashboard.';
+    dlg.querySelector('[data-done-connect-hint]').hidden = !needsTwitch;
+    dlg.querySelector('[data-account-connect]').hidden = !needsTwitch;
   }
   if (!dlg.open) dlg.showModal();
+}
+
+async function becomeStreamer() {
+  const api = state.api;
+  // Erst mit Twitch anmelden – danach geht es hier von selbst weiter (maybeAskAccountType)
+  if (!(await api.hasTwitchLogin().catch(() => false))) {
+    openAccountDialog('connecting', 'Erst mit Twitch anmelden …');
+    onceStore.set(WANTS_STREAMER, '1');
+    try {
+      await api.signInWithProvider('twitch');
+    } catch (err) {
+      onceStore.set(WANTS_STREAMER, null);
+      toast(germanError(err), 'error');
+      openAccountDialog('ask');
+    }
+    return;
+  }
+  openAccountDialog('connecting', 'Dein Kanal wird angemeldet …');
+  try {
+    if (!state.myChannel) state.myChannel = await api.channelApply('');
+    renderChannelBar();
+    if (state.myChannel?.status === 'active' && state.myChannel.twitch_connected !== false) {
+      closeDialog($('#account-dialog'));
+      toast('Dein Kanal ist schon freigeschaltet.', 'ok');
+      switchChannel(state.myChannel);
+      return;
+    }
+    if (api.demo || state.myChannel?.twitch_connected) { openAccountDialog('done'); return; }
+    await connectMyTwitch();
+  } catch (err) {
+    toast(germanError(err), 'error', 8000);
+    openAccountDialog(state.myChannel ? 'done' : 'ask');
+  }
+}
+
+// Twitch-Freigabe für den eigenen Kanal (auch wenn gerade ein anderer Kanal offen ist)
+async function connectMyTwitch() {
+  openAccountDialog('connecting', 'Gleich geht es zu Twitch …');
+  try { sessionStorage.setItem('zd_twitch_flow', '1'); } catch { /* egal */ }
+  await state.api.twitchConnect({ channelId: state.myChannel?.id }); // leitet zu Twitch weiter
 }
 
 function setupChannelUi() {
@@ -1157,31 +1242,11 @@ function setupChannelUi() {
         toast('Viel Spaß beim Zuschauen! Andere Streamer findest du oben unter „Kanal“.', 'ok', 6000);
       } catch (err) { toast(germanError(err), 'error'); }
     }
-    if (choice?.dataset.account === 'streamer') openAccountDialog('streamer');
-    if (e.target.closest('[data-account-back]')) openAccountDialog('ask');
-    if (e.target.closest('[data-account-twitch]')) {
-      onceStore.set(WANTS_STREAMER, '1');
-      state.api.signInWithProvider('twitch').catch((err) => { onceStore.set(WANTS_STREAMER, null); toast(germanError(err), 'error'); });
-    }
-  });
-  dlg.querySelector('[data-step="apply"]').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = e.submitter;
-    btn.disabled = true;
-    try {
-      state.myChannel = await state.api.channelApply(e.currentTarget.note.value.trim());
-      if (state.myChannel?.status === 'active') {
-        closeDialog(dlg);
-        toast('Dein Kanal ist schon freigeschaltet.', 'ok');
-        switchChannel(state.myChannel);
-        return;
-      }
-      openAccountDialog('done');
-      renderChannelBar();
-    } catch (err) {
-      toast(germanError(err), 'error', 8000);
-    } finally {
-      btn.disabled = false;
+    if (choice?.dataset.account === 'streamer') becomeStreamer();
+    const connect = e.target.closest('[data-account-connect]');
+    if (connect) {
+      connect.disabled = true;
+      connectMyTwitch().catch((err) => { toast(germanError(err), 'error', 8000); openAccountDialog('done'); }).finally(() => { connect.disabled = false; });
     }
   });
   // Anderer Kanal in der Adresszeile (Link eingefügt, Zurück-Knopf): neu laden
@@ -1978,7 +2043,9 @@ function renderWheelPanel() {
   $('#wheel-edit-btn').hidden = !profile?.is_admin;
 
   const info = $('#reward-info');
-  if (twitch.connected && twitch.reward_active) {
+  if (noAffiliate()) {
+    info.innerHTML = '<span class="ri-icon">ℹ️</span><span>Kanalpunkte gibt es auf Twitch nur für Affiliates und Partner – in diesem Kanal dreht der Streamer das Rad direkt hier auf der Seite.</span>';
+  } else if (twitch.connected && twitch.reward_active) {
     info.innerHTML = `<span class="ri-icon">✦</span><span>Zuschauer können die Kanalpunkte-Belohnung <b>„${escapeHtml(twitch.reward_title ?? 'Glücksrad')}“</b> für <b>${Number(twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte</b> einlösen. Das Rad dreht dann eine zufällige Variante${twitch.bot_connected ? `, und <b>${escapeHtml(twitch.bot_name ?? twitch.bot_login ?? 'der Chat-Bot')}</b> schreibt das Ergebnis in den Chat` : '. Damit das Ergebnis auch im Chat steht, fehlt noch der Chat-Bot (wird im Admin-Bereich verbunden)'}.</span>`;
   } else if (state.api.demo) {
     info.innerHTML = '<span class="ri-icon">✦</span><span>Demo: Mit dem Button unten kannst du testen, wie eine Kanalpunkte-Einlösung aus dem Twitch-Chat aussieht.</span>';
@@ -2891,6 +2958,12 @@ function renderPrankHowTo() {
     : twitch.prank_rewards === false || twitch.prank_rewards === undefined
       ? 'Die Belohnungen sind auf Twitch noch nicht angelegt.'
       : twitch.prank_rewards_active ? '' : 'Die Belohnungen sind auf Twitch gerade ausgeschaltet.';
+  if (noAffiliate()) {
+    box.innerHTML = state.profile?.is_admin
+      ? '<b>Du bist Admin:</b> Ein Klick löst direkt im Stream aus. Kanalpunkte gibt es auf Twitch nur für Affiliates und Partner – deshalb können Zuschauer in diesem Kanal (noch) nicht selbst werfen.'
+      : `<b>Kanalpunkte gibt es hier (noch) nicht:</b> Twitch hat sie nur für Affiliates und Partner. Würfe und Sounds löst in diesem Kanal deshalb nur das Team von ${escapeHtml(streamerName())} aus – du kannst dir die Sounds hier trotzdem anhören.`;
+    return;
+  }
   box.innerHTML = state.profile?.is_admin
     ? `<b>Du bist Admin:</b> Ein Klick löst direkt im Stream aus – ohne Kanalpunkte, z. B. zum Testen.
        Zuschauer bezahlen mit Kanalpunkten über „🍅 Wirf was auf ${escapeHtml(streamerName())}“ (${cost(settings.throw_cost)}) und „🔊 Sound für ${escapeHtml(streamerName())}“ (${cost(settings.sound_cost)}) –
@@ -7263,7 +7336,7 @@ function renderTwitchPanel() {
     : 'Noch nicht verbunden';
   if (twitch.connected) {
     body.innerHTML = `
-      <p>Verbunden mit <b data-fill="channel"></b>. Die Kanalpunkte-Belohnungen sind ${twitch.subscription_active ? 'aktiv' : '<b>nicht aktiv</b> (bitte neu verbinden)'}.</p>
+      <p>Verbunden mit <b data-fill="channel"></b>. ${noAffiliate() ? 'Kanalpunkte, Abos und Bits gibt es auf Twitch erst ab Affiliate – Chat-Bot, Follower-Alerts und Overlay laufen trotzdem.' : `Die Kanalpunkte-Belohnungen sind ${twitch.subscription_active ? 'aktiv' : '<b>nicht aktiv</b> (bitte neu verbinden)'}.`}</p>
       <p class="form-hint">Neue StreamHelp-Funktionen brauchen manchmal neue Twitch-Rechte. Meldet die Seite unter „Alerts“ fehlende Rechte: einmal „Neu verbinden“ und alles erlauben.</p>
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
@@ -7734,6 +7807,7 @@ const SUB_LABEL = {
   'channel.follow': '💜 Follower', 'channel.subscribe': '⭐ Abos', 'channel.subscription.message': '🔁 Resubs',
   'channel.subscription.gift': '🎁 Abo-Geschenke', 'channel.cheer': '💎 Bits',
   'channel.channel_points_custom_reward_redemption.add': '🎟️ Kanalpunkte', 'channel.chat.message': '💬 Chat (Bot)',
+  'channel.raid': '🚀 Raids', 'stream.online': '▶️ Stream-Start', 'stream.offline': '⏹️ Stream-Ende',
 };
 
 async function startHealth() {
@@ -7824,7 +7898,9 @@ function renderHealth() {
     const li = document.createElement('li');
     li.className = st === 'ok' ? '' : st === 'pending' ? 'is-wait' : 'is-bad';
     li.textContent = label;
-    li.title = st === 'ok' ? 'Aktiv' : st === 'pending' ? 'Twitch schaltet es gerade frei' : st === 'missing_scope' ? 'Recht fehlt – Twitch neu verbinden' : `Fehlt (${subs[type].status ?? subs[type].message ?? st})`;
+    if (st === 'not_affiliate') li.className = 'is-off';
+    li.title = st === 'ok' ? 'Aktiv' : st === 'pending' ? 'Twitch schaltet es gerade frei' : st === 'missing_scope' ? 'Recht fehlt – Twitch neu verbinden'
+      : st === 'not_affiliate' ? 'Gibt es auf Twitch erst ab Affiliate' : `Fehlt (${subs[type].status ?? subs[type].message ?? st})`;
     return li;
   }));
 
