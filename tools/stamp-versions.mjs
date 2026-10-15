@@ -34,8 +34,8 @@ const CAPTCHA_PAGES = ['index.html'];
 const CSP = (scriptHashes, page) => [
   "default-src 'self'",
   `script-src 'self' ${scriptHashes.map((h) => `'sha256-${h}'`).join(' ')}${CAPTCHA_PAGES.includes(page) ? ` ${CAPTCHA}` : ''}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https://*.supabase.co",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*",
@@ -83,17 +83,17 @@ for (const [page, entry] of Object.entries(PAGES)) {
   }
 }
 
-// Statische Seiten ohne Module (404.html, datenschutz.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
+// Statische Seiten ohne Module (404.html, datenschutz.html, impressum.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
 const STATIC_CSP = (scriptHashes) => [
   "default-src 'none'",
   `script-src ${scriptHashes.length ? scriptHashes.map((h) => `'sha256-${h}'`).join(' ') : "'none'"}`,
-  "style-src 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data:",
   "base-uri 'none'",
   "form-action 'none'",
 ].join('; ');
-for (const page of ['404.html', 'datenschutz.html']) {
+for (const page of ['404.html', 'datenschutz.html', 'impressum.html']) {
   const file = join(root, page);
   const before = readFileSync(file, 'utf8');
   // Inline-Skripte (ohne src); Schlusstag auch mit Leerzeichen/Großbuchstaben, z. B. </SCRIPT >

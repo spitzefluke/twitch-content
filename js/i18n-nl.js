@@ -213,4 +213,5 @@ export default [
   "Je hebt net al geschreven – probeer het later opnieuw.",
   "Gezondheidscheck",
   "Raid van CrispyCarl",
+  "Colofon",
 ];

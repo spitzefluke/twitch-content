@@ -213,4 +213,5 @@ export default [
   "Az önce zaten yazdın – lütfen daha sonra tekrar dene.",
   "Sağlık kontrolü",
   "CrispyCarl’dan baskın",
+  "Künye",
 ];

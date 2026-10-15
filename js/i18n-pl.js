@@ -213,4 +213,5 @@ export default [
   "Dopiero co do nas pisałeś – spróbuj później.",
   "Kontrola",
   "Raid od CrispyCarl",
+  "Nota prawna",
 ];

@@ -213,4 +213,5 @@ export default [
   "You just wrote to us – please try again later.",
   "Health check",
   "Raid from CrispyCarl",
+  "Legal notice",
 ];

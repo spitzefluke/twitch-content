@@ -213,4 +213,5 @@ export default [
   "Acabas de escribirnos; inténtalo de nuevo más tarde.",
   "Revisión",
   "Raid de CrispyCarl",
+  "Aviso legal",
 ];
