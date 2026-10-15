@@ -40,6 +40,12 @@ jobs:
         run: node tools/check-sql.mjs
       - name: Übersetzungen
         run: node tools/check-i18n.mjs
+      - name: Impressum und Datenschutz ausgefüllt
+        run: |
+          if grep -n '‹' impressum.html datenschutz.html; then
+            echo "::error::Impressum/Datenschutz enthalten noch Platzhalter (‹…›) – Name, Anschrift und E-Mail eintragen."
+            exit 1
+          fi
 
   functions:
     name: Edge Functions

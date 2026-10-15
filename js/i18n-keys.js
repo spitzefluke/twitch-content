@@ -215,4 +215,5 @@ export default [
   "Du hast gerade schon geschrieben – bitte später noch einmal.",
   "Gesundheitscheck",
   "Raid von CrispyCarl",
+  "Impressum",
 ];

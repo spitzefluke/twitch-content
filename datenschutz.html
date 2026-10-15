@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Datenschutz · StreamHelp</title>
@@ -44,10 +44,13 @@
     <p class="lead">StreamHelp ist eine Werkzeugkiste für Twitch-Streamer: Webseite mit Content-Ideen, OBS-Overlay, Chat-Bot, Aufnahme-Studio und ein Panel unter dem Stream. Hier steht, welche Daten dabei anfallen, wofür, und welche Rechte du hast.</p>
 
     <div class="box">
-      <p><b>Verantwortlich:</b> der Betreiber von StreamHelp. Kontakt für alle Datenschutzfragen und Löschwünsche: über das
+      <p><b>Verantwortlich</b> (Art. 4 Nr. 7 DSGVO):<br>
+        ‹Vor- und Nachname›, ‹Straße und Hausnummer›, ‹PLZ und Ort›, Deutschland<br>
+        E-Mail: <a href="mailto:‹E-Mail-Adresse›">‹E-Mail-Adresse›</a> · weitere Angaben im <a href="impressum.html">Impressum</a></p>
+      <p>Kontakt für alle Datenschutzfragen und Löschwünsche: per E-Mail, über das
         <a href="./#kontakt">Kontaktformular</a> (Thema „Datenschutz“) oder über
         <a href="https://github.com/spitzefluke/twitch-content/issues" rel="noopener noreferrer">GitHub</a>.</p>
-      <p><b>Kurz:</b> Wir verkaufen keine Daten, zeigen keine Werbung und setzen keine Tracker ein.</p>
+      <p><b>Kurz:</b> Wir verkaufen keine Daten, zeigen keine Werbung und setzen keine Tracker ein – deshalb gibt es auch keinen Cookie-Banner.</p>
     </div>
 
     <h2>1. Twitch-Panel (Erweiterung unter dem Stream)</h2>
@@ -74,7 +77,8 @@
       <li><b>Konto:</b> Wenn du dich anmeldest (E-Mail oder Twitch), speichern wir E-Mail-Adresse bzw. Twitch-Kennung und deinen Benutzernamen. Datenbank und Anmeldung laufen über Supabase.</li>
       <li><b>Was du selbst eingibst:</b> z. B. Ideen-Vorschläge, Fragen, Bingo-Karten, Tipps – mit deinem Benutzernamen, damit der Streamer sie sieht.</li>
       <li><b>Im Browser gespeichert:</b> Einstellungen wie Sprache, Ansicht, Seitenleiste oder Kachel-Favoriten (localStorage). Das OBS-WebSocket-Passwort liegt verschlüsselt nur in deinem Browser (IndexedDB) und wird nie an uns geschickt. Als Handy-App installiert, hält der Browser eine Kopie der Seite für den Fall ohne Netz vor. Keine Werbe- oder Analyse-Cookies.</li>
-      <li><b>Schriften:</b> Die Seiten der Anwendung laden Schriftarten von Google Fonts; dabei erhält Google deine IP-Adresse.</li>
+      <li><b>Schriften:</b> Alle Schriftarten liefert StreamHelp selbst aus – es wird nichts von Google Fonts oder anderen Schrift-Diensten geladen.</li>
+      <li><b>Cookies und Speicher im Browser:</b> StreamHelp setzt keine Werbe-, Analyse- oder Tracking-Cookies und bindet keine Tracking-Dienste ein. Im Browser gespeichert wird nur, was für die Funktion nötig ist: die Anmeldung (Sitzung) und die oben genannten Einstellungen. Das ist nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung erlaubt; deshalb fragt die Seite nicht nach einer Cookie-Einwilligung. Löschen kannst du alles jederzeit über die Website-Daten deines Browsers.</li>
       <li>Rechtsgrundlage: Bereitstellung des Dienstes (Art. 6 Abs. 1 lit. b DSGVO) und berechtigtes Interesse an einem sicheren Betrieb (lit. f).</li>
     </ul>
 
@@ -90,7 +94,7 @@
       <li>Das Overlay zeigt Ereignisse aus dem Stream (z. B. Follows, Abos, Bits) mit dem öffentlichen Namen.</li>
       <li><b>Hinweise vom StreamHelp-Team:</b> Sperrt oder pausiert das Team einen Kanal oder verwarnt den Streamer, speichern wir Grund, Zeitraum und wann der Streamer die Verwarnung gelesen hat. Bei Neuigkeiten („Was ist neu“) merken wir uns je Konto, welche gelesen sind.</li>
       <li><b>Chat-Bot:</b> Ist die Begrüßung an, merken wir uns je Zuschauer die Twitch-ID und wann er zuletzt begrüßt wurde. Für <code>!permit</code> speichern wir den Twitch-Namen höchstens eine Stunde. Song-Wünsche speichern Video, Titel, den öffentlichen Namen und die Twitch-ID der wünschenden Person (sichtbar im Overlay mit dem Namen) höchstens 30 Tage. Die Moderation prüft Nachrichten automatisch nach den Regeln des Streamers (Links, Großbuchstaben, Spam, gesperrte Wörter) und löscht sie oder gibt einen Timeout – der Text wird dafür nicht gespeichert. Abgespielt werden Song-Wünsche über einen eingebetteten YouTube-Player (youtube-nocookie.com) im Dashboard des Streamers; dabei erhält YouTube dessen IP-Adresse.</li>
-      <li><b>YouTube verbinden (freiwillig, nur Streamer):</b> Verbindet ein Streamer seinen YouTube-Kanal, speichern wir den Zugang von Google (verschlüsselt übertragen, nur für unsere Server lesbar), Name und ID des YouTube-Kanals und seine Einstellungen. Damit legen wir beim Start seines Twitch-Streams eine YouTube-Sendung an und beenden sie wieder; die Video-ID der laufenden Sendung ist öffentlich lesbar (für den Chat im Overlay). Trennen löscht den Zugang und widerruft ihn bei Google. Anbieter: Google Ireland Ltd.; es gelten zusätzlich die <a href="https://www.youtube.com/t/terms" rel="noopener" target="_blank">Nutzungsbedingungen von YouTube</a> und die <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Datenschutzerklärung von Google</a>.</li>
+      <li><b>YouTube verbinden (freiwillig, nur Streamer):</b> Verbindet ein Streamer seinen YouTube-Kanal, speichern wir den Zugang von Google (verschlüsselt übertragen, nur für unsere Server lesbar), Name und ID des YouTube-Kanals und seine Einstellungen. Damit legen wir beim Start seines Twitch-Streams eine YouTube-Sendung an und beenden sie wieder; die Video-ID der laufenden Sendung ist öffentlich lesbar (für den Chat im Overlay). Trennen löscht den Zugang und widerruft ihn bei Google. Anbieter: Google Ireland Ltd.; es gelten zusätzlich die <a href="https://www.youtube.com/t/terms" rel="noopener" target="_blank">Nutzungsbedingungen von YouTube</a> und die <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Datenschutzerklärung von Google</a>. Die Nutzung der Daten aus Google-APIs durch StreamHelp hält sich an die <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">Google API Services User Data Policy</a>, einschließlich der Limited-Use-Anforderungen. Den Zugriff kannst du auch unter <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a> widerrufen.</li>
       <li><b>Twitch-Status des Kanals:</b> Beim Verbinden speichern wir, ob ein Kanal Twitch-Affiliate oder -Partner ist (öffentliche Angabe von Twitch), um Funktionen wie Kanalpunkte passend ein- oder auszublenden.</li>
       <li><b>Datenverbrauch des Overlays:</b> Das Overlay in OBS meldet alle 5 Minuten, wie viele Bytes es geladen hat (getrennt nach Dateien, Datenbank, Live-Verbindung, Chat, Sonstiges) und wie lange es lief – je Tag und Modul, 90 Tage lang. Das sind nur Zahlen über den Kanal, nichts über Zuschauer. Die Verbindung zu OBS für „OBS gerade“ in der Statistik läuft nur zwischen deinem Browser und OBS auf deinem PC; diese Werte werden nicht an uns geschickt.</li>
     </ul>
@@ -122,6 +126,7 @@
     <h2>8. Deine Rechte</h2>
     <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch sowie auf Widerruf einer Einwilligung mit Wirkung für die Zukunft. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren. Schreib uns über den Kontakt oben – wir löschen deine Daten auf Anfrage.</p>
 
+    <p><a href="impressum.html">Impressum</a></p>
     <p><small>Stand: Oktober 2026</small></p>
   </main>
 </body>

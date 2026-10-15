@@ -776,6 +776,12 @@ Einmal nötig: Migration **`supabase/migrations/20261111000000_live_sync.sql`** 
 
   **Einrichtung (einmal, Plattform-Admin):** In der [Google Cloud Console](https://console.cloud.google.com/) ein Projekt anlegen, **YouTube Data API v3** aktivieren, unter „OAuth-Zustimmungsbildschirm“ die App anlegen (Bereich `…/auth/youtube`) und auf **„In Produktion“** stellen (im Testmodus laufen Zugänge nach 7 Tagen ab), dann unter „Anmeldedaten“ eine **OAuth-Client-ID (Webanwendung)** mit der Weiterleitungs-URI `https://<projekt>.supabase.co/functions/v1/youtube` erstellen. Client-ID und Secret in **Supabase → Edge Functions → Secrets** als `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` eintragen (nicht in den Code oder Chat). Google prüft Apps mit diesem Bereich; bis dahin sehen Streamer beim Verbinden einen Warnhinweis. Kontingent: eine Sendung starten und beenden kostet rund 200 der 10.000 Einheiten pro Tag.
 
+## Impressum, Datenschutz, Cookies
+
+- **Impressum** (`impressum.html`, § 5 DDG): Anbieter mit Name, ladungsfähiger Anschrift (kein Postfach) und E-Mail. Verlinkt im Fuß der Startseite und in der Datenschutzerklärung. Die Sicherheits-Checks schlagen fehl, solange dort oder in `datenschutz.html` noch Platzhalter `‹…›` stehen.
+- **Datenschutz** (`datenschutz.html`): Verantwortlicher mit denselben Angaben, Abschnitt zu Cookies und Browser-Speicher, Limited-Use-Hinweis für Google/YouTube.
+- **Kein Cookie-Banner:** StreamHelp nutzt kein Tracking. Im Browser liegen nur Anmeldung und Einstellungen (technisch nötig, § 25 Abs. 2 Nr. 2 TDDDG). Die Schriften liegen selbst gehostet unter `assets/fonts/` (`css/fonts.css`) – Google Fonts wird nicht mehr geladen. Kommt später ein Analyse- oder Werbedienst dazu, braucht es vorher eine Einwilligung.
+
 ## Overlay in Module aufteilen
 
 Statt einer Browserquelle mit allem kann das Overlay auf mehrere Quellen verteilt werden – z. B. **Alerts** in jede Szene, den **Chat** nur in der Chatting-Szene, **Spiele** nur beim Zocken. OBS-Fenster → Reiter **„Module“**:

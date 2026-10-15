@@ -213,4 +213,5 @@ export default [
   "Tu viens déjà de nous écrire – réessaie plus tard.",
   "Bilan de santé",
   "Raid de CrispyCarl",
+  "Mentions légales",
 ];

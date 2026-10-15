@@ -213,4 +213,5 @@ export default [
   "Você acabou de escrever – tente novamente mais tarde.",
   "Verificação",
   "Raid de CrispyCarl",
+  "Aviso legal",
 ];
