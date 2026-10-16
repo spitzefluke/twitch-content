@@ -53,6 +53,7 @@
     follower: 'Nur für Follower: Folge dem Kanal und versuch es noch einmal.',
     twice: 'Du bist schon dabei.',
     kicked: 'Bei dieser Verlosung kannst du nicht mehr mitmachen.',
+    won_today: 'Du hast heute schon gewonnen – morgen darfst du wieder mitmachen.',
     streamer: 'Der Streamer lost nicht selbst mit 😉',
     check: 'Die Follower-Prüfung klappt gerade nicht – versuch es gleich noch einmal.',
     epic: 'Bitte deinen Epic-Namen eintragen (3–32 Zeichen).',

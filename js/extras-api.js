@@ -135,8 +135,8 @@ function liveExtras({ sb, unwrap, invoke }) {
       },
       winners: async () => unwrap(await sb.from('giveaway_winners').select('*').order('id', { ascending: false }).limit(10)),
       me: () => rpc('giveaway_me'),
-      async start({ prize, command, followersOnly, minutes, confirm }) {
-        const r = await rpc('giveaway_start', { p_prize: prize, p_command: command, p_followers_only: followersOnly, p_minutes: minutes, p_confirm: confirm });
+      async start({ prize, command, followersOnly, minutes, confirm, oneWinPerDay = true }) {
+        const r = await rpc('giveaway_start', { p_prize: prize, p_command: command, p_followers_only: followersOnly, p_minutes: minutes, p_confirm: confirm, p_one_win_per_day: oneWinPerDay });
         flush();
         return r;
       },
@@ -145,6 +145,8 @@ function liveExtras({ sb, unwrap, invoke }) {
       reset: () => rpc('giveaway_reset'),
       // Rauswerfen (kick = true) oder zurückholen (false) – Migration …_giveaway_kick.sql
       kick: (id, kick = true) => rpc('giveaway_kick', { p_entry: id, p_kick: kick }),
+      // Namen von Hand in den Lostopf eintragen – Migration …_giveaway_manual.sql
+      add: (name) => rpc('giveaway_add', { p_name: name }),
       addTest: null, // nur im Demo-Modus – echte Teilnehmer kommen aus dem Twitch-Chat
     },
 
@@ -308,7 +310,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const CC0 = { id: 1, enabled: true, mode: 'direct', vote_seconds: 30, user_cooldown: 20, show_seconds: 6, round: 0, round_ends_at: null, tally: {}, voters: 0 };
   const HR0 = { id: 1, bpm: null, at: null, alarm: 140, session_at: null, s_min: null, s_max: null, s_sum: 0, s_n: 0 };
   const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
-  const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
+  const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, one_win_per_day: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
 
   const tileOpen = (kind) => {
@@ -679,6 +681,14 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
 
     // Verlosung: Im Demo-Modus gibt es keinen Twitch-Chat – „Test-Teilnehmer“ füllt den Lostopf
     giveaway: {
+      // wie giveaway_won_today: heute (Berlin) schon gezogen und nicht rausgeworfen – per Schlüssel oder Name
+      wonToday(k, name = '') {
+        const day = (t) => new Date(t).toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' });
+        const today = day(Date.now());
+        const n = String(name).trim().toLowerCase();
+        return store.get('giveaway_entries', []).some((e) => e.won && !e.kicked && e.won_at && day(e.won_at) === today
+          && ((k && e.key === k) || (n && String(e.name).toLowerCase() === n)));
+      },
       async get() {
         const g = oneRow('giveaway', GW0);
         if (g.status === 'open' && g.ends_at && Date.parse(g.ends_at) <= Date.now()) return put('giveaway', GW0, { status: 'closed' });
@@ -686,12 +696,12 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       },
       entries: async (round) => store.get('giveaway_entries', []).filter((e) => e.round === round).map(({ key: _k, ...e }) => e).reverse(),
       winners: async () => store.get('giveaway_winners', []).slice(0, 10),
-      me: async () => {
+      async me() {
         const g = oneRow('giveaway', GW0);
         const mine = store.get('giveaway_entries', []).find((e) => e.round === g.round && e.key === key());
-        return { joined: !!mine && !mine.kicked, won: !!mine?.won && !mine.kicked, kicked: !!mine?.kicked, twitch: false };
+        return { joined: !!mine && !mine.kicked, won: !!mine?.won && !mine.kicked, kicked: !!mine?.kicked, won_today: this.wonToday(key()), twitch: false };
       },
-      async start({ prize, command, followersOnly, minutes, confirm }) {
+      async start({ prize, command, followersOnly, minutes, confirm, oneWinPerDay = true }) {
         await requireAdmin();
         const p = String(prize ?? '').trim();
         if (p.length < 2 || p.length > 100) throw new Error('Bitte einen Preis eintragen (2–100 Zeichen).');
@@ -701,9 +711,11 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         const mins = clampInt(minutes, 0, 240, 0);
         const g = oneRow('giveaway', GW0);
         const round = g.round + 1;
-        store.set('giveaway_entries', store.get('giveaway_entries', []).filter((e) => e.round >= round - 1));
+        // alte Runden aufräumen – Gewinner von heute bleiben für die Tagesregel
+        store.set('giveaway_entries', store.get('giveaway_entries', []).filter((e) => e.round >= round - 1 || (e.won && !e.kicked && this.wonToday(e.key, e.name))));
         return put('giveaway', GW0, {
           round, status: 'open', prize: p, command: cmd, followers_only: followersOnly !== false, confirm_in_chat: confirm !== false,
+          one_win_per_day: oneWinPerDay !== false,
           entries: 0, opened_at: now(), ends_at: mins ? new Date(Date.now() + mins * 60000).toISOString() : null, winner_name: '', drawn_at: null, draws: 0,
         });
       },
@@ -721,6 +733,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         if (!pool.length) throw new Error(g.entries ? 'Alle Teilnehmer wurden schon gezogen.' : 'Noch niemand im Lostopf.');
         const win = pick(pool);
         win.won = true;
+        win.won_at = now();
         store.set('giveaway_entries', list);
         store.set('giveaway_winners', [{ id: nextId++, round: g.round, prize: g.prize, name: win.name, entries: g.entries, created_at: now() }, ...store.get('giveaway_winners', [])].slice(0, 50));
         return put('giveaway', GW0, { status: 'drawn', winner_name: win.name, drawn_at: now(), draws: g.draws + 1, ends_at: g.ends_at && Date.parse(g.ends_at) < Date.now() ? g.ends_at : now() });
@@ -748,6 +761,22 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
           ...(wasWinner ? { status: 'closed', winner_name: '', drawn_at: null } : {}),
         });
       },
+      // wie giveaway_add: Name von Hand eintragen, jeder Name nur einmal (ohne Groß-/Kleinschreibung)
+      async add(name) {
+        await requireAdmin();
+        const g = await this.get();
+        if (g.status === 'idle' || !g.round) throw new Error('Erst eine Verlosung starten.');
+        const n = String(name ?? '').replace(/^\s*@+/, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (!n) throw new Error('Bitte einen Namen eintragen.');
+        const list = store.get('giveaway_entries', []);
+        const same = list.find((e) => e.round === g.round && String(e.name).toLowerCase() === n.toLowerCase());
+        if (same?.kicked) throw new Error(`${n} wurde aus dieser Verlosung rausgeworfen – bitte unter „Rausgeworfen“ zurückholen.`);
+        if (g.one_win_per_day !== false && this.wonToday(`manual:${n.toLowerCase()}`, n)) throw new Error(`${n} hat heute schon gewonnen und darf bei dieser Verlosung nicht mitmachen.`);
+        if (same) throw new Error(`${n} ist schon im Lostopf.`);
+        list.push({ id: nextId++, round: g.round, key: `manual:${n.toLowerCase()}`, name: n, won: false, kicked: false, created_at: now() });
+        store.set('giveaway_entries', list);
+        return put('giveaway', GW0, { entries: g.entries + 1 });
+      },
       // Demo: ein paar Zuschauer „schreiben“ den Befehl in den Chat
       async addTest(n = 5) {
         await requireAdmin();
@@ -755,12 +784,15 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         if (g.status !== 'open') throw new Error('Die Verlosung ist gerade nicht offen.');
         const NAMES = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia', 'BuildBenno', 'SnipeSina', 'Kartoffel_Kai', 'LamaLeni', 'NoScopeNils', 'VictoryVera'];
         const list = store.get('giveaway_entries', []);
-        const taken = new Set(list.filter((e) => e.round === g.round).map((e) => e.key));
+        const inRound = list.filter((e) => e.round === g.round);
+        const taken = new Set(inRound.map((e) => e.key));
+        const takenNames = new Set(inRound.map((e) => String(e.name).toLowerCase()));
         let added = 0;
         for (const name of shuffled(NAMES)) {
           if (added >= n) break;
           const k = `demo:${name}`;
-          if (taken.has(k)) continue;
+          if (taken.has(k) || takenNames.has(name.toLowerCase())) continue;
+          if (g.one_win_per_day !== false && this.wonToday(k, name)) continue;
           list.push({ id: nextId++, round: g.round, key: k, name, won: false, created_at: now() });
           added++;
         }

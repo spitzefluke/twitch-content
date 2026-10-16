@@ -2,6 +2,8 @@
 // in den Chat – nur Follower, jeder einmal. „Gewinner ziehen“ lost in der Datenbank (giveaway_draw).
 // Die Follower-Prüfung macht die Edge Function twitch-eventsub (Migration …_giveaway.sql).
 // Streamer und Mods können Teilnehmer rauswerfen und zurückholen (…_giveaway_kick.sql).
+// Streamer und Mods können außerdem Namen von Hand in den Lostopf eintragen (…_giveaway_manual.sql).
+// Wer heute schon gewonnen hat, ist bei weiteren Verlosungen desselben Tages nicht dabei – abschaltbar (…_giveaway_one_win_per_day.sql).
 import { $, X, act, fill, h, isAdmin, makeDialog, onSubmit, onTick, openFeature, paintTile, secondsUntil, clock, timeOf, toast } from './extras-core.js';
 
 const DURATIONS = [0, 2, 5, 10, 15, 30, 60];
@@ -50,6 +52,14 @@ export const giveaway = {
             <p class="form-hint" data-admin-hint></p>
           </section>
           <section class="bingo-box">
+            <h3 class="prank-h3">Teilnehmer hinzufügen</h3>
+            <form class="x-row gw-add" data-add autocomplete="off">
+              <label class="field" style="flex:1 1 160px"><span class="sr-only">Name</span><input type="text" name="name" maxlength="40" required placeholder="Name, z. B. NightOwl_Mia"></label>
+              <button class="btn btn--primary btn--sm" type="submit">➕ Hinzufügen</button>
+            </form>
+            <p class="form-hint">Für Zuschauer ohne Chat. Jeder Name nur einmal – auch nicht, wenn er schon per Chat dabei ist.</p>
+          </section>
+          <section class="bingo-box">
             <h3 class="prank-h3">Neue Verlosung</h3>
             <form class="x-form" data-start>
               <label class="field"><span>Preis</span><input type="text" name="prize" maxlength="100" required placeholder="z. B. 1000 V-Bucks oder ein Spiel deiner Wahl"></label>
@@ -57,8 +67,9 @@ export const giveaway = {
               <label class="field"><span>Dauer</span><select name="minutes"></select></label>
               <label class="toggle"><input type="checkbox" name="followers" checked><span class="toggle-ui" aria-hidden="true"></span>Nur Follower dürfen mitmachen</label>
               <label class="toggle"><input type="checkbox" name="confirm" checked><span class="toggle-ui" aria-hidden="true"></span>Bot bestätigt jede Teilnahme im Chat</label>
+              <label class="toggle"><input type="checkbox" name="oneWin" checked><span class="toggle-ui" aria-hidden="true"></span>Wer heute schon gewonnen hat, darf nicht mehr mitmachen</label>
               <button class="btn btn--primary btn--sm" type="submit">🎁 Verlosung starten</button>
-              <p class="form-hint">Beim Start verkündet der Bot Preis und Befehl im Chat, beim Ziehen den Gewinner. Jeder darf pro Verlosung nur einmal mitmachen.</p>
+              <p class="form-hint">Beim Start verkündet der Bot Preis und Befehl im Chat, beim Ziehen den Gewinner. Jeder darf pro Verlosung nur einmal mitmachen. „Heute“ zählt nach deutscher Zeit; wirfst du einen Gewinner raus, ist er für heute wieder frei.</p>
             </form>
           </section>
         </div>
@@ -71,10 +82,19 @@ export const giveaway = {
       if (this.g?.status === 'open' && !confirm('Es läuft schon eine Verlosung. Neu starten? Der Lostopf wird geleert.')) return;
       this.g = await X.api.giveaway.start({
         prize: form.prize.value, command: form.command.value, minutes: Number(form.minutes.value),
-        followersOnly: form.followers.checked, confirm: form.confirm.checked,
+        followersOnly: form.followers.checked, confirm: form.confirm.checked, oneWinPerDay: form.oneWin.checked,
       });
       toast(`Verlosung läuft – im Chat mit ${this.g.command} mitmachen.`, 'ok');
       await reload();
+    });
+    onSubmit($('[data-add]', d), async (form) => {
+      const name = form.elements.name.value.replace(/^\s*@+/, '').trim();
+      if (!name) return;
+      this.g = await X.api.giveaway.add(name);
+      form.elements.name.value = '';
+      toast(`${name} ist im Lostopf.`, 'ok');
+      await reload();
+      form.elements.name.focus();
     });
     $('[data-draw]', d).addEventListener('click', (e) => act(e.currentTarget, async () => {
       const before = this.entries.filter((x) => !x.kicked).map((x) => x.name);
@@ -213,6 +233,7 @@ export const giveaway = {
       : me?.kicked ? '🚫 Du wurdest aus dieser Verlosung genommen.'
       : me?.won ? '🏆 Du hast gewonnen! Der Streamer meldet sich bei dir.'
         : me?.joined ? '✅ Du bist im Lostopf. Viel Glück!'
+          : me?.won_today && g.one_win_per_day ? '🏆 Du hast heute schon gewonnen – bei dieser Verlosung bist du nicht dabei. Morgen wieder!'
           : g.status !== 'open' ? 'Mitmachen geht gerade nicht mehr.'
             : !X.ctx.state.user ? `Schreib ${g.command} in den Twitch-Chat, um mitzumachen.`
               : me?.twitch === false && !X.ctx.state.api.demo
@@ -258,12 +279,18 @@ export const giveaway = {
     $('[data-admin-hint]', d).textContent = !live ? 'Rechts eine neue Verlosung starten.'
       : !pool && g.entries ? 'Alle im Lostopf wurden schon gezogen.'
         : g.status === 'drawn' ? 'Gewinner nicht da? „Neu ziehen“ lost jemand anderen aus.' : 'Ziehen schließt die Verlosung automatisch.';
+    const add = $('[data-add]', d);
+    const canAdd = live && !!X.api.giveaway.add;
+    add.elements.name.disabled = !canAdd;
+    add.querySelector('[type=submit]').disabled = !canAdd;
+    add.parentElement.hidden = !X.api.giveaway.add;
     const form = $('[data-start]', d);
     if (!form.contains(document.activeElement)) {
       if (!form.prize.value && g.prize) form.prize.value = g.prize;
       if (!form.command.value) form.command.value = g.command;
       form.followers.checked = g.followers_only;
       form.confirm.checked = g.confirm_in_chat;
+      form.oneWin.checked = g.one_win_per_day !== false;
     }
     form.querySelector('[type=submit]').textContent = g.status === 'open' ? '🎁 Neu starten' : '🎁 Verlosung starten';
   },

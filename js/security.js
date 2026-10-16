@@ -389,7 +389,7 @@ async function paintRights(box, owner) {
 // Was hinter einer Aktion steckt – Funktionen der Datenbank und Edge Functions auf Deutsch
 const ACTIONS = {
   giveaway_start: 'Verlosung gestartet', giveaway_close: 'Verlosung geschlossen', giveaway_draw: 'Gewinner gezogen',
-  giveaway_reset: 'Verlosung zurückgesetzt', giveaway_kick: 'Teilnehmer entfernt',
+  giveaway_reset: 'Verlosung zurückgesetzt', giveaway_kick: 'Teilnehmer entfernt', giveaway_add: 'Teilnehmer hinzugefügt',
   site_guard_set: 'Raid-Schutz geschaltet', wheel_variants_save: 'Glücksrad bearbeitet', wheel_cost: 'Glücksrad-Kosten geändert',
   spin: 'Glücksrad gedreht (mit Chat-Ansage)', bingo_new_card: 'Neue Bingo-Karte', bingo_toggle: 'Bingo-Feld abgehakt',
   bingo_bet_start: 'Tipprunde gestartet', bingo_bet_cancel: 'Tipprunde abgebrochen',
