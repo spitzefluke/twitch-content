@@ -1,0 +1,145 @@
+/* Konfigurationsseite der Twitch-Erweiterung. Farben wie panel.css, Hell/Dunkel folgt dem Browser. */
+:root {
+  --bg: #0e0b17; --card: #1a1527; --line: #2d2540; --text: #f2eefc; --muted: #a49fbd;
+  --purple: #9146ff; --purple-2: #b57bff; --green: #2fd27a; --red: #ff4d6d; --amber: #ffb81c;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f6fb; --card: #ffffff; --line: #e1dcef; --text: #1f1a2e; --muted: #625c7a;
+    --purple: #772ce8; --purple-2: #5c16c5; --green: #0f7a43; --red: #c8193a; --amber: #9a6a00;
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.cfg { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+.cfg-head { position: relative; }
+.uilang { position: absolute; top: 0; right: 0; display: flex; gap: 4px; }
+.uilang button { padding: 4px 10px; font: inherit; font-weight: 700; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+.uilang button[aria-pressed="true"] { border-color: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-2); }
+.cfg-head h1 { margin: 0 0 4px; font-size: 24px; }
+.muted, .hint, small { color: var(--muted); }
+.hint { margin: 8px 0 0; font-size: 12.5px; }
+.cfg-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; margin-top: 16px; }
+@media (max-width: 860px) { .cfg-grid { grid-template-columns: minmax(0, 1fr); } }
+.cfg-form { display: grid; gap: 14px; }
+.box { padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.box h2, .cfg-preview h2 { margin: 0 0 10px; font-size: 16px; }
+.box h2 small { font-weight: 400; }
+
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.preset {
+  display: grid; gap: 2px; padding: 10px 12px; text-align: left; font: inherit; color: var(--text);
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer;
+}
+.preset small { font-size: 12px; }
+.preset:hover, .preset:focus-visible { border-color: var(--purple-2); outline: none; }
+.preset[aria-pressed="true"] { border-color: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-2); }
+
+.modes { display: grid; gap: 8px; }
+.mode { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.mode:has(input:checked) { border-color: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-2); }
+.mode input { margin-top: 4px; accent-color: var(--purple); }
+.mode b, .mode small { display: block; }
+.mode small { font-size: 12.5px; }
+
+.checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 14px; }
+.checks label, label.inline { display: flex; align-items: center; gap: 8px; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--purple); width: 16px; height: 16px; }
+label:has(input:disabled) { opacity: .5; }
+
+label { display: grid; gap: 4px; font-weight: 600; }
+label.inline, .checks label, .mode { font-weight: 500; }
+select, input[type="text"], input[type="number"] {
+  width: 100%; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; font-weight: 400;
+}
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--purple-2); outline-offset: 1px; }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; align-items: end; }
+[hidden] { display: none !important; }
+
+.save { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn {
+  min-height: 40px; padding: 8px 22px; border: 0; border-radius: 999px; background: var(--purple); color: #fff;
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--purple-2); }
+.btn:disabled { opacity: .55; cursor: default; }
+.msg { margin: 0; font-size: 13px; }
+.msg.is-ok { color: var(--green); }
+.msg.is-error { color: var(--red); }
+.raw pre { overflow: auto; padding: 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); font-size: 12px; }
+
+.cfg-preview { position: sticky; top: 12px; }
+.stage { display: grid; justify-items: center; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); }
+/* Video-Attrappe für Komponente und Overlay */
+.stage[data-mode="component"], .stage[data-mode="overlay"] {
+  background: repeating-linear-gradient(45deg, #1f2433 0 14px, #252b3d 14px 28px); padding: 0; overflow: hidden;
+}
+.stage iframe { border: 0; background: transparent; width: 318px; height: 500px; max-width: 100%; }
+.stage[data-mode="component"] iframe { width: 100%; height: 220px; }
+.stage[data-mode="overlay"] iframe { width: 100%; height: 202px; }
+
+/* ================= Gaming-Look: Neon, Glow, kräftige Farben ================= */
+:root {
+  --bg: #0a0813; --card: #15101f; --line: #2a2145; --purple: #9d4dff; --purple-2: #c59bff;
+  --neon: #19e3ff; --pink: #ff3dcb;
+  --glow: 0 0 0 1px color-mix(in srgb, var(--purple) 50%, transparent), 0 0 18px color-mix(in srgb, var(--purple) 32%, transparent);
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg: #f4f1fb; --card: #ffffff; --line: #d9cff2; --purple: #7a2cf0; --purple-2: #5a16c8; --neon: #007c9a; --pink: #c0189a; --glow: 0 2px 10px color-mix(in srgb, var(--purple) 22%, transparent); }
+}
+body { background: radial-gradient(90% 40% at 50% -5%, color-mix(in srgb, var(--purple) 26%, transparent), transparent 65%), var(--bg); background-attachment: fixed; }
+.cfg-head h1 {
+  font-size: 30px; font-weight: 900; letter-spacing: -.01em;
+  background: linear-gradient(90deg, var(--purple-2), var(--neon), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.cfg-head p.muted { max-width: 62ch; }
+.box {
+  position: relative; overflow: hidden; padding: 16px 18px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--purple) 9%, var(--card)), var(--card) 60%);
+  border-color: color-mix(in srgb, var(--purple) 30%, var(--line)); box-shadow: 0 4px 18px rgba(0, 0, 0, .22);
+  transition: border-color .2s, box-shadow .2s;
+}
+.box:hover, .box:focus-within { border-color: var(--purple-2); box-shadow: var(--glow); }
+.box h2, .cfg-preview h2 { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 800; }
+.box h2::before { content: ""; flex: none; width: 4px; height: 1.1em; border-radius: 2px; background: linear-gradient(var(--neon), var(--pink)); box-shadow: 0 0 10px color-mix(in srgb, var(--neon) 60%, transparent); }
+.preset, .mode { transition: transform .15s, border-color .2s, box-shadow .2s, background .2s; }
+.preset { padding: 12px 14px; }
+.preset:hover, .preset:focus-visible, .mode:hover { transform: translateY(-2px); border-color: var(--purple-2); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+.preset[aria-pressed="true"], .mode:has(input:checked) { border-color: var(--purple-2); box-shadow: var(--glow); background: color-mix(in srgb, var(--purple) 14%, var(--bg)); }
+.mode { padding: 10px 12px; }
+/* Schalter statt Häkchen */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 36px; height: 20px; border-radius: 999px;
+  background: var(--line); cursor: pointer; transition: background .2s, box-shadow .2s;
+}
+input[type="checkbox"]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+input[type="checkbox"]:checked { background: linear-gradient(135deg, var(--purple), var(--pink)); box-shadow: 0 0 10px color-mix(in srgb, var(--purple) 55%, transparent); }
+input[type="checkbox"]:checked::after { transform: translateX(16px); }
+input[type="checkbox"]:disabled { cursor: default; }
+select, input[type="text"], input[type="number"] { transition: border-color .2s, box-shadow .2s; }
+select:hover, input[type="text"]:hover, input[type="number"]:hover { border-color: var(--purple-2); }
+select:focus-visible, input:focus-visible, button:focus-visible { outline: 0; border-color: var(--purple-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 32%, transparent); }
+.uilang button { transition: border-color .2s, box-shadow .2s; }
+.uilang button[aria-pressed="true"] { background: linear-gradient(135deg, var(--purple), var(--pink)); color: #fff; border-color: transparent; box-shadow: 0 0 12px color-mix(in srgb, var(--purple) 55%, transparent); }
+/* Speichern-Leiste bleibt unten im Blick */
+.save {
+  position: sticky; bottom: 12px; z-index: 5; padding: 10px 14px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--purple) 40%, var(--line));
+  background: color-mix(in srgb, var(--card) 86%, transparent); backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
+}
+.btn { background: linear-gradient(135deg, var(--purple), var(--pink)); box-shadow: 0 2px 14px color-mix(in srgb, var(--purple) 45%, transparent); transition: transform .15s, filter .15s; }
+.btn:hover:not(:disabled) { background: linear-gradient(135deg, var(--purple), var(--pink)); filter: brightness(1.14); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.stage { border-color: color-mix(in srgb, var(--purple) 45%, var(--line)); box-shadow: var(--glow); }
+.raw pre { background: var(--bg); }
+@media (prefers-reduced-motion: no-preference) {
+  .box { animation: rise .45s ease-out both; }
+  .cfg-form > :nth-child(2) { animation-delay: .05s; } .cfg-form > :nth-child(3) { animation-delay: .1s; }
+  .cfg-form > :nth-child(4) { animation-delay: .15s; } .cfg-form > :nth-child(5) { animation-delay: .2s; }
+  .cfg-form > :nth-child(n+6) { animation-delay: .25s; }
+  .btn:not(:disabled) { animation: glowpulse 2.6s ease-in-out infinite; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes glowpulse { 50% { box-shadow: 0 2px 24px color-mix(in srgb, var(--pink) 60%, transparent); } }

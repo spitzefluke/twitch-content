@@ -2713,6 +2713,13 @@ function renderPrankDialog() {
   form.allow_uploads.checked = settings.allow_uploads;
   form.throw_cost.value = settings.throw_cost ?? 500;
   form.sound_cost.value = settings.sound_cost ?? 300;
+  // Sounds übers Panel (…_panel_sounds.sql) – fehlt die Migration, ist der Bereich gesperrt
+  const panelReady = 'panel_sounds' in settings;
+  form.panel_sounds.checked = !!settings.panel_sounds;
+  selectValue(form.panel_sound_cooldown, settings.panel_sound_cooldown ?? 120);
+  selectValue(form.panel_sound_gap, settings.panel_sound_gap ?? 15);
+  $('#prank-panel').disabled = !panelReady;
+  $('#prank-panel-missing').hidden = panelReady;
   form.cooldown_seconds.value = String(settings.cooldown_seconds);
   if (form.cooldown_seconds.value !== String(settings.cooldown_seconds)) {
     // Wert außerhalb der Liste (z. B. direkt in der Datenbank gesetzt)
@@ -3183,6 +3190,15 @@ function paintPrankSync() {
   $('#prank-sync').disabled = !twitch.connected;
 }
 
+// Wert in eine Auswahl setzen – steht er nicht in der Liste (z. B. direkt in der Datenbank gesetzt), kommt er dazu
+function selectValue(select, value) {
+  select.value = String(value);
+  if (select.value === String(value)) return;
+  const opt = new Option(`${value} Sekunden`, String(value));
+  select.add(opt);
+  select.value = opt.value;
+}
+
 async function savePrankSettings() {
   const form = $('#prank-admin');
   const clampCost = (v, d) => Math.min(1000000, Math.max(1, Math.round(Number(v)) || d));
@@ -3193,6 +3209,11 @@ async function savePrankSettings() {
     throw_cost: clampCost(form.throw_cost.value, 500),
     sound_cost: clampCost(form.sound_cost.value, 300),
   };
+  if ('panel_sounds' in state.prank.settings) {
+    patch.panel_sounds = form.panel_sounds.checked;
+    patch.panel_sound_cooldown = Number(form.panel_sound_cooldown.value);
+    patch.panel_sound_gap = Number(form.panel_sound_gap.value);
+  }
   form.querySelectorAll('input, select').forEach((el) => { el.disabled = true; });
   try {
     state.prank.settings = await state.api.updatePrankSettings(patch);

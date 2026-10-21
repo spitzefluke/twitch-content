@@ -453,3 +453,14 @@ main.nc-wrap { flex: 1; }
   .lang-pick { padding: 5px 22px 5px 8px; background-position: right 8px center; font-size: 12px; }
   .lang-pick--nav { margin-right: 6px; }
 }
+
+/* ---------- Für dich: Ganz neu · Ohne Affiliate · Mit Werbung ---------- */
+.nc-for { padding: 56px 0 24px; }
+.nc-for-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; margin-top: 40px; }
+.nc-for-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 22px; border-radius: 14px; border: 1px solid var(--color-neutral-800);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--color-indigo-deep) 70%, transparent), color-mix(in srgb, var(--color-surface) 60%, transparent));
+}
+.nc-for-card .nc-btn { margin-top: auto; }
+.nc-for-card .nc-group-list { flex: 1; }
+.nc-for-lead { margin: 0; font-size: 15px; line-height: 1.65; color: var(--color-neutral-300); }

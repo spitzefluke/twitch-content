@@ -356,7 +356,11 @@ async function createSupabaseApi() {
     // Fehlt die Migration …_pranks.sql, schlägt getPrankSettings fehl und
     // app.js zeigt statt der Aktionen einen Hinweis.
     async getPrankSettings() {
-      // throw_cost/sound_cost kamen mit …_channel_points.sql – fehlen sie noch, trotzdem laden
+      // throw_cost/sound_cost kamen mit …_channel_points.sql, panel_sound* mit …_panel_sounds.sql –
+      // fehlen sie noch, trotzdem laden
+      const full = await sb.from('prank_settings')
+        .select('enabled, cooldown_seconds, allow_uploads, throw_cost, sound_cost, panel_sounds, panel_sound_cooldown, panel_sound_gap').eq('id', 1).single();
+      if (!full.error) return full.data;
       const { data, error } = await sb.from('prank_settings').select('enabled, cooldown_seconds, allow_uploads, throw_cost, sound_cost').eq('id', 1).single();
       if (!error) return data;
       return unwrap(await sb.from('prank_settings').select('enabled, cooldown_seconds, allow_uploads').eq('id', 1).single());
@@ -1474,7 +1478,10 @@ function createLocalApi() {
     // ---------- Ärgere den Streamer (Demo) ----------
     // Neue Einträge in zd_pranks erreichen das Overlay im selben Browser über das storage-Ereignis.
     async getPrankSettings() {
-      return { enabled: true, cooldown_seconds: 20, allow_uploads: true, throw_cost: 500, sound_cost: 300, ...store.get('prank_settings', {}) };
+      return {
+        enabled: true, cooldown_seconds: 20, allow_uploads: true, throw_cost: 500, sound_cost: 300,
+        panel_sounds: false, panel_sound_cooldown: 120, panel_sound_gap: 15, ...store.get('prank_settings', {}),
+      };
     },
     async syncPrankRewards() {
       throw new Error('Im Demo-Modus nicht verfügbar. Die Belohnungen braucht Twitch und Supabase.');

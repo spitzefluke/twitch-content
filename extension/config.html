@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StreamHelp einrichten</title>
+  <link rel="stylesheet" href="config.css">
+</head>
+<body>
+  <!-- Konfigurationsseite der Twitch-Erweiterung (Streamer-Ansicht im Creator-Dashboard).
+       Speichert über den Twitch-Konfigurationsdienst; panel.html liest es bei jedem Zuschauer. Anleitung: README → „Twitch-Erweiterung“ -->
+  <main class="cfg">
+    <header class="cfg-head">
+      <div class="uilang" role="group" aria-label="Language"><button type="button" data-ui="en">EN</button><button type="button" data-ui="de">DE</button></div>
+      <h1>StreamHelp einrichten</h1>
+      <p class="muted">Stell alles vorher ein – rechts siehst du sofort, wie es bei deinen Zuschauern aussieht. Erst „Speichern“ macht es live.</p>
+    </header>
+
+    <div class="cfg-grid">
+      <div class="cfg-form">
+        <section class="box" aria-labelledby="h-start">
+          <h2 id="h-start">1 · Wie startest du?</h2>
+          <div class="presets" role="group" aria-label="Schnellstart">
+            <button type="button" class="preset" data-preset="starter"><b>🌱 Ich fange gerade an</b><small>Wenig, ruhig, einfach: Game, Umfrage, Ideen, Termine.</small></button>
+            <button type="button" class="preset" data-preset="noaff"><b>💬 Ich bin (noch) kein Affiliate</b><small>Alles, was ohne Kanalpunkte, Bits und Abos läuft.</small></button>
+          </div>
+        </section>
+
+        <section class="box" aria-labelledby="h-mode">
+          <h2 id="h-mode">2 · Wo soll es erscheinen?</h2>
+          <div class="modes" role="radiogroup" aria-labelledby="h-mode">
+            <label class="mode"><input type="radio" name="mode" value="panel"><span><b>Panel</b><small>Karte unter dem Stream. Der einfachste Start.</small></span></label>
+            <label class="mode"><input type="radio" name="mode" value="component"><span><b>Komponente</b><small>Kleines Feld auf dem Video. Du platzierst es im Twitch-Dashboard.</small></span></label>
+            <label class="mode"><input type="radio" name="mode" value="overlay"><span><b>Overlay</b><small>Liegt über dem Videobild, du legst Ecke und Größe fest.</small></span></label>
+          </div>
+          <p class="hint" id="mode-hint"></p>
+          <div class="row2" id="overlay-opts" hidden>
+            <label>Ecke
+              <select name="corner">
+                <option value="top-left">oben links</option>
+                <option value="top-right">oben rechts</option>
+                <option value="bottom-left">unten links</option>
+                <option value="bottom-right">unten rechts</option>
+              </select>
+            </label>
+            <label>Größe
+              <select name="size">
+                <option value="s">klein</option>
+                <option value="m">mittel</option>
+                <option value="l">groß</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="box" aria-labelledby="h-mods">
+          <h2 id="h-mods">3 · Was sehen Zuschauer?</h2>
+          <div class="checks" id="mods">
+            <label><input type="checkbox" name="mod" value="game"> Aktuelles Game</label>
+            <label><input type="checkbox" name="mod" value="poll"> Umfrage</label>
+            <label><input type="checkbox" name="mod" value="giveaway"> Verlosung</label>
+            <label><input type="checkbox" name="mod" value="queue"> Mitspieler-Warteschlange</label>
+            <label><input type="checkbox" name="mod" value="pet"> Haustier füttern</label>
+            <label><input type="checkbox" name="mod" value="counters"> Zähler</label>
+            <label><input type="checkbox" name="mod" value="next"> Als Nächstes (Termin)</label>
+            <label><input type="checkbox" name="mod" value="ideas"> Content-Ideen</label>
+            <label><input type="checkbox" name="mod" value="sounds"> Sounds abspielen</label>
+            <label><input type="checkbox" name="mod" value="link" id="mod-link"> Link zur Seite <small>(nur Panel)</small></label>
+          </div>
+          <p class="hint">Nichts davon braucht Affiliate oder Partner. Karten ohne Inhalt (z. B. keine laufende Umfrage) bleiben automatisch weg.</p>
+          <p class="hint">Sounds zusätzlich auf der StreamHelp-Seite einschalten: Dashboard → „Ärgere den Streamer“ → „Sounds über die Twitch-Erweiterung“.</p>
+        </section>
+
+        <section class="box" aria-labelledby="h-look">
+          <h2 id="h-look">4 · Aussehen</h2>
+          <div class="row2">
+            <label>Farbschema
+              <select name="theme">
+                <option value="auto">Wie Twitch beim Zuschauer</option>
+                <option value="dark">Immer dunkel</option>
+                <option value="light">Immer hell</option>
+              </select>
+            </label>
+            <label class="inline"><input type="checkbox" name="compact"> Kompakt <small>(weniger Text, schmalere Karten)</small></label>
+          </div>
+        </section>
+
+        <section class="box" aria-labelledby="h-lang">
+          <h2 id="h-lang">5 · Sprache</h2>
+          <label>Panel-Sprache
+            <select name="lang">
+              <option value="auto">Automatisch (Sprache des Zuschauers)</option>
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="it">Italiano</option>
+              <option value="nl">Nederlands</option>
+              <option value="pl">Polski</option>
+              <option value="pt">Português</option>
+              <option value="ru">Русский</option>
+              <option value="tr">Türkçe</option>
+            </select>
+          </label>
+          <p class="hint">Automatisch zeigt jedem Zuschauer das Panel in seiner Twitch-Sprache (sonst Englisch). Mit einer festen Sprache sehen alle dasselbe.</p>
+        </section>
+
+        <div class="save">
+          <button type="button" class="btn" id="save" disabled>Speichern</button>
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        </div>
+        <details class="raw" id="raw" hidden>
+          <summary>Einstellungen als Text (nur zum Ausprobieren ohne Twitch)</summary>
+          <pre id="raw-json"></pre>
+        </details>
+      </div>
+
+      <aside class="cfg-preview" aria-label="Vorschau">
+        <h2>Vorschau</h2>
+        <div class="stage" id="stage" data-mode="panel">
+          <iframe id="preview" title="Vorschau der Erweiterung" src="panel.html?demo&amp;preview=1"></iframe>
+        </div>
+        <p class="hint" id="stage-hint"></p>
+      </aside>
+    </div>
+  </main>
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <script src="panel-i18n.js"></script>
+  <script src="ext-config.js"></script>
+  <script src="config.js"></script>
+</body>
+</html>

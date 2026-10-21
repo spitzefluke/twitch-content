@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="245 122 254 254" fill="none">
+  <!-- StreamHelp: Play-Dreieck mit Netz (nachgezeichnet nach assets/logo.png) -->
+  <defs>
+    <linearGradient id="sh-bg" x1="0" y1="123" x2="0" y2="379" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b1560"/>
+      <stop offset="1" stop-color="#34379a"/>
+    </linearGradient>
+  </defs>
+  <path d="M286 154V348L456 251Z" fill="url(#sh-bg)" stroke="url(#sh-bg)" stroke-width="56" stroke-linejoin="round"/>
+  <g stroke-linecap="round">
+    <path d="M296 157.5L382.5 310M279.5 265L337.5 231" stroke="#2c8a1f" stroke-width="7.5"/>
+    <path d="M279 178Q279 151 305 156L445 236Q466 252 445 268L305 348Q279 356 279 326Z" stroke="#78b900" stroke-width="7.5" stroke-linejoin="round"/>
+    <path d="M277.5 212.5L337.5 231L389 201M337.5 231L456 255M279.5 265L382.5 310" stroke="#78b900" stroke-width="7.5"/>
+  </g>
+  <g fill="#78b900">
+    <circle cx="296" cy="157.5" r="8.5"/><circle cx="277.5" cy="212.5" r="10"/><circle cx="337.5" cy="231" r="11"/>
+    <circle cx="389" cy="201" r="11"/><circle cx="279.5" cy="265" r="8.5"/><circle cx="382.5" cy="310" r="8.5"/><circle cx="456" cy="255" r="5"/>
+  </g>
+</svg>
