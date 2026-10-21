@@ -17,6 +17,7 @@ import { handleExtraRedemption } from "../_shared/extras.ts";
 import { thankEvent } from "../_shared/bot.ts";
 import { noteEvent } from "../_shared/health.ts";
 import { youtubeOffline, youtubeOnline } from "../_shared/ytlive.ts";
+import { watchTick } from "../_shared/watchtime.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
@@ -88,10 +89,15 @@ async function handle(req: Request, type: string | null, payload: any): Promise<
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(note);
   }
 
-  // Stream an/aus: YouTube mitschalten (…_live_sync.sql) – ohne YouTube-Verbindung passiert nichts
+  // Stream an/aus: YouTube mitschalten (…_live_sync.sql) – ohne YouTube-Verbindung passiert nichts.
+  // Dazu Watchtime und Statistik (…_bot_stats.sql): an → gleich zählen, aus → Stream abschließen.
   if (type === "notification" && ["stream.online", "stream.offline"].includes(payload.subscription?.type)) {
-    const task = (payload.subscription.type === "stream.online" ? youtubeOnline() : youtubeOffline())
-      .catch((e) => console.error("YouTube-Abgleich fehlgeschlagen:", e));
+    const online = payload.subscription.type === "stream.online";
+    const task = Promise.all([
+      (online ? youtubeOnline() : youtubeOffline()).catch((e) => console.error("YouTube-Abgleich fehlgeschlagen:", e)),
+      (online ? watchTick() : Promise.resolve(db.rpc("stream_offline_event")))
+        .catch((e: unknown) => console.error("Watchtime/Statistik:", e)),
+    ]);
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
     else await task;
     return new Response(null, { status: 204 });

@@ -1,10 +1,11 @@
 // Watchtime (Migration …_chat_bot_commands.sql): Solange der Stream live ist, bekommt
-// jeder Zuschauer im Chat die vergangene Zeit gutgeschrieben. Angestoßen wird das vom
-// OBS-Overlay (läuft genau während des Streams) über stream-tools {action:"watch_tick"} –
-// die Datenbank lässt höchstens alle 4,5 Minuten einen Durchgang zu.
+// jeder Zuschauer im Chat die vergangene Zeit gutgeschrieben. Angestoßen wird das von allem, was
+// während des Streams passiert: OBS-Overlay (stream-tools {action:"watch_tick"}), Chat-Nachrichten,
+// Twitch-Panel und stream.online. Die Datenbank lässt höchstens jede Minute einen Durchgang zu
+// (…_bot_stats.sql; vorher alle 4,5 Minuten). Jeder Durchgang schreibt auch die Stream-Statistik fort.
 // Wer im Chat ist, sagt Twitch („Get Chatters“, Recht moderator:read:chatters des Streamers).
 // Fehlt das Recht, zählen alle, die in den letzten 10 Minuten geschrieben haben.
-import { db, getAppToken, getBot, getConnection, helix } from "./twitch.ts";
+import { allBots, db, getAppToken, getConnection, helix } from "./twitch.ts";
 import { noteLiveCategory } from "./games.ts";
 
 type Viewer = { id: string; login: string; name: string };
@@ -48,9 +49,9 @@ export async function watchTick() {
       .gt("last_chat_at", new Date(now - CHAT_WINDOW_MS).toISOString()).limit(5000);
     viewers = (data ?? []).map((w) => ({ id: w.twitch_id, login: w.login, name: w.display_name }));
   }
-  // Streamer und Bot zählen nicht
-  const bot = await getBot().catch(() => null);
-  const skip = new Set([conn.broadcaster_id, bot?.user_id].filter(Boolean));
+  // Streamer und die Bots zählen nicht
+  const bots = await allBots().catch(() => []);
+  const skip = new Set([conn.broadcaster_id, ...bots.map((b) => b.user_id)].filter(Boolean));
   viewers = viewers.filter((v) => !skip.has(v.id));
 
   const { data: counted, error: addErr } = await db.rpc("watch_add", { p_users: viewers, p_seconds: seconds, p_source: source });

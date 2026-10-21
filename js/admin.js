@@ -140,6 +140,22 @@ function demoCall(action, extra) {
   }
   if (action === 'bot_start') throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
   if (action === 'bot_disconnect') return { ok: true };
+  // Demo: Bot-Protokoll mit einem blockierten Eintrag
+  if (action === 'bot_log') {
+    const at = (min) => new Date(Date.now() - min * 60000).toISOString();
+    const all = [
+      { id: 4, created_at: at(2), bot: 'streamhelpbot', text: '🏆 Fortnite Cup: Anmeldung offen!', status: 'sent', reason: '', source: 'outbox', ms: 210, channel: 'RetroLena' },
+      { id: 3, created_at: at(6), bot: 'streamhelpbot2', text: 'Schau mal: https://beispiel.de', status: 'dropped', reason: 'Die Nachricht enthält einen blockierten Link.', source: 'chat', ms: 140, channel: 'NightOwl_Mia' },
+      { id: 2, created_at: at(9), bot: 'streamhelpbot', text: '@Ben Du hast 5 Std 2 Min zugeschaut.', status: 'sent', reason: '', source: 'chat', ms: 180, channel: 'RetroLena' },
+    ];
+    return {
+      items: extra.problems ? all.filter((i) => i.status !== 'sent') : all,
+      channels: [
+        { channel: 'NightOwl_Mia', bot_slot: 2, sent: 31, failed: 1, avg_ms: 175, last_at: at(6) },
+        { channel: 'RetroLena', bot_slot: 1, sent: 58, failed: 0, avg_ms: 190, last_at: at(2) },
+      ],
+    };
+  }
   if (action === 'site_session') {
     const users = read('users', {});
     users['stellwerk-admin@example.com'] = { username: 'StreamHelp-Admin', pass: null, is_admin: true };
@@ -160,6 +176,8 @@ function demoCall(action, extra) {
     variants: DEFAULT_VARIANTS.map(({ id, name, color }) => ({ id, name, color })),
     users,
     twitch: null,
+    twitch_bots: [{ id: 1, login: 'streamhelpbot', display_name: 'StreamHelpBot' }],
+    bot_channels: { 1: 2, 2: 0 },
   };
 }
 
@@ -194,8 +212,15 @@ function init() {
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
   $('#site-btn').addEventListener('click', openSiteAsAdmin);
-  $('#bot-connect').addEventListener('click', connectBot);
-  $('#bot-disconnect').addEventListener('click', disconnectBot);
+  $('#bot-slots').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-bot]');
+    if (!btn) return;
+    const slot = Number(btn.dataset.slot) === 2 ? 2 : 1;
+    if (btn.dataset.bot === 'connect') connectBot(slot, btn);
+    else disconnectBot(slot, btn);
+  });
+  $('#botlog-load').addEventListener('click', loadBotLog);
+  $('#botlog-problems').addEventListener('change', loadBotLog);
   showBotReturn();
   $('#users-search').addEventListener('input', (e) => { state.search = e.target.value.trim().toLowerCase(); state.usersSig = ''; renderUsers(); });
   document.addEventListener('visibilitychange', () => {
@@ -911,33 +936,37 @@ function renderTwitch(t, data = {}) {
   renderBot(t, data);
 }
 
-// ---------- Chat-Bot ----------
-// Chat-Nachrichten schreibt ein eigener Twitch-Account, nie der Streamer selbst.
-// Verbunden wird er nur hier im Admin-Bereich.
+// ---------- Chat-Bots ----------
+// Chat-Nachrichten schreibt ein eigener Twitch-Account, nie der Streamer selbst. Es gibt zwei Plätze
+// (Migration …_bot_stats.sql); jeder Kanal wählt im Dashboard, welcher bei ihm schreibt, und ist einer
+// nicht verbunden, springt der andere ein. Verbunden werden sie nur hier im Admin-Bereich.
 function renderBot(t, data) {
   const text = $('#bot-text');
-  const connect = $('#bot-connect');
-  const disconnect = $('#bot-disconnect');
-  const bot = data.twitch_bot;
+  const box = $('#bot-slots');
   if (data.twitch_bot_ready === false) {
     text.innerHTML = '<b>Chat-Bot:</b> In der Datenbank fehlt noch die Erweiterung. Im SQL Editor <code>supabase/migrations/20260923120000_chat_bot.sql</code> ausführen.';
-    connect.hidden = true;
-    disconnect.hidden = true;
+    box.replaceChildren();
     return;
   }
-  connect.hidden = false;
-  if (bot) {
-    const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
-    text.innerHTML = `<b>Chat-Bot:</b> ${escapeHtml(bot.display_name ?? bot.login)} schreibt die Ergebnisse in den Chat.` +
-      (scopeOk ? '' : ' <br>Damit er im Chat des Streamers schreiben darf, muss der Streamer Twitch auf der Webseite einmal neu verbinden.');
-    connect.textContent = 'Anderen Bot verbinden';
-    disconnect.hidden = false;
-  } else {
-    text.innerHTML = '<b>Chat-Bot:</b> nicht verbunden – ohne ihn bleibt der Chat still. ' +
-      'Vorher auf twitch.tv mit dem <b>Bot-Account</b> anmelden (nicht mit dem des Streamers), dann hier verbinden.';
-    connect.textContent = 'Bot verbinden';
-    disconnect.hidden = true;
-  }
+  const bots = data.twitch_bots ?? (data.twitch_bot ? [{ id: 1, ...data.twitch_bot }] : []);
+  const uses = data.bot_channels ?? null;
+  const scopeOk = !t || (t.scopes ?? []).includes('channel:bot');
+  text.innerHTML = bots.length
+    ? `<b>Chat-Bots:</b> ${bots.length === 2 ? 'beide verbunden' : 'einer verbunden – der zweite ist Ersatz und zweite Wahl für Streamer'}.` +
+      (scopeOk ? '' : ' <br>Damit ein Bot im Chat des Streamers schreiben darf, muss der Streamer Twitch auf der Webseite einmal neu verbinden.')
+    : '<b>Chat-Bot:</b> keiner verbunden – ohne Bot bleibt der Chat still. Vorher auf twitch.tv mit dem <b>Bot-Account</b> anmelden (nicht mit dem des Streamers), dann hier verbinden.';
+  box.innerHTML = [1, 2].map((slot) => {
+    const bot = bots.find((b) => b.id === slot);
+    const n = uses ? uses[slot] ?? 0 : null;
+    return `<div class="bot-slot${bot ? ' is-on' : ''}">
+      <div><b>Bot ${slot}</b> · ${bot ? `${escapeHtml(bot.display_name ?? bot.login)} <small class="muted">@${escapeHtml(bot.login)}</small>` : '<span class="muted">nicht verbunden</span>'}
+        ${n !== null ? `<br><small class="muted">${n} ${n === 1 ? 'Kanal hat' : 'Kanäle haben'} ihn gewählt</small>` : ''}</div>
+      <div class="bot-panel-actions">
+        ${bot ? `<button class="btn btn--ghost btn--sm" type="button" data-bot="disconnect" data-slot="${slot}">Trennen</button>` : ''}
+        <button class="btn btn--twitch btn--sm" type="button" data-bot="connect" data-slot="${slot}">${bot ? 'Anderen verbinden' : 'Verbinden'}</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function botMsg(textValue, kind = '') {
@@ -947,13 +976,12 @@ function botMsg(textValue, kind = '') {
   el.classList.toggle('is-ok', kind === 'ok');
 }
 
-async function connectBot() {
-  const btn = $('#bot-connect');
+async function connectBot(slot, btn) {
   btn.disabled = true;
   btn.classList.add('is-loading');
   botMsg('');
   try {
-    const { url } = await call('bot_start');
+    const { url } = await call('bot_start', { slot });
     // Merken, dass gerade der Bot verbunden wird: Landet der Rückweg auf der
     // Startseite, schickt sie ihn hierher weiter (js/app.js, boot).
     try { sessionStorage.setItem('zd_bot_flow', '1'); } catch { /* egal */ }
@@ -966,17 +994,46 @@ async function connectBot() {
   }
 }
 
-async function disconnectBot() {
-  if (!confirm('Chat-Bot wirklich trennen? Danach erscheinen keine Ergebnisse mehr im Chat.')) return;
-  const btn = $('#bot-disconnect');
+async function disconnectBot(slot, btn) {
+  if (!confirm(`Bot ${slot} wirklich trennen? Kanäle mit diesem Bot schreiben dann mit dem anderen (falls verbunden).`)) return;
   btn.disabled = true;
   try {
-    await call('bot_disconnect');
-    botMsg('Chat-Bot getrennt.', 'ok');
+    await call('bot_disconnect', { slot });
+    botMsg(`Bot ${slot} getrennt.`, 'ok');
     await refresh();
   } catch (err) {
     if (err.status === 401) { logout(err.message); return; }
     botMsg(`Trennen fehlgeschlagen: ${botError(err)}`, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Bot-Protokoll aller Kanäle: je Kanal die letzten 24 Stunden, darunter die einzelnen Nachrichten
+const BOT_STATUS = { sent: '✓ gesendet', dropped: '✕ blockiert', error: '⚠️ Fehler', no_bot: '⚠️ kein Bot', off: '⏸ Notfall-Schalter' };
+async function loadBotLog() {
+  const btn = $('#botlog-load');
+  btn.disabled = true;
+  try {
+    const data = await call('bot_log', { problems: $('#botlog-problems').checked });
+    const channels = data.channels ?? [];
+    const sent = channels.reduce((a, c) => a + Number(c.sent || 0), 0);
+    const failed = channels.reduce((a, c) => a + Number(c.failed || 0), 0);
+    $('#botlog-sum').textContent = `Letzte 24 Stunden: ${sent} gesendet, ${failed} nicht angekommen – in ${channels.length} ${channels.length === 1 ? 'Kanal' : 'Kanälen'}.`;
+    const table = $('#botlog-channels');
+    table.hidden = !channels.length;
+    table.innerHTML = channels.length ? `<thead><tr><th>Kanal</th><th>Bot</th><th>gesendet</th><th>Probleme</th><th>Ø ms</th><th>zuletzt</th></tr></thead><tbody>${channels.map((c) => `<tr class="${c.failed ? 'is-bad' : ''}">
+      <td>${escapeHtml(c.channel)}</td><td>${c.bot_slot === 2 ? 2 : 1}</td><td>${c.sent}</td><td>${c.failed}</td><td>${c.avg_ms ?? '–'}</td>
+      <td>${new Date(c.last_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td></tr>`).join('')}</tbody>` : '';
+    const items = data.items ?? [];
+    $('#botlog-feed').innerHTML = items.length ? items.map((it) => `<li class="${it.status === 'sent' ? '' : 'is-bad'}">
+      <span class="botlog-when">${new Date(it.created_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+      <b>${escapeHtml(it.channel)}</b> <small class="muted">@${escapeHtml(it.bot || '–')}${it.ms != null ? ` · ${it.ms} ms` : ''}</small>
+      <span class="botlog-status">${BOT_STATUS[it.status] ?? escapeHtml(it.status)}${it.reason ? `: ${escapeHtml(it.reason)}` : ''}</span>
+      <span class="botlog-text">${escapeHtml(it.text)}</span></li>`).join('') : '<li class="muted">Keine Einträge.</li>';
+  } catch (err) {
+    if (err.status === 401) { logout(err.message); return; }
+    $('#botlog-sum').textContent = `Nicht geladen: ${err.message}`;
   } finally {
     btn.disabled = false;
   }
@@ -997,11 +1054,12 @@ function showBotReturn() {
   if (!status) return;
   history.replaceState(null, '', location.pathname);
   if (status === 'bot_connected') {
-    botMsg(`✓ Chat-Bot ${params.get('bot') ?? ''} ist verbunden. Ab jetzt schreibt er die Ergebnisse in den Chat.`, 'ok');
+    botMsg(`✓ Chat-Bot ${params.get('bot') ?? ''} ist als Bot ${params.get('slot') === '2' ? 2 : 1} verbunden.`, 'ok');
     return;
   }
   const reasons = {
     bot_is_broadcaster: 'Das war der Account des Streamers. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
+    bot_same: 'Dieses Twitch-Konto ist schon der andere Bot. Für den zweiten Platz auf twitch.tv mit einem anderen Bot-Account anmelden und noch einmal verbinden.',
     access_denied: 'Die Freigabe auf Twitch wurde abgebrochen.',
     state: 'Die Anfrage ist abgelaufen. Bitte noch einmal verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zu StreamHelp zurückgeleitet, sondern zur Supabase-Anmeldung. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → „Verwalten“) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen (genau so, ohne / am Ende), speichern, ein paar Minuten warten und noch einmal verbinden.`,

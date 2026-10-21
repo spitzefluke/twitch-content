@@ -1,6 +1,9 @@
 // Stream-Statistik (Dashboard → 📈 Statistik): Sendezeit, Zuschauer, Follows, Abos, Bits und
 // was im Stream los war – je Tag als Balken. Daten: public.channel_stats (Migration …_dashboard.sql),
 // nur für Streamer und freigegebene Mods. Darunter „OBS & Daten“ (js/dash-obsdata.js).
+// Oben der laufende Stream und die letzten Streams (public.channel_sessions, …_bot_stats.sql): Die Zahlen
+// zählen jede Minute mit (Chat, Panel, Overlay) und werden beim Stream-Ende festgehalten. Die Seite
+// lädt bei jeder Zählung von selbst neu (Realtime auf watch_state).
 // opts: { obs: () => ObsSocket|null, openObs: () => void } aus js/app.js
 import { h } from './extras-core.js';
 import { renderObsLive, renderOverlayUsage } from './dash-obsdata.js';
@@ -19,12 +22,67 @@ const METRICS = [
 ];
 let metric = 'live_minutes';
 let renderGen = 0; // schnelles Umschalten: nur die neueste Abfrage zeichnet
+let liveUnsub = null;
+let liveTimer = 0;
+
+const fmtWhen = (iso) => new Date(iso).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+// Laufender Stream: groß oben, mit allem, was seit Beginn passiert ist
+function liveCard(live, lastTick) {
+  const kpi = (ico, label, value) => h('div', { class: 'stats-kpi' }, h('span', { class: 'stats-kpi-ico', 'aria-hidden': 'true' }, ico), h('b', {}, value), h('small', {}, label));
+  return h('article', { class: 'dash-card dash-card--wide stats-card stats-live' },
+    h('div', { class: 'dash-card-head' },
+      h('span', { class: 'dash-ico', 'aria-hidden': 'true' }, '🔴'),
+      h('div', {}, h('h2', {}, `Live seit ${fmtMin(live.minutes ?? 0)}`),
+        h('p', { class: 'dash-status' }, `${live.game ? `${live.game} · ` : ''}gestartet ${fmtWhen(live.started_at)}${lastTick ? ` · zuletzt gezählt ${new Date(lastTick).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr` : ''}`))),
+    h('div', { class: 'stats-kpis' },
+      kpi('👀', 'Zuschauer jetzt', fmtNum(live.viewers)),
+      kpi('📈', 'Spitze', fmtNum(live.peak_viewers)),
+      kpi('➗', 'Durchschnitt', fmtNum(live.avg_viewers)),
+      kpi('💜', 'Follows', fmtNum(live.follows)),
+      kpi('⭐', 'Abos', fmtNum(live.subs)),
+      kpi('💎', 'Bits', fmtNum(live.bits)),
+      kpi('💬', 'Im Chat aktiv', fmtNum(live.chatters)),
+      kpi('🎟️', 'Kanalpunkte', fmtNum(live.redeems))));
+}
+
+// Die letzten Streams: je Stream eine Zeile, festgehalten beim Ende
+function sessionsCard(sessions) {
+  const rows = sessions.map((s) => h('tr', {},
+    h('td', {}, h('b', {}, fmtWhen(s.started_at)), s.game ? h('small', {}, s.game) : null),
+    h('td', {}, fmtMin(s.minutes ?? 0)),
+    h('td', {}, `${fmtNum(s.peak_viewers)} / Ø ${fmtNum(s.avg_viewers)}`),
+    h('td', {}, fmtNum(s.follows)), h('td', {}, fmtNum(s.subs)), h('td', {}, fmtNum(s.bits)), h('td', {}, fmtNum(s.chatters))));
+  return h('article', { class: 'dash-card dash-card--wide' },
+    h('div', { class: 'dash-card-head' }, h('span', { class: 'dash-ico', 'aria-hidden': 'true' }, '🗓️'),
+      h('div', {}, h('h2', {}, 'Letzte Streams'), h('p', { class: 'dash-status' }, 'Festgehalten, sobald ein Stream endet'))),
+    sessions.length
+      ? h('div', { class: 'stats-table-wrap' }, h('table', { class: 'stats-table' },
+        h('thead', {}, h('tr', {}, ...['Stream', 'Dauer', 'Zuschauer (Spitze / Ø)', 'Follows', 'Abos', 'Bits', 'Chatter'].map((t) => h('th', { scope: 'col' }, t)))),
+        h('tbody', {}, ...rows)))
+      : h('p', { class: 'stats-muted' }, 'Noch kein Stream abgeschlossen. Ab jetzt wird jeder Stream mit Dauer, Zuschauern, Follows, Abos, Bits und Chattern festgehalten.'));
+}
+
+// Live: bei jeder Zählung neu zeichnen, solange die Seite offen ist
+function followLive(root, api, opts) {
+  if (liveUnsub || !api.onWatchState) return;
+  liveUnsub = api.onWatchState(() => {
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => {
+      const page = root.closest('section.page');
+      if (root.isConnected && !(page && page.hidden)) renderStats(root, api, { ...opts, quiet: true });
+    }, 2000);
+  });
+}
 
 export async function renderStats(root, api, opts = {}) {
   if (!root) return;
   const gen = ++renderGen;
-  root.replaceChildren(h('p', { class: 'stats-muted' }, 'Lädt …'));
+  if (!opts.quiet) root.replaceChildren(h('p', { class: 'stats-muted' }, 'Lädt …'));
+  followLive(root, api, opts);
   let data;
+  // Laufender und letzte Streams: fehlt die Migration, bleibt der Teil einfach weg
+  const sessionsP = api.channelSessions ? api.channelSessions(10).catch(() => null) : Promise.resolve(null);
   try {
     data = await api.channelStats(range);
   } catch (err) {
@@ -35,6 +93,7 @@ export async function renderStats(root, api, opts = {}) {
         : `Statistik nicht geladen: ${err?.message ?? err}`)));
     return;
   }
+  const sessions = await sessionsP;
   if (gen !== renderGen) return;
   const t = data.totals ?? {};
   const series = data.series ?? [];
@@ -82,9 +141,10 @@ export async function renderStats(root, api, opts = {}) {
 
   const top = (data.top_viewers ?? []).length
     ? h('ol', { class: 'stats-top' }, ...data.top_viewers.map((v) => h('li', {}, h('b', {}, v.name), h('span', {}, fmtMin(Math.round(v.seconds / 60))))))
-    : h('p', { class: 'stats-muted' }, 'Noch keine Watchtime gezählt – das passiert automatisch, sobald du live bist und das Overlay in OBS läuft.');
+    : h('p', { class: 'stats-muted' }, 'Noch keine Watchtime gezählt – das passiert automatisch, sobald du live bist (Chat, Twitch-Panel oder OBS-Overlay).');
 
   root.replaceChildren(
+    ...(sessions?.live ? [liveCard(sessions.live, sessions.last_tick_at)] : []),
     h('article', { class: 'dash-card dash-card--wide stats-card' },
       h('div', { class: 'dash-card-head' },
         h('span', { class: 'dash-ico', 'aria-hidden': 'true' }, '📈'),
@@ -98,6 +158,7 @@ export async function renderStats(root, api, opts = {}) {
     h('article', { class: 'dash-card' },
       h('div', { class: 'dash-card-head' }, h('span', { class: 'dash-ico', 'aria-hidden': 'true' }, '🏆'), h('div', {}, h('h2', {}, 'Treueste Zuschauer'), h('p', { class: 'dash-status' }, 'Watchtime insgesamt'))),
       top),
+    ...(sessions ? [sessionsCard(sessions.sessions ?? [])] : []),
   );
   // OBS & Daten: eigener Abschnitt, lädt danach (die Zahlen oben sollen nicht darauf warten)
   const usage = await renderOverlayUsage(api, range);

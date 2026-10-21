@@ -845,12 +845,25 @@ async function createSupabaseApi() {
     async watchImportClear() { return unwrap(await sb.rpc('watch_import_clear')); },
     async watchDates() { return invoke('stream-tools', { action: 'watch_dates' }); },
     async watchState() { return unwrap(await sb.from('watch_state').select('*').eq('id', 1).maybeSingle()); },
-    // Chat-Bot-Konto (Streamer, Admins, freigegebene Mods)
-    async botConnect() {
-      const { url } = await invoke('twitch-oauth', { action: 'bot_start' });
+    // Chat-Bot-Konto: zwei Plattform-Bots (Migration …_bot_stats.sql). Verbinden/Trennen nur der Plattform-Admin,
+    // wählen der Streamer, Protokoll und Test Streamer und freigegebene Mods.
+    async botConnect(slot = 1) {
+      const { url } = await invoke('twitch-oauth', { action: 'bot_start', slot });
       location.href = url;
     },
-    async botDisconnect() { return invoke('twitch-oauth', { action: 'bot_disconnect' }); },
+    async botDisconnect(slot = 1) { return invoke('twitch-oauth', { action: 'bot_disconnect', slot }); },
+    async botSelect(slot) { return invoke('twitch-oauth', { action: 'bot_select', slot }); },
+    async botTest() { return invoke('twitch-oauth', { action: 'bot_test' }); },
+    async botLog(limit = 50) { return unwrap(await sb.rpc('bot_log_list', { p_limit: limit })); },
+    // Statistik: laufender Stream und die letzten Streams (…_bot_stats.sql)
+    async channelSessions(limit = 10) { return unwrap(await sb.rpc('channel_sessions', { p_limit: limit })); },
+    // Jede Watchtime-Zählung (höchstens jede Minute) meldet sich hier – für Watchtime und Statistik live
+    onWatchState(cb) {
+      const ch = sb.channel(`watch-state-${Math.random().toString(36).slice(2, 8)}`)
+        .on('postgres_changes', rtSpec('watch_state', '*'), (p) => cb(p.new))
+        .subscribe();
+      return () => sb.removeChannel(ch);
+    },
   };
 }
 
@@ -2066,7 +2079,14 @@ function createLocalApi() {
       store.set('alert_media', store.get('alert_media', []).filter((x) => x.id !== media.id));
     },
     // Demo: Kosten fürs Glücksrad lassen sich zum Ausprobieren einstellen
-    async twitchStatus() { return { connected: false, reward_cost: store.get('wheel_cost', 10000) }; },
+    async twitchStatus() {
+      return {
+        connected: false, reward_cost: store.get('wheel_cost', 10000),
+        // Demo: zwei Plattform-Bots zur Auswahl (…_bot_stats.sql)
+        bots: [{ slot: 1, name: 'StreamHelpBot', login: 'streamhelpbot' }, { slot: 2, name: 'StreamHelpBot2', login: 'streamhelpbot2' }],
+        bot_slot: store.get('bot_slot', 1), can_choose_bot: !!current,
+      };
+    },
     async twitchConnect() {
       throw new Error('Im Demo-Modus nicht verfügbar. Trag zuerst Supabase in js/config.js ein (siehe README).');
     },
@@ -2085,6 +2105,47 @@ function createLocalApi() {
     async botConnect() {
       throw new Error('Im Demo-Modus nicht verfügbar. Der Chat-Bot braucht Supabase und Twitch.');
     },
+    async botSelect(slot) {
+      await requireAdmin();
+      store.set('bot_slot', slot === 2 ? 2 : 1);
+      return { ok: true, slot, bot: slot === 2 ? 'StreamHelpBot2' : 'StreamHelpBot' };
+    },
+    async botTest() {
+      await requireAdmin();
+      const log = store.get('bot_log', []);
+      const row = { id: Date.now(), created_at: new Date().toISOString(), bot: store.get('bot_slot', 1) === 2 ? 'streamhelpbot2' : 'streamhelpbot',
+        text: '✅ StreamHelp-Test: Der Chat-Bot kann in diesem Chat schreiben.', status: 'sent', reason: '', source: 'test', ms: 180 };
+      store.set('bot_log', [row, ...log].slice(0, 50));
+      return { ok: true, ms: 180, bot: row.bot };
+    },
+    // Demo: ein paar Einträge, darunter einer, den Twitch blockiert hat
+    async botLog() {
+      await requireAdmin();
+      const now = Date.now();
+      const items = [
+        ...store.get('bot_log', []),
+        { id: 3, created_at: new Date(now - 4 * 60000).toISOString(), bot: 'streamhelpbot', text: '🏆 Fortnite Cup: Anmeldung offen! Schreib !cup join, um mitzumachen.', status: 'sent', reason: '', source: 'outbox', ms: 210 },
+        { id: 2, created_at: new Date(now - 9 * 60000).toISOString(), bot: 'streamhelpbot', text: 'Schau mal: https://beispiel.de', status: 'dropped', reason: 'Die Nachricht enthält einen Link, den der Kanal blockiert.', source: 'chat', ms: 160 },
+        { id: 1, created_at: new Date(now - 12 * 60000).toISOString(), bot: 'streamhelpbot', text: '@Mia Du hast 3 Std 12 Min zugeschaut.', status: 'sent', reason: '', source: 'chat', ms: 190 },
+      ];
+      const sent = items.filter((i) => i.status === 'sent');
+      return { items, day: { sent: sent.length, failed: items.length - sent.length, avg_ms: Math.round(sent.reduce((a, i) => a + (i.ms ?? 0), 0) / Math.max(1, sent.length)) } };
+    },
+    // Demo: ein laufender Stream und drei beendete (gleichbleibende Beispielzahlen)
+    async channelSessions() {
+      await requireAdmin();
+      const at = (h) => new Date(Date.now() - h * 3600000).toISOString();
+      return {
+        live: { started_at: at(1.4), last_at: at(0.01), minutes: 84, viewers: 31, in_chat: 24, peak_viewers: 38, avg_viewers: 29, game: 'Fortnite', follows: 4, subs: 1, bits: 200, redeems: 7, chatters: 19 },
+        last_tick_at: at(0.01),
+        sessions: [
+          { started_at: at(26), ended_at: at(22.8), minutes: 192, peak_viewers: 44, avg_viewers: 31, game: 'Fortnite', follows: 9, subs: 2, bits: 500, redeems: 15, chatters: 41 },
+          { started_at: at(74), ended_at: at(71.5), minutes: 150, peak_viewers: 36, avg_viewers: 27, game: 'Just Chatting', follows: 5, subs: 0, bits: 0, redeems: 8, chatters: 29 },
+          { started_at: at(122), ended_at: at(118), minutes: 240, peak_viewers: 52, avg_viewers: 35, game: 'Fortnite', follows: 12, subs: 3, bits: 1200, redeems: 21, chatters: 48 },
+        ],
+      };
+    },
+    onWatchState() { return () => {}; },
     botCommands: {
       async list() {
         return store.get('bot_commands', [

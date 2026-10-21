@@ -682,6 +682,42 @@
 .stats-top li { display: flex; justify-content: space-between; gap: 10px; }
 .stats-top span { color: var(--text-2); font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .stats-bars { height: 150px; } .stats-bar small { display: none; } }
+/* Laufender Stream und letzte Streams (…_bot_stats.sql) */
+.stats-live { border-color: rgba(255, 90, 78, .45); background: linear-gradient(160deg, rgba(255, 90, 78, .08), transparent 60%), var(--surface); }
+.stats-live .dash-ico { animation: stats-live-pulse 2s ease-in-out infinite; }
+@keyframes stats-live-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .stats-live .dash-ico { animation: none; } }
+.stats-table-wrap { overflow-x: auto; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.stats-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12.5px; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.stats-table td { padding: 8px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+.stats-table td:first-child { display: grid; gap: 1px; }
+.stats-table td small { color: var(--muted); font-size: 12px; }
+
+/* ---------- Bot & Chat: Bot-Auswahl und Protokoll (js/dash-bot.js) ---------- */
+.bot-pick { margin: 12px 0 0; padding: 12px; border: 1px dashed var(--line-2); border-radius: 14px; display: grid; gap: 10px; min-width: 0; }
+.bot-pick[hidden] { display: none; }
+.bot-pick legend { padding: 0 6px; font-weight: 700; }
+.bot-pick-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px; }
+.bot-pick-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); cursor: pointer; }
+.bot-pick-opt.is-on { border-color: rgba(145, 70, 255, .7); background: rgba(145, 70, 255, .14); }
+.bot-pick-opt.is-off { opacity: .55; cursor: not-allowed; }
+.bot-pick-opt input { width: 18px; height: 18px; accent-color: var(--twitch); flex: none; }
+.bot-pick-opt span { display: grid; gap: 1px; min-width: 0; }
+.bot-pick-opt small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+#botlog-card .dash-card-head { flex-wrap: wrap; }
+.botlog-actions { margin-left: auto; }
+.botlog-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 420px; overflow: auto; }
+.botlog-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); }
+.botlog-item:not(.is-sent) { border-color: rgba(255, 90, 78, .45); background: rgba(255, 90, 78, .06); }
+.botlog-ico { flex: none; width: 1.6em; text-align: center; font-weight: 800; color: var(--green); }
+.botlog-item:not(.is-sent) .botlog-ico { color: var(--red); }
+.botlog-main { display: grid; gap: 2px; min-width: 0; }
+.botlog-text { overflow-wrap: anywhere; }
+.botlog-main small { color: var(--muted); font-size: 12px; }
+.botlog-reason { color: #ff9f97; font-weight: 600; }
+.botlog-empty { color: var(--muted); font-size: 14px; }
+
 /* Watchtime: Twitch-Daten und Import */
 .watch-top .watch-who { display: grid; gap: 1px; min-width: 0; }
 .watch-top .watch-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

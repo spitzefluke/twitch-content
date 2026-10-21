@@ -2,7 +2,7 @@
 //   · Chat-Befehle (!erwischt, !a–!d, !rate, !join, !leave) → SQL chat_command
 //   · Bot-Nachrichten aus bot_outbox verschicken (Quiz-Frage, Mitspieler gezogen, Zahl erraten …)
 //   · Kanalpunkte: Text-to-Speech und Karten-Packs (Belohnungen anlegen, Einlösungen)
-import { db, getConnection, helix, HelixError, CodedError, sendChat, type Connection } from "./twitch.ts";
+import { chatConnection, db, helix, HelixError, CodedError, sendChat, type Connection } from "./twitch.ts";
 import { refreshWatchDates } from "./watchtime.ts";
 import { fillLive } from "./bot.ts";
 
@@ -18,12 +18,12 @@ export async function flushOutbox(conn?: Connection | null) {
   const { data, error } = await db.from("bot_outbox")
     .update({ sent_at: now.toISOString() }).is("sent_at", null).gte("created_at", since).select("id, text");
   if (error || !data?.length) return 0;
-  conn ??= await getConnection();
+  conn ??= await chatConnection();
   if (!conn) return 0;
   let sent = 0;
   for (const row of [...data].sort((a, b) => a.id - b.id)) {
     try {
-      await sendChat(conn, row.text);
+      await sendChat(conn, row.text, undefined, "outbox");
       sent++;
     } catch (e) {
       console.warn("Bot-Nachricht nicht gesendet:", (e as Error).message);
@@ -59,7 +59,7 @@ export async function handleExtraCommand(event: ChatEvent) {
     if (!/chat_command/.test(error.message)) console.warn("chat_command:", error.message);
     return;
   }
-  const conn = await getConnection();
+  const conn = await chatConnection();
   if (!conn) return;
   if (data?.reply) {
     // Eigene Befehle (…_chat_bot_plus.sql): {uptime} {game} {title} {followage} und die Antwortart
@@ -68,7 +68,7 @@ export async function handleExtraCommand(event: ChatEvent) {
     const replyTo = data.reply_type === "reply" ? event.message_id : undefined;
     await sendChat(conn, reply, replyTo).catch((e) => console.warn("Chat:", e.message));
   }
-  await flushOutbox(conn).catch((e) => console.warn("Bot-Nachrichten:", e.message));
+  // Die Warteschlange (bot_outbox) schickt handleChatMessage am Ende jeder Chat-Nachricht
 }
 
 async function refreshForWatchtime(chatterId: string, text: string) {

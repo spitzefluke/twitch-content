@@ -1,16 +1,17 @@
 // Werkzeuge für die Content-Ideen aus …_stream_extras.sql.
-//   POST {action:"flush"}               → offene Bot-Nachrichten in den Chat (jeder Angemeldete –
-//                                          verschickt werden nur Texte, die die Datenbank selbst geschrieben hat)
+//   POST {action:"flush"}               → offene Bot-Nachrichten in den Chat (auch ohne Anmeldung, z. B. vom
+//                                          OBS-Overlay nach dem Ende einer Umfrage; je Kanal begrenzt – verschickt
+//                                          werden nur Texte, die die Datenbank selbst geschrieben hat)
 //   POST {action:"settle"}              → Vorlese-Einlösungen bei Twitch abschließen (Admins, freigegebene Mods)
 //   POST {action:"sync_reward", key}    → Kanalpunkte-Belohnung tts oder cards anlegen/abgleichen (Admins, freigegebene Mods)
-//   POST {action:"watch_tick"}          → Watchtime gutschreiben (ohne Anmeldung, vom OBS-Overlay; höchstens alle 4,5 Min)
+//   POST {action:"watch_tick"}          → Watchtime und Statistik zählen (ohne Anmeldung, vom OBS-Overlay; höchstens jede Minute)
 //   POST {action:"watch_dates"}         → „Follower seit“/„Konto seit“ für die Watchtime-Rangliste nachholen (Admins, Mods mit Bereich Chat)
 //   POST {action:"cc_sync"}           → Kanalpunkte-Belohnungen der Chat-Kommandos anlegen/abgleichen (Admins, freigegebene Mods)
 //   POST {action:"song_add", url}       → Song-Wunsch per YouTube-Link eintragen (Streamer, freigegebene Mods mit Bereich Chat)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
 import {
-  audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, tooMany,
+  audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, requestChannel, tooMany,
 } from "../_shared/twitch.ts";
 import { flushOutbox, settleTts, syncExtraReward, type RewardKey } from "../_shared/extras.ts";
 import { errorText } from "../_shared/errors.ts";
@@ -24,21 +25,27 @@ Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
   const { action, key, start, url } = await req.json().catch(() => ({}));
-  // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt nur alle
-  // 4,5 Minuten einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
+  // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt höchstens jede
+  // Minute einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
   if (action === "watch_tick") {
     try {
-      return json(await watchTick());
+      const res = await watchTick();
+      await flushOutbox().catch(() => 0);
+      return json(res);
     } catch (e) {
       console.error("watch_tick:", e);
       return json({ error: "Watchtime gerade nicht möglich" }, 500);
     }
   }
+  // Bot-Warteschlange: auch ohne Anmeldung (Overlay), höchstens 30-mal pro Minute je Kanal
+  if (action === "flush") {
+    if (!(await rateLimit(`flush:${requestChannel() ?? "default"}`, 30))) return tooMany();
+    return json({ sent: await flushOutbox() });
+  }
   const user = await getUserFromRequest(req);
   if (!user) return json({ error: "Bitte anmelden." }, 401);
   if (!(await rateLimit(`stream-tools:${user.id}`, 60))) return tooMany();
   try {
-    if (action === "flush") return json({ sent: await flushOutbox() });
 
     if (action === "watch_dates") {
       // Watchtime-Rangliste im Dashboard: „Follower seit“/„Konto seit“ der Top 20 nachholen
