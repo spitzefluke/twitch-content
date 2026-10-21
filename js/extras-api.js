@@ -1,6 +1,7 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
 // Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
-// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql), Chat-Kommandos (…_chat_control.sql).
+// und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql), Chat-Kommandos (…_chat_control.sql),
+// Cup (…_cup.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
@@ -180,6 +181,23 @@ function liveExtras({ sb, unwrap, invoke }) {
       addTest: null, // nur im Demo-Modus
     },
 
+    // ---------- Cup (…_cup.sql) ----------
+    // Rangliste ohne Twitch-IDs (cup_board), Spielcode nur für Streamer und Mods (cup_admin).
+    // Beitreten per Chat mit „!cup join“; Punkte vergeben Streamer und Mods hier.
+    cup: {
+      get: () => rpc('cup_board'),
+      admin: () => rpc('cup_admin'),
+      save: ({ title, rules, prizes, open, code }) => rpc('cup_save', { p_title: title, p_rules: rules, p_prizes: prizes, p_open: open, p_code: code ?? null }),
+      async setOpen(open) { const r = await rpc('cup_set_open', { p_open: open }); flush(); return r; },
+      // what: 'rules' | 'code' – der Bot schreibt es in den Chat
+      async announce(what) { const r = await rpc('cup_announce', { p_what: what }); flush(); return r; },
+      add: (name) => rpc('cup_add', { p_name: name }),
+      points: (id, delta = null, set = null) => rpc('cup_points', { p_id: id, p_delta: delta, p_set: set }),
+      remove: (id) => rpc('cup_remove', { p_id: id }),
+      reset: (keepPlayers) => rpc('cup_reset', { p_keep_players: !!keepPlayers }),
+      addTest: null, // nur im Demo-Modus – echte Spieler kommen mit !cup join aus dem Chat
+    },
+
     // ---------- Game-Pakete (…_game_packs.sql) ----------
     counters: {
       list: async () => unwrap(await sb.from('counters').select('*').order('position').order('id')),
@@ -310,6 +328,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const CC0 = { id: 1, enabled: true, mode: 'direct', vote_seconds: 30, user_cooldown: 20, show_seconds: 6, round: 0, round_ends_at: null, tally: {}, voters: 0 };
   const HR0 = { id: 1, bpm: null, at: null, alarm: 140, session_at: null, s_min: null, s_max: null, s_sum: 0, s_n: 0 };
   const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
+  const CUP0 = { id: 1, title: 'Community-Cup', rules: '', prizes: [], open: false, round: 1, players: 0, code_sent_at: null };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, one_win_per_day: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
   const ev = (row, type, by) => ({ n: (row.last_event?.n ?? 0) + 1, type, by, at: now() });
 
@@ -963,6 +982,91 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
         if (alarm !== null && (alarm < 60 || alarm > 220)) throw new Error('Die Warnschwelle kann 60 bis 220 sein.');
         const h = oneRow('heart_rate', HR0);
         return put('heart_rate', HR0, { alarm: alarm ?? h.alarm, ...(stop ? { at: null, bpm: null } : {}) });
+      },
+    },
+    // Cup: wie cup_board/cup_save/cup_chat in der Migration (Bot-Nachrichten gehen im Demo-Modus nirgends hin)
+    cup: {
+      players: () => store.get('cup_players', []),
+      board() {
+        const c = oneRow('cup', CUP0);
+        const list = [...this.players()].sort((a, b) => b.points - a.points || a.id - b.id);
+        const placeOf = (p) => 1 + list.filter((x) => x.points > p.points).length;
+        const ranked = list.map((p) => ({ id: p.id, name: p.name, points: p.points, place: placeOf(p) }));
+        const mine = list.find((p) => p.key === key());
+        return {
+          title: c.title, rules: c.rules, prizes: c.prizes, open: c.open, round: c.round, code_sent_at: c.code_sent_at, updated_at: c.updated_at ?? null,
+          count: list.length, players: ranked.slice(0, 200), me: mine ? { id: mine.id, place: placeOf(mine), points: mine.points } : null,
+        };
+      },
+      touch() { put('cup', CUP0, { players: this.players().length }); return this.board(); },
+      get: async function () { return this.board(); },
+      async admin() { await requireAdmin(); return { code: store.get('cup_code', '') }; },
+      async save({ title, rules, prizes, open, code }) {
+        await requireAdmin();
+        const t = String(title ?? '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Community-Cup';
+        const r = String(rules ?? '').replace(/[\r\n]+/g, ' · ').trim();
+        if (r.length > 450) throw new Error('Die Regeln dürfen höchstens 450 Zeichen haben (der Chat schneidet sonst ab).');
+        const pz = (prizes ?? []).slice(0, 10).map((p) => String(p ?? '').trim().slice(0, 40));
+        while (pz.length && !pz[pz.length - 1]) pz.pop();
+        if (code !== null && code !== undefined) {
+          if (String(code).trim().length > 60) throw new Error('Der Spielcode darf höchstens 60 Zeichen haben.');
+          store.set('cup_code', String(code).trim());
+        }
+        return put('cup', CUP0, { title: t, rules: r, prizes: pz, open: open ?? oneRow('cup', CUP0).open });
+      },
+      async setOpen(open) { await requireAdmin(); return put('cup', CUP0, { open: !!open }); },
+      async announce(what) {
+        await requireAdmin();
+        const c = oneRow('cup', CUP0);
+        if (what === 'rules' && !c.rules) throw new Error('Erst Regeln eintragen und speichern.');
+        if (what === 'code' && !store.get('cup_code', '')) throw new Error('Erst einen Spielcode eintragen und speichern.');
+        return what === 'code' ? put('cup', CUP0, { code_sent_at: now() }) : c;
+      },
+      async add(name) {
+        await requireAdmin();
+        const n = String(name ?? '').replace(/^\s*@+/, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (!n) throw new Error('Bitte einen Namen eintragen.');
+        const list = this.players();
+        if (list.some((p) => p.name.toLowerCase() === n.toLowerCase())) throw new Error(`${n} ist schon im Cup.`);
+        list.push({ id: nextId++, key: `manual:${n.toLowerCase()}`, name: n, points: 0, created_at: now() });
+        store.set('cup_players', list);
+        return this.touch();
+      },
+      async points(id, delta = null, set = null) {
+        await requireAdmin();
+        const list = this.players();
+        const p = list.find((x) => x.id === id);
+        if (!p) throw new Error('Diesen Spieler gibt es nicht mehr.');
+        p.points = Math.max(-99999, Math.min(99999, set ?? p.points + (delta ?? 0)));
+        store.set('cup_players', list);
+        return this.touch();
+      },
+      async remove(id) {
+        await requireAdmin();
+        store.set('cup_players', this.players().filter((x) => x.id !== id));
+        return this.touch();
+      },
+      async reset(keepPlayers) {
+        await requireAdmin();
+        store.set('cup_players', keepPlayers ? this.players().map((p) => ({ ...p, points: 0 })) : []);
+        store.set('cup_code', '');
+        put('cup', CUP0, { round: oneRow('cup', CUP0).round + 1, code_sent_at: null });
+        return this.touch();
+      },
+      // Demo: Zuschauer treten per „!cup join“ bei
+      async addTest(n = 6) {
+        await requireAdmin();
+        if (!oneRow('cup', CUP0).open) throw new Error('Erst die Anmeldung öffnen.');
+        const names = shuffled(['SnipeSina', 'NoScopeNils', 'Kartoffel_Kai', 'GG_Gina', 'VictoryVera', 'BuildBen', 'ZeroZoe', 'LootLeon', 'StormSteffi', 'PumpPaul']);
+        const list = this.players();
+        for (const name of names) {
+          if (n <= 0) break;
+          if (list.some((p) => p.name.toLowerCase() === name.toLowerCase())) continue;
+          list.push({ id: nextId++, key: `tw:${100000 + randomInt(900000)}`, name, points: 0, created_at: now() });
+          n -= 1;
+        }
+        store.set('cup_players', list);
+        return this.touch();
       },
     },
     // Umfrage: wie poll_start/poll_vote/poll_finish in der Migration

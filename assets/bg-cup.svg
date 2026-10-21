@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1406"/><stop offset="1" stop-color="#0b0803"/></linearGradient>
+<radialGradient id="glow" cx=".68" cy=".5" r=".55"><stop offset="0" stop-color="#ffc42e" stop-opacity=".42"/><stop offset="1" stop-color="#ffc42e" stop-opacity="0"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".5" stop-color="#ffc42e"/><stop offset="1" stop-color="#c98a00"/></linearGradient>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g transform="translate(470 95)">
+<path d="M40 20h180v70c0 62-40 104-90 104S40 152 40 90z" fill="url(#gold)"/>
+<path d="M40 40H8c0 52 24 82 50 90M220 40h32c0 52-24 82-50 90" fill="none" stroke="url(#gold)" stroke-width="16" stroke-linecap="round"/>
+<rect x="112" y="190" width="36" height="46" fill="#d99a0c"/>
+<rect x="70" y="232" width="120" height="30" rx="6" fill="url(#gold)"/>
+<path d="M130 60l12 26 28 3-21 19 6 28-25-14-25 14 6-28-21-19 28-3z" fill="#fff6d6" opacity=".9"/>
+</g>
+<g font-family="Arial, sans-serif" font-weight="900" opacity=".9">
+<rect x="80" y="160" width="300" height="46" rx="12" fill="#ffffff" opacity=".07"/><text x="100" y="191" font-size="22" fill="#ffd76a">1  Mia</text><text x="320" y="191" font-size="20" fill="#ffd76a">42</text>
+<rect x="80" y="216" width="300" height="46" rx="12" fill="#ffffff" opacity=".05"/><text x="100" y="247" font-size="22" fill="#e6e9f0">2  Ben</text><text x="320" y="247" font-size="20" fill="#c9cfdb">37</text>
+<rect x="80" y="272" width="300" height="46" rx="12" fill="#ffffff" opacity=".04"/><text x="100" y="303" font-size="22" fill="#e8b98a">3  Lena</text><text x="320" y="303" font-size="20" fill="#d3a273">31</text>
+</g>
+<g fill="#ffd76a"><circle cx="140" cy="100" r="5" opacity=".7"/><circle cx="250" cy="400" r="4" opacity=".5"/><circle cx="760" cy="430" r="3" opacity=".6"/><circle cx="420" cy="60" r="3" opacity=".6"/></g>
+</svg>

@@ -404,6 +404,8 @@ const ACTIONS = {
   stream_reward_set: 'Kanalpunkte-Belohnung geändert', hotwords_reset: 'Hot Words zurückgesetzt', hotwords_settings: 'Hot Words eingestellt',
   poll_start: 'Umfrage gestartet', poll_close: 'Umfrage beendet', poll_hide: 'Umfrage ausgeblendet',
   counter_save: 'Zähler eingestellt', counter_delete: 'Zähler gelöscht', gamewheel_spin: 'Spiel-Rad gedreht', gamewheel_save: 'Spiel-Rad eingestellt', heart_settings: 'Herzfrequenz eingestellt',
+  cup_save: 'Cup eingestellt', cup_set_open: 'Cup-Anmeldung geschaltet', cup_announce: 'Cup: Regeln/Spielcode verschickt',
+  cup_add: 'Cup-Spieler hinzugefügt', cup_points: 'Cup-Punkte vergeben', cup_remove: 'Cup-Spieler entfernt', cup_reset: 'Neuer Cup',
   cc_settings_save: 'Chat-Kommandos eingestellt', cc_command_save: 'Chat-Kommando gespeichert', cc_command_delete: 'Chat-Kommando gelöscht', cc_sync: 'Chat-Kommandos mit Twitch abgeglichen',
   mod_rights_set: 'Mod-Rechte geändert', sync_pranks: 'Ärgern-Belohnungen abgeglichen', sync_reward: 'Belohnung auf Twitch abgeglichen',
   sync_mods: 'Mods von Twitch geholt', anniversary: 'Kanal-Jubiläum gestartet', twitch_connect: 'Twitch-Verbinden gestartet',
@@ -417,7 +419,7 @@ const TABLES = {
   alert_media: 'Alert-Bild', alert_sounds: 'Alert-Sound', overlay_config: 'Overlay', overlay_presets: 'Overlay-Vorlage', bingo_items: 'Bingo-Item',
   bingo_card: 'Bingo-Karte', wheel_variants: 'Glücksrad', questions: 'Frage', quiz_questions: 'Quiz-Frage', card_defs: 'Sammelkarte',
   pet: 'Haustier', sounds: 'Sound', prank_settings: 'Ärgern-Einstellungen', shop_settings: 'Kisten-Shop', giveaway: 'Verlosung',
-  site_guard: 'Raid-Schutz', mod_rights: 'Mod-Rechte', tts_settings: 'Vorlesen', subathon: 'Subathon', pause_screen: 'Pause',
+  site_guard: 'Raid-Schutz', mod_rights: 'Mod-Rechte', cup: 'Cup', cup_code: 'Cup-Spielcode', cup_players: 'Cup-Spieler', tts_settings: 'Vorlesen', subathon: 'Subathon', pause_screen: 'Pause',
 };
 const OPS = { insert: 'angelegt', update: 'geändert', delete: 'gelöscht' };
 const DETAILS = { cost: 'Kosten', start: 'Start', seconds: 'Sekunden', key: 'Belohnung', result: 'Ergebnis', variant: 'Variante' };

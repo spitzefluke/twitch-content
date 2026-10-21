@@ -3,7 +3,7 @@
 // Vorneweg der Chat-Bot (_shared/bot.ts: Moderation, Begrüßung, Auto-Nachrichten, Stream-Infos, Song-Wünsche).
 // Befehle: den Dino füttern (Standard !füttern), sein Kostüm wechseln (!change [kostüm]) und die
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
-// laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“) und „!puls“; alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
+// laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“), „!puls“ und der Cup („!cup join“); alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
 // in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
 import { botsOff, channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
@@ -97,9 +97,14 @@ export async function handleChatMessage(event: ChatMessage) {
     if (await handleVote(event, arg).catch((e) => { console.warn("Umfrage:", e); return false; })) return;
   }
 
+  // Cup: „!cup“, „!cup join“, „!cup regeln“, „!cup top“, „!cup platz“ (Migration …_cup.sql)
+  if ((!self || event.chatter_user_id !== self.user_id) && normalize(command) === "cup") {
+    if (await handleRpcChat("cup_chat", event, text).catch((e) => { console.warn("Cup:", e); return false; })) return;
+  }
+
   // Zähler („!tode“, Mods: „!tode +“) und „!puls“ (Migration …_game_packs.sql)
   if (!self || event.chatter_user_id !== self.user_id) {
-    if (await handleGameChat(event, text).catch((e) => { console.warn("Zähler/Puls:", e); return false; })) return;
+    if (await handleRpcChat("game_chat", event, text).catch((e) => { console.warn("Zähler/Puls:", e); return false; })) return;
   }
 
   // Befehle der neueren Content-Ideen und des Bots (Quiz, Mitspielen, Verbotenes Wort,
@@ -122,17 +127,18 @@ export async function handleChatMessage(event: ChatMessage) {
   await feedPet(event.chatter_user_id, event.chatter_user_name || event.chatter_user_login);
 }
 
-// ---------- Zähler und Puls (Migration …_game_packs.sql) ----------
-// Liefert true, wenn der Befehl ein Zähler oder !puls war (Antwort geht gleich raus).
-async function handleGameChat(event: ChatMessage, text: string) {
-  const { data, error } = await db.rpc("game_chat", {
+// ---------- Zähler und Puls (…_game_packs.sql), Cup (…_cup.sql) ----------
+// Die Datenbank-Funktion entscheidet und antwortet: {handled, reply?}. Liefert true, wenn der Befehl
+// erledigt ist (Antwort geht gleich raus).
+async function handleRpcChat(fn: "game_chat" | "cup_chat", event: ChatMessage, text: string) {
+  const { data, error } = await db.rpc(fn, {
     p_user_id: event.chatter_user_id,
     p_name: event.chatter_user_name || event.chatter_user_login,
     p_badges: (event.badges ?? []).map((b) => b.set_id),
     p_text: text.slice(0, 200),
   });
   if (error) {
-    if (!/game_chat/.test(error.message)) console.warn("game_chat:", error.message); // Migration fehlt: nichts tun
+    if (!error.message.includes(fn)) console.warn(`${fn}:`, error.message); // Migration fehlt: nichts tun
     return false;
   }
   if (!data?.handled) return false;

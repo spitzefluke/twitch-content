@@ -622,6 +622,18 @@ Kachel **„Umfrage“** im Dashboard: **Streamer und Mods** stellen eine Frage 
 
 Einmal nötig: Migration `supabase/migrations/20261105000000_polls.sql` ausführen (nach `…_watchtime_import.sql`). Die Edge Functions `twitch-eventsub` (für `!vote`) und `twitch-ext` (Panel) kommen mit dem nächsten Merge automatisch zu Supabase.
 
+## Cup
+
+Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/20261115000000_cup.sql`):
+
+- **Der Streamer legt fest:** Name des Cups, **Regeln** (höchstens 450 Zeichen, eine Chat-Nachricht), **Preisgelder je Platz** (bis Platz 10, freier Text wie „50 €“) und den **Spielcode** (z. B. Fortnite-Matchmaking-Schlüssel). Den Code sehen nur Streamer und Mods, bis er verschickt wird.
+- **Bot:** „📜 Regeln in den Chat“ und „🔑 Spielcode in den Chat“ schicken beides auf Knopfdruck. Beim Öffnen und Schließen der Anmeldung sagt der Bot Bescheid.
+- **Beitreten:** Zuschauer schreiben **`!cup join`**, solange die Anmeldung offen ist. Streamer und Mods tragen Spieler auch **von Hand** ein (jeder Name nur einmal – wer von Hand drinsteht, ist auch per Chat schon dabei).
+- **Punkte:** Streamer und Mods vergeben sie im Cup-Fenster (−/+ oder Wert eintippen). Daraus entsteht die **Rangliste** – gleiche Punkte = gleicher Platz, das Preisgeld steht neben dem Platz. Die Rangliste sehen alle auf der Seite, auch ohne Anmeldung (ohne Twitch-IDs).
+- **Chat:** `!cup` (Infos), `!cup join`, `!cup regeln`, `!cup top` (Top 5), `!cup platz` (eigener Platz und Punkte). Infos antworten höchstens alle 15 Sekunden, `!cup platz` je Zuschauer alle 30 Sekunden.
+- **Neuer Cup:** Punkte auf 0 (Spieler bleiben) oder alle Spieler entfernen; der Spielcode wird dabei geleert.
+- **Mod-Rechte:** Bereich „Spiele & Mitmachen“. Alles steht im Protokoll.
+
 ## Sicherheit
 
 Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.
