@@ -10,7 +10,7 @@ StreamHelp bündelt Planung, Zuschaueraktionen und Stream-Technik für Twitch in
 - **OBS und Aufnahme:** Das anpassbare Overlay zeigt Alerts, Chat, Szenen, Spiele, Haustier, Laufband und weitere Ebenen. Es lässt sich in Module und OBS-Szenen aufteilen und direkt über obs-websocket verwalten. Statistiken zeigen Overlay-Datenverbrauch und OBS-/Stream-Werte; das Aufnahme-Studio nimmt Videos lokal im Browser auf.
 - **Sicherheit und Betrieb:** Streamer verwalten Mod-Rechte und Raid-Schutz. Plattform-Admins können Kanäle moderieren, Overlays oder den Bot im Notfall pausieren, Wartung ankündigen, Updates ausrollen und Neuigkeiten veröffentlichen. Zwei-Faktor-Anmeldung, Rate-Limits, Sicherheitsprüfungen und Datenexport ergänzen den Schutz.
 
-Startseite und Anmeldung sind in zehn Sprachen verfügbar; das Twitch-Panel übernimmt die Sprache des Zuschauers. Das Dashboard ist derzeit deutsch. Im Demo-Modus lassen sich viele Funktionen ohne Twitch- oder Supabase-Verbindung ausprobieren. Die folgenden Abschnitte beschreiben Einrichtung und Funktionen im Detail.
+Startseite und Anmeldung sind in zehn Sprachen verfügbar; die Twitch-Erweiterung übernimmt die Sprache des Zuschauers (oder eine feste, die der Streamer wählt). Das Dashboard ist derzeit deutsch. Im Demo-Modus lassen sich viele Funktionen ohne Twitch- oder Supabase-Verbindung ausprobieren. Die folgenden Abschnitte beschreiben Einrichtung und Funktionen im Detail.
 
 ## Aufbau
 
@@ -863,34 +863,74 @@ Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.htm
 - Pause/Weiter, Stopp; die Aufnahme läuft weiter, wenn das Studio-Fenster im Hintergrund liegt und man spielt. Endet die Bildschirm-Freigabe, wird die Aufnahme gespeichert.
 - Tipp: Für ein Video exakt wie im Stream (alles inklusive) einfach in OBS „Aufnahme starten“.
 
-## Twitch-Panel (Erweiterung unter dem Stream)
+## Twitch-Erweiterung (Panel, Komponente, Overlay)
 
-Ein Panel unter dem Stream auf twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`):
+Eine Erweiterung für twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`) in drei Ansichten. Twitch hängt `?anchor=panel|component|video_overlay` an die Adresse, `panel.html` richtet sich danach:
 
-- Oben der **Kanalname, wie er bei Twitch heißt** (direkt von Twitch geholt, eine Stunde gemerkt).
-- **Aktuelles Game** (mit „Live“, wenn die Twitch-Kategorie passt) und die **passenden Content-Ideen** – wie im Dashboard; Games ohne eigene Idee zeigen „Wir arbeiten an einer Content-Idee für dieses Game“.
-- **📊 Umfrage** (siehe „Umfragen“): Antworten mit Balken, Restzeit, die eigene Stimme ist markiert und lässt sich ändern. Nach dem Ende steht das Ergebnis da, bis der Streamer es ausblendet.
-- **🦖 Haustier füttern** (sobald die Kachel für Zuschauer freigeschaltet ist): zeigt, ob es Hunger hat, wie oft und von wem es zuletzt gefüttert wurde. Es gelten **dieselben Regeln wie `!füttern` im Chat** – jeder alle 10 Minuten, insgesamt höchstens alle 15 Sekunden, Raid-Schutz beachtet; der Knopf zählt die Wartezeit herunter.
-- **🔢 Zähler** (siehe „Game-Pakete“): Tode, Kills, Versuche … mit den Chat-Befehlen dazu.
-- **Mitmachen per Klick**: bei der **Verlosung** (gleiche Regeln wie `!mitmachen` im Chat, auch „nur Follower“) und in der **Mitspieler-Warteschlange** (mit Epic-Name). Für Abstimmen, Füttern und Mitmachen gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
-- **Als Nächstes** mit Termin und ein Link **zur Seite** (direkt in den Kanal, `#/c/<name>`).
-- **Hell/Dunkel wie Twitch** (folgt dem Twitch-Design des Zuschauers). Das Panel erkennt den Kanal selbst – jeder freigeschaltete Streamer mit Twitch-Verbindung kann es nutzen.
-- **Twitch-App (Handy):** Dieselbe Seite mit größeren Knöpfen (Twitch hängt `platform=mobile` an). Der Link zur Seite fällt dort weg, weil Twitch in der App keine Links nach draußen öffnet.
+| Ansicht | Wo | Besonderheit |
+|---|---|---|
+| **Panel** | unter dem Stream | mit Kopfzeile (Kanalname, Logo) und Link zur Seite |
+| **Komponente** | kleines Feld auf dem Video | der Streamer schiebt und skaliert es im Creator-Dashboard; immer kompakt, ohne Kopfzeile, ohne Links nach draußen |
+| **Overlay** | über dem ganzen Videobild | Ecke (4) und Größe (klein/mittel/groß) aus der Konfiguration; das Bild darunter bleibt klickbar |
 
-**Einmal einrichten (Plattform-Admin, bei Twitch):**
+Komponente und Overlay sieht man nur, wenn der Kanal live ist – so macht es Twitch.
 
-1. [dev.twitch.tv/console/extensions](https://dev.twitch.tv/console/extensions) → **Erweiterung erstellen**: Name z. B. „StreamHelp“, Typ **Panel**.
-2. Version → **Asset-Hosting**: Pfad für die Panel-Ansicht `panel.html`, Panel-Höhe `500`. Konfigurationsseite: keine. **Für die Twitch-App** zusätzlich „Mobil“ ankreuzen und als Pfad für die mobile Ansicht ebenfalls `panel.html` eintragen.
-3. Version → **Funktionen**:
-   - **Identitätsverknüpfung** (Zuschauer-ID anfordern) einschalten – nötig für „Mitmachen“.
+**Was Zuschauer sehen** (der Streamer wählt die Module in der Konfiguration; leere Karten bleiben weg):
+
+- **Aktuelles Game** (mit „Live“, wenn die Twitch-Kategorie passt) und die **passenden Content-Ideen**.
+- **📊 Umfrage**: Antworten mit Balken, Restzeit, die eigene Stimme ist markiert und lässt sich ändern.
+- **🦖 Haustier füttern**: dieselben Regeln wie `!füttern` im Chat (jeder alle 10 Minuten, insgesamt höchstens alle 15 Sekunden, Raid-Schutz).
+- **🔢 Zähler**, **🍀 Verlosung** (wie `!mitmachen`, auch „nur Follower“) und **🎮 Mitspieler-Warteschlange** (mit Epic-Name).
+- **🔊 Sounds** (neu): Zuschauer tippen auf einen Sound, das OBS-Overlay spielt ihn ab – **ohne Kanalpunkte**, also auch ohne Affiliate. Standard: aus. Siehe unten.
+- **Als Nächstes** (Termin) und im Panel ein Link **zur Seite**.
+- **Sprache**: Standard „Automatisch“ – jeder Zuschauer sieht seine Twitch-Sprache (10 Sprachen, sonst Englisch). In der Konfiguration lässt sich eine feste Sprache wählen. Texte: `extension/panel-i18n.js`.
+- **Hell/Dunkel** wie Twitch beim Zuschauer, oder fest. Auf dem Handy (Twitch hängt `platform=mobile` an) größere Knöpfe, kein Link nach draußen.
+
+Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
+
+**Keine Werbung in der Erweiterung:** Twitch verbietet Werbe- und Sponsoring-Inhalte in Erweiterungen (Extension-Richtlinie 4.4, [dev.twitch.tv/docs/extensions/guidelines-and-policies](https://dev.twitch.tv/docs/extensions/guidelines-and-policies/)). Gekennzeichnete Werbung geht über das Laufband im OBS-Overlay – „Werbung“ oder „Anzeige“ selbst davorschreiben.
+
+### Schritt für Schritt: Erweiterung bei Twitch anlegen (einmal, Plattform-Admin)
+
+**Vorher in Supabase:**
+
+1. Migration `supabase/migrations/20261114000000_panel_sounds.sql` im SQL Editor ausführen (für die Sounds; alles andere läuft auch ohne).
+2. Edge Function `twitch-ext` neu deployen (macht der GitHub-Workflow „Deploy Edge Functions“ nach dem Merge, sonst `npx supabase functions deploy twitch-ext`).
+
+**In der Twitch-Entwicklerkonsole** ([dev.twitch.tv/console/extensions](https://dev.twitch.tv/console/extensions)):
+
+3. **Erweiterung erstellen** (gibt es sie schon als Panel: die vorhandene öffnen und **Neue Version** anlegen). Name z. B. „StreamHelp“. Als Typen **Panel**, **Video – Komponente** und **Video – Vollbild (Overlay)** ankreuzen, dazu **Mobil**.
+4. Version → **Asset-Hosting**:
+   - Panel-Ansicht: `panel.html`, Panel-Höhe `500`
+   - Video – Komponente: `panel.html` (Seitenverhältnis z. B. Breite 3, Höhe 4; Zoom an)
+   - Video – Vollbild: `panel.html`
+   - Mobil: `panel.html`
+   - **Konfigurationsseite: `config.html`**
+   - Live-Konfiguration: leer lassen
+5. Version → **Funktionen**:
+   - **Identitätsverknüpfung anfordern** einschalten (nötig für Mitmachen und Sounds).
+   - **Konfigurationsdienst**: „Konfigurationsdienst der Erweiterung verwenden“ wählen – ohne ihn speichert `config.html` nichts. **Erforderliche Konfiguration** leer lassen (die Erweiterung läuft auch ohne Einstellungen).
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
    - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
-4. **Erweiterungs-Secret**: in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets oder `npx supabase secrets set EXTENSION_SECRET=…`). Nicht ins Repo und nicht in den Chat. Damit prüft `twitch-ext`, dass Anfragen wirklich von Twitch kommen.
-5. **Dateien hochladen**: `panel.html`, `panel.css`, `panel-i18n.js` und `panel.js` aus `extension/` als ZIP (die vier Dateien direkt im ZIP, ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner) unter **Dateien** hochladen.
-6. **Gehosteter Test**: Im Creator-Dashboard des eigenen Kanals unter Erweiterungen → Meine Erweiterungen installieren und als Panel aktivieren.
-7. Für alle anderen Streamer: **Zur Prüfung einreichen**. Nach der Freigabe durch Twitch kann jeder Streamer das Panel in seinem Creator-Dashboard aktivieren.
+6. **Erweiterungs-Secret** (nur beim ersten Mal): in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets). Nicht ins Repo, nicht in den Chat.
+7. **Dateien hochladen**: diese neun Dateien aus `extension/` direkt in ein ZIP (ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner):
+   `panel.html`, `panel.css`, `panel.js`, `panel-i18n.js`, `ext-config.js`, `config.html`, `config.css`, `config.js`, `favicon.svg`.
+   Unter **Dateien** hochladen.
+8. **In den gehosteten Test verschieben** und auf dem eigenen Kanal ausprobieren (Schritt 10–12).
+9. **Zur Prüfung einreichen**. Twitch fragt dafür nach Beschreibung, Symbolen, Screenshots, Datenschutzerklärung (`…/datenschutz.html`), Kontakt und einer Testanleitung für die Prüfer (z. B. „Kanal X, Konfiguration öffnen, Modul Umfrage anhaken; im Dashboard eine Umfrage starten“). Die Größen der Bilder nennt die Konsole. Nach der Freigabe kann jeder Streamer die Erweiterung aktivieren.
 
-Ohne Twitch ansehen: `extension/panel.html` direkt im Browser öffnen – dann zeigt das Panel Beispieldaten. Zum Ausprobieren: `panel.html?theme=light` (hell), `panel.html?platform=mobile` (Handy). Das Panel spricht die Sprache des Zuschauers (Twitch gibt sie mit; zum Ausprobieren `panel.html?language=en`); die Texte stehen in `extension/panel-i18n.js`. **Nach diesem Update die Dateien neu hochladen** (neue Version im Twitch-Entwickler-Bereich). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+### Schritt für Schritt: als Streamer aktivieren und einrichten
+
+10. **twitch.tv → Creator-Dashboard → Erweiterungen** → StreamHelp **installieren**.
+11. Unter **Meine Erweiterungen** auf das Zahnrad (**Konfigurieren**): Das öffnet `config.html` mit Live-Vorschau rechts.
+    1. **Schnellstart** wählen: 🌱 Ich fange gerade an (wenig, ruhig) oder 💬 Ich bin (noch) kein Affiliate (alles ohne Kanalpunkte, inklusive Sounds).
+    2. **Wo?** Panel, Komponente oder Overlay (beim Overlay Ecke und Größe).
+    3. **Module** anhaken, **Aussehen** (Farbschema, kompakt) und **Sprache** (Automatisch oder fest).
+    4. **Speichern** – Zuschauer sehen es nach wenigen Sekunden, ohne neu zu laden.
+12. **Aktivieren** (Pfeil neben der Erweiterung): als **Panel**, als **Komponente** (dann auf dem Video platzieren) oder als **Overlay**. Twitch erlaubt pro Kanal höchstens ein Overlay und zwei Komponenten.
+13. **Sounds übers Panel** (optional): auf der StreamHelp-Seite im Dashboard → Kachel **„Ärgere den Streamer“** → „🔊 Sounds über die Twitch-Erweiterung“ einschalten und die Bremse wählen (pro Zuschauer höchstens alle … / Abstand zwischen zwei Sounds). Dazu in der Konfiguration das Modul **Sounds abspielen** anhaken. Gespielt wird über das OBS-Overlay (im OBS-Fenster muss die Ebene „Würfe & Sounds“ an sein). Gezeigt werden die ersten 20 Sounds der Liste (eingebaute zuerst, dann hochgeladene).
+
+**Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html` zeigt Beispieldaten; `panel.html?demo&mode=component` bzw. `?demo&mode=overlay` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

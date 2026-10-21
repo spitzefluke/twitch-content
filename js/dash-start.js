@@ -3,6 +3,7 @@
 // Mods freigegeben, 2FA an). OBS und „erste Idee“ merkt sich dieser Browser.
 // Ausblenden geht jederzeit – danach steht die Liste unter „❓ Einführung“ nicht mehr im Weg.
 import { h } from './extras-core.js';
+import { noAffiliate } from './affiliate.js';
 
 const key = (ctx, what) => `sh_start_${what}_${ctx.userId() ?? ''}_${ctx.channelId() ?? 'default'}`;
 const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -26,7 +27,7 @@ export async function renderStart(ctx) {
     ctx.mfaStatus().then((st) => { mfaOn = !!st?.factors?.length; renderStart(ctx); }).catch(() => {});
   }
   const steps = [
-    { id: 'twitch', ico: '🟣', title: 'Twitch verbinden', text: 'Damit Kanalpunkte, Chat-Bot und Alerts laufen.', done: ctx.twitchConnected(), go: () => ctx.setPage('twitch'), cta: 'Verbinden' },
+    { id: 'twitch', ico: '🟣', title: 'Twitch verbinden', text: noAffiliate() ? 'Damit Chat-Bot, Overlay und Alerts laufen – Kanalpunkte gibt es erst mit Affiliate.' : 'Damit Kanalpunkte, Chat-Bot und Alerts laufen.', done: ctx.twitchConnected(), go: () => ctx.setPage('twitch'), cta: 'Verbinden' },
     { id: 'obs', ico: '🎛️', title: 'Overlay in OBS einfügen', text: 'Eine Browserquelle für alles – Adresse kopieren, fertig.', done: !!get(key(ctx, 'obs')), go: () => { markStart(ctx, 'obs'); ctx.openObs(); }, cta: 'OBS öffnen' },
     { id: 'idea', ico: '🎬', title: 'Erste Content-Idee ausprobieren', text: 'Zum Beispiel das Glücksrad drehen – Zuschauer sehen es sofort im Overlay.', done: !!get(key(ctx, 'idea')), go: () => document.getElementById('grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), cta: 'Zu den Ideen' },
     { id: 'mods', ico: '👥', title: 'Mods freigeben', text: 'Optional: Deine Mods steuern mit – du sperrst sie mit einem Klick wieder.', done: !!ctx.modsEnabled(), go: () => ctx.setPage('mods'), cta: 'Mods' },

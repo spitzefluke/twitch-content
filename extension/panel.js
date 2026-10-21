@@ -18,19 +18,52 @@
   if (MOBILE) document.documentElement.classList.add('is-mobile');
   if (QUERY.get('theme') === 'light') document.documentElement.dataset.theme = 'light';
 
-  // Sprache: Twitch hängt ?language=… an die Panel-Adresse und meldet sie in onContext
+  // Einstellungen des Streamers (config.html, Twitch-Konfigurationsdienst) – siehe extension/ext-config.js.
+  // Ansicht: Twitch hängt ?anchor=panel|component|video_overlay an; zum Ausprobieren ?mode=overlay (nur mit ?demo).
+  var CFGLIB = window.STREAMHELP_CFG;
+  var cfg = CFGLIB.clean(null);
+  var ctxTheme = null;
+  var MODE = 'panel';
+  function modeFor() {
+    var a = QUERY.get('anchor');
+    var m = a === 'video_overlay' ? 'overlay' : a === 'component' ? 'component' : a === 'panel' ? 'panel' : null;
+    if (!m && DEMO && QUERY.get('mode')) m = CFGLIB.MODES.indexOf(QUERY.get('mode')) >= 0 ? QUERY.get('mode') : null;
+    if (!m && DEMO && QUERY.get('preview')) m = cfg.mode; // Vorschau in der Konfigurationsseite
+    return m || 'panel';
+  }
+  function applyChrome() {
+    var root = document.documentElement;
+    MODE = modeFor();
+    setLang(cfg.lang === 'auto' ? viewerLang : cfg.lang);
+    root.dataset.mode = MODE;
+    root.dataset.compact = cfg.compact || MODE !== 'panel' ? '1' : '0';
+    root.dataset.corner = cfg.corner;
+    root.dataset.size = cfg.size;
+    if (cfg.theme !== 'auto') root.dataset.theme = cfg.theme;
+    else if (ctxTheme) root.dataset.theme = ctxTheme;
+  }
+  function useConfig(next) {
+    var before = lang;
+    cfg = CFGLIB.clean(next);
+    applyChrome();
+    if (DEMO && lang !== before) { window.__demo = null; load(); } else if (data) render();
+  }
+
+  // Sprache: Standard ist die des Zuschauers (Twitch hängt ?language=… an die Adresse und meldet sie in
+  // onContext); der Streamer kann in config.html eine feste Sprache wählen. Unbekannte Sprachen → Englisch.
   var I18N = window.PANEL_I18N || { dicts: {} };
+  var viewerLang = QUERY.get('language') || navigator.language || 'en';
   var LOCALES = { de: 'de-DE', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', nl: 'nl-NL', pl: 'pl-PL', pt: 'pt-BR', tr: 'tr-TR', ru: 'ru-RU' };
-  var lang = 'de';
+  var lang = 'en';
   function setLang(code) {
     var c = String(code || '').slice(0, 2).toLowerCase();
-    var next = I18N.dicts[c] || c === 'de' ? c : 'de';
+    var next = (I18N.dicts[c] || c === 'de') ? c : 'en';
+    document.documentElement.lang = next;
     if (next === lang) return false;
     lang = next;
-    document.documentElement.lang = lang;
     return true;
   }
-  setLang(QUERY.get('language') || navigator.language);
+  setLang(cfg.lang === 'auto' ? viewerLang : cfg.lang);
   function T(source, vars) {
     var out = (I18N.dicts[lang] || {})[source] || source;
     if (vars) out = out.replace(/\{(\w+)\}/g, function (m, k) { return k in vars ? String(vars[k]) : m; });
@@ -40,7 +73,7 @@
   var token = null;
   var data = null;
   var pending = null;   // Aktion, die nach der Freigabe der Twitch-ID ausgeführt wird
-  var msgs = {};        // Rückmeldung je Bereich (giveaway, queue, vote, feed)
+  var msgs = {};        // Rückmeldung je Bereich (giveaway, queue, vote, feed, sound)
   var timer = 0;
   var ticker = 0;       // Sekundentakt für Countdown und Hunger
   var busy = {};        // Aktion läuft gerade (Knöpfe gesperrt)
@@ -65,7 +98,17 @@
     choice: 'Diese Antwort gibt es nicht.',
     busy: 'Kaut noch – in ein paar Sekunden wieder.',
     rate: 'Zu viele Klicks – kurz warten.',
+    cooldown: 'Gerade im Abklingen – gleich wieder.',
+    off: 'Sounds sind gerade aus.',
+    sound: 'Diesen Sound gibt es nicht mehr.',
   };
+
+  var logoImg = document.querySelector('.logo img');
+  if (logoImg) {
+    var showLogo = function () { if (logoImg.naturalWidth) logoImg.parentNode.classList.add('has-img'); };
+    logoImg.addEventListener('load', showLogo);
+    if (logoImg.complete) showLogo();
+  }
 
   // ---------- Daten ----------
   function call(action, extra) {
@@ -120,9 +163,11 @@
           data.poll.total = res.total;
           data.me.vote = res.choice;
         }
-      } else if (res.reason === 'cooldown' && res.wait) {
+      } else if (res.reason === 'cooldown' && res.wait && kind === 'feed') {
         if (data && data.me) data.me.feed_wait = res.wait;
         msgs[kind] = { error: true, text: T('Du kannst in {n} wieder füttern.', { n: span(res.wait) }) };
+      } else if (res.reason === 'cooldown' && res.wait && kind === 'sound') {
+        msgs[kind] = { error: true, text: T('Nächster Sound in {n}.', { n: span(res.wait) }) };
       } else {
         msgs[kind] = { error: true, text: T(REASONS[res.reason] || 'Hat nicht geklappt.') };
       }
@@ -138,6 +183,7 @@
     if (kind === 'giveaway') return T('🍀 Du bist dabei – viel Glück!');
     if (kind === 'vote') return T('✓ Deine Stimme zählt.');
     if (kind === 'feed') return T('😋 Danke, das hat geschmeckt!');
+    if (kind === 'sound') return T('🔊 Läuft im Stream!');
     return res.picked ? T('🎮 Du bist dran!') : T('🎮 Du stehst auf Platz {n}.', { n: res.position });
   }
 
@@ -180,6 +226,12 @@
     document.title = name + ' · StreamHelp';
     var parts = [];
     var me = data.me || {};
+    // Nur Module, die der Streamer eingeschaltet hat. Links nach draußen gibt es nur im Panel (Twitch erlaubt sie sonst nicht).
+    function add(mod, node) {
+      if (cfg.modules[mod] === false) return;
+      if (mod === 'link' && MODE !== 'panel') return;
+      parts.push(node);
+    }
 
     // Game
     if (data.game) {
@@ -193,17 +245,20 @@
         live.lang = 'en'; // sonst macht text-transform auf Türkisch „LİVE“ daraus
         g.append(live);
       }
-      parts.push(g);
+      add('game', g);
     }
 
     // Umfrage
-    if (data.poll) parts.push(pollCard(data.poll, me));
+    if (data.poll) add('poll', pollCard(data.poll, me));
 
     // Haustier füttern
-    if (data.pet) parts.push(petCard(data.pet, me));
+    if (data.pet) add('pet', petCard(data.pet, me));
 
     // Zähler (Tode, Kills, Versuche …)
-    if (data.counters && data.counters.length) parts.push(countersCard(data.counters));
+    if (data.counters && data.counters.length) add('counters', countersCard(data.counters));
+
+    // Sounds: Zuschauer spielen einen Sound im Stream ab (Overlay); Abklingzeit prüft der Server
+    if (data.sounds && data.sounds.length) add('sounds', soundsCard(data.sounds));
 
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
@@ -224,7 +279,7 @@
       }
       var gm = msgEl('giveaway');
       if (gm && !me.giveaway) v.append(gm);
-      parts.push(v);
+      add('giveaway', v);
     }
 
     // Mitspieler-Warteschlange
@@ -253,7 +308,7 @@
         var qm = msgEl('queue');
         if (qm) q.append(qm);
       }
-      parts.push(q);
+      add('queue', q);
     }
 
     // Als Nächstes
@@ -261,7 +316,7 @@
       var n = el('section', 'card');
       n.append(el('h2', null, T('⏰ Als Nächstes')));
       n.append(el('p', null, data.next.title), el('p', 'muted', when(data.next.at)));
-      parts.push(n);
+      add('next', n);
     }
 
     // Content-Ideen
@@ -280,7 +335,7 @@
     } else {
       ideas.append(el('p', 'muted', T('Gerade keine Ideen aktiv.')));
     }
-    parts.push(ideas);
+    add('ideas', ideas);
 
     // Link zur Seite (nicht auf dem Handy: Twitch lässt dort keine Links nach draußen zu)
     if (data.channel.link && !MOBILE) {
@@ -288,11 +343,29 @@
       a.href = data.channel.link;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      parts.push(a);
+      add('link', a);
     }
 
+    if (!parts.length && MODE === 'panel') parts.push(el('p', 'muted center', T('Gerade nichts zu zeigen.')));
     box.replaceChildren.apply(box, parts);
     tick();
+  }
+
+  function soundsCard(list) {
+    var c = el('section', 'card');
+    c.append(el('h2', null, T('🔊 Sounds')));
+    var box = el('div', 'sounds');
+    list.slice(0, 20).forEach(function (s) {
+      var b = el('button', 'btn', String(s.name || '').slice(0, 24));
+      b.type = 'button';
+      b.disabled = !!busy.sound;
+      b.addEventListener('click', function () { act('sound', { sound: s.id }); });
+      box.append(b);
+    });
+    c.append(box, el('p', 'muted', T('Tippe auf einen Sound – er läuft im Stream.')));
+    var m = msgEl('sound');
+    if (m) c.append(m);
+    return c;
   }
 
   function pollCard(poll, me) {
@@ -418,7 +491,15 @@
   // ---------- Start ----------
   var loading = document.querySelector('#content p');
   if (loading) loading.textContent = T('Lädt …');
+  applyChrome();
   if (DEMO) {
+    // Vorschau in config.html: Einstellungen kommen per Adresse (?cfg=…) und später per postMessage
+    try { if (QUERY.get('cfg')) useConfig(JSON.parse(decodeURIComponent(escape(atob(QUERY.get('cfg').replace(/-/g, '+').replace(/_/g, '/')))))); } catch (e) { /* Standard */ }
+    window.addEventListener('message', function (e) {
+      // Nur von der Seite, in der die Vorschau steckt (config.html), und nur Einstellungen – nichts Geheimes
+      if (e.source !== window.parent || !e.data || e.data.type !== 'streamhelp-cfg') return;
+      useConfig(e.data.cfg);
+    });
     load();
     return;
   }
@@ -433,9 +514,17 @@
     }
   });
   ext.onContext(function (ctx) {
-    if (ctx && ctx.theme) document.documentElement.dataset.theme = ctx.theme;
-    if (ctx && ctx.language && setLang(ctx.language) && data) render();
+    var relang = false;
+    if (ctx && ctx.language && ctx.language !== viewerLang) { viewerLang = ctx.language; relang = cfg.lang === 'auto'; }
+    if (ctx && ctx.theme) ctxTheme = ctx.theme;
+    if ((ctx && ctx.theme) || relang) { var before = lang; applyChrome(); if (lang !== before && data) render(); }
   });
+  if (ext.configuration && ext.configuration.onChanged) {
+    ext.configuration.onChanged(function () {
+      var b = ext.configuration.broadcaster;
+      useConfig(CFGLIB.parse(b && b.content));
+    });
+  }
   if (ext.onVisibilityChanged) {
     ext.onVisibilityChanged(function (visible) {
       if (visible) load();
@@ -449,17 +538,18 @@
       channel: { name: 'StreamHelp', login: 'streamhelp', link: '../index.html' },
       game: { id: 'fortnite', name: 'Fortnite', icon: '🏝️', live: true, category: 'Fortnite' },
       ideas: [
-        { kind: 'wheel', title: 'Fortnite-Glücksrad', description: 'Vier Varianten, die die nächste Runde auf den Kopf stellen.' },
-        { kind: 'bingo', title: 'Fortnite-Bingo', description: 'Items finden, Karte abhaken.' },
-        { kind: 'prank', title: 'Ärgere den Streamer', description: 'Tomaten, Torten und Sounds per Kanalpunkte.' },
+        { kind: 'wheel', title: T('Fortnite-Glücksrad'), description: T('Vier Varianten, die die nächste Runde auf den Kopf stellen.') },
+        { kind: 'bingo', title: T('Fortnite-Bingo'), description: T('Items finden, Karte abhaken.') },
+        { kind: 'prank', title: T('Ärgere den Streamer'), description: T('Tomaten, Torten und Sounds per Kanalpunkte.') },
       ],
       placeholder: false,
       next: { title: 'Subathon', at: new Date(Date.now() + 2 * 86400000).toISOString() },
-      giveaway: { open: true, prize: 'Fortnite-Skin nach Wahl', command: '!mitmachen', followers_only: true, entries: 12, round: 1 },
-      queue: { open: true, waiting: 4, note: 'Squads ab 20 Uhr' },
-      poll: { status: 'open', round: 1, question: 'Was spielen wir als Nächstes?', options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [7, 4, 2], total: 13, ends_at: new Date(Date.now() + 5 * 60000).toISOString(), chat: true },
-      pet: { name: 'Rexi', species: 'dino', stage: 'adult', command: '!füttern', fed_count: 128, last_fed_by: 'Mia', last_fed_at: new Date(Date.now() - 60 * 60000).toISOString(), hungry_after: 45 },
-      counters: [{ emoji: '💀', label: 'Tode', value: 17, command: 'tode' }, { emoji: '🔫', label: 'Kills', value: 42, command: 'kills' }, { emoji: '👑', label: 'Wins', value: 3, command: 'wins' }],
+      giveaway: { open: true, prize: T('Fortnite-Skin nach Wahl'), command: '!mitmachen', followers_only: true, entries: 12, round: 1 },
+      queue: { open: true, waiting: 4, note: T('Squads ab 20 Uhr') },
+      poll: { status: 'open', round: 1, question: T('Was spielen wir als Nächstes?'), options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [7, 4, 2], total: 13, ends_at: new Date(Date.now() + 5 * 60000).toISOString(), chat: true },
+      pet: { name: 'Rexi', species: 'dino', stage: 'adult', command: '!feed', fed_count: 128, last_fed_by: 'Mia', last_fed_at: new Date(Date.now() - 60 * 60000).toISOString(), hungry_after: 45 },
+      counters: [{ emoji: '💀', label: T('Tode'), value: 17, command: 'deaths' }, { emoji: '🔫', label: 'Kills', value: 42, command: 'kills' }, { emoji: '👑', label: 'Wins', value: 3, command: 'wins' }],
+      sounds: ['Airhorn', 'Sad violin', 'Gong', 'Whistle', 'Drumroll', 'Applause'].map(function (n, i) { return { id: 's' + i, name: n }; }),
       me: { shared: true, giveaway: false, queue: null, epic: '', vote: null, feed_wait: 0 },
     });
     var reply;
@@ -474,11 +564,13 @@
       if (store.me.feed_wait > 0) reply = { ok: false, reason: 'cooldown', wait: store.me.feed_wait };
       else {
         store.pet.fed_count += 1;
-        store.pet.last_fed_by = 'Demo-Zuschauer';
+        store.pet.last_fed_by = T('Demo-Zuschauer');
         store.pet.last_fed_at = new Date().toISOString();
         store.me.feed_wait = 600;
         reply = { ok: true, fed_count: store.pet.fed_count };
       }
+    } else if (action === 'sound') {
+      reply = { ok: true };
     } else if (action === 'giveaway') {
       store.me.giveaway = true;
       store.giveaway.entries += 1;

@@ -5,6 +5,8 @@
 //   POST {action:"queue", epic?}    → in die Mitspieler-Warteschlange (Epic-Name, beim ersten Mal nötig)
 //   POST {action:"vote", choice}    → bei der laufenden Umfrage abstimmen (1–5, ändern geht)
 //   POST {action:"feed"}            → das Haustier füttern (gleiche Abklingzeiten wie !füttern im Chat)
+//   POST {action:"sound", sound}    → einen Sound im Stream abspielen (nur wenn der Streamer „Sounds übers Panel“
+//                                     eingeschaltet hat; Abklingzeiten prüft panel_sound_play, …_panel_sounds.sql)
 // Ausweis: Header Authorization: Bearer <JWT der Twitch-Erweiterung>. Twitch signiert ihn mit dem
 // Extension-Secret (Supabase-Secret EXTENSION_SECRET, base64). Er nennt den Kanal (channel_id) und –
 // wenn der Zuschauer seine Twitch-ID freigegeben hat – den Zuschauer (user_id). Mitmachen geht nur damit.
@@ -13,6 +15,7 @@ import {
 } from "../_shared/twitch.ts";
 import { GAME_ONLY, gameById } from "../_shared/games.ts";
 import { feedPet, feedWait, petStarted } from "../_shared/pet.ts";
+import { soundList } from "../_shared/pranks.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +67,7 @@ Deno.serve(async (req) => {
   // Rate-Limit je Zuschauer (opaque_user_id gibt Twitch auch ohne freigegebene ID): Stand abrufen
   // 30× pro Minute, Mitmachen 6× pro Minute – genug für echte Klicks, zu wenig für Skripte.
   const viewer = claims.opaque_user_id ?? claims.user_id ?? "anon";
-  const join = body.action === "giveaway" || body.action === "queue" || body.action === "vote" || body.action === "feed";
+  const join = ["giveaway", "queue", "vote", "feed", "sound"].includes(body.action);
   if (!(await rateLimit(`ext:${join ? "join" : "state"}:${claims.channel_id}:${viewer}`, join ? 6 : 30))) {
     return json({ error: "rate", message: "Zu viele Klicks – kurz warten." }, 429);
   }
@@ -79,6 +82,7 @@ Deno.serve(async (req) => {
       if (body.action === "queue") return json(await joinQueue(claims, body.epic));
       if (body.action === "vote") return json(await vote(claims, body.choice));
       if (body.action === "feed") return json(await feed(claims));
+      if (body.action === "sound") return json(await playSound(claims, body.sound));
       return json({ error: "Unbekannte Aktion" }, 400);
     } catch (e) {
       console.error("twitch-ext:", e);
@@ -103,6 +107,8 @@ type Shared = {
   poll: Poll | null;
   pet: Pet | null;
   counters: { emoji: string; label: string; value: number; command: string | null }[];
+  // Sounds, die Zuschauer im Panel abspielen dürfen (leer, solange der Streamer es nicht eingeschaltet hat)
+  sounds: { id: string; name: string }[];
 };
 type Poll = {
   status: "open" | "closed"; round: number; question: string; options: string[]; counts: number[]; total: number;
@@ -143,7 +149,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
 
-  const [ch, conn, games, tiles, giveaway, queue, waiting, poll, pet, petOpen, realName, counters] = await Promise.all([
+  const [ch, conn, games, tiles, giveaway, queue, waiting, poll, pet, petOpen, realName, counters, sounds] = await Promise.all([
     currentChannel().catch(() => null),
     db.from("twitch_connection").select("display_name, broadcaster_login").eq("id", 1).maybeSingle(),
     db.from("stream_games").select("active, current, live_game, live_category, live_at").eq("id", 1).maybeSingle(),
@@ -158,6 +164,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     twitchName(twitchId),
     // Zähler (…_game_packs.sql), die im Stream zu sehen sind
     db.from("counters").select("emoji, label, value, command").eq("show", true).order("position").limit(8),
+    panelSounds().catch(() => []),
   ]);
 
   // Game: gerade live → Standard-Game → erstes aktives
@@ -213,6 +220,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
       ? []
       : (counters.data ?? []).map((c: { emoji: string; label: string; value: number; command: string | null }) =>
         ({ emoji: c.emoji, label: c.label, value: c.value, command: c.command })),
+    sounds,
   };
   cache.set(key, { at: Date.now(), data });
   return data;
@@ -302,4 +310,31 @@ async function feed(claims: Claims) {
   const res = await feedPet(claims.user_id, await displayName(claims.user_id));
   cache.clear();
   return res;
+}
+
+// ---------- Sounds übers Panel ----------
+// ID im Panel: eingebauter Sound wie „gong“, hochgeladener Sound als „c:<uuid>“
+const soundId = (s: Awaited<ReturnType<typeof soundList>>[number]) => s.board ? s.board.id : `c:${s.custom!.id}`;
+
+async function panelSounds() {
+  const { data, error } = await db.from("prank_settings").select("panel_sounds").eq("id", 1).maybeSingle();
+  if (error || !data?.panel_sounds) return [];
+  return (await soundList()).slice(0, 20).map((s) => ({ id: soundId(s), name: s.name.slice(0, 40) }));
+}
+
+async function playSound(claims: Claims, id: unknown) {
+  if (!claims.user_id) return { ok: false, reason: "share" };
+  if (typeof id !== "string" || id.length > 60) return { ok: false, reason: "sound" };
+  // Nur Sounds aus der eigenen Liste – nie einen Pfad oder Namen vom Zuschauer übernehmen
+  const sound = (await soundList()).slice(0, 20).find((s) => soundId(s) === id);
+  if (!sound) return { ok: false, reason: "sound" };
+  const { data: res, error } = await db.rpc("panel_sound_play", {
+    p_key: `tw:${claims.user_id}`,
+    p_name: await displayName(claims.user_id),
+    p_item: sound.board ? sound.board.id : "custom",
+    p_path: sound.custom?.path ?? null,
+    p_label: sound.custom?.name ?? "",
+  });
+  if (error) throw error;
+  return { ok: !!res?.ok, reason: res?.reason ?? null, wait: res?.wait ?? null };
 }
