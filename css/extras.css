@@ -32,6 +32,8 @@
 .theme-heart { --tile-glow: rgba(255, 45, 85, .5); }
 .theme-chatcontrol .tile-bg { background-image: url("../assets/bg-chatcontrol.svg"); }
 .theme-chatcontrol { --tile-glow: rgba(61, 220, 132, .45); }
+.theme-cup .tile-bg { background-image: url("../assets/bg-cup.svg"); }
+.theme-cup { --tile-glow: rgba(255, 196, 46, .5); }
 .tile--x-forbidden .prank-cta { background: #ff5a4e; color: #fff; }
 .tile--x-subathon .prank-cta { background: #9146ff; color: #fff; }
 .tile--x-pause .prank-cta { background: #ffb81c; color: #1a1204; }
@@ -46,6 +48,7 @@
 .tile--x-gamewheel .prank-cta { background: #ff4fd8; color: #2a0622; }
 .tile--x-heart .prank-cta { background: #ff2d55; color: #fff; }
 .tile--x-chatcontrol .prank-cta { background: #3ddc84; color: #04220f; }
+.tile--x-cup .prank-cta { background: #ffc42e; color: #2a1d00; }
 
 /* ---------- Dialog-Grundform ---------- */
 .dialog--extra { width: min(96vw, 1080px); }
@@ -288,6 +291,34 @@ button.xcard:hover { transform: translateY(-3px); }
 .gw-kick:hover { color: #ff8a80; background: rgba(255, 90, 78, .14); }
 [data-kicked-box][hidden] { display: none; }
 [data-kicked-box] .x-item b { text-decoration: line-through; }
+/* ---------- Cup (js/extras-cup.js) ---------- */
+.cup-hero { gap: 6px; }
+.cup-state { font-size: 13px; font-weight: 700; color: var(--muted); }
+.cup-title { font-size: clamp(22px, 3vw, 30px); line-height: 1.15; overflow-wrap: anywhere; }
+.cup-sub, .cup-me { margin: 0; color: var(--muted); }
+.cup-me { color: #ffd76a; font-weight: 700; }
+.cup-rules { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); white-space: pre-line; overflow-wrap: anywhere; }
+.cup-board { max-height: 460px; }
+.cup-row { justify-content: flex-start; }
+.cup-row.is-top-1 { border-color: rgba(255, 196, 46, .6); background: rgba(255, 196, 46, .08); }
+.cup-row.is-top-2 { border-color: rgba(200, 210, 230, .45); }
+.cup-row.is-top-3 { border-color: rgba(205, 127, 50, .5); }
+.cup-row.is-me { box-shadow: inset 0 0 0 1px var(--twitch); }
+.cup-place { flex: none; width: 2.2em; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cup-name { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.cup-name b { overflow-wrap: anywhere; }
+.cup-prize-tag { color: #ffd76a; font-size: 12.5px; }
+.cup-points { flex: none; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+.cup-points small { font-weight: 600; font-size: 12px; color: var(--muted); }
+.cup-edit { flex: none; display: flex; align-items: center; gap: 4px; }
+.cup-edit .btn--sm { min-height: 30px; width: 30px; padding: 0; }
+.cup-points-input { width: 4.6em; min-height: 30px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cup-code-row { display: flex; gap: 6px; }
+.cup-code-row input { flex: 1; min-width: 0; }
+.cup-prizes { display: grid; gap: 8px; margin: 0; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 12px; min-width: 0; }
+.cup-prizes legend { padding: 0 6px; font-size: 14px; }
+.cup-prize-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 130px), 1fr)); gap: 8px; }
+@media (max-width: 520px) { .cup-edit .cup-points-input { width: 3.6em; } }
 /* ---------- Hot Words (js/extras-hotwords.js) ---------- */
 .hw-hero {
   position: relative; overflow: hidden; display: grid; justify-items: center; gap: 10px; padding: 22px 18px 18px;

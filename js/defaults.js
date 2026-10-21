@@ -308,8 +308,18 @@ export const DEFAULT_TILES = [
     background: null,
   },
   {
-    id: 'idea-1',
+    id: 'cup',
     position: 22,
+    kind: 'cup',
+    title: 'Cup',
+    description: 'Turnier mit der Community: Regeln und Spielcode vom Streamer, Beitritt mit !cup join, Rangliste mit Preisgeldern.',
+    theme: 'cup',
+    target_at: null,
+    background: null,
+  },
+  {
+    id: 'idea-1',
+    position: 23,
     kind: 'countdown',
     title: 'Late-Night-Marathon',
     description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
@@ -319,7 +329,7 @@ export const DEFAULT_TILES = [
   },
   {
     id: 'idea-4',
-    position: 23,
+    position: 24,
     kind: 'countdown',
     title: 'Countdown zum Subathon',
     description: 'Der nächste Subathon kommt! Jeder Sub verlängert den Stream – wie lange geht es diesmal?',
