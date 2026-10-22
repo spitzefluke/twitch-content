@@ -632,6 +632,8 @@ Migration `supabase/migrations/20261116000000_bot_stats.sql`:
 
 - **Schneller:** Watchtime, Hot Words und die Zählung laufen neben der Antwort des Bots statt davor; Bot und Twitch-Verbindung sind im Chat-Pfad kurz zwischengespeichert. Ansagen aus der Warteschlange (Umfrage zu Ende, Cup, Quiz …) gehen nach jeder Chat-Nachricht, jedem Panel-Aufruf und jeder Overlay-Runde raus – nicht mehr erst bei der nächsten Chat-Nachricht.
 - **Zwei Bots:** siehe Schritt 6 („Zweiter Bot“).
+- **Bot wechseln:** Wählt der Streamer den anderen Bot, meldet sich dieser sofort im Chat („👋 Hallo! Ich bin … und ab jetzt der Bot in diesem Chat.“). Kommt die Nachricht nicht an (z. B. Nur-Follower-Modus), sagt das Dashboard gleich, warum und was zu tun ist.
+- **Live-Start** (Migration `supabase/migrations/20261117000000_live_welcome.sql`): Geht der Streamer live, schreibt der Bot sofort eine Willkommensnachricht mit dem Spiel – Standard „🔴 {streamer} ist jetzt live mit {game}! Willkommen im Stream – schön, dass ihr da seid 💜“. Text und an/aus unter 🤖 Bot & Chat → „Begrüßung & Danke“ → Live-Start (Platzhalter `{streamer}`, `{game}`, `{title}`). Höchstens einmal in 30 Minuten, damit ein kurzer Abbruch mit Neustart den Chat nicht zuschreibt. Spiel und Titel kommen frisch von Twitch.
 - **Bot-Protokoll:** Jede Nachricht des Bots steht mit Status im Protokoll – ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit dem Grund von Twitch, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt), Fehler, kein Bot, Notfall-Schalter. **Streamer und freigegebene Mods** sehen es im Dashboard unter 🤖 Bot & Chat → „Bot-Protokoll“ und schicken dort eine **Testnachricht**. Der **Plattform-Admin** sieht im Admin-Bereich das Protokoll aller Kanäle (je Kanal die letzten 24 Stunden, Filter „nur Probleme“). Einträge bleiben 7 Tage.
 
 ## Cup
@@ -645,6 +647,7 @@ Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/
 - **Chat:** `!cup` (Infos), `!cup join`, `!cup regeln`, `!cup top` (Top 5), `!cup platz` (eigener Platz und Punkte). Infos antworten höchstens alle 15 Sekunden, `!cup platz` je Zuschauer alle 30 Sekunden.
 - **Neuer Cup:** Punkte auf 0 (Spieler bleiben) oder alle Spieler entfernen; der Spielcode wird dabei geleert.
 - **Mod-Rechte:** Bereich „Spiele & Mitmachen“. Alles steht im Protokoll.
+- **Im Stream (OBS):** Ebene **„Cup“** im OBS-Fenster einschalten (gehört zum Modul „Spiele & Mitmachen“). Sie zeigt Titel, „Anmeldung offen: !cup join“ bzw. „Spielcode ist raus“, die **Rangliste** mit 🥇🥈🥉, Punkten und Preisgeldern (3–10 Plätze einstellbar, dazu „+ N weitere“) und auf Wunsch die **Regeln**. Neue Punkte leuchten kurz auf, die Reihenfolge stellt sich sofort um. Die Karte erscheint, sobald es Spieler gibt oder die Anmeldung offen ist. Keine eigene Migration nötig.
 
 ## Sicherheit
 

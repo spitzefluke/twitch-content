@@ -14,7 +14,7 @@ const STATUS = {
   no_bot: ['⚠️', 'kein Bot verbunden'],
   off: ['⏸', 'Chat-Bot plattformweit aus'],
 };
-const SOURCE = { chat: 'Antwort', outbox: 'Ansage', test: 'Test', mod: 'Moderation' };
+const SOURCE = { chat: 'Antwort', outbox: 'Ansage', test: 'Test', mod: 'Moderation', system: 'Automatisch' };
 const timeOf = (iso) => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 // Auswahl Bot 1 / Bot 2 (nur zu sehen, wenn es die Migration gibt und mindestens ein Bot verbunden ist)
@@ -35,8 +35,13 @@ export function renderBotPick(t, ctx) {
       list.querySelectorAll('input').forEach((i) => { i.disabled = true; });
       try {
         const r = await ctx.api.botSelect(slot);
-        ctx.toast(`${r?.bot ?? `Bot ${slot}`} schreibt jetzt in deinem Chat.`, 'ok');
+        const name = r?.bot ?? `Bot ${slot}`;
+        // Der neue Bot hat sich gleich im Chat gemeldet – oder Twitch hat es geblockt (mit Grund und Lösung)
+        const hint = r?.said ? null : botHint(r?.reason, r?.bot_login ?? name);
+        if (r?.said) ctx.toast(`${name} schreibt jetzt in deinem Chat und hat sich dort gerade gemeldet.`, 'ok');
+        else ctx.toast(`${name} ist gewählt, konnte sich aber nicht im Chat melden: ${hint ? `${hint.why} → ${hint.fix}` : r?.reason ?? 'unbekannt'}`, 'error');
         await ctx.refreshTwitch();
+        renderBotLog(ctx);
       } catch (err) {
         ctx.toast(ctx.germanError(err), 'error');
         await ctx.refreshTwitch();

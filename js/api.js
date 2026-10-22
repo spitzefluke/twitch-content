@@ -997,6 +997,7 @@ function createLocalApi() {
     mod_caps_min: 15, mod_spam: true, mod_repeat: 12, mod_emotes: 15, mod_words: [], mod_action: 'delete', mod_timeout: 60, mod_warn: true,
     mod_exempt_vip: true, mod_exempt_sub: false, mod_permit_seconds: 60,
     song_on: false, song_who: 'everyone', song_max_user: 2, song_max_queue: 30, song_max_minutes: 8, song_cooldown: 30, timer_gap: 120,
+    live_on: true, live_text: '🔴 {streamer} ist jetzt live mit {game}! Willkommen im Stream – schön, dass ihr da seid 💜',
   };
   const emitDemo = (key, payload) => setTimeout(() => (demoListeners[key] ?? []).forEach((cb) => cb(payload)), 30);
   const isAdminNow = () => !!store.get('users', {})[current?.email]?.is_admin;
@@ -2108,7 +2109,12 @@ function createLocalApi() {
     async botSelect(slot) {
       await requireAdmin();
       store.set('bot_slot', slot === 2 ? 2 : 1);
-      return { ok: true, slot, bot: slot === 2 ? 'StreamHelpBot2' : 'StreamHelpBot' };
+      // Wie in twitch-oauth: Der neue Bot meldet sich gleich im Chat (steht im Protokoll)
+      const bot = slot === 2 ? 'StreamHelpBot2' : 'StreamHelpBot';
+      const row = { id: Date.now(), created_at: new Date().toISOString(), bot: bot.toLowerCase(),
+        text: `👋 Hallo! Ich bin ${bot} und ab jetzt der Bot in diesem Chat.`, status: 'sent', reason: '', source: 'system', ms: 170 };
+      store.set('bot_log', [row, ...store.get('bot_log', [])].slice(0, 50));
+      return { ok: true, slot, bot, said: true };
     },
     async botTest() {
       await requireAdmin();

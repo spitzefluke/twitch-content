@@ -12,7 +12,7 @@ export const LAYERS = [
   ['bingo', 'Fortnite-Bingo'], ['shop', 'Kisten-Shop'], ['challenge', 'Win-Challenge'], ['forbid', 'Verbotenes Wort'],
   ['subathon', 'Subathon-Timer'], ['quiz', 'Quiz'], ['queue', 'Mitspielen'], ['tts', 'Vorlesen'], ['cards', 'Sammelkarten'],
   ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['poll', 'Umfrage'], ['counter', 'Zähler'], ['gamewheel', 'Spiel-Rad'],
-  ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['songs', 'Song-Wünsche'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
+  ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['songs', 'Song-Wünsche'], ['cup', 'Cup'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
 ];
 export const LAYER_KEYS = LAYERS.map(([key]) => key);
 export const layerName = (key) => LAYERS.find(([k]) => k === key)?.[1] ?? key;
@@ -26,7 +26,7 @@ export const MODULES = [
   { id: 'cam', icon: '🎥', name: 'Kamera & Haustier', layers: ['camframe', 'prank', 'pet', 'tts'], hint: 'Kamera-Rahmen, Würfe & Sounds, Haustier, Vorlesen.' },
   {
     id: 'games', icon: '🎮', name: 'Spiele & Mitmachen',
-    layers: ['next', 'wheel', 'quest', 'bingo', 'shop', 'challenge', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol'],
+    layers: ['next', 'wheel', 'quest', 'bingo', 'shop', 'challenge', 'forbid', 'subathon', 'quiz', 'queue', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'cup'],
     hint: 'Alle Content-Ideen – nur in Spiel-Szenen nötig.',
   },
   { id: 'screens', icon: '🖼️', name: 'Pause & Szenen', layers: ['pause', 'scene'], hint: 'Pausen- und Szenen-Bildschirm (ganzes Bild) – in eine eigene Szene.' },

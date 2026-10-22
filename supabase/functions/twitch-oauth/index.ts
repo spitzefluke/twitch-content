@@ -256,6 +256,7 @@ async function botSelect(userId: string, slot: unknown) {
   if (!(await isChannelOwner(userId)) && !(await isPlatformAdmin(userId))) {
     return json({ error: "Den Bot wählt nur der Streamer selbst." }, 403);
   }
+  if (!(await rateLimit(`bot_select:${userId}`, 6))) return tooMany();
   const { data: bot } = await db.from("twitch_bot").select("display_name").eq("id", slot).maybeSingle();
   if (!bot) return json({ error: `Bot ${slot} ist gerade nicht verbunden – das StreamHelp-Team kümmert sich darum.` }, 400);
   const channelId = await currentChannelId();
@@ -266,7 +267,19 @@ async function botSelect(userId: string, slot: unknown) {
   const conn = await getConnection().catch(() => null);
   if (conn) await chatSubscription(conn.broadcaster_id);
   await audit(userId, "bot_select");
-  return json({ ok: true, slot, bot: bot.display_name });
+  // Der neue Bot meldet sich gleich im Chat – so sieht der Streamer sofort, dass er schreiben darf.
+  // Ergebnis (gesendet/blockiert + Grund) steht auch im Bot-Protokoll.
+  let hello: { said: boolean; reason?: string; bot_login?: string | null } = { said: false, reason: "Twitch ist für diesen Kanal nicht verbunden." };
+  if (conn) {
+    const now = await getBot().catch(() => null);
+    try {
+      const ms = await sendChat(conn, `👋 Hallo! Ich bin ${now?.display_name ?? bot.display_name} und ab jetzt der Bot in diesem Chat.`, undefined, "system");
+      hello = ms === null ? { said: false, reason: "Der Chat-Bot ist plattformweit ausgeschaltet (Notfall-Schalter)." } : { said: true };
+    } catch (e) {
+      hello = { said: false, reason: errorText(e), bot_login: now?.login ?? null };
+    }
+  }
+  return json({ ok: true, slot, bot: bot.display_name, ...hello });
 }
 
 // Testnachricht: kommt sie an? Das Ergebnis (gesendet/blockiert + Grund) steht auch im Bot-Protokoll.

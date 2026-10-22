@@ -42,6 +42,7 @@ export const cup = {
             </div>
             <button class="btn btn--outline btn--sm" type="button" data-test hidden>➕ 6 Test-Spieler (Demo)</button>
             <p class="form-hint" data-admin-hint></p>
+            <p class="form-hint">📺 Im Stream zeigen: 🎛️ OBS → Ebene <b>Cup</b> einschalten – Rangliste mit Punkten und Preisgeldern, live.</p>
           </section>
           <section class="bingo-box">
             <h3 class="prank-h3">Spieler hinzufügen</h3>
