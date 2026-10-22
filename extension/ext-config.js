@@ -8,6 +8,8 @@
 
   var VERSION = 1;
   var MODES = ['panel', 'component', 'overlay'];
+  // Ansichten mit eigenem Design. Welche läuft, bestimmt Twitch (anchor/platform) – „mode“ unten ist nur Altlast und wird nicht mehr ausgewertet.
+  var VIEWS = ['panel', 'mobile', 'component', 'overlay'];
   var CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
   var SIZES = ['s', 'm', 'l'];
   // Panel-Sprache: „auto“ = Sprache des Zuschauers (Twitch meldet sie), sonst fest
@@ -83,7 +85,7 @@
   }
 
   window.STREAMHELP_CFG = {
-    VERSION: VERSION, MODES: MODES, CORNERS: CORNERS, SIZES: SIZES, LANGS: LANGS, MODULES: MODULES, PRESETS: PRESETS,
+    VERSION: VERSION, MODES: MODES, VIEWS: VIEWS, CORNERS: CORNERS, SIZES: SIZES, LANGS: LANGS, MODULES: MODULES, PRESETS: PRESETS,
     defaults: defaults, clean: clean, preset: preset, parse: parse,
   };
 })();
