@@ -2125,7 +2125,7 @@ function createLocalApi() {
       const items = [
         ...store.get('bot_log', []),
         { id: 3, created_at: new Date(now - 4 * 60000).toISOString(), bot: 'streamhelpbot', text: '🏆 Fortnite Cup: Anmeldung offen! Schreib !cup join, um mitzumachen.', status: 'sent', reason: '', source: 'outbox', ms: 210 },
-        { id: 2, created_at: new Date(now - 9 * 60000).toISOString(), bot: 'streamhelpbot', text: 'Schau mal: https://beispiel.de', status: 'dropped', reason: 'Die Nachricht enthält einen Link, den der Kanal blockiert.', source: 'chat', ms: 160 },
+        { id: 2, created_at: new Date(now - 9 * 60000).toISOString(), bot: 'streamhelpbot', text: '@Ben Du hast 1 Std 4 Min zugeschaut.', status: 'dropped', reason: 'This room is in followers-only mode.', source: 'chat', ms: 160 },
         { id: 1, created_at: new Date(now - 12 * 60000).toISOString(), bot: 'streamhelpbot', text: '@Mia Du hast 3 Std 12 Min zugeschaut.', status: 'sent', reason: '', source: 'chat', ms: 190 },
       ];
       const sent = items.filter((i) => i.status === 'sent');

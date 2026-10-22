@@ -281,7 +281,7 @@ async function botTest(userId: string) {
     if (ms === null) return json({ ok: false, reason: "Der Chat-Bot ist plattformweit ausgeschaltet (Notfall-Schalter)." });
     return json({ ok: true, ms, bot: bot?.display_name ?? null });
   } catch (e) {
-    return json({ ok: false, reason: errorText(e), bot: bot?.display_name ?? null });
+    return json({ ok: false, reason: errorText(e), bot: bot?.display_name ?? null, bot_login: bot?.login ?? null });
   }
 }
 

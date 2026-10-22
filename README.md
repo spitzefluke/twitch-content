@@ -192,6 +192,8 @@ Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht der Stream
 
 Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es das Recht des Streamers `channel:bot` aus Schritt 5. Hat der Streamer schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StreamHelpBot`).
 
+**Bot im Kanal zum Mod machen (empfohlen):** im eigenen Twitch-Chat `/mod StreamHelpBot` schreiben (bzw. den Namen von Bot 2). Sonst blockt Twitch seine Nachrichten, sobald der Chat im Nur-Follower-, Nur-Abo-, Emote- oder langsamen Modus ist („This room is in followers-only mode“). Das Bot-Protokoll im Dashboard zeigt bei jeder blockierten Nachricht den Grund auf Deutsch und was zu tun ist.
+
 **Zweiter Bot** (Migration `20261116000000_bot_stats.sql`): Im Admin-Bereich gibt es zwei Plätze, **Bot 1** und **Bot 2** – zwei verschiedene Twitch-Konten, jedes wie oben verbunden (vor dem Verbinden auf twitch.tv mit dem jeweiligen Bot-Account anmelden). Jeder Streamer wählt im Dashboard unter **🤖 Bot & Chat**, welcher in seinem Chat schreibt; ist der gewählte nicht verbunden, springt der andere ein. Beim Wechsel richtet StreamHelp das Chat-Abo des Kanals gleich neu aus.
 
 ### 7. Eigene Befehle und !watchtime

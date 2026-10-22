@@ -5,6 +5,7 @@
 //     Testnachricht. Streamer und freigegebene Mods.
 // ctx: { api, toast, germanError, refreshTwitch }
 import { h } from './extras-core.js';
+import { botHint } from './bot-reasons.js';
 
 const STATUS = {
   sent: ['✓', 'gesendet'],
@@ -52,7 +53,7 @@ export function renderBotPick(t, ctx) {
     ? `Gerade schreibt ${active ?? 'kein Bot'}. Den Bot wählt der Streamer selbst.`
     : fallback
       ? `Bot ${chosen} ist gerade nicht verbunden – solange schreibt ${active}.`
-      : 'StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein.';
+      : `StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein. Tipp: Mach ihn im Twitch-Chat zum Mod (/mod ${bots.find((b) => b.slot === chosen)?.login ?? 'BotName'}) – sonst blocken Nur-Follower-, Abo- oder langsamer Modus seine Nachrichten.`;
 }
 
 let wired = false;
@@ -69,9 +70,10 @@ export function setupBotLog(ctx) {
     try {
       const r = await ctx.api.botTest();
       msg.classList.add(r?.ok ? 'is-ok' : 'is-error');
+      const hint = r?.ok ? null : botHint(r?.reason, r?.bot_login ?? r?.bot);
       msg.textContent = r?.ok
         ? `✓ ${r.bot ?? 'Der Bot'} hat geschrieben – Twitch hat in ${r.ms} ms angenommen. Schau im Chat nach.`
-        : `✕ Nicht angekommen: ${r?.reason ?? 'unbekannt'}`;
+        : `✕ Nicht angekommen: ${hint ? `${hint.why} → ${hint.fix}` : r?.reason ?? 'unbekannt'}`;
     } catch (err) {
       msg.classList.add('is-error');
       msg.textContent = ctx.germanError(err);
@@ -105,12 +107,14 @@ export async function renderBotLog(ctx) {
   }
   list.replaceChildren(...items.map((it) => {
     const [ico, label] = STATUS[it.status] ?? ['?', it.status];
+    const hint = it.status === 'sent' ? null : botHint(it.reason, it.bot);
     return h('li', { class: `botlog-item is-${it.status}` },
       h('span', { class: 'botlog-ico', title: label, 'aria-label': label }, ico),
       h('div', { class: 'botlog-main' },
         h('span', { class: 'botlog-text' }, it.text || '—'),
         h('small', {},
           `${timeOf(it.created_at)} · ${SOURCE[it.source] ?? it.source}${it.bot ? ` · @${it.bot}` : ''}${it.ms != null ? ` · ${it.ms} ms` : ''}`,
-          it.status !== 'sent' ? h('b', { class: 'botlog-reason' }, ` · ${label}${it.reason ? `: ${it.reason}` : ''}`) : null)));
+          it.status !== 'sent' ? h('b', { class: 'botlog-reason' }, ` · ${label}${it.reason ? `: ${it.reason}` : ''}`) : null),
+        hint ? h('span', { class: 'botlog-fix' }, `${hint.why} → ${hint.fix}`) : null));
   }));
 }
