@@ -222,6 +222,34 @@ export async function addSongFromWeb(url: string, by: string) {
   return { ok: true, position: data.position, title: v.title };
 }
 
+// ---------- Live-Start (twitch-eventsub stream.online, Migration …_live_welcome.sql) ----------
+// Willkommensnachricht mit dem Spiel, sobald der Streamer live geht. Die Datenbank entscheidet, ob
+// (an/aus, höchstens einmal je 30 Minuten); Spiel und Titel kommen frisch von Twitch.
+export async function liveWelcome(event: { type?: string }) {
+  if (event.type && event.type !== "live") return; // keine Wiederholungen oder Premieren
+  if (await botsOff().catch(() => false)) return;
+  const { data, error } = await db.rpc("bot_live_start");
+  if (error) {
+    if (!/bot_live_start/.test(error.message)) console.warn("bot_live_start:", error.message); // Migration fehlt: nichts tun
+    return;
+  }
+  if (!data?.send) return;
+  const conn = await getConnection().catch(() => null);
+  if (!conn) return;
+  // Kurz nach dem Start kennt Twitch die Kategorie manchmal noch nicht: einmal nachfragen
+  let d = await liveData(conn);
+  if (!d.game) {
+    await new Promise((r) => setTimeout(r, 4000));
+    d = await liveData(conn);
+  }
+  const text = String(data.text ?? "")
+    .replaceAll("{streamer}", conn.display_name || conn.broadcaster_login)
+    .replaceAll("{game}", d.game || "einem neuen Stream")
+    .replaceAll("{title}", d.title || "")
+    .replace(/\s+([!?.,])/g, "$1").replace(/\s*[–-]\s*$/, "").trim(); // leerer {title} am Ende
+  if (text) await sendChat(conn, text.slice(0, 480), undefined, "system").catch(warn("Live-Start"));
+}
+
 // ---------- Danke für Follow, Abo, Bits, Raid (twitch-eventsub) ----------
 type TwitchEvent = {
   user_name?: string; user_login?: string; is_anonymous?: boolean; is_gift?: boolean; total?: number; cumulative_months?: number;

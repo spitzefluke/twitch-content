@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { isDemo } from './api.js';
 import { DEFAULT_VARIANTS } from './defaults.js';
 import { guardFrame } from './frame-guard.js';
+import { botHint } from './bot-reasons.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const TOKEN_KEY = 'zd_admin_token';
@@ -1026,11 +1027,15 @@ async function loadBotLog() {
       <td>${escapeHtml(c.channel)}</td><td>${c.bot_slot === 2 ? 2 : 1}</td><td>${c.sent}</td><td>${c.failed}</td><td>${c.avg_ms ?? '–'}</td>
       <td>${new Date(c.last_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td></tr>`).join('')}</tbody>` : '';
     const items = data.items ?? [];
+    const botFix = (it) => {
+      const hint = it.status === 'sent' ? null : botHint(it.reason, it.bot);
+      return hint ? `<span class="botlog-fix">${escapeHtml(`${hint.why} → ${hint.fix}`)}</span>` : '';
+    };
     $('#botlog-feed').innerHTML = items.length ? items.map((it) => `<li class="${it.status === 'sent' ? '' : 'is-bad'}">
       <span class="botlog-when">${new Date(it.created_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
       <b>${escapeHtml(it.channel)}</b> <small class="muted">@${escapeHtml(it.bot || '–')}${it.ms != null ? ` · ${it.ms} ms` : ''}</small>
       <span class="botlog-status">${BOT_STATUS[it.status] ?? escapeHtml(it.status)}${it.reason ? `: ${escapeHtml(it.reason)}` : ''}</span>
-      <span class="botlog-text">${escapeHtml(it.text)}</span></li>`).join('') : '<li class="muted">Keine Einträge.</li>';
+      <span class="botlog-text">${escapeHtml(it.text)}</span>${botFix(it)}</li>`).join('') : '<li class="muted">Keine Einträge.</li>';
   } catch (err) {
     if (err.status === 401) { logout(err.message); return; }
     $('#botlog-sum').textContent = `Nicht geladen: ${err.message}`;

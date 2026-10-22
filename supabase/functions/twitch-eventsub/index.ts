@@ -14,7 +14,7 @@ import { matchThrow, pickSound, prankState, type SoundEntry, soundForReward, sou
 import { handleChatMessage } from "../_shared/chat.ts";
 import { handleAlert, isAlertType, saveAlert } from "../_shared/alerts.ts";
 import { handleExtraRedemption } from "../_shared/extras.ts";
-import { thankEvent } from "../_shared/bot.ts";
+import { liveWelcome, thankEvent } from "../_shared/bot.ts";
 import { noteEvent } from "../_shared/health.ts";
 import { youtubeOffline, youtubeOnline } from "../_shared/ytlive.ts";
 import { watchTick } from "../_shared/watchtime.ts";
@@ -91,12 +91,14 @@ async function handle(req: Request, type: string | null, payload: any): Promise<
 
   // Stream an/aus: YouTube mitschalten (…_live_sync.sql) – ohne YouTube-Verbindung passiert nichts.
   // Dazu Watchtime und Statistik (…_bot_stats.sql): an → gleich zählen, aus → Stream abschließen.
+  // Beim Start schreibt der Bot sofort eine Willkommensnachricht mit dem Spiel (…_live_welcome.sql).
   if (type === "notification" && ["stream.online", "stream.offline"].includes(payload.subscription?.type)) {
     const online = payload.subscription.type === "stream.online";
     const task = Promise.all([
       (online ? youtubeOnline() : youtubeOffline()).catch((e) => console.error("YouTube-Abgleich fehlgeschlagen:", e)),
       (online ? watchTick() : Promise.resolve(db.rpc("stream_offline_event")))
         .catch((e: unknown) => console.error("Watchtime/Statistik:", e)),
+      online ? liveWelcome(payload.event ?? {}).catch((e) => console.error("Live-Start-Nachricht:", e)) : null,
     ]);
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
     else await task;

@@ -468,7 +468,7 @@ export async function botsOff(): Promise<boolean> {
 }
 
 // Bot-Protokoll (Migration …_bot_stats.sql): jede Nachricht mit Status. Fehlt die Migration, passiert nichts.
-export type ChatSource = "chat" | "outbox" | "test" | "mod";
+export type ChatSource = "chat" | "outbox" | "test" | "mod" | "system"; // system: von selbst (Live-Start, Bot-Wechsel)
 async function logChat(text: string, status: string, reason: string, source: ChatSource, bot: string, ms: number | null) {
   await db.rpc("bot_log_add", { p_text: text, p_status: status, p_reason: reason.slice(0, 300), p_source: source, p_bot: bot, p_ms: ms })
     .then(() => {}, () => {});

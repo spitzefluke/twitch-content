@@ -716,6 +716,7 @@
 .botlog-text { overflow-wrap: anywhere; }
 .botlog-main small { color: var(--muted); font-size: 12px; }
 .botlog-reason { color: #ff9f97; font-weight: 600; }
+.botlog-fix { font-size: 13px; padding: 4px 8px; border-radius: 8px; background: rgba(255, 184, 28, .12); color: var(--text); }
 .botlog-empty { color: var(--muted); font-size: 14px; }
 
 /* Watchtime: Twitch-Daten und Import */

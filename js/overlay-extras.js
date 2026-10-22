@@ -14,6 +14,8 @@
 //   heart=tr|…       Herzfrequenz: schlagendes Herz mit Puls (nur solange Werte kommen)   hrsize=100
 //   chatcontrol=bc|… Chat-Kommandos: groß, was der Streamer tun muss; im Abstimm-Modus die laufende Runde   cmsize=100
 //   songs=bl|…       Song-Wünsche (!sr): laufender Song mit Namen und die nächsten drei (nur solange es Wünsche gibt)   sosize=100
+//   cup=tr|…         Cup: Titel, Anmeldung (!cup join), Rangliste mit Punkten und Preisgeldern; neue Punkte leuchten auf   cpsize=100
+//                    cptop=5 Plätze (3–10) · cprules=1 dazu die Regeln (nur solange es Spieler gibt oder die Anmeldung offen ist)
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { channelHeaders, rtSpec } from './channel.js';
@@ -41,8 +43,9 @@ export function setupOverlayExtras(o) {
     heart: o.position(o.params.get('heart'), null),
     chatcontrol: o.position(o.params.get('chatcontrol'), null),
     songs: o.position(o.params.get('songs'), null),
+    cup: o.position(o.params.get('cup'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos', cpsize: '--cps' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -61,6 +64,7 @@ export function setupOverlayExtras(o) {
   if (cfg.heart) setupHeart(ctx, card('ov-x-heart', 'heart', cfg.heart, o));
   if (cfg.chatcontrol) setupChatControl(ctx, card('ov-x-chatcontrol', 'chatcontrol', cfg.chatcontrol, o));
   if (cfg.songs) setupSongs(ctx, card('ov-x-songs', 'songs', cfg.songs, o));
+  if (cfg.cup) setupCup(ctx, card('ov-x-cup', 'cup', cfg.cup, o));
 }
 
 function card(id, key, pos, o) {
@@ -150,6 +154,8 @@ function liveData(sb) {
     ccLast: async () => (await rows(sb.from('cc_events').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
     ccTick: () => rows(sb.rpc('cc_tick')).catch(() => null).finally(flushBot),
     counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
+    // Cup: Rangliste ohne Twitch-IDs (cup_board, für alle lesbar)
+    cupBoard: () => rows(sb.rpc('cup_board')),
     songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
@@ -169,6 +175,13 @@ function demoData() {
     ccTick: async () => null,
     counters: async () => read('counters', []).filter((c) => c.show).sort((a, b) => a.position - b.position).slice(0, 8),
     songs: async () => read('bot_songs', []).filter((s) => ['queued', 'playing'].includes(s.status)).sort((a, b) => a.position - b.position || a.id - b.id),
+    // wie cupBoard in js/extras-api.js (Demo)
+    cupBoard: async () => {
+      const c = { title: 'Community-Cup', rules: '', prizes: [], open: false, round: 1, code_sent_at: null, ...read('cup', {}) };
+      const list = [...read('cup_players', [])].sort((a, b) => b.points - a.points || a.id - b.id);
+      const players = list.map((p) => ({ id: p.id, name: p.name, points: p.points, place: 1 + list.filter((x) => x.points > p.points).length }));
+      return { ...c, count: list.length, players };
+    },
     on(table, cb) {
       addEventListener('storage', (e) => {
         if (e.key !== `zd_${table}`) return;
@@ -1119,4 +1132,69 @@ async function setupSongs({ src, opt }, el) {
   let t = 0;
   src.on('bot_songs', () => { clearTimeout(t); t = setTimeout(load, 120); });
   setInterval(load, 30000);
+}
+
+// ============================================================
+// Cup: Rangliste mit Punkten und Preisgeldern
+// ============================================================
+const MEDALS = ['🥇', '🥈', '🥉'];
+async function setupCup({ src, opt, params, editTests }, el) {
+  const top = Math.min(10, Math.max(3, Number(params.get('cptop')) || 5));
+  const showRules = params.get('cprules') === '1';
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🏆 <span data-title></span></span><span class="ov-sep">·</span><span class="ov-who" data-count></span></header>
+    <div class="cpo-join" data-join></div>
+    <ol class="cpo-list" data-list></ol>
+    <p class="cpo-more" data-more hidden></p>
+    <p class="cpo-rules" data-rules hidden></p>`;
+  const $ = (sel) => el.querySelector(sel);
+  let before = new Map(); // id → Punkte (für „neue Punkte leuchten auf“)
+  const paint = (b, { effects = true } = {}) => {
+    const players = b.players ?? [];
+    el.hidden = !(players.length || b.open || opt.edit);
+    $('[data-title]').textContent = b.title || 'Community-Cup';
+    $('[data-count]').textContent = `${b.count ?? players.length} Spieler`;
+    $('[data-join]').textContent = b.open ? 'Anmeldung offen: !cup join im Chat' : b.code_sent_at ? '🔑 Spielcode ist raus – viel Glück!' : '';
+    $('[data-join]').hidden = !$('[data-join]').textContent;
+    const prizes = b.prizes ?? [];
+    $('[data-list]').replaceChildren(...players.slice(0, top).map((p) => {
+      const li = document.createElement('li');
+      const scored = p.points > 0; // Medaille und Preisgeld erst mit Punkten (wie im Chat und auf der Seite)
+      li.className = `cpo-row${scored && p.place <= 3 ? ` is-p${p.place}` : ''}`;
+      li.innerHTML = '<span class="cpo-place"></span><span class="cpo-name"></span><span class="cpo-prize"></span><b class="cpo-points"></b>';
+      li.querySelector('.cpo-place').textContent = scored && p.place <= 3 ? MEDALS[p.place - 1] : `${p.place}.`;
+      li.querySelector('.cpo-name').textContent = p.name;
+      li.querySelector('.cpo-prize').textContent = scored ? (prizes[p.place - 1] ?? '') : '';
+      li.querySelector('.cpo-points').textContent = String(p.points);
+      const was = before.get(p.id);
+      if (effects && was !== undefined && was !== p.points) li.classList.add(p.points > was ? 'is-up' : 'is-down');
+      return li;
+    }));
+    const rest = players.length - top;
+    $('[data-more]').hidden = rest <= 0;
+    $('[data-more]').textContent = rest > 0 ? `+ ${rest} weitere` : '';
+    $('[data-rules]').hidden = !(showRules && b.rules);
+    $('[data-rules]').textContent = showRules ? b.rules ?? '' : '';
+    before = new Map(players.map((p) => [p.id, p.points]));
+  };
+  const sample = {
+    title: 'Fortnite Cup', open: false, code_sent_at: new Date().toISOString(), rules: 'Zero Build · 3 Runden · Sieg 10 Punkte, jede Elimination 1 Punkt.',
+    prizes: ['50 €', '25 €', '10 €'], count: 7,
+    players: [['Mia', 42], ['Ben', 37], ['Lena', 31], ['PixelPaul', 18], ['NightOwl', 12], ['Kai', 4], ['Tom', 0]]
+      .map(([name, points], i) => ({ id: i + 1, name, points, place: i + 1 })),
+  };
+  if (opt.test || opt.edit) {
+    paint(sample, { effects: false });
+    if (editTests) editTests.cup = () => {
+      const next = { ...sample, players: sample.players.map((p) => (p.id === 4 ? { ...p, points: p.points + 5 } : p)) };
+      paint(next);
+      setTimeout(() => paint(sample, { effects: false }), 2500);
+    };
+    return;
+  }
+  const load = async (effects = true) => { const b = await src.cupBoard().catch(() => null); if (b) paint(b, { effects }); };
+  await load(false);
+  let t = 0;
+  src.on('cup', () => { clearTimeout(t); t = setTimeout(load, 150); });
+  setInterval(() => load(), 60000);
 }

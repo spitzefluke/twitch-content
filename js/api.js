@@ -997,6 +997,7 @@ function createLocalApi() {
     mod_caps_min: 15, mod_spam: true, mod_repeat: 12, mod_emotes: 15, mod_words: [], mod_action: 'delete', mod_timeout: 60, mod_warn: true,
     mod_exempt_vip: true, mod_exempt_sub: false, mod_permit_seconds: 60,
     song_on: false, song_who: 'everyone', song_max_user: 2, song_max_queue: 30, song_max_minutes: 8, song_cooldown: 30, timer_gap: 120,
+    live_on: true, live_text: '🔴 {streamer} ist jetzt live mit {game}! Willkommen im Stream – schön, dass ihr da seid 💜',
   };
   const emitDemo = (key, payload) => setTimeout(() => (demoListeners[key] ?? []).forEach((cb) => cb(payload)), 30);
   const isAdminNow = () => !!store.get('users', {})[current?.email]?.is_admin;
@@ -2108,7 +2109,12 @@ function createLocalApi() {
     async botSelect(slot) {
       await requireAdmin();
       store.set('bot_slot', slot === 2 ? 2 : 1);
-      return { ok: true, slot, bot: slot === 2 ? 'StreamHelpBot2' : 'StreamHelpBot' };
+      // Wie in twitch-oauth: Der neue Bot meldet sich gleich im Chat (steht im Protokoll)
+      const bot = slot === 2 ? 'StreamHelpBot2' : 'StreamHelpBot';
+      const row = { id: Date.now(), created_at: new Date().toISOString(), bot: bot.toLowerCase(),
+        text: `👋 Hallo! Ich bin ${bot} und ab jetzt der Bot in diesem Chat.`, status: 'sent', reason: '', source: 'system', ms: 170 };
+      store.set('bot_log', [row, ...store.get('bot_log', [])].slice(0, 50));
+      return { ok: true, slot, bot, said: true };
     },
     async botTest() {
       await requireAdmin();
@@ -2125,7 +2131,7 @@ function createLocalApi() {
       const items = [
         ...store.get('bot_log', []),
         { id: 3, created_at: new Date(now - 4 * 60000).toISOString(), bot: 'streamhelpbot', text: '🏆 Fortnite Cup: Anmeldung offen! Schreib !cup join, um mitzumachen.', status: 'sent', reason: '', source: 'outbox', ms: 210 },
-        { id: 2, created_at: new Date(now - 9 * 60000).toISOString(), bot: 'streamhelpbot', text: 'Schau mal: https://beispiel.de', status: 'dropped', reason: 'Die Nachricht enthält einen Link, den der Kanal blockiert.', source: 'chat', ms: 160 },
+        { id: 2, created_at: new Date(now - 9 * 60000).toISOString(), bot: 'streamhelpbot', text: '@Ben Du hast 1 Std 4 Min zugeschaut.', status: 'dropped', reason: 'This room is in followers-only mode.', source: 'chat', ms: 160 },
         { id: 1, created_at: new Date(now - 12 * 60000).toISOString(), bot: 'streamhelpbot', text: '@Mia Du hast 3 Std 12 Min zugeschaut.', status: 'sent', reason: '', source: 'chat', ms: 190 },
       ];
       const sent = items.filter((i) => i.status === 'sent');

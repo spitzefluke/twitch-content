@@ -283,3 +283,29 @@
 .sgo-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgo-next small { opacity: .65; }
 @media (prefers-reduced-motion: reduce) { .sgo-eq i { animation: none; transform: scaleY(.7); } }
+
+/* ---------- Cup: Rangliste mit Punkten und Preisgeldern ---------- */
+.ov-x-cup { --c: #ffc42e; font-size: calc(16px * var(--cps, 1)); width: 20em; border-color: rgba(255, 196, 46, .5); }
+.cpo-join { margin: .5em .9em 0; padding: .3em .6em; border-radius: .5em; background: rgba(255, 196, 46, .14); color: #ffd76a;
+  font-family: var(--font-mono); font-size: .82em; font-weight: 700; text-align: center; }
+.cpo-list { list-style: none; margin: 0; padding: .55em .7em .6em; display: grid; gap: .25em; }
+.cpo-list:empty::before { content: "Noch keine Spieler – !cup join"; display: block; padding: .3em .2em; opacity: .7; font-size: .85em; }
+.cpo-row { display: grid; grid-template-columns: 1.8em minmax(0, 1fr) auto 2.6em; gap: .5em; align-items: center;
+  padding: .3em .5em; border-radius: .5em; background: rgba(255, 255, 255, .05); font-variant-numeric: tabular-nums; }
+.cpo-place { text-align: center; font-weight: 800; opacity: .8; }
+.cpo-row.is-p1 .cpo-place, .cpo-row.is-p2 .cpo-place, .cpo-row.is-p3 .cpo-place { font-size: 1.15em; opacity: 1; }
+.cpo-row.is-p1 { background: linear-gradient(90deg, rgba(255, 196, 46, .28), rgba(255, 196, 46, .06)); }
+.cpo-row.is-p2 { background: linear-gradient(90deg, rgba(201, 207, 219, .22), rgba(201, 207, 219, .05)); }
+.cpo-row.is-p3 { background: linear-gradient(90deg, rgba(211, 162, 115, .24), rgba(211, 162, 115, .05)); }
+.cpo-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cpo-prize { font-size: .78em; font-weight: 700; color: #ffd76a; white-space: nowrap; }
+.cpo-prize:empty { display: none; }
+.cpo-points { text-align: right; font-family: var(--font-display); font-size: 1.15em; color: var(--c); }
+.cpo-row.is-up { animation: cpo-up .9s var(--ease-spring); }
+.cpo-row.is-down { animation: cpo-down .9s ease-out; }
+@keyframes cpo-up { 30% { background: rgba(61, 220, 132, .38); transform: scale(1.05); } }
+@keyframes cpo-down { 30% { background: rgba(255, 90, 78, .3); } }
+.cpo-more { margin: 0 .9em .55em; font-size: .78em; opacity: .7; text-align: center; }
+.cpo-rules { margin: 0 .9em .7em; padding-top: .45em; border-top: 1px solid rgba(255, 255, 255, .1); font-size: .78em; line-height: 1.35; opacity: .85;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .cpo-row.is-up, .cpo-row.is-down { animation: none; } }
