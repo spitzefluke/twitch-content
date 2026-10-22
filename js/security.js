@@ -408,7 +408,7 @@ const ACTIONS = {
   cup_add: 'Cup-Spieler hinzugefügt', cup_points: 'Cup-Punkte vergeben', cup_remove: 'Cup-Spieler entfernt', cup_reset: 'Neuer Cup',
   cc_settings_save: 'Chat-Kommandos eingestellt', cc_command_save: 'Chat-Kommando gespeichert', cc_command_delete: 'Chat-Kommando gelöscht', cc_sync: 'Chat-Kommandos mit Twitch abgeglichen',
   mod_rights_set: 'Mod-Rechte geändert', sync_pranks: 'Ärgern-Belohnungen abgeglichen', sync_reward: 'Belohnung auf Twitch abgeglichen',
-  sync_mods: 'Mods von Twitch geholt', anniversary: 'Kanal-Jubiläum gestartet', twitch_connect: 'Twitch-Verbinden gestartet',
+  sync_mods: 'Mods von Twitch geholt', bot_select: 'Chat-Bot gewählt', anniversary: 'Kanal-Jubiläum gestartet', twitch_connect: 'Twitch-Verbinden gestartet',
   twitch_disconnect: 'Twitch getrennt', games_save: 'Games eingestellt', question_show: 'Frage gezeigt', question_resolve: 'Frage aufgelöst',
   question_hide: 'Frage ausgeblendet', challenge_result: 'Win-Challenge: Ergebnis', challenge_save: 'Win-Challenge bearbeitet',
   challenge_reset: 'Win-Challenge zurückgesetzt', cards_save_settings: 'Sammelkarten eingestellt', card_save: 'Sammelkarte gespeichert',

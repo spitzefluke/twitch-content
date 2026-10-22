@@ -5,10 +5,10 @@
 // Verlosung (Standard !verlosung, mit Follower-Prüfung bei Twitch), die Sound-Liste (!sounds), bei einer
 // laufenden Umfrage „!vote 2“, Zähler („!tode“, Mods: „!tode +“), „!puls“ und der Cup („!cup join“); alles andere (auch !watchtime und eigene Befehle) beantwortet chat_command
 // in der Datenbank. Nebenbei zählt jede Nachricht für die Hot Words.
-import { botsOff, channelKey, db, getAppToken, getBot, getConnection, helix, sendChat } from "./twitch.ts";
+import { botsOff, channelKey, chatConnection, db, getAppToken, getBot, helix, sendChat } from "./twitch.ts";
 import { normalize, prankState, soundList, soundListMessages, soundRewardTitle } from "./pranks.ts";
-import { handleExtraCommand } from "./extras.ts";
-import { noteChatter } from "./watchtime.ts";
+import { flushOutbox, handleExtraCommand } from "./extras.ts";
+import { noteChatter, watchTick } from "./watchtime.ts";
 import { noteHotwords } from "./hotwords.ts";
 import { feedPet } from "./pet.ts";
 import { handleBot } from "./bot.ts";
@@ -26,19 +26,20 @@ const COSTUME_WORDS: Record<string, typeof COSTUMES[number]> = {
   bau: "bau", bauarbeiter: "bau", bauarbeiterin: "bau", helm: "bau", gleisbauer: "bau",
 };
 
-// Ein Abo für den Chat des Streamers, gelesen als Bot. Ohne Bot gibt es keins.
+// Ein Abo für den Chat des Streamers, gelesen als der Bot des Kanals (zwei Plattform-Bots, …_bot_stats.sql).
+// Abos mit einem anderen Bot (z. B. nach dem Wechsel) fliegen raus; ohne Bot gibt es keins.
 export async function ensureChatSubscription(broadcasterId: string, callback: string, secret: string) {
   const bot = await getBot();
-  if (!bot) return null;
   const appToken = await getAppToken();
   const existing = await helix("eventsub/subscriptions", appToken, { query: { type: CHAT_EVENT } });
   type Sub = { id: string; status: string; condition?: { broadcaster_user_id?: string; user_id?: string }; transport?: { callback?: string } };
   const mine = (existing.data ?? []).filter((s: Sub) => s.condition?.broadcaster_user_id === broadcasterId);
-  const good = mine.find((s: Sub) =>
+  const good = bot && mine.find((s: Sub) =>
     s.status === "enabled" && s.condition?.user_id === bot.user_id && s.transport?.callback === callback);
   for (const sub of mine) {
     if (sub !== good) await helix("eventsub/subscriptions", appToken, { method: "DELETE", query: { id: sub.id } });
   }
+  if (!bot) return null;
   if (good) return good.id as string;
   const created = await helix("eventsub/subscriptions", appToken, {
     method: "POST",
@@ -64,8 +65,20 @@ type ChatMessage = {
 export async function handleChatMessage(event: ChatMessage) {
   // Notfall-Schalter im Admin-Bereich: Chat-Bot plattformweit aus – keine Befehle, keine Moderation
   if (await botsOff().catch(() => false)) return;
-  const text = (event.message?.text ?? "").trim();
   const self = await getBot();
+  // Was nebenbei läuft (Watchtime, Hot Words), wartet nicht vor der Antwort des Bots – erst am Ende
+  const side: Promise<unknown>[] = [];
+  try {
+    await handleChat(event, self, side);
+  } finally {
+    await Promise.all(side);
+    // Bot-Nachrichten aus der Warteschlange (Umfrage zu Ende, Quiz, Verlosung …) gleich mit rausschicken
+    await flushOutbox().catch((e) => console.warn("Bot-Nachrichten:", (e as Error).message));
+  }
+}
+
+async function handleChat(event: ChatMessage, self: Awaited<ReturnType<typeof getBot>>, side: Promise<unknown>[]) {
+  const text = (event.message?.text ?? "").trim();
   // Chat-Bot zuerst (…_chat_bot_plus.sql): Moderation, Begrüßung (fragt, ob jemand neu ist – darum vor der
   // Watchtime), Auto-Nachrichten, Stream-Infos, Song-Wünsche
   let bot: "mod" | "done" | false = false;
@@ -73,11 +86,15 @@ export async function handleChatMessage(event: ChatMessage) {
     bot = await handleBot(event).catch((e) => { console.warn("Bot:", e); return false as const; });
     if (bot === "mod") return; // gelöscht oder Timeout: zählt für nichts
   }
-  // Watchtime: wer schreibt, ist da (zählt, falls Twitch die Chatters-Liste nicht herausgibt)
   if (!self || event.chatter_user_id !== self.user_id) {
-    await noteChatter(event.chatter_user_id, event.chatter_user_login, event.chatter_user_name).catch(() => {});
-    // Hot Words: Wörter zählen (Befehle nicht)
-    await noteHotwords(event.chatter_user_id, text).catch((e) => console.warn("Hot Words:", e));
+    side.push(
+      // Watchtime: wer schreibt, ist da (zählt, falls Twitch die Chatters-Liste nicht herausgibt)
+      noteChatter(event.chatter_user_id, event.chatter_user_login, event.chatter_user_name).catch(() => {}),
+      // Hot Words: Wörter zählen (Befehle nicht)
+      noteHotwords(event.chatter_user_id, text).catch((e) => console.warn("Hot Words:", e)),
+      // Watchtime und Statistik zählen, solange gechattet wird (höchstens jede Minute, …_bot_stats.sql)
+      watchTick().catch((e) => console.warn("Watchtime:", (e as Error).message)),
+    );
   }
   if (!text.startsWith("!") || bot === "done") return;
   const [command, arg = ""] = text.split(/\s+/);
@@ -143,7 +160,7 @@ async function handleRpcChat(fn: "game_chat" | "cup_chat", event: ChatMessage, t
   }
   if (!data?.handled) return false;
   if (data.reply) {
-    const conn = await getConnection().catch(() => null);
+    const conn = await chatConnection().catch(() => null);
     if (conn) await sendChat(conn, String(data.reply)).catch((e) => console.warn("Chat:", (e as Error).message));
   }
   return true;
@@ -199,7 +216,7 @@ async function handleGiveaway(event: ChatMessage, command: string) {
   if (error || !g) return false; // Migration fehlt noch
   if (command.toLowerCase() !== g.command) return false;
   if (g.status !== "open") return true;
-  const conn = await getConnection().catch(() => null);
+  const conn = await chatConnection().catch(() => null);
   if (!conn) return true;
   // Der Streamer selbst kann seinem Kanal nicht folgen und lost nicht mit
   if (event.chatter_user_id === conn.broadcaster_id) return true;
@@ -234,7 +251,7 @@ const SOUNDS_COOLDOWN_MS = 30_000;
 async function handleSoundList() {
   const { active } = await prankState();
   if (!active) return false;
-  const conn = await getConnection();
+  const conn = await chatConnection();
   if (!conn) return false;
   const { data: cd } = await db.from("chat_cooldowns").select("at").eq("slot", "sounds").maybeSingle();
   if (cd && Date.now() - Date.parse(cd.at) < SOUNDS_COOLDOWN_MS) return true;

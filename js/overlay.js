@@ -487,10 +487,11 @@ function watchForUpdate() {
 
 // Live: Ändert jemand im OBS-Dialog etwas, lädt sich das Overlay sofort neu.
 // Realtime meldet es direkt; zur Sicherheit wird zusätzlich alle 30 Sekunden nachgesehen.
-// Watchtime für den Chat-Bot (!watchtime): Das Overlay läuft genau während des Streams und
-// stößt deshalb alle 5 Minuten die Zählung an. Die Edge Function prüft selbst, ob der Stream
-// live ist, und zählt höchstens alle 4,5 Minuten – mehrere OBS-Quellen stören also nicht.
-const WATCH_TICK_MS = 5 * 60_000;
+// Watchtime für den Chat-Bot (!watchtime) und die Stream-Statistik: Das Overlay läuft genau während
+// des Streams und stößt deshalb jede Minute die Zählung an (Chat und Twitch-Panel tun das auch).
+// Die Edge Function prüft selbst, ob der Stream live ist, und zählt höchstens jede Minute – mehrere
+// OBS-Quellen stören also nicht (Migration …_bot_stats.sql; vorher alle 5 Minuten).
+const WATCH_TICK_MS = 60_000;
 function startWatchtime() {
   if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || opt.edit || opt.test || REC) return;
   const tick = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
@@ -498,7 +499,7 @@ function startWatchtime() {
     headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
     body: JSON.stringify({ action: 'watch_tick' }),
   }).catch(() => {});
-  setTimeout(tick, 60_000);
+  setTimeout(tick, 15_000);
   setInterval(tick, WATCH_TICK_MS);
 }
 

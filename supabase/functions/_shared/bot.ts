@@ -7,7 +7,7 @@
 // Dazu Danke für Follow, Abo, Bits und Raid (aus twitch-eventsub) und die Platzhalter {uptime} {game}
 // {title} {followage} in eigenen Befehlen. Was entschieden wird, steht in SQL (bot_chat, bot_event) –
 // hier passiert nur, was Twitch oder YouTube braucht.
-import { botsOff, db, getAppToken, getConnection, helix, sendChat, type Connection } from "./twitch.ts";
+import { botsOff, chatConnection, db, getAppToken, getConnection, helix, sendChat, type Connection } from "./twitch.ts";
 import { lookupVideo, parseVideoId } from "./songs.ts";
 
 type Fragment = { type: string; text: string };
@@ -65,11 +65,11 @@ export async function handleBot(event: BotChatEvent): Promise<"mod" | "done" | f
     return false;
   }
   const res = (data ?? {}) as BotResult;
-  const conn = await getConnection().catch(() => null);
+  const conn = await chatConnection().catch(() => null);
   if (!conn) return res.mod ? "mod" : res.stop ? "done" : false;
   if (res.mod) {
     await moderate(conn, event, res.mod).catch(warn("Moderation"));
-    if (res.mod.warn) await sendChat(conn, res.mod.warn).catch(warn("Chat"));
+    if (res.mod.warn) await sendChat(conn, res.mod.warn, undefined, "mod").catch(warn("Chat"));
     return "mod";
   }
   for (const r of res.replies ?? []) await sendChat(conn, r.text).catch(warn("Chat"));

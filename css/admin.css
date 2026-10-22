@@ -253,3 +253,20 @@
 .channels td:first-child, .channels th:first-child { width: 34px; }
 .ch-mod { display: block; margin-top: 4px; font-size: 12px; }
 .pf-box .btn { white-space: normal; text-align: center; max-width: 100%; }
+
+/* Zwei Chat-Bots und Bot-Protokoll (…_bot_stats.sql) */
+.bot-slots { display: grid; gap: 8px; }
+.bot-slot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); }
+.bot-slot.is-on { border-color: rgba(145, 70, 255, .55); }
+.inline-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); margin-left: auto; }
+.botlog-wrap { overflow-x: auto; }
+.botlog-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 12px; font-variant-numeric: tabular-nums; }
+.botlog-table th, .botlog-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.botlog-table tr.is-bad td { color: #ff9f97; }
+.botlog-feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 420px; overflow: auto; font-size: 14px; }
+.botlog-feed li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); }
+.botlog-feed li.is-bad { border-color: rgba(255, 90, 78, .5); }
+.botlog-when { font-size: 12px; color: var(--muted); }
+.botlog-status { font-weight: 600; }
+.botlog-feed li.is-bad .botlog-status { color: #ff9f97; }
+.botlog-text { overflow-wrap: anywhere; color: var(--muted); }

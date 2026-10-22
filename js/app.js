@@ -36,6 +36,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
+import { renderBotLog, renderBotPick, setupBotLog } from './dash-bot.js';
 import { loadUpdates, setMyChannel, startPlatformNotices } from './platform-notices.js';
 import { noAffiliate, setAffiliate } from './affiliate.js';
 import { renderYoutube } from './youtube-connect.js';
@@ -7448,10 +7449,27 @@ function renderBotPanel() {
       ? `✓ Der StreamHelp-Bot ${t.bot_name ?? t.bot_login} liest deinen Chat mit${t.bot_scope === false ? ' – darf aber noch nicht schreiben: Twitch einmal neu verbinden.' : ' und schreibt Ergebnisse hinein.'}`
       : 'Der StreamHelp-Bot ist gerade nicht verbunden – das StreamHelp-Team kümmert sich darum.';
   }
+  // Zwei Plattform-Bots: Auswahl und Protokoll (js/dash-bot.js, Migration …_bot_stats.sql)
+  const botCtx = { api: state.api, toast, germanError, refreshTwitch };
+  renderBotPick(t, botCtx);
+  setupBotLog(botCtx);
+  renderBotLog(botCtx);
   renderCommands();
   loadBotCommands();
   loadWatchtime();
+  watchLive();
   renderBotPlus({ api: state.api, toast, germanError });
+}
+
+// Watchtime live: Jede Zählung (höchstens jede Minute, …_bot_stats.sql) lädt die Rangliste neu
+let watchUnsub = null;
+function watchLive() {
+  if (watchUnsub || !state.api.onWatchState) return;
+  let timer = 0;
+  watchUnsub = state.api.onWatchState(() => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (!document.querySelector('section.page[data-page="bot"]')?.hidden) loadWatchtime(); }, 1500);
+  });
 }
 
 function renderCommands() {

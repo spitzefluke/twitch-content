@@ -16,7 +16,7 @@
 //   songs=bl|…       Song-Wünsche (!sr): laufender Song mit Namen und die nächsten drei (nur solange es Wünsche gibt)   sosize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
-import { rtSpec } from './channel.js';
+import { channelHeaders, rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
 import { Wheel } from './wheel.js';
 
@@ -120,6 +120,13 @@ function beep(volume, notes) {
 // ============================================================
 function liveData(sb) {
   const rows = async (q) => { const { data, error } = await q; if (error) throw error; return data; };
+  // Bot-Ansagen (Ergebnis der Umfrage, Chat-Kommando-Runde) sofort in den Chat statt erst bei der
+  // nächsten Chat-Nachricht – stream-tools verschickt nur, was die Datenbank selbst geschrieben hat
+  const flushBot = () => fetch(`${CONFIG.SUPABASE_URL}/functions/v1/stream-tools`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
+    body: JSON.stringify({ action: 'flush' }),
+  }).catch(() => {});
   return {
     one: (table) => rows(sb.from(table).select('*').eq('id', 1).maybeSingle()),
     queue: () => rows(sb.from('queue_entries').select('id, name, is_sub, status, joined_at, picked_at').order('joined_at')),
@@ -137,11 +144,11 @@ function liveData(sb) {
         .subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error(`Overlay: Realtime für ${table} fehlgeschlagen`); });
     },
     // Umfrage: Zeit um → beenden lassen (darf jeder, passiert nur, wenn sie wirklich abgelaufen ist)
-    pollTick: () => rows(sb.rpc('poll_tick')).catch(() => null),
+    pollTick: () => rows(sb.rpc('poll_tick')).catch(() => null).finally(flushBot),
     ccCommands: () => rows(sb.from('cc_commands').select('id, word, label, emoji').eq('enabled', true)),
     ccEvents: (after) => rows(sb.from('cc_events').select('id, word, label, emoji, who, source, votes, created_at').gt('id', after).order('id').limit(10)),
     ccLast: async () => (await rows(sb.from('cc_events').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
-    ccTick: () => rows(sb.rpc('cc_tick')).catch(() => null),
+    ccTick: () => rows(sb.rpc('cc_tick')).catch(() => null).finally(flushBot),
     counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
     songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),

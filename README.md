@@ -192,11 +192,13 @@ Die Ergebnisse schreibt ein eigener Twitch-Account in den Chat, nicht der Stream
 
 Gesendet wird mit dem App-Token der Twitch-App. Twitch zeigt am Bot dann das Bot-Abzeichen. Dafür braucht es das Recht des Streamers `channel:bot` aus Schritt 5. Hat der Streamer schon vorher verbunden, einmal **„Neu verbinden“**, oder den Bot im Kanal zum Moderator machen (`/mod StreamHelpBot`).
 
+**Zweiter Bot** (Migration `20261116000000_bot_stats.sql`): Im Admin-Bereich gibt es zwei Plätze, **Bot 1** und **Bot 2** – zwei verschiedene Twitch-Konten, jedes wie oben verbunden (vor dem Verbinden auf twitch.tv mit dem jeweiligen Bot-Account anmelden). Jeder Streamer wählt im Dashboard unter **🤖 Bot & Chat**, welcher in seinem Chat schreibt; ist der gewählte nicht verbunden, springt der andere ein. Beim Wechsel richtet StreamHelp das Chat-Abo des Kanals gleich neu aus.
+
 ### 7. Eigene Befehle und !watchtime
 
 Im Dashboard unter **🤖 Bot & Chat** legen Streamer, Admins und freigegebene Mods **eigene Befehle** an: Befehl (z. B. `!discord`) und feste Antwort, dazu Pause in Sekunden, „Nur Mods“ und an/aus. Platzhalter in der Antwort: `{user}` (Name des Schreibers), `{count}` (wie oft der Befehl benutzt wurde), `{watchtime}` (Watchtime des Schreibers), `{streamer}`. Eingebaute Befehle (`!join`, `!watchtime` …) lassen sich nicht überschreiben; `!befehle` listet alle aktiven im Chat. Beispiele `!lurk`, `!hydrate` und `!socials` sind vorbereitet.
 
-**`!watchtime`** antwortet mit der eigenen Zuschauzeit, `!watchtime @name` mit der eines anderen (nur, wenn der Name bekannt ist – der Bot wiederholt nie eingetippten Text). Gezählt wird, solange der Stream live ist: Das OBS-Overlay stößt alle 5 Minuten die Edge Function `stream-tools` an, die bei Twitch nachsieht, ob der Kanal live ist, und allen im Chat die Zeit gutschreibt (höchstens alle 4,5 Minuten, Streamer und Bot zählen nicht). Dafür braucht die Seite das neue Twitch-Recht `moderator:read:chatters` – der Gesundheitscheck meldet es, dann **Twitch einmal neu verbinden**. Bis dahin zählen alle, die in den letzten 10 Minuten geschrieben haben. Die Rangliste steht im Dashboard unter Bot & Chat.
+**`!watchtime`** antwortet mit der eigenen Zuschauzeit, `!watchtime @name` mit der eines anderen (nur, wenn der Name bekannt ist – der Bot wiederholt nie eingetippten Text). Gezählt wird, solange der Stream live ist, **jede Minute** (Migration `20261116000000_bot_stats.sql`; vorher alle 5 Minuten): Angestoßen wird die Zählung von allem, was während des Streams passiert – Chat-Nachrichten, Twitch-Panel, `stream.online` und das OBS-Overlay. Die Edge Function sieht bei Twitch nach, ob der Kanal live ist, und schreibt allen im Chat die Zeit gut (höchstens jede Minute, Streamer und Bots zählen nicht). Die Rangliste im Dashboard aktualisiert sich dabei von selbst. Dafür braucht die Seite das neue Twitch-Recht `moderator:read:chatters` – der Gesundheitscheck meldet es, dann **Twitch einmal neu verbinden**. Bis dahin zählen alle, die in den letzten 10 Minuten geschrieben haben. Die Rangliste steht im Dashboard unter Bot & Chat.
 
 Einmal nötig: Migration `20261017000000_chat_bot_commands.sql`.
 
@@ -429,7 +431,7 @@ Im Dashboard unter **📚 Design-Bibliothek** (Streamer, Admins, freigegebene Mo
 - **Info-Leiste:** letzter Follower, letztes Abo, letzte Bits, Zuschauerzahl und „Live seit“ – was davon zu sehen ist, wählst du per Häkchen.
 - **Ziel-Balken:** Follower-, Abo- oder Bits-Ziel mit Titel, Zielwert und Startdatum (ohne Datum: letzte 30 Tage). Der Balken füllt sich bei jedem neuen Alert und feiert, wenn das Ziel erreicht ist. Probe-Alerts zählen nicht.
 
-Zuschauerzahl und Laufzeit schreibt die Watchtime-Zählung mit (alle paar Minuten, solange das Overlay in OBS läuft). Einmal nötig: Migration `20261018000000_overlay_designs.sql` (`goal_progress()`, `stream_live_info()`) – ohne sie bleiben Ziel und Zuschauerzahl bei 0 bzw. „offline“, alles andere geht auch so.
+Zuschauerzahl und Laufzeit schreibt die Watchtime-Zählung mit (jede Minute, solange der Stream läuft). Einmal nötig: Migration `20261018000000_overlay_designs.sql` (`goal_progress()`, `stream_live_info()`) – ohne sie bleiben Ziel und Zuschauerzahl bei 0 bzw. „offline“, alles andere geht auch so.
 
 ### Laufband
 
@@ -622,6 +624,14 @@ Kachel **„Umfrage“** im Dashboard: **Streamer und Mods** stellen eine Frage 
 
 Einmal nötig: Migration `supabase/migrations/20261105000000_polls.sql` ausführen (nach `…_watchtime_import.sql`). Die Edge Functions `twitch-eventsub` (für `!vote`) und `twitch-ext` (Panel) kommen mit dem nächsten Merge automatisch zu Supabase.
 
+## Chat-Bot: schneller, zwei Bots, Protokoll
+
+Migration `supabase/migrations/20261116000000_bot_stats.sql`:
+
+- **Schneller:** Watchtime, Hot Words und die Zählung laufen neben der Antwort des Bots statt davor; Bot und Twitch-Verbindung sind im Chat-Pfad kurz zwischengespeichert. Ansagen aus der Warteschlange (Umfrage zu Ende, Cup, Quiz …) gehen nach jeder Chat-Nachricht, jedem Panel-Aufruf und jeder Overlay-Runde raus – nicht mehr erst bei der nächsten Chat-Nachricht.
+- **Zwei Bots:** siehe Schritt 6 („Zweiter Bot“).
+- **Bot-Protokoll:** Jede Nachricht des Bots steht mit Status im Protokoll – ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit dem Grund von Twitch, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt), Fehler, kein Bot, Notfall-Schalter. **Streamer und freigegebene Mods** sehen es im Dashboard unter 🤖 Bot & Chat → „Bot-Protokoll“ und schicken dort eine **Testnachricht**. Der **Plattform-Admin** sieht im Admin-Bereich das Protokoll aller Kanäle (je Kanal die letzten 24 Stunden, Filter „nur Probleme“). Einträge bleiben 7 Tage.
+
 ## Cup
 
 Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/20261115000000_cup.sql`):
@@ -706,7 +716,7 @@ StreamHelp läuft für beliebig viele Streamer. Jeder Kanal hat **eigene** Kache
 - Welcher Kanal gemeint ist, sagt der Header `x-channel` (Kanal-ID oder Twitch-Login). Webseite, Overlay und Edge Functions schicken ihn mit (`js/channel.js`, `withChannel` in `supabase/functions/_shared/twitch.ts`); Twitch-Ereignisse (EventSub) ordnet die Funktion über die Twitch-ID des Streamers zu. Ohne Header gilt der Standard-Kanal.
 - Rechte: Admin eines Kanals sind sein Inhaber, freigegebene Mods dieses Kanals und der Plattform-Admin (das StreamHelp-Admin-Konto). Das alte Admin-Häkchen gilt nur noch im Standard-Kanal.
 - Live-Updates kommen aus den Tabellen in `core`, gefiltert nach `channel_id`.
-- Den Chat-Bot verbindet und trennt nur noch der Plattform-Admin (Admin-Bereich) – er liest danach den Chat aller verbundenen Kanäle.
+- Die Chat-Bots (Bot 1 und Bot 2) verbindet und trennt nur der Plattform-Admin (Admin-Bereich); jeder Kanal liest danach mit seinem gewählten Bot mit.
 - Der Twitch-Gesundheitscheck (GitHub Action) prüft alle freigeschalteten Kanäle mit Twitch-Verbindung.
 
 ## Games im Dashboard
@@ -850,7 +860,7 @@ Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-j
 
 - **Dein Start:** Streamer sehen oben bei den Content-Ideen eine Checkliste – Twitch verbinden, Overlay in OBS, erste Idee ausprobieren, Mods freigeben, Zwei-Faktor einschalten. Erledigtes hakt sich von selbst ab; „Ausblenden“ blendet sie aus, „❓ Einführung“ holt sie zurück.
 - **Kacheln:** Suchfeld über den Content-Ideen und ein ☆ an jeder Kachel – Favoriten stehen vorne (in der Game-Ansicht als eigene Gruppe). Beides merkt sich dieser Browser. Die Countdown-Kachel „Subathon“ heißt jetzt „Countdown zum Subathon“, damit sie nicht mit dem Subathon-Timer verwechselt wird.
-- **📈 Statistik** (Streamer und freigegebene Mods): Sendezeit, Zuschauer (Spitze und Ø), Follows, Abos, Bits, aktive Chatter, Glücksrad, Streiche, Kanalpunkte – für 7, 30 oder 90 Tage, je Tag als Balken, dazu die treuesten Zuschauer. Sendezeit und Zuschauer zählen ab dem Einspielen der Migration mit (die Watchtime-Zählung tickt alle ~5 Minuten, solange das Overlay in OBS läuft).
+- **📈 Statistik** (Streamer und freigegebene Mods): Sendezeit, Zuschauer (Spitze und Ø), Follows, Abos, Bits, aktive Chatter, Glücksrad, Streiche, Kanalpunkte – für 7, 30 oder 90 Tage, je Tag als Balken, dazu die treuesten Zuschauer. **Live:** Während des Streams steht oben eine Karte „Live seit …“ mit Zuschauern jetzt, Spitze, Durchschnitt, Follows, Abos, Bits, Chattern und Kanalpunkten seit Beginn; die Seite lädt bei jeder Zählung (jede Minute) von selbst neu. **Nach jedem Stream:** Unter „Letzte Streams“ steht jeder Stream mit Dauer, Zuschauern, Follows, Abos, Bits und Chattern – festgehalten, sobald Twitch `stream.offline` meldet (oder die nächste Zählung den Stream offline sieht). Gezählt wird ohne OBS-Overlay auch über Chat und Twitch-Panel (Migration `20261116000000_bot_stats.sql`).
   Einmal nötig: Migration **`supabase/migrations/20261102000000_dashboard.sql`**.
 - **Handy-App:** StreamHelp lässt sich auf dem Handy (und am PC) als App installieren – im Browser „Zum Startbildschirm hinzufügen“ bzw. links „📲 App installieren“. Gestartet als App geht es direkt zur Anmeldung, Abkürzungen führen zu Statistik und Raid-Schutz. `sw.js` holt immer die neueste Fassung und springt nur ohne Netz mit der zuletzt geladenen ein; das OBS-Overlay fasst er nie an.
 

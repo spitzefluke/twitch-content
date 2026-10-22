@@ -295,11 +295,13 @@ export const oauthRedirectUri = () => `${env("SUPABASE_URL")}/functions/v1/twitc
 
 // Twitch-Login starten. Den Rückweg (twitch-oauth, GET) findet der state:
 // Der Kanal des Streamers geht zurück auf die Webseite, der Bot in den Admin-Bereich.
-export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bot") {
+// slot: welcher der beiden Plattform-Bots verbunden wird (Migration …_bot_stats.sql; ohne sie nur Platz 1)
+export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bot", slot = 1) {
   const state = crypto.randomUUID() + crypto.randomUUID();
   // "kind" nur beim Bot mitschicken: So klappt das Verbinden des Streamers auch, solange
   // die Migration …_chat_bot.sql (Spalte kind) noch nicht eingespielt ist.
-  const row: Record<string, string> = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  const row: Record<string, string | number> = kind === "bot" ? { state, user_id: userId, kind } : { state, user_id: userId };
+  if (kind === "bot" && slot === 2) row.bot_slot = 2;
   // Für welchen Kanal verbunden wird (der Rückweg von Twitch kennt keinen Header)
   const channelId = kind === "broadcaster" ? await currentChannelId() : null;
   if (channelId) row.channel_id = channelId;
@@ -391,6 +393,20 @@ export type Connection = {
   prank_sound_reward_id?: string | null;
 };
 
+// Für den Chat-Pfad: Verbindung kurz zwischengespeichert (je Kanal 30 s). Im Chat fragt sonst jede
+// Nachricht mehrmals die Datenbank – das bremst die Antworten des Bots. Nur zum Senden und Moderieren
+// nehmen: Belohnungs-IDs und Abos immer frisch mit getConnection() lesen.
+const CACHE_MS = 30_000;
+const connCache = new Map<string, { at: number; conn: Connection | null }>();
+export async function chatConnection(): Promise<Connection | null> {
+  const key = requestChannel() ?? "";
+  const hit = connCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS && (!hit.conn || Date.parse(hit.conn.expires_at) - Date.now() > 5 * 60_000)) return hit.conn;
+  const conn = await getConnection();
+  connCache.set(key, { at: Date.now(), conn });
+  return conn;
+}
+
 // Verbindung laden und Token bei Bedarf erneuern
 export async function getConnection(): Promise<Connection | null> {
   const { data, error } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
@@ -409,10 +425,32 @@ export async function getConnection(): Promise<Connection | null> {
   return { ...data, ...patch };
 }
 
-export async function getBot(): Promise<{ user_id: string; login: string; display_name: string } | null> {
-  const { data, error } = await db.from("twitch_bot").select("user_id, login, display_name").eq("id", 1).maybeSingle();
-  if (error) throw error;
-  return data;
+// Chat-Bot des aktuellen Kanals (Migration …_bot_stats.sql): Es gibt zwei Plattform-Bots (Platz 1 und 2),
+// der Kanal wählt einen (channels.bot_slot); ist er nicht verbunden, springt der andere ein.
+// Ohne die Migration: der eine Bot auf Platz 1. Je Kanal 30 s zwischengespeichert.
+export type Bot = { id?: number; user_id: string; login: string; display_name: string };
+const botCache = new Map<string, { at: number; bot: Bot | null }>();
+export function forgetBots() { botCache.clear(); }
+export async function getBot(): Promise<Bot | null> {
+  const key = requestChannel() ?? "";
+  const hit = botCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.bot;
+  const { data: slot, error: slotError } = await db.rpc("channel_bot_id");
+  const id = slotError ? 1 : (slot as number | null);
+  let bot: Bot | null = null;
+  if (id) {
+    const { data, error } = await db.from("twitch_bot").select("id, user_id, login, display_name").eq("id", id).maybeSingle();
+    if (error) throw error;
+    bot = data;
+  }
+  botCache.set(key, { at: Date.now(), bot });
+  return bot;
+}
+
+// Alle verbundenen Bots (Watchtime zählt sie nicht als Zuschauer)
+export async function allBots(): Promise<Bot[]> {
+  const { data } = await db.from("twitch_bot").select("id, user_id, login, display_name").order("id");
+  return data ?? [];
 }
 
 // Chat-Nachrichten schreibt der StreamHelp-Bot, nie der Streamer selbst. Gesendet
@@ -429,20 +467,46 @@ export async function botsOff(): Promise<boolean> {
   return botsGate.off;
 }
 
+// Bot-Protokoll (Migration …_bot_stats.sql): jede Nachricht mit Status. Fehlt die Migration, passiert nichts.
+export type ChatSource = "chat" | "outbox" | "test" | "mod";
+async function logChat(text: string, status: string, reason: string, source: ChatSource, bot: string, ms: number | null) {
+  await db.rpc("bot_log_add", { p_text: text, p_status: status, p_reason: reason.slice(0, 300), p_source: source, p_bot: bot, p_ms: ms })
+    .then(() => {}, () => {});
+}
+
 // replyTo: als Antwort auf diese Chat-Nachricht (Twitch zeigt sie dann verknüpft)
-export async function sendChat(conn: Connection, message: string, replyTo?: string) {
-  if (await botsOff()) return; // Notfall-Schalter: der Bot schweigt überall
+// source: wofür die Nachricht war (fürs Protokoll). Liefert die Antwortzeit von Twitch in ms.
+export async function sendChat(conn: Connection, message: string, replyTo?: string, source: ChatSource = "chat") {
+  const text = message.slice(0, 500);
+  if (await botsOff()) { await logChat(text, "off", "Notfall-Schalter: Chat-Bot plattformweit aus", source, "", null); return null; }
   const bot = await getBot();
-  if (!bot) throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
-  const res = await helix("chat/messages", await getAppToken(), {
-    method: "POST",
-    body: {
-      broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: message.slice(0, 500),
-      ...(replyTo ? { reply_parent_message_id: replyTo } : {}),
-    },
-  });
+  if (!bot) {
+    await logChat(text, "no_bot", "Kein Chat-Bot verbunden", source, "", null);
+    throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
+  }
+  const started = Date.now();
+  let res;
+  try {
+    res = await helix("chat/messages", await getAppToken(), {
+      method: "POST",
+      body: {
+        broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: text,
+        ...(replyTo ? { reply_parent_message_id: replyTo } : {}),
+      },
+    });
+  } catch (e) {
+    await logChat(text, "error", (e as Error).message, source, bot.login, Date.now() - started);
+    throw e;
+  }
+  const ms = Date.now() - started;
   const r = res?.data?.[0];
-  if (r && !r.is_sent) throw new Error(`Chat-Nachricht blockiert: ${r.drop_reason?.message ?? "unbekannt"}`);
+  if (r && !r.is_sent) {
+    const why = r.drop_reason?.message ?? r.drop_reason?.code ?? "unbekannt";
+    await logChat(text, "dropped", why, source, bot.login, ms);
+    throw new Error(`Chat-Nachricht blockiert: ${why}`);
+  }
+  await logChat(text, "sent", "", source, bot.login, ms);
+  return ms;
 }
 
 // ---------- Glücksrad ----------

@@ -12,8 +12,9 @@
 //   POST {action:"twitch_check", token}     → Status des EventSub-Webhooks direkt bei Twitch
 //   POST {action:"set_admin", token, user_id, is_admin}
 //   POST {action:"site_session", token}     → Einmal-Code, mit dem admin.html auf der Webseite anmeldet
-//   POST {action:"bot_start", token}        → Twitch-Login-URL für den Chat-Bot (zurück nach admin.html)
-//   POST {action:"bot_disconnect", token}   → Chat-Bot trennen
+//   POST {action:"bot_start", token, slot}  → Twitch-Login-URL für Chat-Bot 1 oder 2 (zurück nach admin.html)
+//   POST {action:"bot_disconnect", token, slot} → Chat-Bot 1 oder 2 trennen (Kanäle lesen dann mit dem anderen mit)
+//   POST {action:"bot_log", token, problems?} → Bot-Protokoll aller Kanäle (Migration …_bot_stats.sql)
 //   POST {action:"channels", token}         → alle Streamer-Kanäle mit Bewerbungen (Migration …_platform.sql)
 //   POST {action:"channel_status", token, channel_id, status, note?} → freischalten (active), sperren (blocked)
 //                                              oder zurück auf „wartet“ (pending)
@@ -27,6 +28,7 @@
 //   POST {action:"update_post", token, title, body} · {action:"update_delete", token, id}
 import QRCode from "npm:qrcode@1.5.4";
 import { corsHeaders, db, env, getAppToken, helix, json, startTwitchLogin } from "../_shared/twitch.ts";
+import { removeBot } from "../_shared/bots.ts";
 
 const SESSION_HOURS = 12;
 const MAX_FAILURES = 10; // pro 15 Minuten, danach Sperre
@@ -169,7 +171,15 @@ Deno.serve(async (req) => {
     if (body.action === "twitch_check") return json(await twitchCheck());
     if (body.action === "set_admin") return await setAdmin(body.user_id, body.is_admin);
     if (body.action === "site_session") return json(await siteSession());
-    if (body.action === "bot_start") return json({ url: await startTwitchLogin(await ensureSiteAdmin(), "bot") });
+    if (body.action === "bot_start") return json({ url: await startTwitchLogin(await ensureSiteAdmin(), "bot", body.slot === 2 ? 2 : 1) });
+    if (body.action === "bot_log") {
+      const { data, error } = await db.rpc("admin_bot_log", { p_limit: 150, p_problems: body.problems === true });
+      if (error) {
+        if (/admin_bot_log/.test(error.message)) return json({ error: "Das Bot-Protokoll braucht die Migration supabase/migrations/20261116000000_bot_stats.sql." }, 400);
+        throw error;
+      }
+      return json(data);
+    }
     if (body.action === "channels") return await channels();
     if (body.action === "channel_status") return await channelStatus(body.channel_id, body.status, body.note);
     if (body.action === "channel_moderate") return await channelModerate(body);
@@ -177,8 +187,7 @@ Deno.serve(async (req) => {
       return await platform(body);
     }
     if (body.action === "bot_disconnect") {
-      const { error } = await db.from("twitch_bot").delete().eq("id", 1);
-      if (error) throw error;
+      await removeBot(body.slot === 2 ? 2 : 1);
       return json({ ok: true });
     }
     return json({ error: "Unbekannte Aktion" }, 400);
@@ -293,7 +302,11 @@ async function overview() {
     if (r.error) throw r.error;
   }
   // Getrennt abgefragt: Fehlt die Tabelle noch (Migration …_chat_bot.sql), bleibt der Rest heil.
-  const bot = await db.from("twitch_bot").select("login, display_name, updated_at").eq("id", 1).maybeSingle();
+  // Zwei Plätze (…_bot_stats.sql); twitch_bot bleibt Platz 1 für ältere Admin-Seiten.
+  const bots = await db.from("twitch_bot").select("id, login, display_name, updated_at").order("id");
+  const bot = { error: bots.error, data: (bots.data ?? []).find((b) => b.id === 1) ?? null };
+  // Wie viele Kanäle nutzen welchen Bot (fehlt die Spalte noch: alle Platz 1)
+  const slots = await db.from("channels").select("bot_slot").eq("status", "active");
   // Gesundheitscheck (Migration …_streamhelp.sql) – fehlt die Tabelle, bleibt er einfach weg
   const health = await db.from("twitch_health").select("checked_at, ok, problems, last_event_at, last_event_type").eq("id", 1).maybeSingle();
 
@@ -324,6 +337,11 @@ async function overview() {
     users: userList,
     twitch: conn.data,
     twitch_bot: bot.error ? null : bot.data,
+    twitch_bots: bots.error ? [] : bots.data,
+    bot_channels: slots.error ? null : {
+      1: (slots.data ?? []).filter((c) => c.bot_slot !== 2).length,
+      2: (slots.data ?? []).filter((c) => c.bot_slot === 2).length,
+    },
     twitch_bot_ready: !bot.error,
     twitch_health: health.error ? null : health.data,
   };

@@ -16,6 +16,19 @@ import {
 import { GAME_ONLY, gameById } from "../_shared/games.ts";
 import { feedPet, feedWait, petStarted } from "../_shared/pet.ts";
 import { soundList } from "../_shared/pranks.ts";
+import { flushOutbox } from "../_shared/extras.ts";
+import { watchTick } from "../_shared/watchtime.ts";
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
+// Nebenbei, ohne die Antwort ans Panel aufzuhalten: Watchtime/Statistik zählen (höchstens jede Minute,
+// …_bot_stats.sql) und Bot-Nachrichten aus der Warteschlange schicken (z. B. eine Umfrage ist zu Ende)
+function background(withTick: boolean) {
+  const task = Promise.all([
+    withTick ? watchTick().catch((e) => console.warn("Watchtime:", (e as Error).message)) : null,
+    flushOutbox().catch((e) => console.warn("Bot-Nachrichten:", (e as Error).message)),
+  ]);
+  if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
+}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -77,13 +90,19 @@ Deno.serve(async (req) => {
 
   return await withChannel(channel.id, async () => {
     try {
-      if (body.action === "state") return json(await state(channel.id, claims));
-      if (body.action === "giveaway") return json(await joinGiveaway(claims));
-      if (body.action === "queue") return json(await joinQueue(claims, body.epic));
-      if (body.action === "vote") return json(await vote(claims, body.choice));
-      if (body.action === "feed") return json(await feed(claims));
-      if (body.action === "sound") return json(await playSound(claims, body.sound));
-      return json({ error: "Unbekannte Aktion" }, 400);
+      const run = async () => {
+        if (body.action === "state") return await state(channel.id, claims);
+        if (body.action === "giveaway") return await joinGiveaway(claims);
+        if (body.action === "queue") return await joinQueue(claims, body.epic);
+        if (body.action === "vote") return await vote(claims, body.choice);
+        if (body.action === "feed") return await feed(claims);
+        if (body.action === "sound") return await playSound(claims, body.sound);
+        return null;
+      };
+      const result = await run();
+      if (result === null) return json({ error: "Unbekannte Aktion" }, 400);
+      background(body.action === "state");
+      return json(result);
     } catch (e) {
       console.error("twitch-ext:", e);
       return json({ error: "server", message: "Gerade hakt es – bitte gleich noch einmal versuchen." }, 500);
