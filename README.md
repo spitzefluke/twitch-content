@@ -885,15 +885,16 @@ Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.htm
 - Pause/Weiter, Stopp; die Aufnahme läuft weiter, wenn das Studio-Fenster im Hintergrund liegt und man spielt. Endet die Bildschirm-Freigabe, wird die Aufnahme gespeichert.
 - Tipp: Für ein Video exakt wie im Stream (alles inklusive) einfach in OBS „Aufnahme starten“.
 
-## Twitch-Erweiterung (Panel, Komponente, Overlay)
+## Twitch-Erweiterung (Panel, Mobil, Komponente, Overlay)
 
-Eine Erweiterung für twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`) in drei Ansichten. Twitch hängt `?anchor=panel|component|video_overlay` an die Adresse, `panel.html` richtet sich danach:
+Eine Erweiterung für twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`) in vier Ansichten, jede mit eigenem Design. Twitch hängt `?anchor=panel|component|video_overlay` und in der App `platform=mobile` an die Adresse, `panel.html` richtet sich danach (`html[data-mode]`, Styles am Ende von `panel.css`):
 
 | Ansicht | Wo | Besonderheit |
 |---|---|---|
-| **Panel** | unter dem Stream | mit Kopfzeile (Kanalname, Logo) und Link zur Seite |
-| **Komponente** | kleines Feld auf dem Video | der Streamer schiebt und skaliert es im Creator-Dashboard; immer kompakt, ohne Kopfzeile, ohne Links nach draußen |
-| **Overlay** | über dem ganzen Videobild | Ecke (4) und Größe (klein/mittel/groß) aus der Konfiguration; das Bild darunter bleibt klickbar |
+| **Panel** | unter dem Stream | Gaming-Look mit Neonkante und Glow, Kopfzeile (Kanalname, Logo) und Link zur Seite |
+| **Mobil** | Twitch-App auf dem Handy | App-Look: farbige Hero-Karte fürs Game, ruhige Karten ohne Neon, Abschnittstitel, große Daumen-Knöpfe, Kopfzeile bleibt oben stehen; kein Link nach draußen |
+| **Komponente** | kleines Feld auf dem Video | Look einer Stream-Einblendung: dunkles Glas, Titel als Etikett, eine Karte nach der anderen mit Fortschrittsbalken wie bei Stories (hält an, solange der Zuschauer etwas bedient); passt sich der Größe an, die der Streamer im Creator-Dashboard wählt |
+| **Overlay** | über dem ganzen Videobild | dezente Glas-Karten mit Farbkante in der Ecke, höchstens drei, das Wichtigste zuerst (Umfrage, Verlosung, Warteschlange …); Ecke (4) und Größe (klein/mittel/groß) aus der Konfiguration; das Bild darunter bleibt klickbar |
 
 Komponente und Overlay sieht man nur, wenn der Kanal live ist – so macht es Twitch.
 
@@ -906,7 +907,7 @@ Komponente und Overlay sieht man nur, wenn der Kanal live ist – so macht es Tw
 - **🔊 Sounds** (neu): Zuschauer tippen auf einen Sound, das OBS-Overlay spielt ihn ab – **ohne Kanalpunkte**, also auch ohne Affiliate. Standard: aus. Siehe unten.
 - **Als Nächstes** (Termin) und im Panel ein Link **zur Seite**.
 - **Sprache**: Standard „Automatisch“ – jeder Zuschauer sieht seine Twitch-Sprache (10 Sprachen, sonst Englisch). In der Konfiguration lässt sich eine feste Sprache wählen. Texte: `extension/panel-i18n.js`.
-- **Hell/Dunkel** wie Twitch beim Zuschauer, oder fest. Auf dem Handy (Twitch hängt `platform=mobile` an) größere Knöpfe, kein Link nach draußen.
+- **Hell/Dunkel** wie Twitch beim Zuschauer, oder fest.
 
 Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine Twitch-ID frei – Twitch fragt selbst nach.
 
@@ -946,13 +947,13 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 10. **twitch.tv → Creator-Dashboard → Erweiterungen** → StreamHelp **installieren**.
 11. Unter **Meine Erweiterungen** auf das Zahnrad (**Konfigurieren**): Das öffnet `config.html` mit Live-Vorschau rechts.
     1. **Schnellstart** wählen: 🌱 Ich fange gerade an (wenig, ruhig) oder 💬 Ich bin (noch) kein Affiliate (alles ohne Kanalpunkte, inklusive Sounds).
-    2. **Wo?** Panel, Komponente oder Overlay (beim Overlay Ecke und Größe).
+    2. **Ansichten und Overlay-Ecke:** Wo die Erweiterung erscheint, legt Twitch beim Aktivieren fest (Schritt 12). Hier nur Ecke und Größe fürs Overlay. Über der Vorschau schaltest du zwischen Panel, Mobil, Komponente und Overlay um.
     3. **Module** anhaken, **Aussehen** (Farbschema, kompakt) und **Sprache** (Automatisch oder fest).
     4. **Speichern** – Zuschauer sehen es nach wenigen Sekunden, ohne neu zu laden.
 12. **Aktivieren** (Pfeil neben der Erweiterung): als **Panel**, als **Komponente** (dann auf dem Video platzieren) oder als **Overlay**. Twitch erlaubt pro Kanal höchstens ein Overlay und zwei Komponenten.
 13. **Sounds übers Panel** (optional): auf der StreamHelp-Seite im Dashboard → Kachel **„Ärgere den Streamer“** → „🔊 Sounds über die Twitch-Erweiterung“ einschalten und die Bremse wählen (pro Zuschauer höchstens alle … / Abstand zwischen zwei Sounds). Dazu in der Konfiguration das Modul **Sounds abspielen** anhaken. Gespielt wird über das OBS-Overlay (im OBS-Fenster muss die Ebene „Würfe & Sounds“ an sein). Gezeigt werden die ersten 20 Sounds der Liste (eingebaute zuerst, dann hochgeladene).
 
-**Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html` zeigt Beispieldaten; `panel.html?demo&mode=component` bzw. `?demo&mode=overlay` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+**Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html` zeigt Beispieldaten; `panel.html?demo&mode=mobile`, `?demo&mode=component` bzw. `?demo&mode=overlay` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 

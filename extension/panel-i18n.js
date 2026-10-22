@@ -897,6 +897,16 @@
     '✓ Gespeichert – Zuschauer sehen es in wenigen Sekunden.': '✓ Saved – viewers will see it in a few seconds.',
     'Das ist zu lang für Twitch (höchstens 5 KB).': 'That is too long for Twitch (5 KB max).',
     'Speichern hat nicht geklappt. Lade die Seite neu und versuch es noch einmal.': 'Saving did not work. Reload the page and try again.',
+    '2 · Ansichten und Overlay-Ecke': '2 · Views and overlay corner',
+    'Wo die Erweiterung erscheint (Panel, Mobil, Komponente oder Overlay), stellst du bei Twitch ein: Creator-Dashboard → Erweiterungen → Aktivieren. Jede Ansicht hat ihr eigenes Design – rechts schaltest du zwischen ihnen um.': 'Where the extension appears (panel, mobile, component or overlay) is set on Twitch: creator dashboard → extensions → activate. Each view has its own design – switch between them on the right.',
+    'Overlay: Ecke': 'Overlay: corner',
+    'Overlay: Größe': 'Overlay: size',
+    'Mobil': 'Mobile',
+    'Ansicht': 'View',
+    'So sieht das Panel unter dem Stream mit Beispieldaten aus.': 'This is how the panel below the stream looks with sample data.',
+    'So sieht es in der Twitch-App auf dem Handy aus (Beispieldaten).': 'This is how it looks in the Twitch app on a phone (sample data).',
+    'So sieht die Komponente auf dem Video aus: eine Karte nach der anderen, passt sich der Größe an, die du im Creator-Dashboard wählst (Beispieldaten, gestreifter Hintergrund = dein Videobild).': 'This is how the component looks on the video: one card at a time, adapting to the size you choose in the creator dashboard (sample data, striped background = your video).',
+    'So sieht das Overlay in der gewählten Ecke aus: höchstens drei schmale Karten, das Wichtigste zuerst (Beispieldaten, gestreifter Hintergrund = dein Videobild).': 'This is how the overlay looks in the chosen corner: three slim cards at most, the most important first (sample data, striped background = your video).',
     'Ohne Twitch geöffnet: Vorschau und Einstellungen funktionieren, Speichern nicht.': 'Opened without Twitch: preview and settings work, saving does not.',
   };
   Object.keys(CONFIG_EN).forEach(function (k) { if (!(k in dicts.en)) dicts.en[k] = CONFIG_EN[k]; });

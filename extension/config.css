@@ -78,8 +78,16 @@ select:focus-visible, input:focus-visible, button:focus-visible { outline: 2px s
   background: repeating-linear-gradient(45deg, #1f2433 0 14px, #252b3d 14px 28px); padding: 0; overflow: hidden;
 }
 .stage iframe { border: 0; background: transparent; width: 318px; height: 500px; max-width: 100%; }
-.stage[data-mode="component"] iframe { width: 100%; height: 220px; }
+.stage[data-mode="component"] iframe { width: 100%; height: 220px; resize: both; overflow: auto; min-width: 160px; min-height: 120px; }
 .stage[data-mode="overlay"] iframe { width: 100%; height: 202px; }
+/* Mobil: Handy-Rahmen */
+.stage[data-mode="mobile"] { padding: 14px 0; background: repeating-linear-gradient(45deg, #1f2433 0 14px, #252b3d 14px 28px); }
+.stage[data-mode="mobile"] iframe { width: 360px; height: 600px; max-width: 100%; border: 6px solid #0a0813; border-radius: 26px; background: var(--bg); }
+/* Umschalter der Ansichten */
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.views button { flex: 1 1 auto; min-height: 34px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+.views button:hover, .views button:focus-visible { border-color: var(--purple-2); outline: none; }
+.views button[aria-selected="true"] { border-color: var(--purple-2); background: color-mix(in srgb, var(--purple) 22%, var(--card)); }
 
 /* ================= Gaming-Look: Neon, Glow, kräftige Farben ================= */
 :root {

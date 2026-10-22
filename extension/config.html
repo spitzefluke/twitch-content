@@ -27,15 +27,10 @@
         </section>
 
         <section class="box" aria-labelledby="h-mode">
-          <h2 id="h-mode">2 · Wo soll es erscheinen?</h2>
-          <div class="modes" role="radiogroup" aria-labelledby="h-mode">
-            <label class="mode"><input type="radio" name="mode" value="panel"><span><b>Panel</b><small>Karte unter dem Stream. Der einfachste Start.</small></span></label>
-            <label class="mode"><input type="radio" name="mode" value="component"><span><b>Komponente</b><small>Kleines Feld auf dem Video. Du platzierst es im Twitch-Dashboard.</small></span></label>
-            <label class="mode"><input type="radio" name="mode" value="overlay"><span><b>Overlay</b><small>Liegt über dem Videobild, du legst Ecke und Größe fest.</small></span></label>
-          </div>
-          <p class="hint" id="mode-hint"></p>
-          <div class="row2" id="overlay-opts" hidden>
-            <label>Ecke
+          <h2 id="h-mode">2 · Ansichten und Overlay-Ecke</h2>
+          <p class="hint">Wo die Erweiterung erscheint (Panel, Mobil, Komponente oder Overlay), stellst du bei Twitch ein: Creator-Dashboard → Erweiterungen → Aktivieren. Jede Ansicht hat ihr eigenes Design – rechts schaltest du zwischen ihnen um.</p>
+          <div class="row2" id="overlay-opts">
+            <label>Overlay: Ecke
               <select name="corner">
                 <option value="top-left">oben links</option>
                 <option value="top-right">oben rechts</option>
@@ -43,7 +38,7 @@
                 <option value="bottom-right">unten rechts</option>
               </select>
             </label>
-            <label>Größe
+            <label>Overlay: Größe
               <select name="size">
                 <option value="s">klein</option>
                 <option value="m">mittel</option>
@@ -117,6 +112,12 @@
 
       <aside class="cfg-preview" aria-label="Vorschau">
         <h2>Vorschau</h2>
+        <div class="views" id="views" role="tablist" aria-label="Ansicht">
+          <button type="button" role="tab" data-view="panel" aria-selected="true">Panel</button>
+          <button type="button" role="tab" data-view="mobile" aria-selected="false">Mobil</button>
+          <button type="button" role="tab" data-view="component" aria-selected="false">Komponente</button>
+          <button type="button" role="tab" data-view="overlay" aria-selected="false">Overlay</button>
+        </div>
         <div class="stage" id="stage" data-mode="panel">
           <iframe id="preview" title="Vorschau der Erweiterung" src="panel.html?demo&amp;preview=1"></iframe>
         </div>

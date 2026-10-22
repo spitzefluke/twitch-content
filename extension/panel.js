@@ -15,37 +15,42 @@
   var DEMO = !ext || window.self === window.top || /[?&]demo\b/.test(location.search);
   var QUERY = new URLSearchParams(location.search);
   var MOBILE = QUERY.get('platform') === 'mobile';
-  if (MOBILE) document.documentElement.classList.add('is-mobile');
-  if (QUERY.get('theme') === 'light') document.documentElement.dataset.theme = 'light';
 
   // Einstellungen des Streamers (config.html, Twitch-Konfigurationsdienst) – siehe extension/ext-config.js.
   // Ansicht: Twitch hängt ?anchor=panel|component|video_overlay an; zum Ausprobieren ?mode=overlay (nur mit ?demo).
   var CFGLIB = window.STREAMHELP_CFG;
   var cfg = CFGLIB.clean(null);
   var ctxTheme = null;
+  // Vier Ansichten, jede mit eigenem Design (panel.css): panel | mobile | component | overlay.
+  // Welche Ansicht läuft, bestimmt Twitch (?anchor=… bzw. ?platform=mobile) – nicht die gespeicherten Einstellungen.
+  var VIEWS = ['panel', 'mobile', 'component', 'overlay'];
   var MODE = 'panel';
+  var forcedView = null; // nur Vorschau in config.html (per postMessage)
   function modeFor() {
+    if (DEMO && forcedView) return forcedView;
+    if (DEMO && VIEWS.indexOf(QUERY.get('mode')) >= 0) return QUERY.get('mode');
     var a = QUERY.get('anchor');
-    var m = a === 'video_overlay' ? 'overlay' : a === 'component' ? 'component' : a === 'panel' ? 'panel' : null;
-    if (!m && DEMO && QUERY.get('mode')) m = CFGLIB.MODES.indexOf(QUERY.get('mode')) >= 0 ? QUERY.get('mode') : null;
-    if (!m && DEMO && QUERY.get('preview')) m = cfg.mode; // Vorschau in der Konfigurationsseite
-    return m || 'panel';
+    if (MOBILE || a === 'mobile') return 'mobile';
+    return a === 'video_overlay' ? 'overlay' : a === 'component' ? 'component' : 'panel';
   }
   function applyChrome() {
     var root = document.documentElement;
     MODE = modeFor();
     setLang(cfg.lang === 'auto' ? viewerLang : cfg.lang);
     root.dataset.mode = MODE;
-    root.dataset.compact = cfg.compact || MODE !== 'panel' ? '1' : '0';
+    root.classList.toggle('is-mobile', MODE === 'mobile');
+    root.dataset.compact = cfg.compact || MODE === 'component' || MODE === 'overlay' ? '1' : '0';
     root.dataset.corner = cfg.corner;
     root.dataset.size = cfg.size;
-    if (cfg.theme !== 'auto') root.dataset.theme = cfg.theme;
-    else if (ctxTheme) root.dataset.theme = ctxTheme;
+    // Farbschema: fest (Streamer) → sonst Twitch beim Zuschauer → sonst ?theme= → dunkel
+    root.dataset.theme = cfg.theme !== 'auto' ? cfg.theme : (ctxTheme || QUERY.get('theme') || 'dark');
   }
-  function useConfig(next) {
+  function useConfig(next, view) {
     var before = lang;
+    if (view !== undefined) forcedView = VIEWS.indexOf(view) >= 0 ? view : null;
     cfg = CFGLIB.clean(next);
     applyChrome();
+    if (window.console && console.info) console.info('[StreamHelp] Ansicht:', MODE, '· Einstellungen:', cfg);
     if (DEMO && lang !== before) { window.__demo = null; load(); } else if (data) render();
   }
 
@@ -227,10 +232,11 @@
     var parts = [];
     var me = data.me || {};
     // Nur Module, die der Streamer eingeschaltet hat. Links nach draußen gibt es nur im Panel (Twitch erlaubt sie sonst nicht).
+    var entries = [];
     function add(mod, node) {
       if (cfg.modules[mod] === false) return;
       if (mod === 'link' && MODE !== 'panel') return;
-      parts.push(node);
+      entries.push({ mod: mod, node: node });
     }
 
     // Game
@@ -337,8 +343,8 @@
     }
     add('ideas', ideas);
 
-    // Link zur Seite (nicht auf dem Handy: Twitch lässt dort keine Links nach draußen zu)
-    if (data.channel.link && !MOBILE) {
+    // Link zur Seite (nur im Panel: auf dem Handy und über dem Video lässt Twitch keine Links nach draußen zu)
+    if (data.channel.link && MODE === 'panel') {
       var a = el('a', 'link', T('Mitmachen auf StreamHelp →'));
       a.href = data.channel.link;
       a.target = '_blank';
@@ -346,9 +352,69 @@
       add('link', a);
     }
 
-    if (!parts.length && MODE === 'panel') parts.push(el('p', 'muted center', T('Gerade nichts zu zeigen.')));
+    // Overlay: höchstens drei Karten, das Wichtigste (zum Mitmachen) zuerst – das Videobild bleibt frei
+    if (MODE === 'overlay') {
+      var rank = function (e) { var i = OVERLAY_ORDER.indexOf(e.mod); return i < 0 ? 99 : i; };
+      entries.sort(function (a, b) { return rank(a) - rank(b); });
+      entries = entries.slice(0, 3);
+    }
+    parts = entries.map(function (e) { return e.node; });
+    if (!parts.length && (MODE === 'panel' || MODE === 'mobile')) parts.push(el('p', 'muted center', T('Gerade nichts zu zeigen.')));
+    // Komponente: eine Karte nach der anderen (Punkte unten, wechselt von selbst) statt Scrollen
+    if (MODE === 'component' && parts.length > 1) parts = [slides(parts)];
+    else stopSlides();
     box.replaceChildren.apply(box, parts);
     tick();
+  }
+
+  var OVERLAY_ORDER = ['poll', 'giveaway', 'queue', 'sounds', 'pet', 'counters', 'game', 'next', 'ideas'];
+
+  // ---------- Komponente: Karten nacheinander ----------
+  var slideIdx = 0;
+  var slideTimer = 0;
+  var slideHold = 0;      // bis dahin nicht weiterschalten (Zuschauer bedient gerade etwas)
+  var SLIDE_MS = 9000;
+  function stopSlides() { clearInterval(slideTimer); slideTimer = 0; }
+  function slides(cards) {
+    var frag = el('div', 'slides-box');
+    var wrap = el('div', 'slides');
+    var dots = el('div', 'dots');
+    dots.setAttribute('role', 'tablist');
+    cards.forEach(function (c, i) {
+      var s = el('div', 'slide');
+      s.append(c);
+      wrap.append(s);
+      var d = el('button', 'dot');
+      d.type = 'button';
+      d.setAttribute('role', 'tab');
+      d.setAttribute('aria-label', (i + 1) + '/' + cards.length);
+      d.addEventListener('click', function () { show(i); hold(20000); });
+      dots.append(d);
+    });
+    function show(i) {
+      slideIdx = (i + cards.length) % cards.length;
+      Array.prototype.forEach.call(wrap.children, function (n, k) { n.classList.toggle('is-active', k === slideIdx); });
+      Array.prototype.forEach.call(dots.children, function (n, k) { n.setAttribute('aria-selected', String(k === slideIdx)); n.classList.toggle('is-active', k === slideIdx); n.classList.toggle('is-done', k < slideIdx); });
+    }
+    // Angehalten: der Fortschrittsbalken bleibt voll stehen, bis wieder weitergeschaltet wird
+    function hold(ms) { slideHold = Date.now() + ms; frag.classList.add('is-held'); }
+    if (Date.now() < slideHold) frag.classList.add('is-held');
+    show(Math.min(slideIdx, cards.length - 1));
+    // Eingabe/Klick im Feld: Weiterschalten pausieren
+    wrap.addEventListener('focusin', function () { hold(30000); });
+    wrap.addEventListener('pointerdown', function () { hold(20000); });
+    stopSlides();
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!calm) {
+      slideTimer = setInterval(function () {
+        var a = document.activeElement;
+        if (Date.now() < slideHold || document.hidden || (a && a.tagName === 'INPUT')) return;
+        frag.classList.remove('is-held');
+        show(slideIdx + 1);
+      }, SLIDE_MS);
+    }
+    frag.append(wrap, dots);
+    return frag;
   }
 
   function soundsCard(list) {
@@ -362,7 +428,7 @@
       b.addEventListener('click', function () { act('sound', { sound: s.id }); });
       box.append(b);
     });
-    c.append(box, el('p', 'muted', T('Tippe auf einen Sound – er läuft im Stream.')));
+    c.append(box, el('p', 'muted hint', T('Tippe auf einen Sound – er läuft im Stream.')));
     var m = msgEl('sound');
     if (m) c.append(m);
     return c;
@@ -401,7 +467,7 @@
     var info = T('Stimmen: {n}', { n: poll.total });
     if (open && poll.chat) info += ' · ' + T('oder im Chat: {name}', { name: '!vote 1–' + poll.options.length });
     c.append(el('p', 'muted', info));
-    if (open && !me.vote && !msgs.vote) c.append(el('p', 'muted', T('Tippe auf eine Antwort – ändern geht bis zum Ende.')));
+    if (open && !me.vote && !msgs.vote) c.append(el('p', 'muted hint', T('Tippe auf eine Antwort – ändern geht bis zum Ende.')));
     var m = msgEl('vote');
     if (m && open) c.append(m);
     return c;
@@ -450,7 +516,7 @@
     });
     c.append(grid);
     var cmds = list.filter(function (x) { return x.command; }).map(function (x) { return '!' + x.command; });
-    if (cmds.length) c.append(el('p', 'muted', T('Stand im Chat: {name}', { name: cmds.slice(0, 3).join(' · ') })));
+    if (cmds.length) c.append(el('p', 'muted hint', T('Stand im Chat: {name}', { name: cmds.slice(0, 3).join(' · ') })));
     return c;
   }
 
@@ -498,7 +564,7 @@
     window.addEventListener('message', function (e) {
       // Nur von der Seite, in der die Vorschau steckt (config.html), und nur Einstellungen – nichts Geheimes
       if (e.source !== window.parent || !e.data || e.data.type !== 'streamhelp-cfg') return;
-      useConfig(e.data.cfg);
+      useConfig(e.data.cfg, e.data.view || null);
     });
     load();
     return;

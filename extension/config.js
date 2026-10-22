@@ -22,20 +22,17 @@
   var saveBtn = $('#save');
   var msg = $('#msg');
 
-  var MODE_HINT = {
-    panel: 'Das Panel liegt unter dem Stream. In der Twitch-Entwicklerkonsole muss „Panel“ aktiv sein (README → Twitch-Erweiterung).',
-    component: 'Die Komponente liegt auf dem Video. Du schiebst und skalierst sie später im Creator-Dashboard unter Erweiterungen. In der Entwicklerkonsole muss „Komponente“ aktiv sein.',
-    overlay: 'Das Overlay liegt über dem ganzen Videobild. Die Ecke legst du hier fest; wähle wenige Module, damit das Bild frei bleibt. In der Entwicklerkonsole muss „Overlay“ aktiv sein.',
-  };
+  // Vorschau-Ansicht (wird nicht gespeichert): Twitch entscheidet bei den Zuschauern selbst, welche läuft
+  var view = 'panel';
   var STAGE_HINT = {
-    panel: 'So sieht das Panel mit Beispieldaten aus.',
-    component: 'So sieht die Komponente auf dem Video aus (Beispieldaten, gestreifter Hintergrund = dein Videobild).',
-    overlay: 'So sieht das Overlay in der gewählten Ecke aus (Beispieldaten, gestreifter Hintergrund = dein Videobild).',
+    panel: 'So sieht das Panel unter dem Stream mit Beispieldaten aus.',
+    mobile: 'So sieht es in der Twitch-App auf dem Handy aus (Beispieldaten).',
+    component: 'So sieht die Komponente auf dem Video aus: eine Karte nach der anderen, passt sich der Größe an, die du im Creator-Dashboard wählst (Beispieldaten, gestreifter Hintergrund = dein Videobild).',
+    overlay: 'So sieht das Overlay in der gewählten Ecke aus: höchstens drei schmale Karten, das Wichtigste zuerst (Beispieldaten, gestreifter Hintergrund = dein Videobild).',
   };
 
   // ---------- Entwurf ⇄ Formular ----------
   function toForm() {
-    $$('input[name="mode"]').forEach(function (r) { r.checked = r.value === draft.mode; });
     $('select[name="corner"]').value = draft.corner;
     $('select[name="size"]').value = draft.size;
     $('select[name="lang"]').value = draft.lang;
@@ -47,8 +44,6 @@
   }
 
   function fromForm() {
-    var checked = $('input[name="mode"]:checked');
-    draft.mode = checked ? checked.value : 'panel';
     draft.corner = $('select[name="corner"]').value;
     draft.size = $('select[name="size"]').value;
     draft.lang = $('select[name="lang"]').value;
@@ -62,14 +57,9 @@
 
   function refresh() {
     var c = current();
-    var overlay = draft.mode === 'overlay';
-    $('#overlay-opts').hidden = !overlay;
-    // Links nach draußen gibt es nur im Panel
-    var link = $('#mod-link');
-    link.disabled = draft.mode !== 'panel';
-    $('#mode-hint').textContent = tr(MODE_HINT[draft.mode]);
-    stage.dataset.mode = draft.mode;
-    $('#stage-hint').textContent = tr(STAGE_HINT[draft.mode]);
+    stage.dataset.mode = view;
+    $('#stage-hint').textContent = tr(STAGE_HINT[view]);
+    $$('#views [data-view]').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.view === view)); });
     pushPreview(c);
     markDirty();
     $('#raw-json').textContent = JSON.stringify(c, null, 2);
@@ -80,7 +70,7 @@
   function pushPreview(c) {
     if (!frameReady || !frame.contentWindow) return;
     // Geht nur an das eigene Vorschau-Fenster; die Einstellungen sind nicht geheim
-    frame.contentWindow.postMessage({ type: 'streamhelp-cfg', cfg: c }, '*');
+    frame.contentWindow.postMessage({ type: 'streamhelp-cfg', cfg: c, view: view }, '*');
   }
   frame.addEventListener('load', function () { frameReady = true; pushPreview(current()); });
 
@@ -126,11 +116,15 @@
   document.addEventListener('input', function () { fromForm(); draft.preset = 'custom'; $$('.preset').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); }); refresh(); });
   document.addEventListener('change', function () { fromForm(); draft.preset = 'custom'; $$('.preset').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); }); refresh(); });
 
+  $$('#views [data-view]').forEach(function (b) {
+    b.addEventListener('click', function () { view = b.dataset.view; refresh(); });
+  });
+
   // ---------- Sprache dieser Seite ----------
   function applyUI() {
     document.documentElement.lang = UI;
     document.title = tr('StreamHelp einrichten');
-    var skip = { SCRIPT: 1, STYLE: 1, PRE: 1, IFRAME: 1 }, skipId = { 'mode-hint': 1, 'stage-hint': 1, msg: 1 };
+    var skip = { SCRIPT: 1, STYLE: 1, PRE: 1, IFRAME: 1 }, skipId = { 'stage-hint': 1, msg: 1 };
     (function walk(n) {
       if (n.nodeType === 3) {
         if (n.__s === undefined) { var m = /^(\s*)([\s\S]*?)(\s*)$/.exec(n.nodeValue); n.__a = m[1]; n.__s = m[2]; n.__b = m[3]; }
