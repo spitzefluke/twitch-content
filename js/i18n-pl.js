@@ -239,4 +239,5 @@ export default [
   "Tak. Punkty kanału, suby, Bitsy i przewidywania są na Twitchu tylko dla Afiliantów i Partnerów – dlatego te obszary są na twoim kanale wyszarzone i jasno wyjaśnione. Chatbot, nakładka, alerty o obserwujących, ankiety, giveawaye, zwierzak, pomysły na treści i rozszerzenie Twitcha działają normalnie.",
   "Czy mogę pokazywać reklamy na streamie?",
   "Tak, jako tekst na pasku twojej nakładki OBS. Dopisz na początku „Reklama” lub „Ogłoszenie” – Twitch i prawo wymagają oznaczenia. W rozszerzeniu Twitcha (panel, komponent, nakładka) StreamHelp nie pokazuje reklam: Twitch nie pozwala tam na treści reklamowe ani sponsorowane.",
+  "Warunki korzystania",
 ];

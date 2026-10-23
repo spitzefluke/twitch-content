@@ -239,4 +239,5 @@ export default [
   "Oui. Points de chaîne, abonnements, Bits et prédictions sont réservés aux Affiliés et Partenaires Twitch – ces zones sont donc grisées dans ta chaîne et clairement expliquées. Bot de chat, overlay, alertes de follow, sondages, giveaways, animal, idées de contenu et l’extension Twitch fonctionnent normalement.",
   "Puis-je afficher de la publicité dans mon stream ?",
   "Oui, comme texte dans le bandeau de ton overlay OBS. Mets « Publicité » ou « Annonce » devant – Twitch et la loi exigent cette mention. Dans l’extension Twitch (panneau, composant, overlay), StreamHelp n’affiche pas de publicité : Twitch n’y autorise aucun contenu publicitaire ou sponsorisé.",
+  "Conditions d’utilisation",
 ];

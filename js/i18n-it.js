@@ -239,4 +239,5 @@ export default [
   "Sì. Punti canale, abbonamenti, Bits e previsioni sono disponibili solo per Affiliati e Partner di Twitch – per questo queste aree sono in grigio nel tuo canale e spiegate chiaramente. Chat bot, overlay, avvisi follower, sondaggi, giveaway, animaletto, idee per contenuti e l’estensione Twitch funzionano normalmente.",
   "Posso mostrare pubblicità nello stream?",
   "Sì, come testo nella barra del tuo overlay OBS. Metti «Pubblicità» o «Annuncio» davanti – Twitch e la legge richiedono la dicitura. Nell’estensione Twitch (pannello, componente, overlay) StreamHelp non mostra pubblicità: Twitch lì non consente contenuti pubblicitari o sponsorizzati.",
+  "Condizioni d’uso",
 ];

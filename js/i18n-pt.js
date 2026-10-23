@@ -239,4 +239,5 @@ export default [
   "Sim. Pontos do canal, inscrições, Bits e previsões só existem para Afiliados e Parceiros da Twitch – por isso essas áreas ficam acinzentadas no seu canal e explicadas com clareza. Chatbot, overlay, alertas de seguidores, enquetes, sorteios, pet, ideias de conteúdo e a extensão da Twitch funcionam normalmente.",
   "Posso mostrar publicidade na live?",
   "Sim, como texto na faixa do seu overlay do OBS. Coloque “Publicidade” ou “Anúncio” na frente – a Twitch e a lei exigem a identificação. Na extensão da Twitch (painel, componente, overlay) o StreamHelp não mostra publicidade: a Twitch não permite conteúdo publicitário ou de patrocínio ali.",
+  "Termos de uso",
 ];
