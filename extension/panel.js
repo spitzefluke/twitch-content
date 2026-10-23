@@ -26,9 +26,13 @@
   var VIEWS = ['panel', 'mobile', 'component', 'overlay'];
   var MODE = 'panel';
   var forcedView = null; // nur Vorschau in config.html (per postMessage)
+  // Eigene Datei je Ansicht (component.html, video-overlay.html, mobile.html): <html data-view="…">.
+  // panel.html hat keins – dort entscheiden ?anchor=… und ?platform=mobile wie bisher.
+  var FILE_VIEW = VIEWS.indexOf(document.documentElement.getAttribute('data-view')) >= 0 ? document.documentElement.getAttribute('data-view') : null;
   function modeFor() {
     if (DEMO && forcedView) return forcedView;
     if (DEMO && VIEWS.indexOf(QUERY.get('mode')) >= 0) return QUERY.get('mode');
+    if (FILE_VIEW) return FILE_VIEW;
     var a = QUERY.get('anchor');
     if (MOBILE || a === 'mobile') return 'mobile';
     return a === 'video_overlay' ? 'overlay' : a === 'component' ? 'component' : 'panel';

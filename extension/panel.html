@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
-  <!-- Eine Datei für alle drei Ansichten: Panel unter dem Stream, Komponente und Overlay über dem Video.
-       Twitch hängt ?anchor=panel|component|video_overlay an. Einstellungen: config.html. Anleitung: README → „Twitch-Erweiterung“ -->
+  <!-- Panel unter dem Stream. Komponente, Overlay und Handy haben eigene Dateien (component.html, video-overlay.html,
+       mobile.html) mit eigenem Design; ohne data-view erkennt panel.js die Ansicht wie früher an ?anchor=… und ?platform=mobile.
+       Einstellungen: config.html. Anleitung: README → „Twitch-Erweiterung“ -->
   <main class="panel" id="panel" aria-live="polite">
     <header class="head">
       <span class="who"><span class="avatar" id="avatar" aria-hidden="true"></span><b class="channel" id="channel"></b></span>
