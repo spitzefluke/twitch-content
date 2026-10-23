@@ -6,6 +6,7 @@ import { forbidden, pause, subathon } from './extras-live.js';
 import { queue, quiz } from './extras-play.js';
 import { cards, tts } from './extras-fun.js';
 import { guard } from './extras-guard.js';
+import { obsWatch } from './extras-obswatch.js';
 import { giveaway } from './extras-giveaway.js';
 import { hotwords } from './extras-hotwords.js';
 import { poll } from './extras-poll.js';
@@ -24,18 +25,19 @@ export function setupExtras(ctx) {
   X.ctx = ctx;
   for (const f of EXTRAS) f.setup();
   guard.setup();
+  obsWatch.setup();
 }
 
 // Nach dem Anmelden: Daten laden (im Hintergrund, fehlende Migration → Kachel bleibt ruhig)
 export async function loadExtras() {
   X.api ??= createExtrasApi(X.ctx.state.api);
-  await Promise.all([...EXTRAS, guard].map((f) => f.load().catch((err) => console.warn(`${f.kind ?? 'guard'}:`, err))));
+  await Promise.all([...EXTRAS, guard, obsWatch].map((f) => f.load().catch((err) => console.warn(`${f.kind ?? 'guard/obs'}:`, err))));
 }
 
 export const buildExtraTile = (tile, i) => buildTile(byKind[tile.kind], tile, i);
 export const openExtra = (kind) => byKind[kind]?.open();
 export const extraIcon = (kind) => byKind[kind]?.icon;
 export const paintExtraTiles = () => EXTRAS.forEach((f) => paintTile(f));
-export const renderGuard = () => guard.render();
+export const renderGuard = () => { guard.render(); obsWatch.refresh(); };
 // Kanalpunkte-Belohnungen Vorlesen und Karten-Pack (für die Übersicht im Dashboard)
 export const listRewards = async () => (X.api ? X.api.rewards.list() : []);

@@ -350,7 +350,7 @@
 .rec-points b { color: var(--text); }
 .dash-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--text-2); }
 .dash-url { margin: 0; }
-.dash-card .obs-card-form, #guard-slot .x-guard { border: 0; background: none; padding: 0; }
+.dash-card .obs-card-form, #guard-slot .x-guard, #obswatch-slot .x-obswatch { border: 0; background: none; padding: 0; }
 #guard-slot:empty::before { content: "Raid-Schutz wird geladen …"; color: var(--muted); }
 
 .cmd-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }

@@ -465,6 +465,7 @@ async function start() {
   watchOverlayGate(); // pausiert oder „Alle neu laden“ im Admin-Bereich
   startWatchtime();
   startUsageReports();
+  startObsPing();
   if (!opt.edit) watchForUpdate();
 }
 
@@ -516,6 +517,21 @@ function startUsageReports() {
     });
     return res.ok && (await res.json().catch(() => false)) === true;
   });
+}
+
+// „OBS verbunden“ fürs Dashboard (Migration …_obs_sound_pause.sql): Nur eine echte Browserquelle in OBS
+// (window.obsstudio) meldet sich – die Vorschau auf der Webseite nicht. Ohne Meldung sehen Streamer und
+// Mods im Dashboard „OBS nicht verbunden“ und können die Soundkäufe pausieren.
+const OBS_PING_MS = 30_000;
+function startObsPing() {
+  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || !window.obsstudio || opt.edit || opt.test || REC) return;
+  const ping = () => fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/obs_ping`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...channelHeaders() },
+    body: JSON.stringify({ p_version: String(window.obsstudio.pluginVersion ?? '') }),
+  }).catch(() => {});
+  ping();
+  setInterval(ping, OBS_PING_MS);
 }
 
 function watchOverlayConfig(source) {

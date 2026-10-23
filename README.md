@@ -654,6 +654,11 @@ Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/
 Einmal nötig: `supabase/migrations/20261015000000_security_hardening.sql` im SQL Editor ausführen.
 
 - **🛡️ Raid-Schutz:** In der **Streameransicht → Content** ganz oben. Ein Klick pausiert alle Zuschauer-Aktionen – Chat-Befehle, Kanalpunkte (Glücksrad, Würfe, Vorlesen, Karten: die Punkte gehen automatisch zurück) und Aktionen auf der Seite – für 15 Minuten, 1 Stunde oder bis zum Ausschalten. Streamer und Mods können weiter alles. Der Bot sagt es im Chat an, auf der Seite erscheint ein Hinweis.
+- **🔊 OBS & Soundkäufe** (Migration `supabase/migrations/20261119000000_obs_sound_pause.sql`): Ohne OBS hört niemand die Sounds, die Zuschauer kaufen. Das Overlay meldet sich deshalb alle 30 Sekunden, wenn es als Browserquelle **in OBS** läuft (`obs_ping`; die Vorschau auf der Webseite zählt nicht). Fehlt die Meldung während des Streams, sehen Streamer und **alle freigegebenen Mods** oben auf der Seite „⚠️ OBS ist nicht verbunden“ mit dem Knopf **„Soundkäufe pausieren“** – dieselbe Karte steht im Dashboard unter **Raid-Schutz**. Pausiert:
+  - die **Twitch-Erweiterung** bietet keine Sounds und keine Bits-Käufe mehr an (Hinweis „Gerade pausiert“),
+  - **Kanalpunkte** für Sounds gibt es zurück, die Sound-Belohnungen auf Twitch werden ausgeschaltet (Würfe laufen weiter),
+  - `!sounds` antwortet „Sounds sind gerade pausiert“, der Bot sagt Pause und Ende einmal im Chat an.
+  Ist OBS wieder da, erinnert ein grüner Hinweis ans **Freigeben**. Der Notschalter gehört zu keinem Mod-Bereich – auch Mods ohne „Ärgern“ dürfen ihn schalten. Ein Bits-Kauf, der genau während des Umschaltens fertig wird, läuft trotzdem (bezahlt ist bezahlt).
 - **Content-Security-Policy** auf allen Seiten: Nur eigene Skripte laufen; die beiden Inline-Skripte sind per Hash freigegeben (`node tools/stamp-versions.mjs` schreibt die Policy mit). Die Supabase-Bibliothek liegt lokal (`js/supabase-js.js`) statt vom CDN.
 - **Kein Einbetten in fremde Seiten** (Schutz gegen Clickjacking), Referrer nur innerhalb der Seite.
 - **OBS sieht weniger:** Das Overlay (ohne Anmeldung) bekommt keine Konto-IDs oder Twitch-Einlösungs-IDs mehr.
@@ -913,6 +918,7 @@ Komponente und Overlay sieht man nur, wenn der Kanal live ist – so macht es Tw
   - **💎 Sofort gegen Bits** (Affiliate/Partner): Umschalter „Gratis“ / „💎 Sofort · 100 Bits“ – ein bezahlter Sound läuft ohne Wartezeit. Twitch zeigt den Kauf-Dialog; `twitch-ext` prüft die signierte Quittung, jede Transaktion zählt genau einmal (`core.bits_transactions`, 13 Monate).
   - **⭐ Abonnenten**: einzelne Sounds nur für Abonnenten und eine eigene, kürzere Wartezeit. Ob jemand abonniert hat, fragt `twitch-ext` bei Twitch nach (Helix, Recht `channel:read:subscriptions` des Streamers) – nicht der Browser. In der Mitspieler-Warteschlange stehen Abonnenten mit ⭐ und – wenn „Abo-Vorrang“ an ist – weiter vorn, auch wenn sie sich übers Panel anstellen.
   - Migration `supabase/migrations/20261118000000_panel_bits_subs.sql`.
+  - **Ist OBS nicht verbunden**, pausieren Streamer oder Mods die Soundkäufe (siehe **Sicherheit → OBS & Soundkäufe**) – das Panel zeigt dann „Gerade pausiert“ statt der Knöpfe.
 - **Als Nächstes** (Termin) und im Panel ein Link **zur Seite**.
 - **Sprache**: Standard „Automatisch“ – jeder Zuschauer sieht seine Twitch-Sprache (10 Sprachen, sonst Englisch). In der Konfiguration lässt sich eine feste Sprache wählen. Texte: `extension/panel-i18n.js`.
 - **Hell/Dunkel** wie Twitch beim Zuschauer, oder fest.

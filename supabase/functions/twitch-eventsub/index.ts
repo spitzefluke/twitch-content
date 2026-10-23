@@ -242,7 +242,7 @@ async function handlePrank(
     await sendChat(conn, `@${event.user_login} ${message} Deine Kanalpunkte sind zurück.`).catch((e) => console.warn(e));
   };
 
-  const { active, started, startsAt, paused } = await prankState();
+  const { active, started, startsAt, paused, soundsPaused } = await prankState();
   if (!active) {
     if (paused) return refund("Gerade ist alles kurz pausiert (Raid-Schutz).");
     const when = startsAt && !started
@@ -250,6 +250,8 @@ async function handlePrank(
       : "ist gerade pausiert.";
     return refund(`Das Ärgern ${when}`);
   }
+  // Soundkäufe pausiert (OBS nicht verbunden) – der Sound liefe ins Leere
+  if (kind === "sound" && soundsPaused) return refund("Sounds sind gerade pausiert – OBS ist nicht verbunden.");
 
   let row: Record<string, unknown> | null = null;
   let text = "";
