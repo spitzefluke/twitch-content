@@ -262,6 +262,15 @@ button.xcard:hover { transform: translateY(-3px); }
 }
 .x-guard-banner[hidden] { display: none; }
 
+/* ---------- OBS & Soundkäufe (js/extras-obswatch.js) ---------- */
+.x-obswatch-obs { margin: 0; font-weight: 600; }
+.x-obswatch.is-offline .x-obswatch-obs { color: #ffb4a8; }
+.x-obswatch.is-active { border-color: #f5a524; background: rgba(245, 165, 36, .08); }
+.x-obswatch.is-active .x-guard-state { color: #ffd38a; }
+.x-obswatch-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; background: linear-gradient(90deg, #4a3208, #6b470c); color: #fff1d6; border-bottom-color: #f5a524; }
+.x-obswatch-banner.is-ok { background: linear-gradient(90deg, #0f3d26, #145233); color: #dcffe9; border-bottom-color: #2fbf71; }
+.x-obswatch-banner .btn { background: rgba(0, 0, 0, .25); color: inherit; border: 1px solid currentColor; }
+
 /* ---------- Verlosung (js/extras-giveaway.js) ---------- */
 .gw-hero {
   position: relative; overflow: hidden; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 26px 18px 22px;

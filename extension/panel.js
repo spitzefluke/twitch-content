@@ -273,6 +273,7 @@
 
     // Sounds: Zuschauer spielen einen Sound im Stream ab (Overlay); Abklingzeit prüft der Server
     if (data.sounds && data.sounds.length) add('sounds', soundsCard(data.sounds, me));
+    else if (data.sounds_paused) add('sounds', pausedSoundsCard());
 
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
@@ -465,6 +466,13 @@
     if (anySub) c.append(el('p', 'muted hint', T('⭐ = nur für Abonnenten')));
     var m = msgEl('sound');
     if (m) c.append(m);
+    return c;
+  }
+
+  // Streamer oder Mods haben die Soundkäufe pausiert (OBS nicht verbunden) – keine Knöpfe, nur ein Hinweis
+  function pausedSoundsCard() {
+    var c = el('section', 'card');
+    c.append(el('h2', null, T('🔊 Sounds')), el('p', 'muted', '⏸️ ' + T(REASONS.paused)));
     return c;
   }
 

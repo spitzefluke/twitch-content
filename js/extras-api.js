@@ -287,6 +287,12 @@ function liveExtras({ sb, unwrap, invoke }) {
       },
     },
 
+    // ---------- OBS verbunden? Soundkäufe pausieren (…_obs_sound_pause.sql) ----------
+    obsWatch: {
+      status: () => rpc('obs_status'),
+      pause: (on) => rpc('sound_sales_pause', { p_on: on }),
+    },
+
     // ---------- Kanalpunkte (Vorlesen, Karten-Pack) ----------
     rewards: {
       list: async () => unwrap(await sb.from('stream_rewards').select('*').order('key')),
@@ -1381,6 +1387,26 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
       async set(on, minutes) {
         await requireAdmin();
         return put('site_guard', { id: 1 }, { viewer_pause: on, until: on && minutes > 0 ? new Date(Date.now() + minutes * 60000).toISOString() : null, updated_by: name() });
+      },
+    },
+
+    // Demo: OBS meldet sich nie (kein echtes OBS) – pausieren geht trotzdem
+    obsWatch: {
+      async status() {
+        await requireAdmin();
+        const p = store.get('prank_settings', {});
+        return { online: false, seen_at: null, version: '', sales_paused: !!p.sales_paused, paused_by: p.sales_paused_by ?? '', paused_at: p.sales_paused_at ?? null };
+      },
+      async pause(on) {
+        await requireAdmin();
+        const p = store.get('prank_settings', {});
+        const keep = on && p.sales_paused;
+        store.set('prank_settings', {
+          ...p, sales_paused: !!on,
+          sales_paused_by: keep ? p.sales_paused_by : on ? name() : '',
+          sales_paused_at: keep ? p.sales_paused_at : on ? now() : null,
+        });
+        return this.status();
       },
     },
 

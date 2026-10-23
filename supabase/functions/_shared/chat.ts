@@ -249,13 +249,18 @@ async function handleGiveaway(event: ChatMessage, command: string) {
 // Liefert false, wenn das Ärgern gerade aus ist: Dann darf ein eigener Befehl !sounds antworten.
 const SOUNDS_COOLDOWN_MS = 30_000;
 async function handleSoundList() {
-  const { active } = await prankState();
+  const { active, soundsPaused } = await prankState();
   if (!active) return false;
   const conn = await chatConnection();
   if (!conn) return false;
   const { data: cd } = await db.from("chat_cooldowns").select("at").eq("slot", "sounds").maybeSingle();
   if (cd && Date.now() - Date.parse(cd.at) < SOUNDS_COOLDOWN_MS) return true;
   await db.from("chat_cooldowns").upsert({ slot: "sounds", at: new Date().toISOString() }, { onConflict: await channelKey("slot") });
+  // Soundkäufe pausiert (OBS nicht verbunden, …_obs_sound_pause.sql)
+  if (soundsPaused) {
+    await sendChat(conn, "⏸️ Sounds sind gerade pausiert – OBS ist nicht verbunden. Gleich geht's weiter.");
+    return true;
+  }
 
   const list = await soundList();
   const who = (conn.display_name || "den Streamer").slice(0, 25);

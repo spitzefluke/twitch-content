@@ -10,6 +10,8 @@
 //                                     Sounds „nur für Abonnenten“ und die kürzere Abo-Wartezeit: …_panel_bits_subs.sql
 //   POST {action:"bits_sound", sound, receipt} → Sound gegen Bits: die Quittung von Twitch (transactionReceipt,
 //                                     signiert mit demselben Secret) wird geprüft, jede Transaktion zählt einmal
+// Haben Streamer oder Mods die Soundkäufe pausiert (OBS nicht verbunden, …_obs_sound_pause.sql), bietet das Panel
+// weder Sounds noch Bits an; ein Gratis-Sound bekommt reason "paused".
 // Abonnent oder nicht, fragt diese Function selbst bei Twitch nach (Helix /subscriptions mit dem Recht
 // channel:read:subscriptions des Streamers) – was der Browser des Zuschauers meldet, zählt nicht.
 // Ausweis: Header Authorization: Bearer <JWT der Twitch-Erweiterung>. Twitch signiert ihn mit dem
@@ -148,6 +150,8 @@ type Shared = {
   // sub = nur für Abonnenten. sound_bits: Bits-Produkt für „sofort, ohne Wartezeit“ (null = aus)
   sounds: { id: string; name: string; sub: boolean }[];
   sound_bits: string | null;
+  // Soundkäufe pausiert (OBS nicht verbunden, …_obs_sound_pause.sql) – dann ist sounds leer
+  sounds_paused: boolean;
 };
 type Poll = {
   status: "open" | "closed"; round: number; question: string; options: string[]; counts: number[]; total: number;
@@ -203,7 +207,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     twitchName(twitchId),
     // Zähler (…_game_packs.sql), die im Stream zu sehen sind
     db.from("counters").select("emoji, label, value, command").eq("show", true).order("position").limit(8),
-    panelSounds().catch(() => ({ list: [], bits: null })),
+    panelSounds().catch(() => ({ list: [], bits: null, paused: false })),
   ]);
 
   // Game: gerade live → Standard-Game → erstes aktives
@@ -263,6 +267,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
         ({ emoji: c.emoji, label: c.label, value: c.value, command: c.command })),
     sounds: sounds.list,
     sound_bits: sounds.bits,
+    sounds_paused: sounds.paused,
   };
   cache.set(key, { at: Date.now(), data });
   return data;
@@ -380,21 +385,24 @@ async function isSubscriber(userId: string): Promise<boolean> {
 // ID im Panel: eingebauter Sound wie „gong“, hochgeladener Sound als „c:<uuid>“
 const soundId = (s: Awaited<ReturnType<typeof soundList>>[number]) => s.board ? s.board.id : `c:${s.custom!.id}`;
 
-type SoundCfg = { panel_sounds: boolean; panel_sub_sounds?: string[]; panel_bits?: boolean; panel_bits_sku?: string };
+type SoundCfg = {
+  panel_sounds: boolean; panel_sub_sounds?: string[]; panel_bits?: boolean; panel_bits_sku?: string; sales_paused?: boolean;
+};
 async function soundCfg(): Promise<SoundCfg | null> {
-  // panel_sub_sounds/panel_bits kommen mit …_panel_bits_subs.sql – fehlen sie, wie bisher
-  const full = await db.from("prank_settings").select("panel_sounds, panel_sub_sounds, panel_bits, panel_bits_sku").eq("id", 1).maybeSingle();
-  if (!full.error) return full.data as SoundCfg | null;
-  const { data } = await db.from("prank_settings").select("panel_sounds").eq("id", 1).maybeSingle();
+  // Alle Spalten: panel_sub_sounds/panel_bits (…_panel_bits_subs.sql) und sales_paused (…_obs_sound_pause.sql)
+  // fehlen bei älteren Datenbanken einfach
+  const { data } = await db.from("prank_settings").select("*").eq("id", 1).maybeSingle();
   return data as SoundCfg | null;
 }
 
 async function panelSounds() {
   const cfg = await soundCfg();
-  if (!cfg?.panel_sounds) return { list: [], bits: null };
+  if (!cfg?.panel_sounds) return { list: [], bits: null, paused: false };
+  // Soundkäufe pausiert (OBS nicht verbunden): keine Sounds und keine Bits-Käufe anbieten
+  if (cfg.sales_paused) return { list: [], bits: null, paused: true };
   const subOnly = new Set(cfg.panel_sub_sounds ?? []);
   const list = (await soundList()).slice(0, 20).map((s) => ({ id: soundId(s), name: s.name.slice(0, 40), sub: subOnly.has(soundId(s)) }));
-  return { list, bits: cfg.panel_bits && BITS_SKUS.has(cfg.panel_bits_sku ?? "") ? cfg.panel_bits_sku! : null };
+  return { list, bits: cfg.panel_bits && BITS_SKUS.has(cfg.panel_bits_sku ?? "") ? cfg.panel_bits_sku! : null, paused: false };
 }
 
 // Nur Sounds aus der eigenen Liste – nie einen Pfad oder Namen vom Zuschauer übernehmen
@@ -413,6 +421,7 @@ async function playSound(claims: Claims, id: unknown) {
   const sound = await findSound(id);
   if (!sound) return { ok: false, reason: "sound" };
   const cfg = await soundCfg();
+  if (cfg?.sales_paused) return { ok: false, reason: "paused" };
   const sub = await isSubscriber(claims.user_id);
   if ((cfg?.panel_sub_sounds ?? []).includes(soundId(sound)) && !sub) return { ok: false, reason: "sub" };
   const { data: res, error } = await db.rpc("panel_sound_play", {

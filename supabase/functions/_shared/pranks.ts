@@ -184,20 +184,22 @@ export async function prankState() {
   ]);
   const startsAt = tile?.target_at ? Date.parse(tile.target_at) : null;
   const started = startsAt === null || startsAt <= Date.now();
-  return { cfg, tile, startsAt, started, paused: paused === true, active: !!cfg?.enabled && !!tile && started && paused !== true };
+  // Soundkäufe pausiert (OBS nicht verbunden, …_obs_sound_pause.sql): nur Sounds, Würfe laufen weiter
+  const soundsPaused = cfg?.sales_paused === true;
+  return { cfg, tile, startsAt, started, paused: paused === true, soundsPaused, active: !!cfg?.enabled && !!tile && started && paused !== true };
 }
 
 // Legt die beiden Belohnungen an oder bringt sie auf den Stand der Einstellungen
 // (Kosten, Abklingzeit, an/aus). Merkt sich die IDs in twitch_connection.
 export async function syncPrankRewards(conn: Connection) {
-  const { cfg, active, started, startsAt } = await prankState();
+  const { cfg, active, started, startsAt, soundsPaused } = await prankState();
   if (!cfg) throw new Error("In der Datenbank fehlt das Ärgern (Migration …_pranks.sql).");
   const REWARDS = rewards(conn.display_name);
   const cooldown = Math.max(0, Number(cfg.cooldown_seconds) || 0);
   const settingsFor = (kind: "throw" | "sound") => ({
     ...REWARDS[kind],
     cost: kind === "throw" ? cfg.throw_cost ?? 500 : cfg.sound_cost ?? 300,
-    is_enabled: active,
+    is_enabled: kind === "sound" ? active && !soundsPaused : active,
     is_user_input_required: true,
     should_redemptions_skip_request_queue: false,
     is_global_cooldown_enabled: cooldown > 0,
@@ -234,8 +236,11 @@ export async function syncPrankRewards(conn: Connection) {
       prank_sound_reward_id: ids.sound,
       prank_rewards_active: active,
     }).eq("id", 1);
-    const soundRewards = await syncSoundRewards(conn, list.data, active, cooldown, Object.values(ids));
-    return { active, started, starts_at: startsAt ? new Date(startsAt).toISOString() : null, ...ids, sound_rewards: soundRewards };
+    const soundRewards = await syncSoundRewards(conn, list.data, active && !soundsPaused, cooldown, Object.values(ids));
+    return {
+      active, started, starts_at: startsAt ? new Date(startsAt).toISOString() : null, sounds_paused: soundsPaused, ...ids,
+      sound_rewards: soundRewards,
+    };
   } catch (e) {
     if (e instanceof HelixError) {
       if (e.status === 403) throw new CodedError("not_affiliate", "Kanalpunkte gibt es nur für Twitch-Affiliates und Partner.");
