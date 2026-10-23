@@ -910,6 +910,9 @@ Komponente und Overlay sieht man nur, wenn der Kanal live ist – so macht es Tw
 - **🦖 Haustier füttern**: dieselben Regeln wie `!füttern` im Chat (jeder alle 10 Minuten, insgesamt höchstens alle 15 Sekunden, Raid-Schutz).
 - **🔢 Zähler**, **🍀 Verlosung** (wie `!mitmachen`, auch „nur Follower“) und **🎮 Mitspieler-Warteschlange** (mit Epic-Name).
 - **🔊 Sounds** (neu): Zuschauer tippen auf einen Sound, das OBS-Overlay spielt ihn ab – **ohne Kanalpunkte**, also auch ohne Affiliate. Standard: aus. Siehe unten.
+  - **💎 Sofort gegen Bits** (Affiliate/Partner): Umschalter „Gratis“ / „💎 Sofort · 100 Bits“ – ein bezahlter Sound läuft ohne Wartezeit. Twitch zeigt den Kauf-Dialog; `twitch-ext` prüft die signierte Quittung, jede Transaktion zählt genau einmal (`core.bits_transactions`, 13 Monate).
+  - **⭐ Abonnenten**: einzelne Sounds nur für Abonnenten und eine eigene, kürzere Wartezeit. Ob jemand abonniert hat, fragt `twitch-ext` bei Twitch nach (Helix, Recht `channel:read:subscriptions` des Streamers) – nicht der Browser. In der Mitspieler-Warteschlange stehen Abonnenten mit ⭐ und – wenn „Abo-Vorrang“ an ist – weiter vorn, auch wenn sie sich übers Panel anstellen.
+  - Migration `supabase/migrations/20261118000000_panel_bits_subs.sql`.
 - **Als Nächstes** (Termin) und im Panel ein Link **zur Seite**.
 - **Sprache**: Standard „Automatisch“ – jeder Zuschauer sieht seine Twitch-Sprache (10 Sprachen, sonst Englisch). In der Konfiguration lässt sich eine feste Sprache wählen. Texte: `extension/panel-i18n.js`.
 - **Hell/Dunkel** wie Twitch beim Zuschauer, oder fest.
@@ -922,7 +925,7 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 
 **Vorher in Supabase:**
 
-1. Migration `supabase/migrations/20261114000000_panel_sounds.sql` im SQL Editor ausführen (für die Sounds; alles andere läuft auch ohne).
+1. Migrationen `supabase/migrations/20261114000000_panel_sounds.sql` und `20261118000000_panel_bits_subs.sql` im SQL Editor ausführen (für Sounds, Bits und Abo-Sounds; alles andere läuft auch ohne).
 2. Edge Function `twitch-ext` neu deployen (macht der GitHub-Workflow „Deploy Edge Functions“ nach dem Merge, sonst `npx supabase functions deploy twitch-ext`).
 
 **In der Twitch-Entwicklerkonsole** ([dev.twitch.tv/console/extensions](https://dev.twitch.tv/console/extensions)):
@@ -940,6 +943,17 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
    - **Konfigurationsdienst**: „Konfigurationsdienst der Erweiterung verwenden“ wählen – ohne ihn speichert `config.html` nichts. **Erforderliche Konfiguration** leer lassen (die Erweiterung läuft auch ohne Einstellungen).
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
    - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
+5b. **Monetarisierung** (für Sounds gegen Bits und Abo-Extras):
+   - **Onboarding** abschließen (einmal, Twitch fragt nach Steuer- und Auszahlungsdaten).
+   - **Bits-Unterstützung: „Bits aktiviert“**. Unter **Bits-Produkte verwalten** vier Produkte anlegen (SKU genau so, „In Entwicklung“ zum Testen an, vor dem Einreichen aus; „Übertragen“ aus):
+     | SKU | Name | Bits |
+     |---|---|---|
+     | `sound_50` | Sound sofort | 50 |
+     | `sound_100` | Sound sofort | 100 |
+     | `sound_250` | Sound sofort | 250 |
+     | `sound_500` | Sound sofort | 500 |
+   - **Abonnement-Unterstützung: „aktiviert“** (Abo-Sounds und Abo-Vorrang).
+   - Der Streamer wählt den Preis im StreamHelp-Dashboard (Ärgere den Streamer → 💎 Sofort gegen Bits) und schaltet Bits für die Erweiterung im Creator-Dashboard ein.
 6. **Erweiterungs-Secret** (nur beim ersten Mal): in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets). Nicht ins Repo, nicht in den Chat.
 7. **Dateien hochladen**: diese zwölf Dateien aus `extension/` direkt in ein ZIP (ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner):
    `panel.html`, `component.html`, `video-overlay.html`, `mobile.html`, `panel.css`, `panel.js`, `panel-i18n.js`, `ext-config.js`, `config.html`, `config.css`, `config.js`, `favicon.svg`.
@@ -956,7 +970,7 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
     3. **Module** anhaken, **Aussehen** (Farbschema, kompakt) und **Sprache** (Automatisch oder fest).
     4. **Speichern** – Zuschauer sehen es nach wenigen Sekunden, ohne neu zu laden.
 12. **Aktivieren** (Pfeil neben der Erweiterung): als **Panel**, als **Komponente** (dann auf dem Video platzieren) oder als **Overlay**. Twitch erlaubt pro Kanal höchstens ein Overlay und zwei Komponenten.
-13. **Sounds übers Panel** (optional): auf der StreamHelp-Seite im Dashboard → Kachel **„Ärgere den Streamer“** → „🔊 Sounds über die Twitch-Erweiterung“ einschalten und die Bremse wählen (pro Zuschauer höchstens alle … / Abstand zwischen zwei Sounds). Dazu in der Konfiguration das Modul **Sounds abspielen** anhaken. Gespielt wird über das OBS-Overlay (im OBS-Fenster muss die Ebene „Würfe & Sounds“ an sein). Gezeigt werden die ersten 20 Sounds der Liste (eingebaute zuerst, dann hochgeladene).
+13. **Sounds übers Panel** (optional): auf der StreamHelp-Seite im Dashboard → Kachel **„Ärgere den Streamer“** → „🔊 Sounds über die Twitch-Erweiterung“ einschalten und die Bremse wählen (pro Zuschauer höchstens alle … / Abstand zwischen zwei Sounds). Darunter: **💎 Sofort gegen Bits** (an/aus, Preis 50–500 Bits; dazu im Creator-Dashboard → Erweiterungen → StreamHelp Bits erlauben) und **⭐ Abonnenten** (eigene Wartezeit, Haken je Sound = nur für Abonnenten). Dazu in der Konfiguration das Modul **Sounds abspielen** anhaken. Gespielt wird über das OBS-Overlay (im OBS-Fenster muss die Ebene „Würfe & Sounds“ an sein). Gezeigt werden die ersten 20 Sounds der Liste (eingebaute zuerst, dann hochgeladene).
 
 **Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html?demo` zeigt Beispieldaten; `component.html?demo`, `video-overlay.html?demo` bzw. `mobile.html?demo` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 

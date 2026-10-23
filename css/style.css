@@ -984,6 +984,12 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .prank-panel legend { padding: 0 6px; font-size: 15px; }
 .prank-panel:disabled { opacity: .6; }
 .prank-direct-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow: auto; }
+.prank-panel-extra { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.prank-h4 { margin: 4px 0 0; font-size: 15px; }
+.prank-h4 small { font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 6px; }
+.prank-sub-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 12px; max-height: 260px; overflow: auto; }
+.prank-sub-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.prank-sub-list input { accent-color: var(--amber, #ffb81c); }
 .prank-direct-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 4px 8px; }
 .prank-direct-name { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; font-size: 14px; }
 .prank-direct-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

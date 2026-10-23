@@ -110,6 +110,8 @@
     cooldown: 'Gerade im Abklingen – gleich wieder.',
     off: 'Sounds sind gerade aus.',
     sound: 'Diesen Sound gibt es nicht mehr.',
+    sub: 'Nur für Abonnenten.',
+    receipt: 'Die Zahlung ließ sich nicht bestätigen – bitte melde dich beim Streamer.',
   };
 
   var logoImg = document.querySelector('.logo img');
@@ -150,7 +152,7 @@
   }
 
   function act(kind, extra) {
-    if (!DEMO && data && data.me && !data.me.shared) {
+    if (!DEMO && kind !== 'bits_sound' && data && data.me && !data.me.shared) {
       // Twitch-ID freigeben lassen, danach automatisch weiter
       pending = { kind: kind, extra: extra };
       msgs[kind] = { text: T(REASONS.share) };
@@ -166,6 +168,7 @@
       busy[kind] = false;
       if (res.ok) {
         msgs[kind] = { ok: true, text: okText(kind, res) };
+        if (kind === 'bits_sound') { msgs.sound = msgs[kind]; delete msgs[kind]; }
         // Umfrage: Stand sofort zeigen, nicht erst nach dem Neuladen
         if (kind === 'vote' && data && data.poll && res.counts) {
           data.poll.counts = res.counts;
@@ -178,7 +181,7 @@
       } else if (res.reason === 'cooldown' && res.wait && kind === 'sound') {
         msgs[kind] = { error: true, text: T('Nächster Sound in {n}.', { n: span(res.wait) }) };
       } else {
-        msgs[kind] = { error: true, text: T(REASONS[res.reason] || 'Hat nicht geklappt.') };
+        msgs[kind === 'bits_sound' ? 'sound' : kind] = { error: true, text: T(REASONS[res.reason] || 'Hat nicht geklappt.') };
       }
       load();
     }).catch(function (e) {
@@ -193,6 +196,7 @@
     if (kind === 'vote') return T('✓ Deine Stimme zählt.');
     if (kind === 'feed') return T('😋 Danke, das hat geschmeckt!');
     if (kind === 'sound') return T('🔊 Läuft im Stream!');
+    if (kind === 'bits_sound') return T('💎 Danke! Läuft sofort im Stream.');
     return res.picked ? T('🎮 Du bist dran!') : T('🎮 Du stehst auf Platz {n}.', { n: res.position });
   }
 
@@ -268,7 +272,7 @@
     if (data.counters && data.counters.length) add('counters', countersCard(data.counters));
 
     // Sounds: Zuschauer spielen einen Sound im Stream ab (Overlay); Abklingzeit prüft der Server
-    if (data.sounds && data.sounds.length) add('sounds', soundsCard(data.sounds));
+    if (data.sounds && data.sounds.length) add('sounds', soundsCard(data.sounds, me));
 
     // Verlosung
     if (data.giveaway && data.giveaway.open) {
@@ -297,6 +301,8 @@
       var q = el('section', 'card');
       q.append(el('h2', null, T('🎮 Mitspielen')));
       q.append(el('p', 'muted', T('{n} warten', { n: data.queue.waiting }) + (data.queue.note ? ' · ' + data.queue.note : '')));
+      // Abonnenten mit Abo-Vorrang (prüft der Server bei Twitch)
+      if (me.sub && data.queue.sub_first) q.append(el('p', 'muted', T('⭐ Als Abonnent stehst du weiter vorn.')));
       if (typeof me.queue === 'number' && me.queue > 0) {
         q.append(el('p', 'msg is-ok', T('Du stehst auf Platz {n}.', { n: me.queue })));
       } else {
@@ -421,21 +427,90 @@
     return frag;
   }
 
-  function soundsCard(list) {
+  // Sounds: gratis (mit Wartezeit) oder – wenn der Streamer es anbietet und Twitch Bits erlaubt – sofort gegen Bits.
+  // ⭐ = nur für Abonnenten (prüft der Server bei Twitch).
+  function soundsCard(list, me) {
     var c = el('section', 'card');
     c.append(el('h2', null, T('🔊 Sounds')));
+    var product = bitsProduct();
+    if (!product) soundMode = 'free';
+    if (product) {
+      var modes = el('div', 'sound-modes');
+      modes.setAttribute('role', 'group');
+      [['free', T('Gratis')], ['bits', T('💎 Sofort · {n} Bits', { n: product.cost.amount })]].forEach(function (m) {
+        var b = el('button', 'sound-mode' + (soundMode === m[0] ? ' is-on' : ''), m[1]);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(soundMode === m[0]));
+        b.addEventListener('click', function () { soundMode = m[0]; render(); });
+        modes.append(b);
+      });
+      c.append(modes);
+    }
     var box = el('div', 'sounds');
+    var anySub = false;
     list.slice(0, 20).forEach(function (s) {
-      var b = el('button', 'btn', String(s.name || '').slice(0, 24));
+      var locked = s.sub && me.sub === false;
+      if (s.sub) anySub = true;
+      var b = el('button', 'btn' + (s.sub ? ' is-sub' : '') + (locked ? ' is-locked' : ''), (s.sub ? '⭐ ' : '') + String(s.name || '').slice(0, 24));
       b.type = 'button';
-      b.disabled = !!busy.sound;
-      b.addEventListener('click', function () { act('sound', { sound: s.id }); });
+      b.disabled = !!busy.sound || !!busy.bits_sound;
+      b.addEventListener('click', function () {
+        if (locked) { msgs.sound = { error: true, text: T(REASONS.sub) }; render(); return; }
+        if (soundMode === 'bits' && product) buySound(s.id, product.sku);
+        else act('sound', { sound: s.id });
+      });
       box.append(b);
     });
-    c.append(box, el('p', 'muted hint', T('Tippe auf einen Sound – er läuft im Stream.')));
+    c.append(box, el('p', 'muted hint', soundMode === 'bits' ? T('Tippe auf einen Sound – er läuft sofort, ohne Wartezeit.') : T('Tippe auf einen Sound – er läuft im Stream.')));
+    if (anySub) c.append(el('p', 'muted hint', T('⭐ = nur für Abonnenten')));
     var m = msgEl('sound');
     if (m) c.append(m);
     return c;
+  }
+
+  // ---------- Bits (Twitch.ext.bits) ----------
+  // Produkte legt der Entwickler in der Twitch-Konsole an (sound_50 … sound_500), der Streamer wählt eins.
+  // Twitch zeigt den Kauf-Dialog; danach kommt eine signierte Quittung, die twitch-ext prüft.
+  var soundMode = 'free';
+  var bitsProducts = DEMO ? [{ sku: 'sound_100', cost: { amount: 100, type: 'bits' } }] : [];
+  var bitsPending = null; // Sound, der gerade gekauft wird
+  function bitsProduct() {
+    var sku = data && data.sound_bits;
+    if (!sku) return null;
+    if (!DEMO && !(ext.features && ext.features.isBitsEnabled)) return null;
+    for (var i = 0; i < bitsProducts.length; i++) if (bitsProducts[i].sku === sku) return bitsProducts[i];
+    return null;
+  }
+  function buySound(id, sku) {
+    if (DEMO) { act('bits_sound', { sound: id, receipt: 'demo' }); return; }
+    bitsPending = id;
+    msgs.sound = { text: '…' };
+    render();
+    ext.bits.useBits(sku);
+  }
+  function setupBits() {
+    if (!ext.bits || !ext.features) return;
+    var fetchProducts = function () {
+      if (!ext.features.isBitsEnabled) { bitsProducts = []; if (data) render(); return; }
+      ext.bits.getProducts().then(function (list) { bitsProducts = list || []; if (data) render(); }).catch(function () { bitsProducts = []; });
+    };
+    fetchProducts();
+    if (ext.features.onChanged) ext.features.onChanged(function (changed) { if (changed.indexOf('isBitsEnabled') >= 0) fetchProducts(); });
+    ext.bits.onTransactionComplete(function (tx) {
+      // Nur der eigene Kauf (Twitch meldet auch Käufe anderer Zuschauer)
+      if (!tx || String(tx.initiator).toLowerCase() !== 'current_user' || !bitsPending) return;
+      var id = bitsPending;
+      bitsPending = null;
+      act('bits_sound', { sound: id, receipt: tx.transactionReceipt });
+    });
+    if (ext.bits.onTransactionCancelled) {
+      ext.bits.onTransactionCancelled(function () {
+        if (!bitsPending) return;
+        bitsPending = null;
+        msgs.sound = { error: true, text: T('Abgebrochen – es wurden keine Bits abgebucht.') };
+        render();
+      });
+    }
   }
 
   function pollCard(poll, me) {
@@ -583,6 +658,7 @@
       setTimeout(function () { act(p.kind, p.extra); }, 300);
     }
   });
+  setupBits();
   ext.onContext(function (ctx) {
     var relang = false;
     if (ctx && ctx.language && ctx.language !== viewerLang) { viewerLang = ctx.language; relang = cfg.lang === 'auto'; }
@@ -615,12 +691,13 @@
       placeholder: false,
       next: { title: 'Subathon', at: new Date(Date.now() + 2 * 86400000).toISOString() },
       giveaway: { open: true, prize: T('Fortnite-Skin nach Wahl'), command: '!mitmachen', followers_only: true, entries: 12, round: 1 },
-      queue: { open: true, waiting: 4, note: T('Squads ab 20 Uhr') },
+      queue: { open: true, waiting: 4, note: T('Squads ab 20 Uhr'), sub_first: true },
       poll: { status: 'open', round: 1, question: T('Was spielen wir als Nächstes?'), options: ['Fortnite', 'Minecraft', 'Just Chatting'], counts: [7, 4, 2], total: 13, ends_at: new Date(Date.now() + 5 * 60000).toISOString(), chat: true },
       pet: { name: 'Rexi', species: 'dino', stage: 'adult', command: '!feed', fed_count: 128, last_fed_by: 'Mia', last_fed_at: new Date(Date.now() - 60 * 60000).toISOString(), hungry_after: 45 },
       counters: [{ emoji: '💀', label: T('Tode'), value: 17, command: 'deaths' }, { emoji: '🔫', label: 'Kills', value: 42, command: 'kills' }, { emoji: '👑', label: 'Wins', value: 3, command: 'wins' }],
-      sounds: ['Airhorn', 'Sad violin', 'Gong', 'Whistle', 'Drumroll', 'Applause'].map(function (n, i) { return { id: 's' + i, name: n }; }),
-      me: { shared: true, giveaway: false, queue: null, epic: '', vote: null, feed_wait: 0 },
+      sounds: ['Airhorn', 'Sad violin', 'Gong', 'Whistle', 'Drumroll', 'Applause'].map(function (n, i) { return { id: 's' + i, name: n, sub: i >= 4 }; }),
+      sound_bits: 'sound_100',
+      me: { shared: true, giveaway: false, queue: null, epic: '', vote: null, feed_wait: 0, sub: false },
     });
     var reply;
     if (action === 'vote') {
@@ -640,6 +717,9 @@
         reply = { ok: true, fed_count: store.pet.fed_count };
       }
     } else if (action === 'sound') {
+      var snd = store.sounds.filter(function (x) { return x.id === extra.sound; })[0];
+      reply = snd && snd.sub && !store.me.sub ? { ok: false, reason: 'sub' } : { ok: true };
+    } else if (action === 'bits_sound') {
       reply = { ok: true };
     } else if (action === 'giveaway') {
       store.me.giveaway = true;

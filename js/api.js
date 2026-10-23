@@ -356,8 +356,11 @@ async function createSupabaseApi() {
     // Fehlt die Migration …_pranks.sql, schlägt getPrankSettings fehl und
     // app.js zeigt statt der Aktionen einen Hinweis.
     async getPrankSettings() {
-      // throw_cost/sound_cost kamen mit …_channel_points.sql, panel_sound* mit …_panel_sounds.sql –
-      // fehlen sie noch, trotzdem laden
+      // throw_cost/sound_cost kamen mit …_channel_points.sql, panel_sound* mit …_panel_sounds.sql,
+      // Bits und Abo-Sounds mit …_panel_bits_subs.sql – fehlen sie noch, trotzdem laden
+      const all = await sb.from('prank_settings')
+        .select('enabled, cooldown_seconds, allow_uploads, throw_cost, sound_cost, panel_sounds, panel_sound_cooldown, panel_sound_gap, panel_sub_sounds, panel_sub_cooldown, panel_bits, panel_bits_sku').eq('id', 1).single();
+      if (!all.error) return all.data;
       const full = await sb.from('prank_settings')
         .select('enabled, cooldown_seconds, allow_uploads, throw_cost, sound_cost, panel_sounds, panel_sound_cooldown, panel_sound_gap').eq('id', 1).single();
       if (!full.error) return full.data;
@@ -1494,7 +1497,8 @@ function createLocalApi() {
     async getPrankSettings() {
       return {
         enabled: true, cooldown_seconds: 20, allow_uploads: true, throw_cost: 500, sound_cost: 300,
-        panel_sounds: false, panel_sound_cooldown: 120, panel_sound_gap: 15, ...store.get('prank_settings', {}),
+        panel_sounds: false, panel_sound_cooldown: 120, panel_sound_gap: 15,
+        panel_sub_sounds: [], panel_sub_cooldown: 30, panel_bits: false, panel_bits_sku: 'sound_100', ...store.get('prank_settings', {}),
       };
     },
     async syncPrankRewards() {

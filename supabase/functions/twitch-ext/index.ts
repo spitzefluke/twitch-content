@@ -6,7 +6,12 @@
 //   POST {action:"vote", choice}    → bei der laufenden Umfrage abstimmen (1–5, ändern geht)
 //   POST {action:"feed"}            → das Haustier füttern (gleiche Abklingzeiten wie !füttern im Chat)
 //   POST {action:"sound", sound}    → einen Sound im Stream abspielen (nur wenn der Streamer „Sounds übers Panel“
-//                                     eingeschaltet hat; Abklingzeiten prüft panel_sound_play, …_panel_sounds.sql)
+//                                     eingeschaltet hat; Abklingzeiten prüft panel_sound_play, …_panel_sounds.sql).
+//                                     Sounds „nur für Abonnenten“ und die kürzere Abo-Wartezeit: …_panel_bits_subs.sql
+//   POST {action:"bits_sound", sound, receipt} → Sound gegen Bits: die Quittung von Twitch (transactionReceipt,
+//                                     signiert mit demselben Secret) wird geprüft, jede Transaktion zählt einmal
+// Abonnent oder nicht, fragt diese Function selbst bei Twitch nach (Helix /subscriptions mit dem Recht
+// channel:read:subscriptions des Streamers) – was der Browser des Zuschauers meldet, zählt nicht.
 // Ausweis: Header Authorization: Bearer <JWT der Twitch-Erweiterung>. Twitch signiert ihn mit dem
 // Extension-Secret (Supabase-Secret EXTENSION_SECRET, base64). Er nennt den Kanal (channel_id) und –
 // wenn der Zuschauer seine Twitch-ID freigegeben hat – den Zuschauer (user_id). Mitmachen geht nur damit.
@@ -39,6 +44,13 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 type Claims = { exp: number; channel_id: string; user_id?: string; opaque_user_id?: string; role?: string };
+// Quittung einer Bits-Transaktion (Twitch.ext.bits.onTransactionComplete → transactionReceipt)
+type Receipt = {
+  exp: number; topic?: string;
+  data?: { transactionId?: string; userId?: string; product?: { sku?: string; cost?: { amount?: number; type?: string } } };
+};
+// Bits-Produkte der Erweiterung (in der Twitch-Entwicklerkonsole angelegt, README → Twitch-Erweiterung)
+const BITS_SKUS = new Set(["sound_50", "sound_100", "sound_250", "sound_500"]);
 
 // ---------- Ausweis der Erweiterung prüfen (JWT, HS256) ----------
 const enc = new TextEncoder();
@@ -51,22 +63,27 @@ const extKey = () =>
     { name: "HMAC", hash: "SHA-256" }, false, ["verify"],
   );
 
-async function verify(req: Request): Promise<Claims | null> {
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+// Ausweis und Bits-Quittung sind beide JWTs mit dem Extension-Secret
+async function verifyJwt<T extends { exp: number }>(token: string): Promise<T | null> {
   const [h, p, s] = token.split(".");
   if (!h || !p || !s) return null;
   try {
     const ok = await crypto.subtle.verify("HMAC", await extKey(), fromB64url(s), enc.encode(`${h}.${p}`));
     if (!ok) return null;
     const header = JSON.parse(new TextDecoder().decode(fromB64url(h)));
-    const claims = JSON.parse(new TextDecoder().decode(fromB64url(p))) as Claims;
-    if (header.alg !== "HS256" || typeof claims.exp !== "number" || claims.exp * 1000 < Date.now()) return null;
-    if (!/^\d{1,20}$/.test(String(claims.channel_id ?? ""))) return null;
-    if (claims.user_id && !/^\d{1,20}$/.test(String(claims.user_id))) delete claims.user_id;
-    return claims;
+    const payload = JSON.parse(new TextDecoder().decode(fromB64url(p))) as T;
+    if (header.alg !== "HS256" || typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) return null;
+    return payload;
   } catch {
     return null;
   }
+}
+
+async function verify(req: Request): Promise<Claims | null> {
+  const claims = await verifyJwt<Claims>((req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, ""));
+  if (!claims || !/^\d{1,20}$/.test(String(claims.channel_id ?? ""))) return null;
+  if (claims.user_id && !/^\d{1,20}$/.test(String(claims.user_id))) delete claims.user_id;
+  return claims;
 }
 
 Deno.serve(async (req) => {
@@ -80,7 +97,7 @@ Deno.serve(async (req) => {
   // Rate-Limit je Zuschauer (opaque_user_id gibt Twitch auch ohne freigegebene ID): Stand abrufen
   // 30× pro Minute, Mitmachen 6× pro Minute – genug für echte Klicks, zu wenig für Skripte.
   const viewer = claims.opaque_user_id ?? claims.user_id ?? "anon";
-  const join = ["giveaway", "queue", "vote", "feed", "sound"].includes(body.action);
+  const join = ["giveaway", "queue", "vote", "feed", "sound", "bits_sound"].includes(body.action);
   if (!(await rateLimit(`ext:${join ? "join" : "state"}:${claims.channel_id}:${viewer}`, join ? 6 : 30))) {
     return json({ error: "rate", message: "Zu viele Klicks – kurz warten." }, 429);
   }
@@ -97,6 +114,7 @@ Deno.serve(async (req) => {
         if (body.action === "vote") return await vote(claims, body.choice);
         if (body.action === "feed") return await feed(claims);
         if (body.action === "sound") return await playSound(claims, body.sound);
+        if (body.action === "bits_sound") return await bitsSound(claims, body.sound, body.receipt);
         return null;
       };
       const result = await run();
@@ -122,12 +140,14 @@ type Shared = {
   placeholder: boolean;
   next: { title: string; at: string } | null;
   giveaway: { open: boolean; prize: string; command: string; followers_only: boolean; entries: number; round: number } | null;
-  queue: { open: boolean; waiting: number; note: string } | null;
+  queue: { open: boolean; waiting: number; note: string; sub_first: boolean } | null;
   poll: Poll | null;
   pet: Pet | null;
   counters: { emoji: string; label: string; value: number; command: string | null }[];
-  // Sounds, die Zuschauer im Panel abspielen dürfen (leer, solange der Streamer es nicht eingeschaltet hat)
-  sounds: { id: string; name: string }[];
+  // Sounds, die Zuschauer im Panel abspielen dürfen (leer, solange der Streamer es nicht eingeschaltet hat);
+  // sub = nur für Abonnenten. sound_bits: Bits-Produkt für „sofort, ohne Wartezeit“ (null = aus)
+  sounds: { id: string; name: string; sub: boolean }[];
+  sound_bits: string | null;
 };
 type Poll = {
   status: "open" | "closed"; round: number; question: string; options: string[]; counts: number[]; total: number;
@@ -174,7 +194,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     db.from("stream_games").select("active, current, live_game, live_category, live_at").eq("id", 1).maybeSingle(),
     db.from("tiles").select("kind, title, description, target_at").order("position"),
     db.from("giveaway").select("status, prize, command, followers_only, entries, round").eq("id", 1).maybeSingle(),
-    db.from("queue_settings").select("open, note").eq("id", 1).maybeSingle(),
+    db.from("queue_settings").select("open, note, sub_priority").eq("id", 1).maybeSingle(),
     db.from("queue_entries").select("id", { count: "exact", head: true }).eq("status", "waiting"),
     // Umfrage (…_polls.sql) und Haustier – fehlt die Tabelle, bleibt der Teil einfach weg
     db.from("polls").select("status, round, question, options, counts, total, ends_at, chat_vote").eq("id", 1).maybeSingle(),
@@ -183,7 +203,7 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     twitchName(twitchId),
     // Zähler (…_game_packs.sql), die im Stream zu sehen sind
     db.from("counters").select("emoji, label, value, command").eq("show", true).order("position").limit(8),
-    panelSounds().catch(() => []),
+    panelSounds().catch(() => ({ list: [], bits: null })),
   ]);
 
   // Game: gerade live → Standard-Game → erstes aktives
@@ -220,7 +240,9 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
     giveaway: giveaway.data && !giveaway.error
       ? { open: giveaway.data.status === "open", prize: giveaway.data.prize ?? "", command: giveaway.data.command ?? "", followers_only: !!giveaway.data.followers_only, entries: giveaway.data.entries ?? 0, round: giveaway.data.round ?? 0 }
       : null,
-    queue: queue.data && !queue.error ? { open: !!queue.data.open, waiting: waiting.count ?? 0, note: queue.data.note ?? "" } : null,
+    queue: queue.data && !queue.error
+      ? { open: !!queue.data.open, waiting: waiting.count ?? 0, note: queue.data.note ?? "", sub_first: !!queue.data.sub_priority }
+      : null,
     poll: pl && pollTile && (pl.status === "open" || pl.status === "closed") && (pl.options ?? []).length
       ? {
         status: pl.status, round: pl.round ?? 0, question: pl.question ?? "", options: pl.options ?? [],
@@ -239,7 +261,8 @@ async function shared(channelId: string | null, twitchId: string): Promise<Share
       ? []
       : (counters.data ?? []).map((c: { emoji: string; label: string; value: number; command: string | null }) =>
         ({ emoji: c.emoji, label: c.label, value: c.value, command: c.command })),
-    sounds,
+    sounds: sounds.list,
+    sound_bits: sounds.bits,
   };
   cache.set(key, { at: Date.now(), data });
   return data;
@@ -249,6 +272,7 @@ async function state(channelId: string | null, claims: Claims) {
   const data = await shared(channelId, claims.channel_id);
   const me: {
     shared: boolean; giveaway?: boolean; queue?: number | null; epic?: string | null; vote?: number | null; feed_wait?: number;
+    sub?: boolean;
   } = { shared: !!claims.user_id };
   if (claims.user_id) {
     const key = `tw:${claims.user_id}`;
@@ -259,6 +283,8 @@ async function state(channelId: string | null, claims: Claims) {
       data.poll ? db.rpc("poll_choice", { p_key: key }) : null,
       data.pet ? feedWait(claims.user_id).catch(() => 0) : 0,
     ]);
+    // Abo nur nachfragen, wenn es etwas ändert (Abo-Sounds oder Abo-Vorrang in der Warteschlange)
+    if (data.sounds.some((x) => x.sub) || data.queue?.sub_first) me.sub = await isSubscriber(claims.user_id);
     me.giveaway = !!entry?.data;
     me.queue = typeof waiting?.data === "number" ? waiting.data : null;
     me.epic = player?.data?.epic_name ?? null;
@@ -307,7 +333,8 @@ async function joinQueue(claims: Claims, epic: unknown) {
   if (!claims.user_id) return { ok: false, reason: "share" };
   const name = await displayName(claims.user_id);
   const { data: res, error } = await db.rpc("queue_join", {
-    p_key: `tw:${claims.user_id}`, p_name: name, p_epic: typeof epic === "string" ? epic.slice(0, 32) : "", p_sub: false, p_source: "chat",
+    p_key: `tw:${claims.user_id}`, p_name: name, p_epic: typeof epic === "string" ? epic.slice(0, 32) : "",
+    p_sub: await isSubscriber(claims.user_id), p_source: "chat",
   });
   if (error) throw error;
   cache.clear();
@@ -331,29 +358,88 @@ async function feed(claims: Claims) {
   return res;
 }
 
+// ---------- Abonnent? (Helix, 5 Minuten gemerkt) ----------
+const SUB_MS = 5 * 60_000;
+const subs = new Map<string, { at: number; sub: boolean }>();
+async function isSubscriber(userId: string): Promise<boolean> {
+  const conn = await getConnection().catch(() => null);
+  if (!conn) return false;
+  const key = `${conn.broadcaster_id}:${userId}`;
+  const hit = subs.get(key);
+  if (hit && Date.now() - hit.at < SUB_MS) return hit.sub;
+  // Ohne Abo antwortet Twitch mit 404; ohne Affiliate oder ohne Recht mit einem Fehler – beides heißt „kein Abo“
+  const res = await helix("subscriptions", conn.access_token, { query: { broadcaster_id: conn.broadcaster_id, user_id: userId } })
+    .catch(() => null);
+  const sub = !!res?.data?.length;
+  if (subs.size > 5000) subs.clear();
+  subs.set(key, { at: Date.now(), sub });
+  return sub;
+}
+
 // ---------- Sounds übers Panel ----------
 // ID im Panel: eingebauter Sound wie „gong“, hochgeladener Sound als „c:<uuid>“
 const soundId = (s: Awaited<ReturnType<typeof soundList>>[number]) => s.board ? s.board.id : `c:${s.custom!.id}`;
 
-async function panelSounds() {
-  const { data, error } = await db.from("prank_settings").select("panel_sounds").eq("id", 1).maybeSingle();
-  if (error || !data?.panel_sounds) return [];
-  return (await soundList()).slice(0, 20).map((s) => ({ id: soundId(s), name: s.name.slice(0, 40) }));
+type SoundCfg = { panel_sounds: boolean; panel_sub_sounds?: string[]; panel_bits?: boolean; panel_bits_sku?: string };
+async function soundCfg(): Promise<SoundCfg | null> {
+  // panel_sub_sounds/panel_bits kommen mit …_panel_bits_subs.sql – fehlen sie, wie bisher
+  const full = await db.from("prank_settings").select("panel_sounds, panel_sub_sounds, panel_bits, panel_bits_sku").eq("id", 1).maybeSingle();
+  if (!full.error) return full.data as SoundCfg | null;
+  const { data } = await db.from("prank_settings").select("panel_sounds").eq("id", 1).maybeSingle();
+  return data as SoundCfg | null;
 }
+
+async function panelSounds() {
+  const cfg = await soundCfg();
+  if (!cfg?.panel_sounds) return { list: [], bits: null };
+  const subOnly = new Set(cfg.panel_sub_sounds ?? []);
+  const list = (await soundList()).slice(0, 20).map((s) => ({ id: soundId(s), name: s.name.slice(0, 40), sub: subOnly.has(soundId(s)) }));
+  return { list, bits: cfg.panel_bits && BITS_SKUS.has(cfg.panel_bits_sku ?? "") ? cfg.panel_bits_sku! : null };
+}
+
+// Nur Sounds aus der eigenen Liste – nie einen Pfad oder Namen vom Zuschauer übernehmen
+async function findSound(id: unknown) {
+  if (typeof id !== "string" || id.length > 60) return null;
+  return (await soundList()).slice(0, 20).find((s) => soundId(s) === id) ?? null;
+}
+const soundArgs = (sound: NonNullable<Awaited<ReturnType<typeof findSound>>>) => ({
+  p_item: sound.board ? sound.board.id : "custom",
+  p_path: sound.custom?.path ?? null,
+  p_label: sound.custom?.name ?? "",
+});
 
 async function playSound(claims: Claims, id: unknown) {
   if (!claims.user_id) return { ok: false, reason: "share" };
-  if (typeof id !== "string" || id.length > 60) return { ok: false, reason: "sound" };
-  // Nur Sounds aus der eigenen Liste – nie einen Pfad oder Namen vom Zuschauer übernehmen
-  const sound = (await soundList()).slice(0, 20).find((s) => soundId(s) === id);
+  const sound = await findSound(id);
   if (!sound) return { ok: false, reason: "sound" };
+  const cfg = await soundCfg();
+  const sub = await isSubscriber(claims.user_id);
+  if ((cfg?.panel_sub_sounds ?? []).includes(soundId(sound)) && !sub) return { ok: false, reason: "sub" };
   const { data: res, error } = await db.rpc("panel_sound_play", {
-    p_key: `tw:${claims.user_id}`,
-    p_name: await displayName(claims.user_id),
-    p_item: sound.board ? sound.board.id : "custom",
-    p_path: sound.custom?.path ?? null,
-    p_label: sound.custom?.name ?? "",
+    p_key: `tw:${claims.user_id}`, p_name: await displayName(claims.user_id), ...soundArgs(sound), p_sub: sub,
   });
   if (error) throw error;
   return { ok: !!res?.ok, reason: res?.reason ?? null, wait: res?.wait ?? null };
+}
+
+// Sound gegen Bits: Twitch hat schon abgebucht – also immer abspielen, sobald die Quittung echt ist.
+async function bitsSound(claims: Claims, id: unknown, receipt: unknown) {
+  if (typeof receipt !== "string" || receipt.length > 4000) return { ok: false, reason: "receipt" };
+  const r = await verifyJwt<Receipt>(receipt);
+  const tx = r?.data;
+  const userId = String(tx?.userId ?? "");
+  const sku = String(tx?.product?.sku ?? "");
+  if (!r || r.topic !== "bits_transaction_receipt" || !tx?.transactionId || !/^\d{1,20}$/.test(userId) || !BITS_SKUS.has(sku)) {
+    return { ok: false, reason: "receipt" };
+  }
+  // Die Quittung gehört zu diesem Zuschauer (falls er seine ID freigegeben hat, muss sie passen)
+  if (claims.user_id && claims.user_id !== userId) return { ok: false, reason: "receipt" };
+  const sound = await findSound(id);
+  if (!sound) return { ok: false, reason: "sound" };
+  const { data: res, error } = await db.rpc("panel_sound_play", {
+    p_key: `tw:${userId}`, p_name: await displayName(userId), ...soundArgs(sound),
+    p_paid: String(tx.transactionId).slice(0, 100), p_sku: sku, p_bits: Number(tx.product?.cost?.amount ?? 0) || 0,
+  });
+  if (error) throw error;
+  return { ok: !!res?.ok, reason: res?.reason ?? null, duplicate: !!res?.duplicate };
 }
