@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-e0IfWKTGwtRnt29+NuC9e71yMoJbbz2xS1tR08dMlEw=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Fwo/ocgnT3NDdqEGi3Q5KLnXGy4MhFL5wfoHwEwUdiA=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,8 +47,8 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=98699fa6e6">
-  <link rel="stylesheet" href="css/phosphor.css?v=64c119eb82">
+  <link rel="stylesheet" href="css/style.css?v=b11f5267df">
+  <link rel="stylesheet" href="css/phosphor.css?v=f0e9112ffb">
   <link rel="stylesheet" href="css/landing.css?v=666f93c533">
   <link rel="stylesheet" href="css/shell.css?v=4d2df3641a">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
@@ -65,7 +65,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=0ec93b4390",
-      "./js/app.js": "./js/app.js?v=59d4d416eb",
+      "./js/app.js": "./js/app.js?v=66a268e1fc",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=b4d6b0ba23",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
@@ -2124,7 +2124,7 @@
     <div class="dialog-head obs-head">
       <div>
         <p class="eyebrow" id="obs-eyebrow">Für den Stream</p>
-        <h2 id="obs-title">OBS-Overlay</h2>
+        <h2><i class="ph ph-sliders-horizontal obs-title-ico" aria-hidden="true"></i><span id="obs-title">OBS-Overlay</span></h2>
       </div>
       <button class="obs-pill" id="obs-pill" type="button" data-state="off">
         <span class="obs-dot" aria-hidden="true"></span>
@@ -2135,16 +2135,17 @@
           <button class="obs-col-btn" type="button" data-obs-col="left" aria-pressed="true" title="Vorschau &amp; Verbindung ein- oder ausklappen"><span aria-hidden="true">🖥️</span><span class="obs-col-text">Vorschau</span></button>
           <button class="obs-col-btn" type="button" data-obs-col="right" aria-pressed="true" title="Ebenen &amp; Einstellungen ein- oder ausklappen"><span aria-hidden="true">🎛️</span><span class="obs-col-text">Ebenen</span></button>
         </div>
+        <span class="obs-head-scene">Szene <b id="obs-head-scene">Live</b></span>
         <div class="obs-undo-box">
-          <button class="obs-mini-btn obs-undo" type="button" id="obs-undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig" disabled>↶</button>
-          <button class="obs-mini-btn obs-undo" type="button" id="obs-redo" title="Wiederholen (Strg+Umschalt+Z)" aria-label="Wiederholen" disabled>↷</button>
+          <button class="obs-mini-btn obs-undo" type="button" id="obs-undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig" disabled><i class="ph ph-arrow-u-up-left" aria-hidden="true"></i></button>
+          <button class="obs-mini-btn obs-undo" type="button" id="obs-redo" title="Wiederholen (Strg+Umschalt+Z)" aria-label="Wiederholen" disabled><i class="ph ph-arrow-u-up-right" aria-hidden="true"></i></button>
           <details class="obs-history" id="obs-history">
             <summary title="Verlauf der Änderungen">Verlauf</summary>
             <ol class="obs-history-list" id="obs-history-list"></ol>
           </details>
         </div>
         <span class="obs-saved" id="obs-saved" data-state="off"></span>
-        <button class="btn btn--primary" type="button" id="obs-head-apply" hidden>In OBS übernehmen</button>
+        <button class="btn btn--primary" type="button" id="obs-head-apply" hidden><i class="ph ph-upload-simple" aria-hidden="true"></i> In OBS übernehmen</button>
         <button class="icon-btn" type="button" data-close aria-label="Schließen">&times;</button>
       </div>
     </div>
@@ -2157,10 +2158,36 @@
           <video class="obs-bg" id="obs-video" muted playsinline hidden></video>
           <span class="obs-preview-label" id="obs-preview-label">Beispielbild</span>
         </div>
-        <p class="obs-hint obs-drag-hint">Karten ziehen: Sie rasten am Rand und in der Mitte ein. Klick auf eine Karte öffnet rechts ihre Einstellungen. Den <b class="obs-red">roten Rahmen</b> auf die Kamera des Streamers legen – dort landen die Würfe.</p>
+        <p class="obs-hint obs-drag-hint"><span>1920 × 1080</span><span>Karten ziehen: Sie rasten am Rand und in der Mitte ein. Klick auf eine Karte öffnet ihre Eigenschaften.</span><span>Den <b class="obs-red">roten Rahmen</b> auf die Kamera legen – dort landen die Würfe.</span></p>
+      </div>
+
+      <!-- Handy: Docks als Reiter -->
+      <div class="obs-mtabs" role="tablist" aria-label="Bereiche">
+        <button type="button" role="tab" data-mtab="layers" aria-selected="true">Quellen</button>
+        <button type="button" role="tab" data-mtab="props" aria-selected="false">Eigenschaften</button>
+        <button type="button" role="tab" data-mtab="control" aria-selected="false">Steuerung</button>
+      </div>
+
+      <!-- Dock „Szenen“: welcher Szenen-Bildschirm läuft (Live = keiner) -->
+      <section class="obs-dock obs-scenes" aria-labelledby="obs-scenes-title">
+        <h3 class="obs-dock-head" id="obs-scenes-title">Szenen</h3>
+        <div class="obs-scene-list" id="obs-scene-list" role="radiogroup" aria-labelledby="obs-scenes-title"></div>
+      </section>
+
+      <!-- Dock „Steuerung“: Bereiche, Twitch-Erweiterung, Adresse und Verbindung zu OBS -->
+      <section class="obs-dock obs-control" aria-labelledby="obs-control-title">
+        <h3 class="obs-dock-head" id="obs-control-title">Steuerung</h3>
+        <div class="obs-control-body">
+        <div class="obs-control-btns">
+          <button class="obs-ctl" type="button" data-obs-go="look"><i class="ph ph-palette" aria-hidden="true"></i> Aussehen &amp; Ton</button>
+          <button class="obs-ctl" type="button" data-obs-go="admin"><i class="ph ph-text-aa" aria-hidden="true"></i> Texte</button>
+          <button class="obs-ctl" type="button" data-obs-go="modules"><i class="ph ph-squares-four" aria-hidden="true"></i> Module</button>
+          <button class="obs-ctl" type="button" data-obs-go="content" hidden><i class="ph ph-film-slate" aria-hidden="true"></i> Content</button>
+          <a class="obs-ctl obs-ctl--ext" id="obs-ext-link" href="https://dashboard.twitch.tv/extensions/ozgdzg7ly1znn04xh3c61xdkua0y6v" target="_blank" rel="noopener noreferrer" title="StreamHelp als Panel, Komponente oder Overlay auf deinem Twitch-Kanal"><i class="ph ph-puzzle-piece" aria-hidden="true"></i> Twitch-Erweiterung <i class="ph ph-arrow-square-out obs-ctl-out" aria-hidden="true"></i></a>
+        </div>
         <div class="obs-url">
           <input id="obs-url" type="text" readonly aria-label="Adresse für die OBS-Browserquelle">
-          <button id="obs-copy" class="btn btn--ghost" type="button">Kopieren</button>
+          <button id="obs-copy" class="btn btn--ghost" type="button" title="Adresse kopieren" aria-label="Adresse kopieren"><i class="ph ph-copy" aria-hidden="true"></i><span class="obs-copy-text">Kopieren</span></button>
         </div>
         <p class="obs-live-status" id="obs-live-status" aria-live="polite"></p>
       <section class="obs-connect" id="obs-connect" data-state="off">
@@ -2210,7 +2237,8 @@
           <li>Das war’s: Änderungen hier erscheinen sofort in OBS – die Adresse bleibt immer gleich.</li>
         </ol>
       </details>
-      </div>
+        </div>
+      </section>
 
       <!-- Rechts: Ebenen, Aussehen & Ton, Texte & Tests -->
       <div class="obs-right">
@@ -2250,7 +2278,7 @@
         <form class="obs-options" id="obs-options">
           <!-- Ebenen: im Editor immer links sichtbar -->
           <div class="obs-layers" id="obs-layers">
-            <p class="obs-panel-title">Ebenen <small>Schalter = im Stream zeigen</small></p>
+            <p class="obs-panel-title">Quellen <small id="obs-layer-count">Schalter = im Stream zeigen</small></p>
             <div class="obs-layer-tools" id="obs-layer-tools">
               <input type="search" id="obs-layer-search" placeholder="Ebene suchen …" aria-label="Ebenen durchsuchen" autocomplete="off">
               <label class="obs-only-on"><input type="checkbox" id="obs-layer-only-on"><span>nur aktive</span></label>
