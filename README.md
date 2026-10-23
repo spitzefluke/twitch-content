@@ -892,7 +892,7 @@ Dashboard → **Video aufnehmen** → „Aufnahme-Studio öffnen“ (`record.htm
 
 ## Twitch-Erweiterung (Panel, Mobil, Komponente, Overlay)
 
-Eine Erweiterung für twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`) in vier Ansichten, jede mit eigenem Design. Twitch hängt `?anchor=panel|component|video_overlay` und in der App `platform=mobile` an die Adresse, `panel.html` richtet sich danach (`html[data-mode]`, Styles am Ende von `panel.css`):
+Eine Erweiterung für twitch.tv (Ordner `extension/`, Edge Function `twitch-ext`) in vier Ansichten, jede mit eigenem Design und **eigener Datei**: `panel.html` (Panel), `component.html` (Komponente), `video-overlay.html` (Overlay) und `mobile.html` (Twitch-App). Alle nutzen dieselbe Logik (`panel.js`, `panel.css`); die Datei sagt mit `<html data-view="…">`, welches Design gilt (`html[data-mode]`, Styles am Ende von `panel.css`). Steht in der Entwicklerkonsole noch überall `panel.html`, geht es auch – dann entscheiden `?anchor=…` und `platform=mobile` wie früher:
 
 | Ansicht | Wo | Besonderheit |
 |---|---|---|
@@ -930,9 +930,9 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 3. **Erweiterung erstellen** (gibt es sie schon als Panel: die vorhandene öffnen und **Neue Version** anlegen). Name z. B. „StreamHelp“. Als Typen **Panel**, **Video – Komponente** und **Video – Vollbild (Overlay)** ankreuzen, dazu **Mobil**.
 4. Version → **Asset-Hosting**:
    - Panel-Ansicht: `panel.html`, Panel-Höhe `500`
-   - Video – Komponente: `panel.html` (Seitenverhältnis z. B. Breite 3, Höhe 4; Zoom an)
-   - Video – Vollbild: `panel.html`
-   - Mobil: `panel.html`
+   - Video – Komponente: `component.html` (Seitenverhältnis z. B. Breite 3, Höhe 4; Zoom an)
+   - Video – Vollbild: `video-overlay.html`
+   - Mobil: `mobile.html`
    - **Konfigurationsseite: `config.html`**
    - Live-Konfiguration: leer lassen
 5. Version → **Funktionen**:
@@ -941,8 +941,8 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
    - **Zulassungsliste für URL-Abrufdomänen**: `https://ssibsphuttjlphijilsc.supabase.co`
    - **Zulassungsliste für Panel-URLs**: die Adresse der Webseite (GitHub Pages), damit der Link zur Seite aufgeht.
 6. **Erweiterungs-Secret** (nur beim ersten Mal): in den Einstellungen der Erweiterung das Secret kopieren und in Supabase als Secret **`EXTENSION_SECRET`** eintragen (Edge Functions → Secrets). Nicht ins Repo, nicht in den Chat.
-7. **Dateien hochladen**: diese neun Dateien aus `extension/` direkt in ein ZIP (ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner):
-   `panel.html`, `panel.css`, `panel.js`, `panel-i18n.js`, `ext-config.js`, `config.html`, `config.css`, `config.js`, `favicon.svg`.
+7. **Dateien hochladen**: diese zwölf Dateien aus `extension/` direkt in ein ZIP (ohne Unterordner; Windows: markieren → Rechtsklick → Senden an → ZIP-komprimierter Ordner):
+   `panel.html`, `component.html`, `video-overlay.html`, `mobile.html`, `panel.css`, `panel.js`, `panel-i18n.js`, `ext-config.js`, `config.html`, `config.css`, `config.js`, `favicon.svg`.
    Unter **Dateien** hochladen.
 8. **In den gehosteten Test verschieben** und auf dem eigenen Kanal ausprobieren (Schritt 10–12).
 9. **Zur Prüfung einreichen**. Twitch fragt dafür nach Beschreibung, Symbolen, Screenshots, Datenschutzerklärung (`…/datenschutz.html`), Kontakt und einer Testanleitung für die Prüfer (z. B. „Kanal X, Konfiguration öffnen, Modul Umfrage anhaken; im Dashboard eine Umfrage starten“). Die Größen der Bilder nennt die Konsole. Nach der Freigabe kann jeder Streamer die Erweiterung aktivieren.
@@ -958,7 +958,7 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 12. **Aktivieren** (Pfeil neben der Erweiterung): als **Panel**, als **Komponente** (dann auf dem Video platzieren) oder als **Overlay**. Twitch erlaubt pro Kanal höchstens ein Overlay und zwei Komponenten.
 13. **Sounds übers Panel** (optional): auf der StreamHelp-Seite im Dashboard → Kachel **„Ärgere den Streamer“** → „🔊 Sounds über die Twitch-Erweiterung“ einschalten und die Bremse wählen (pro Zuschauer höchstens alle … / Abstand zwischen zwei Sounds). Dazu in der Konfiguration das Modul **Sounds abspielen** anhaken. Gespielt wird über das OBS-Overlay (im OBS-Fenster muss die Ebene „Würfe & Sounds“ an sein). Gezeigt werden die ersten 20 Sounds der Liste (eingebaute zuerst, dann hochgeladene).
 
-**Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html` zeigt Beispieldaten; `panel.html?demo&mode=mobile`, `?demo&mode=component` bzw. `?demo&mode=overlay` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
+**Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html?demo` zeigt Beispieldaten; `component.html?demo`, `video-overlay.html?demo` bzw. `mobile.html?demo` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
 ## Einführung
 
