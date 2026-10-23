@@ -6001,6 +6001,7 @@ const obsBodies = new Map();
 
 function setupObsLayers() {
   const dlg = $('#obs-dialog');
+  setupObsDocks();
   addObsLookFields();
   setupObsMixer();
   setupObsPresets();
@@ -6363,6 +6364,67 @@ function openObsLayer(key, { scroll = false } = {}) {
   highlightObsLayer();
 }
 
+// ---------- Docks (OBS-Editor im OBS-Stil): Szenen, Steuerung, Handy-Reiter ----------
+// Szenen = der Szenen-Bildschirm des Overlays (Ebene „scene“): Live heißt „keiner“.
+const OBS_SCENES = [['', 'Live', 'ph-broadcast'], ['start', "Gleich geht's los", 'ph-hourglass-medium'], ['chat', 'Just Chatting', 'ph-chats-circle'],
+  ['brb', 'Bin gleich zurück', 'ph-coffee'], ['end', 'Danke fürs Zuschauen', 'ph-flag-checkered']];
+const obsSceneNow = () => {
+  const f = $('#obs-options');
+  return f.elements.scene_on.checked ? f.elements.scene.value : '';
+};
+function setupObsDocks() {
+  const dlg = $('#obs-dialog');
+  const body = dlg.querySelector('.obs-body');
+  const list = $('#obs-scene-list');
+  list.replaceChildren(...OBS_SCENES.map(([id, name, icon]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'obs-scene';
+    b.dataset.scene = id;
+    b.setAttribute('role', 'radio');
+    b.innerHTML = `<i class="ph ${icon}" aria-hidden="true"></i><span></span>`;
+    b.querySelector('span').textContent = name;
+    return b;
+  }));
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-scene]');
+    if (!b || obsLocked()) return;
+    const f = $('#obs-options');
+    f.elements.scene_on.checked = !!b.dataset.scene;
+    if (b.dataset.scene) setSelect(f.elements.scene, b.dataset.scene);
+    updateObs({ now: true });
+  });
+  // Steuerung: Bereiche öffnen im Dock „Eigenschaften“
+  dlg.querySelectorAll('[data-obs-go]').forEach((b) => b.addEventListener('click', () => {
+    showObsTab(b.dataset.obsGo);
+    setObsMobileTab('props');
+  }));
+  dlg.querySelectorAll('.obs-mtabs [data-mtab]').forEach((b) => b.addEventListener('click', () => setObsMobileTab(b.dataset.mtab)));
+  setObsMobileTab(body.dataset.mtab || 'layers');
+  // Auf dem Handy: Ebene gewählt → gleich ihre Eigenschaften zeigen
+  $('#obs-layers').addEventListener('click', (e) => {
+    if (e.target.closest('.obs-layer-name') && matchMedia('(max-width: 719px)').matches) setObsMobileTab('props');
+  });
+  paintObsScenes();
+}
+function setObsMobileTab(name) {
+  const dlg = $('#obs-dialog');
+  dlg.querySelector('.obs-body').dataset.mtab = name;
+  dlg.querySelectorAll('.obs-mtabs [data-mtab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mtab === name)));
+}
+function paintObsScenes() {
+  const now = obsSceneNow();
+  $('#obs-scene-list').querySelectorAll('[data-scene]').forEach((b) => {
+    const on = b.dataset.scene === now;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-checked', String(on));
+    b.disabled = obsLocked();
+  });
+  $('#obs-head-scene').textContent = OBS_SCENES.find(([id]) => id === now)?.[1] ?? 'Live';
+  const rows = [...$('#obs-dialog').querySelectorAll('.obs-layers .obs-layer')];
+  $('#obs-layer-count').textContent = `${rows.filter((r) => r.classList.contains('is-on')).length} von ${rows.length} an`;
+}
+
 // Kopf des Inspektors: Farbe und an/aus der gewählten Ebene
 function paintObsInspector() {
   const row = obsSelected && $(`#obs-dialog .obs-layer[data-layer="${obsSelected}"]`);
@@ -6666,6 +6728,7 @@ async function allowAdminsObs(e) {
 function paintStreamerView({ firstOpen = false } = {}) {
   const admin = !!state.profile?.is_admin;
   $('#obs-dialog .obs-tab[data-tab="content"]').hidden = !admin;
+  $('#obs-dialog [data-obs-go="content"]').hidden = !admin;
   $('#obs-title').textContent = 'OBS-Editor';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
@@ -7066,6 +7129,7 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   saveObs(values);
   paintObsLayers();
   filterObsLayers();
+  paintObsScenes();
   if (!obsLive.filling && !obsHist.applying) recordObsHistory();
   // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
   $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();
