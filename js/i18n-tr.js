@@ -239,4 +239,5 @@ export default [
   "Evet. Kanal puanları, abonelikler, Bits ve tahminler Twitch’te yalnızca Affiliate ve Partner’lar içindir – bu yüzden bu bölümler kanalında gri görünür ve açıkça anlatılır. Sohbet botu, overlay, takipçi uyarıları, anketler, çekilişler, evcil hayvan, içerik fikirleri ve Twitch eklentisi normal çalışır.",
   "Yayında reklam gösterebilir miyim?",
   "Evet, OBS overlay’inin kayan yazısında metin olarak. Başına „Reklam“ veya „İlan“ yaz – Twitch ve yasa bu etiketi ister. Twitch eklentisinde (panel, bileşen, overlay) StreamHelp reklam göstermez: Twitch orada reklam veya sponsorluk içeriğine izin vermez.",
+  "Kullanım koşulları",
 ];

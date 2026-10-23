@@ -239,4 +239,5 @@ export default [
   "Sí. Los puntos del canal, suscripciones, bits y predicciones solo están disponibles para Afiliados y Partners de Twitch, por eso esas áreas aparecen en gris en tu canal y bien explicadas. El bot de chat, el overlay, las alertas de seguidores, encuestas, sorteos, la mascota, las ideas de contenido y la extensión de Twitch funcionan con normalidad.",
   "¿Puedo mostrar publicidad en el directo?",
   "Sí, como texto en la cinta de tu overlay de OBS. Pon «Publicidad» o «Anuncio» delante: Twitch y la ley exigen la etiqueta. En la extensión de Twitch (panel, componente, overlay) StreamHelp no muestra publicidad: Twitch no permite allí contenido publicitario ni de patrocinio.",
+  "Condiciones de uso",
 ];

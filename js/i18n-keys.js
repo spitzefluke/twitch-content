@@ -242,4 +242,5 @@ export default [
   "Ja. Kanalpunkte, Abos, Bits und Vorhersagen gibt es bei Twitch nur für Affiliates und Partner – diese Bereiche sind in deinem Kanal deshalb ausgegraut und klar erklärt. Chat-Bot, Overlay, Follower-Alerts, Umfragen, Verlosungen, Haustier, Content-Ideen und die Twitch-Erweiterung laufen ganz normal.",
   "Kann ich Werbung im Stream zeigen?",
   "Ja, als Text im Laufband deines OBS-Overlays. Schreib „Werbung“ oder „Anzeige“ davor – Twitch und das Gesetz verlangen die Kennzeichnung. In der Twitch-Erweiterung (Panel, Komponente, Overlay) zeigt StreamHelp keine Werbung: Twitch erlaubt dort keine Werbe- oder Sponsoring-Inhalte.",
+  "Nutzungsbedingungen",
 ];

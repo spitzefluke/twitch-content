@@ -2721,6 +2721,14 @@ function renderPrankDialog() {
   selectValue(form.panel_sound_gap, settings.panel_sound_gap ?? 15);
   $('#prank-panel').disabled = !panelReady;
   $('#prank-panel-missing').hidden = panelReady;
+  // Bits und Abo-Sounds (…_panel_bits_subs.sql)
+  const extraReady = 'panel_bits' in settings;
+  form.panel_bits.checked = !!settings.panel_bits;
+  form.panel_bits_sku.value = settings.panel_bits_sku ?? 'sound_100';
+  selectValue(form.panel_sub_cooldown, settings.panel_sub_cooldown ?? 30);
+  $('#prank-panel-extra').querySelectorAll('input, select').forEach((el) => { el.disabled = !extraReady; });
+  $('#prank-extra-missing').hidden = !panelReady || extraReady;
+  renderSubSounds(extraReady);
   form.cooldown_seconds.value = String(settings.cooldown_seconds);
   if (form.cooldown_seconds.value !== String(settings.cooldown_seconds)) {
     // Wert außerhalb der Liste (z. B. direkt in der Datenbank gesetzt)
@@ -2767,6 +2775,7 @@ function renderSounds() {
     el.title = on ? 'Hat auf Twitch eine eigene Belohnung – einlösen, ohne zu tippen' : '';
   });
   renderSoundRewards();
+  if (state.prank.settings) renderSubSounds('panel_bits' in state.prank.settings);
   if (!sounds.length) {
     const li = document.createElement('li');
     li.className = 'empty';
@@ -3192,6 +3201,36 @@ function paintPrankSync() {
 }
 
 // Wert in eine Auswahl setzen – steht er nicht in der Liste (z. B. direkt in der Datenbank gesetzt), kommt er dazu
+// Sounds „nur für Abonnenten“: die ersten 20 der Liste – genau die, die das Panel zeigt (twitch-ext, panelSounds).
+// IDs wie im Panel: eingebauter Sound „whistle“, hochgeladener „c:<uuid>“.
+function renderSubSounds(ready) {
+  const list = $('#prank-sub-list');
+  // Schon angezeigt (z. B. neue Sounds geladen): ungespeicherte Haken behalten
+  const shown = list.querySelectorAll('input');
+  const chosen = new Set(shown.length ? [...shown].filter((el) => el.checked).map((el) => el.value) : state.prank.settings.panel_sub_sounds ?? []);
+  const entries = [
+    ...BOARD.map((b, i) => ({ id: b.id, no: i + 1, name: b.name, emoji: b.emoji })),
+    ...[...state.prank.sounds].sort((a, b) => a.no - b.no).map((x) => ({ id: `c:${x.id}`, no: x.no, name: x.name, emoji: '🔊' })),
+  ].slice(0, 20);
+  list.replaceChildren(...entries.map((e) => {
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.value = e.id;
+    check.checked = chosen.has(e.id);
+    check.disabled = !ready;
+    const text = document.createElement('span');
+    text.innerHTML = '<i class="prank-no"></i> <span aria-hidden="true"></span> <b></b>';
+    text.querySelector('.prank-no').textContent = String(e.no);
+    text.querySelector('span').textContent = e.emoji;
+    text.querySelector('b').textContent = e.name;
+    label.append(check, text);
+    li.append(label);
+    return li;
+  }));
+}
+
 function selectValue(select, value) {
   select.value = String(value);
   if (select.value === String(value)) return;
@@ -3214,6 +3253,12 @@ async function savePrankSettings() {
     patch.panel_sounds = form.panel_sounds.checked;
     patch.panel_sound_cooldown = Number(form.panel_sound_cooldown.value);
     patch.panel_sound_gap = Number(form.panel_sound_gap.value);
+  }
+  if ('panel_bits' in state.prank.settings) {
+    patch.panel_bits = form.panel_bits.checked;
+    patch.panel_bits_sku = form.panel_bits_sku.value;
+    patch.panel_sub_cooldown = Number(form.panel_sub_cooldown.value);
+    patch.panel_sub_sounds = [...$('#prank-sub-list').querySelectorAll('input:checked')].map((el) => el.value);
   }
   form.querySelectorAll('input, select').forEach((el) => { el.disabled = true; });
   try {

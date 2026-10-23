@@ -239,4 +239,5 @@ export default [
   "Ja. Kanaalpunten, abonnementen, Bits en voorspellingen zijn er bij Twitch alleen voor Affiliates en Partners – daarom zijn deze onderdelen in je kanaal grijs en duidelijk uitgelegd. Chatbot, overlay, follower-meldingen, polls, giveaways, huisdier, content-ideeën en de Twitch-extensie werken gewoon.",
   "Kan ik reclame in de stream laten zien?",
   "Ja, als tekst in de lichtkrant van je OBS-overlay. Zet „Advertentie” of „Reclame” ervoor – Twitch en de wet eisen die vermelding. In de Twitch-extensie (paneel, component, overlay) toont StreamHelp geen reclame: Twitch staat daar geen reclame- of sponsorcontent toe.",
+  "Gebruiksvoorwaarden",
 ];

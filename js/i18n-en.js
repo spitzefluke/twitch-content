@@ -239,4 +239,5 @@ export default [
   "Yes. Channel points, subs, bits and predictions are only available to Twitch affiliates and partners – so these areas are greyed out in your channel and clearly explained. Chat bot, overlay, follower alerts, polls, giveaways, pet, content ideas and the Twitch extension work as normal.",
   "Can I show ads on stream?",
   "Yes, as text in the ticker of your OBS overlay. Put “Ad” or “Sponsored” in front – Twitch and the law require the label. StreamHelp shows no ads in the Twitch extension (panel, component, overlay): Twitch does not allow advertising or sponsorship content there.",
+  "Terms of use",
 ];
