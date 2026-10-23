@@ -21,4 +21,10 @@ export const CONFIG = {
   // Authentication → Attack Protection → Captcha (Anbieter Turnstile). Leer = aus.
   // Erst beides eintragen, dann in Supabase einschalten – sonst klappt das Anmelden nicht.
   TURNSTILE_SITE_KEY: '',
+
+  // Twitch-Erweiterung (öffentlich, steht in der Twitch-Entwicklerkonsole). Der Link „Twitch-Erweiterung“ im
+  // OBS-Editor führt auf dashboard.twitch.tv/extensions/<ID>-<Version>. Nach einer neuen Version bei Twitch hier
+  // die Versionsnummer anpassen, sonst landet der Link auf der alten Version.
+  TWITCH_EXTENSION_ID: 'ozgdzg7ly1znn04xh3c61xdkua0y6v',
+  TWITCH_EXTENSION_VERSION: '0.0.1',
 };
