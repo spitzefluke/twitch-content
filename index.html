@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-rd+9BfBe9xOsTcnazlOHr6ahZ3gTQsATE7xw013k5hM=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-49GLkB5DD24LGmDhjYlhPP++LiyBScK0oqBRNAIxx3Q=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -50,7 +50,7 @@
   <link rel="stylesheet" href="css/style.css?v=c957b7dcc6">
   <link rel="stylesheet" href="css/phosphor.css?v=f0e9112ffb">
   <link rel="stylesheet" href="css/landing.css?v=666f93c533">
-  <link rel="stylesheet" href="css/shell.css?v=5a5a22c212">
+  <link rel="stylesheet" href="css/shell.css?v=6da15e2390">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -64,10 +64,10 @@
       "./js/affiliate.js": "./js/affiliate.js?v=6a2436ccda",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=0ec93b4390",
-      "./js/app.js": "./js/app.js?v=c807ec78c5",
+      "./js/api.js": "./js/api.js?v=75ef654c5d",
+      "./js/app.js": "./js/app.js?v=77f3f634b4",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
-      "./js/bot-plus.js": "./js/bot-plus.js?v=b4d6b0ba23",
+      "./js/bot-plus.js": "./js/bot-plus.js?v=cd21d5c771",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=9ca5d517e8",
@@ -825,6 +825,10 @@
             <article class="dash-card dash-card--wide" data-botplus="timers"></article>
             <article class="dash-card dash-card--wide" data-botplus="mod"></article>
             <article class="dash-card dash-card--wide" data-botplus="songs" id="bot-songs"></article>
+            <!-- Clips & Statistik, Ansagen, Stichwort-Antworten (Migration …_bot_more.sql) -->
+            <article class="dash-card dash-card--wide" data-botplus="faq"></article>
+            <article class="dash-card dash-card--wide" data-botplus="clips"></article>
+            <article class="dash-card dash-card--wide" data-botplus="notices"></article>
             <article class="dash-card" id="watch-card">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
               <ol class="watch-top" id="watch-top"></ol>

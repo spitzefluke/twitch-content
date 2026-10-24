@@ -14,7 +14,7 @@ import { matchThrow, pickSound, prankState, type SoundEntry, soundForReward, sou
 import { handleChatMessage } from "../_shared/chat.ts";
 import { handleAlert, isAlertType, saveAlert } from "../_shared/alerts.ts";
 import { handleExtraRedemption } from "../_shared/extras.ts";
-import { liveWelcome, thankEvent } from "../_shared/bot.ts";
+import { botNotice, liveWelcome, thankEvent } from "../_shared/bot.ts";
 import { noteEvent } from "../_shared/health.ts";
 import { youtubeOffline, youtubeOnline } from "../_shared/ytlive.ts";
 import { watchTick } from "../_shared/watchtime.ts";
@@ -111,6 +111,8 @@ async function handle(req: Request, type: string | null, payload: any): Promise<
       handleAlert(payload.subscription.type, payload.event, messageId).catch((e) => console.error("Alert fehlgeschlagen:", e)),
       // Chat-Bot: Danke und Raid-Shoutout (…_chat_bot_plus.sql)
       thankEvent(payload.subscription.type, payload.event, messageId).catch((e) => console.error("Bot-Danke fehlgeschlagen:", e)),
+      // Chat-Bot: Werbepause, Hype-Train, erreichte Ziele (…_bot_more.sql)
+      botNotice(payload.subscription.type, payload.event).catch((e) => console.error("Bot-Ansage fehlgeschlagen:", e)),
     ]);
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(task);
     else await task;

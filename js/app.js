@@ -7622,6 +7622,8 @@ function renderCommands() {
     ['!so @name', 'Mods: Shoutout'],
     ['!permit @name', 'Mods: einen Link erlauben (Moderation)'],
     ['!sr [YouTube-Link]', 'Song wünschen – dazu !song, !queue, !wrongsong, Mods: !skip'],
+    ['!clip', 'Clip der letzten Sekunden – der Bot postet den Link (nur live)'],
+    ['!stats !topchatter !topwatch', 'Zahlen zum Stream, die fleißigsten Chatter und die Watchtime-Bestenliste'],
   ];
   $('#cmd-list').replaceChildren(...cmds.map(([cmd, text]) => {
     const li = document.createElement('li');
@@ -7980,6 +7982,9 @@ const SUB_LABEL = {
   'channel.subscription.gift': '🎁 Abo-Geschenke', 'channel.cheer': '💎 Bits',
   'channel.channel_points_custom_reward_redemption.add': '🎟️ Kanalpunkte', 'channel.chat.message': '💬 Chat (Bot)',
   'channel.raid': '🚀 Raids', 'stream.online': '▶️ Stream-Start', 'stream.offline': '⏹️ Stream-Ende',
+  'channel.ad_break.begin': '📺 Werbepausen', 'channel.hype_train.begin': '🚂 Hype-Train (Start)',
+  'channel.hype_train.progress': '🚂 Hype-Train (Stufen)', 'channel.hype_train.end': '🚂 Hype-Train (Ende)',
+  'channel.goal.progress': '🎯 Ziele', 'channel.goal.end': '🎯 Ziele (Ende)',
 };
 
 async function startHealth() {

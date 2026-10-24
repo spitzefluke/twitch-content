@@ -6,6 +6,7 @@
 // Wer im Chat ist, sagt Twitch („Get Chatters“, Recht moderator:read:chatters des Streamers).
 // Fehlt das Recht, zählen alle, die in den letzten 10 Minuten geschrieben haben.
 import { allBots, db, getAppToken, getConnection, helix } from "./twitch.ts";
+import { adWarnTick } from "./bot.ts";
 import { noteLiveCategory } from "./games.ts";
 
 type Viewer = { id: string; login: string; name: string };
@@ -30,6 +31,8 @@ export async function watchTick() {
     .then(() => {}, () => {});
   // Games (…_games.sql): In welcher Twitch-Kategorie läuft der Stream? Das passende Game geht an.
   await noteLiveCategory(String(live.game_name ?? "")).catch(() => {});
+  // Chat-Bot: kommt gleich Werbung? Dann vorwarnen (…_bot_more.sql)
+  await adWarnTick(conn).catch((e) => console.warn("Werbe-Vorwarnung:", (e as Error).message));
 
   // Gutgeschrieben wird die echte Zeit seit dem letzten Durchgang (1–10 Minuten),
   // beim ersten Durchgang eines Streams 5 Minuten.

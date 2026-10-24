@@ -641,6 +641,20 @@ Migration `supabase/migrations/20261116000000_bot_stats.sql`:
 - **Live-Start** (Migration `supabase/migrations/20261117000000_live_welcome.sql`): Geht der Streamer live, schreibt der Bot sofort eine Willkommensnachricht mit dem Spiel – Standard „🔴 {streamer} ist jetzt live mit {game}! Willkommen im Stream – schön, dass ihr da seid 💜“. Text und an/aus unter 🤖 Bot & Chat → „Begrüßung & Danke“ → Live-Start (Platzhalter `{streamer}`, `{game}`, `{title}`). Höchstens einmal in 30 Minuten, damit ein kurzer Abbruch mit Neustart den Chat nicht zuschreibt. Spiel und Titel kommen frisch von Twitch.
 - **Bot-Protokoll:** Jede Nachricht des Bots steht mit Status im Protokoll – ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit dem Grund von Twitch, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt), Fehler, kein Bot, Notfall-Schalter. **Streamer und freigegebene Mods** sehen es im Dashboard unter 🤖 Bot & Chat → „Bot-Protokoll“ und schicken dort eine **Testnachricht**. Der **Plattform-Admin** sieht im Admin-Bereich das Protokoll aller Kanäle (je Kanal die letzten 24 Stunden, Filter „nur Probleme“). Einträge bleiben 7 Tage.
 
+## Chat-Bot: Clips, Ansagen, Stichwort-Antworten, Statistik
+
+Migration `supabase/migrations/20261120000000_bot_more.sql` (nach `…_live_welcome.sql`). Die neuen Twitch-Rechte (`clips:edit`, `channel:read:ads`, `channel:read:hype_train`, `channel:read:goals`) meldet der Gesundheitscheck – dann **Twitch einmal neu verbinden**. Einstellungen im Dashboard unter **🤖 Bot & Chat** (Streamer und freigegebene Mods mit dem Bereich Chat).
+
+- **🎬 `!clip`:** macht einen Twitch-Clip der letzten Sekunden und postet den Link (`https://clips.twitch.tv/…`). Nur während des Streams. Einstellbar: an/aus, wer darf (alle, Abos, VIPs, Mods), Pause für alle (Standard 30 s) und je Person (Standard 120 s, Mods nie). Die letzten Clips stehen in der Karte „Clips & Statistik“ (30 Tage).
+- **📊 Statistik im Chat:** `!stats` (live: Dauer, Chatter, Nachrichten, neue Follower, Abos, Bits, Spitze der Zuschauer – offline der letzte Stream), `!topchatter` (Top 5 nach Nachrichten in diesem Stream, offline insgesamt; der Streamer zählt nicht mit), `!topwatch` (Top 5 der Watchtime). Pause je Befehl einstellbar (Standard 30 s). Nachrichten zählt `core.chat_counts` (gesamt und je Stream, moderierte Nachrichten zählen nicht).
+- **💡 Stichwort-Antworten:** Schreibt jemand z. B. „wann streamst du?“, antwortet der Bot mit dem hinterlegten Text (`{user}` = Name). Je Antwort bis zu 10 Stichwörter oder Wortfolgen – „eins davon reicht“ oder „alle müssen vorkommen“; gezählt werden ganze Wörter, Groß/klein und Satzzeichen sind egal. Pause je Antwort und für alle zusammen (Standard 15 s). Befehle (`!…`), der Streamer selbst und der Raid-Schutz lösen nichts aus.
+- **📣 Ansagen:**
+  - **Werbepausen** (nur Affiliates/Partner): kurz vorher „⏰ In etwa einer Minute kommt Werbung …“ (die Seite fragt mit jedem Watchtime-Durchgang den Werbeplan bei Twitch ab und warnt, wenn die Werbung in den nächsten 2½ Minuten kommt), beim Start „📺 Werbepause (3 Min) …“ (EventSub `channel.ad_break.begin`) und danach „✅ Die Werbung ist vorbei“ (Bot-Warteschlange mit Sendezeitpunkt `bot_outbox.send_after`). Platzhalter `{in}`, `{duration}`.
+  - **Hype-Train** (EventSub v2, nur Affiliates/Partner): Start, jede neue Stufe genau einmal und das Ende (`{level}`).
+  - **Ziele** aus dem Creator-Dashboard (Follower, Abos, Bits): sobald ein Ziel erreicht ist, genau einmal (`{goal}`, `{current}`, `{target}`).
+- **`!befehle`** listet jetzt auch `!clip` und die Statistik-Befehle.
+- Technik: `bot_chat2` ruft `bot_chat` auf und erledigt danach Clips, Statistik, `!befehle` und Stichwort-Antworten in einem Datenbank-Aufruf; fehlt die Migration, nimmt die Edge Function wie bisher `bot_chat`. Ansagen entscheidet `bot_notice` (an/aus, Texte, jede Meldung genau einmal).
+
 ## Cup
 
 Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/20261115000000_cup.sql`):

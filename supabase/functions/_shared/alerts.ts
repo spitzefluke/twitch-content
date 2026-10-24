@@ -28,6 +28,13 @@ export const ALERT_TYPES: AlertType[] = [
   // Stream startet/endet: YouTube mitschalten und den Chat dazuholen (_shared/ytlive.ts), kein Alert
   { type: "stream.online", version: "1", scope: "", condition: (id) => ({ broadcaster_user_id: id }) },
   { type: "stream.offline", version: "1", scope: "", condition: (id) => ({ broadcaster_user_id: id }) },
+  // Ansagen des Chat-Bots (…_bot_more.sql), kein Alert: Werbepause, Hype-Train (v2), erreichte Ziele
+  { type: "channel.ad_break.begin", version: "1", scope: "channel:read:ads", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.hype_train.begin", version: "2", scope: "channel:read:hype_train", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.hype_train.progress", version: "2", scope: "channel:read:hype_train", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.hype_train.end", version: "2", scope: "channel:read:hype_train", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.goal.progress", version: "1", scope: "channel:read:goals", condition: (id) => ({ broadcaster_user_id: id }) },
+  { type: "channel.goal.end", version: "1", scope: "channel:read:goals", condition: (id) => ({ broadcaster_user_id: id }) },
 ];
 export const isAlertType = (type: string) => ALERT_TYPES.some((a) => a.type === type);
 
