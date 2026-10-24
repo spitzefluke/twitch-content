@@ -829,6 +829,17 @@ async function createSupabaseApi() {
         },
         remove: async (id) => unwrap(await sb.from('bot_timers').delete().eq('id', id)),
       },
+      // Stichwort-Antworten und die letzten Clips (Migration …_bot_more.sql)
+      faq: {
+        list: async () => unwrap(await sb.from('bot_faq').select('id, keywords, answer, match_all, cooldown, enabled, hits, last_at, position').order('position').order('id')),
+        async save(f) {
+          const row = { keywords: f.keywords, answer: f.answer, match_all: !!f.match_all, cooldown: f.cooldown, enabled: f.enabled };
+          if (f.id) return unwrap(await sb.from('bot_faq').update(row).eq('id', f.id).select('id').single());
+          return unwrap(await sb.from('bot_faq').insert({ ...row, position: Date.now() % 1000000 }).select('id').single());
+        },
+        remove: async (id) => unwrap(await sb.from('bot_faq').delete().eq('id', id)),
+      },
+      clips: async () => unwrap(await sb.from('bot_clips').select('clip_id, who, created_at').order('created_at', { ascending: false }).limit(8)),
       songs: {
         list: async () => unwrap(await sb.from('bot_songs').select('id, video_id, title, seconds, who, source, status, position, played_at')
           .in('status', ['queued', 'playing']).order('position').order('id').limit(200)),
@@ -1001,6 +1012,14 @@ function createLocalApi() {
     mod_exempt_vip: true, mod_exempt_sub: false, mod_permit_seconds: 60,
     song_on: false, song_who: 'everyone', song_max_user: 2, song_max_queue: 30, song_max_minutes: 8, song_cooldown: 30, timer_gap: 120,
     live_on: true, live_text: '🔴 {streamer} ist jetzt live mit {game}! Willkommen im Stream – schön, dass ihr da seid 💜',
+    clip_on: true, clip_who: 'everyone', clip_cooldown: 30, clip_user_cooldown: 120,
+    ads_on: true, ads_warn_text: '⏰ In {in} kommt Werbung ({duration}) – kurz Getränk holen! Mit Abo seht ihr keine Werbung 💜',
+    ads_start_text: '📺 Werbepause ({duration}) – wir sind gleich zurück!', ads_end_text: '✅ Die Werbung ist vorbei – weiter geht\'s!',
+    hype_on: true, hype_start_text: '🚂 HYPE-TRAIN! Alle einsteigen – jedes Abo und jedes Bit bringt uns weiter!',
+    hype_level_text: '🚂 Hype-Train Stufe {level} erreicht! Weiter so! 🔥',
+    hype_end_text: '🚂 Der Hype-Train ist angekommen: Stufe {level}! Danke an alle, die mitgefahren sind 💜',
+    goal_on: true, goal_text: '🎯 Ziel erreicht: {goal} ({current}/{target}) – danke euch allen! 🎉',
+    faq_on: true, faq_gap: 15, stats_on: true, stats_cooldown: 30,
   };
   const emitDemo = (key, payload) => setTimeout(() => (demoListeners[key] ?? []).forEach((cb) => cb(payload)), 30);
   const isAdminNow = () => !!store.get('users', {})[current?.email]?.is_admin;
@@ -2179,7 +2198,8 @@ function createLocalApi() {
     botPlus: {
       async get() {
         await requireAdmin();
-        return { settings: { ...BOT_DEFAULTS, ...store.get('bot_settings', {}) }, connected: false, missing: { moderation: false, shoutout: false, followage: false } };
+        return { settings: { ...BOT_DEFAULTS, ...store.get('bot_settings', {}) }, connected: false,
+          missing: { moderation: false, shoutout: false, followage: false, clip: false, ads: false, hype: false, goals: false } };
       },
       async save(p) {
         await requireAdmin();
@@ -2207,6 +2227,28 @@ function createLocalApi() {
           return row;
         },
         async remove(id) { await requireAdmin(); store.set('bot_timers', (await this.list()).filter((x) => x.id !== id)); },
+      },
+      // Demo: Stichwort-Antworten und Clips im Browser
+      faq: {
+        async list() {
+          return store.get('bot_faq', [
+            { id: 1, keywords: ['wann streamst', 'zeitplan'], answer: 'Stream ist Mo, Mi und Fr ab 19 Uhr, {user} 💜', match_all: false, cooldown: 120, enabled: true, hits: 3, position: 1 },
+          ]);
+        },
+        async save(f) {
+          await requireAdmin();
+          const keywords = [...new Set((f.keywords ?? []).map((k) => String(k).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().slice(0, 60)).filter((k) => k.length >= 2))].sort();
+          if (!keywords.length) throw new Error('Bitte mindestens ein Stichwort (2+ Zeichen).');
+          if (!String(f.answer ?? '').trim()) throw new Error('Bitte eine Antwort eintragen.');
+          const all = await this.list();
+          const row = { hits: 0, position: all.length + 1, ...all.find((x) => x.id === f.id), ...f, keywords, id: f.id ?? Date.now() };
+          store.set('bot_faq', f.id ? all.map((x) => (x.id === f.id ? row : x)) : [...all, row]);
+          return row;
+        },
+        async remove(id) { await requireAdmin(); store.set('bot_faq', (await this.list()).filter((x) => x.id !== id)); },
+      },
+      async clips() {
+        return store.get('bot_clips', [{ clip_id: 'DemoClip-Beispiel', who: 'NightOwl_Mia', created_at: new Date(Date.now() - 3600_000).toISOString() }]);
       },
       songs: {
         all: () => store.get('bot_songs', [

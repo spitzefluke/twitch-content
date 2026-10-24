@@ -28,6 +28,10 @@ const SCOPE_FEATURE: Record<string, string> = {
   "moderator:manage:chat_messages": "Bot-Moderation (Nachrichten löschen)",
   "moderator:manage:banned_users": "Bot-Moderation (Timeout)",
   "moderator:manage:shoutouts": "Shoutouts (!so, nach Raids)",
+  "clips:edit": "Clips (!clip)",
+  "channel:read:ads": "Werbepausen-Ansage",
+  "channel:read:hype_train": "Hype-Train im Chat",
+  "channel:read:goals": "Ziele im Chat",
 };
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;
@@ -160,6 +164,9 @@ function label(type: string) {
     "channel.subscription.gift": "Abo-Geschenke", "channel.cheer": "Bits",
     "channel.channel_points_custom_reward_redemption.add": "Kanalpunkte", "channel.chat.message": "Chat",
     "channel.raid": "Raids", "stream.online": "Stream-Start", "stream.offline": "Stream-Ende",
+    "channel.ad_break.begin": "Werbepausen", "channel.hype_train.begin": "Hype-Train (Start)",
+    "channel.hype_train.progress": "Hype-Train (Stufen)", "channel.hype_train.end": "Hype-Train (Ende)",
+    "channel.goal.progress": "Ziele", "channel.goal.end": "Ziele (Ende)",
   } as Record<string, string>)[type] ?? type;
 }
 

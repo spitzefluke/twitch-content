@@ -5,6 +5,8 @@
 //   · Moderation (Links, Großbuchstaben, Spam, gesperrte Wörter, !permit)
 //   · Song-Wünsche (!sr) mit Player: Abgespielt wird in genau einem Browserfenster („Hier abspielen“),
 //     OBS nimmt den Ton über das Desktop-Audio auf. Das Overlay zeigt nur an.
+//   · Clips & Statistik (!clip, !stats, !topchatter, !topwatch), Ansagen (Werbung, Hype-Train, Ziele) und
+//     Stichwort-Antworten (Migration …_bot_more.sql)
 // Eingebunden von js/app.js (renderBotPanel). api = state.api, toast/germanError aus app.js.
 import { h } from './extras-core.js';
 
@@ -13,9 +15,14 @@ let settings = null;     // aktueller Stand aus bot_settings_get
 let missing = {};
 let loaded = false;
 
-const errText = (err) => (/bot_settings|bot_timers|bot_songs|bot_song|schema cache|does not exist/i.test(err?.message ?? '')
-  ? 'Einmal nötig: supabase/migrations/20261109000000_chat_bot_plus.sql im SQL Editor ausführen.'
-  : ctx.germanError(err));
+const MORE_MIGRATION = 'Einmal nötig: supabase/migrations/20261120000000_bot_more.sql im SQL Editor ausführen.';
+const errText = (err) => (/bot_faq|bot_clips|bot_more|clip_on/i.test(err?.message ?? '')
+  ? MORE_MIGRATION
+  : /bot_settings|bot_timers|bot_songs|bot_song|schema cache|does not exist/i.test(err?.message ?? '')
+    ? 'Einmal nötig: supabase/migrations/20261109000000_chat_bot_plus.sql im SQL Editor ausführen.'
+    : ctx.germanError(err));
+// Neue Einstellungen (…_bot_more.sql) fehlen noch? Dann zeigt die Karte den Hinweis statt des Formulars.
+const hasMore = () => 'clip_on' in (settings ?? {});
 
 // ---------- Formular-Bausteine (name = Spalte in bot_settings) ----------
 const toggle = (name, label, hint) => h('label', { class: 'toggle bp-toggle' },
@@ -231,6 +238,134 @@ async function timersCard(card) {
   await load();
 }
 
+// ---------- Clips & Statistik (…_bot_more.sql) ----------
+function clipsCard(card) {
+  const recent = h('ul', { class: 'bp-clips' });
+  card.replaceChildren(
+    head('🎬', 'Clips & Statistik', 'Zuschauer machen Clips, der Bot zeigt Zahlen zum Stream'),
+    h('ul', { class: 'cmd-list' },
+      ...[['!clip', 'Macht einen Twitch-Clip der letzten Sekunden und postet den Link (nur live)'],
+        ['!stats', 'Laufender Stream: Dauer, Chatter, Nachrichten, Follower, Abos, Bits – offline der letzte Stream'],
+        ['!topchatter', 'Wer in diesem Stream am meisten schreibt (offline: insgesamt)'],
+        ['!topwatch', 'Die Top 5 der Watchtime']].map(([c, t]) => h('li', {}, h('code', {}, c), t))),
+    hasMore() ? settingsForm(
+      h('div', { class: 'bp-grid' },
+        h('div', { class: 'bp-box' }, toggle('clip_on', '🎬 !clip an'),
+          select('clip_who', 'Wer darf clippen', [['everyone', 'Alle'], ['sub', 'Abonnenten, VIPs, Mods'], ['vip', 'VIPs und Mods'], ['mod', 'Nur Mods']]),
+          num('clip_cooldown', 'Pause für alle', 0, 3600, 's'), num('clip_user_cooldown', 'Pause je Person (Mods nie)', 0, 3600, 's')),
+        h('div', { class: 'bp-box' }, toggle('stats_on', '📊 Statistik-Befehle an'), num('stats_cooldown', 'Pause je Befehl', 0, 600, 's')))) : h('p', { class: 'form-msg' }, MORE_MIGRATION),
+    scopeWarn('clip', 'Für !clip fehlt das Twitch-Recht „Clips erstellen“ – der Streamer muss Twitch einmal neu verbinden.'),
+    h('h3', { class: 'bp-sub' }, 'Letzte Clips'), recent);
+  if (hasMore()) fill(card.querySelector('.bp-form'));
+  ctx.api.botPlus.clips().then((list) => {
+    recent.replaceChildren(...(list.length ? list.map((c) => h('li', {},
+      h('a', { href: `https://clips.twitch.tv/${encodeURIComponent(c.clip_id)}`, target: '_blank', rel: 'noopener noreferrer' }, `🎬 ${c.clip_id}`),
+      h('small', {}, ` von ${c.who || 'jemand'} · ${new Date(c.created_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`)))
+      : [h('li', { class: 'cmd-empty' }, 'Noch keine Clips – im Stream einfach !clip schreiben.')]));
+  }).catch((err) => recent.replaceChildren(h('li', { class: 'cmd-empty' }, errText(err))));
+}
+
+// ---------- Ansagen: Werbung, Hype-Train, Ziele (…_bot_more.sql) ----------
+function noticesCard() {
+  return [
+    head('📣', 'Ansagen', 'Der Bot sagt Werbepausen an und feiert Hype-Trains und erreichte Ziele'),
+    hasMore() ? settingsForm(
+      h('div', { class: 'bp-grid' },
+        h('div', { class: 'bp-box' }, toggle('ads_on', '📺 Werbepausen', 'Vorwarnung, Beginn und „vorbei“'),
+          text('ads_warn_text', 'Kurz vorher'), text('ads_start_text', 'Beim Start'), text('ads_end_text', 'Wenn sie vorbei ist'),
+          h('p', { class: 'form-hint' }, h('code', {}, '{in}'), ' wann (z. B. „etwa einer Minute“), ', h('code', {}, '{duration}'), ' Länge.')),
+        h('div', { class: 'bp-box' }, toggle('hype_on', '🚂 Hype-Train'),
+          text('hype_start_text', 'Start'), text('hype_level_text', 'Neue Stufe'), text('hype_end_text', 'Ende'),
+          h('p', { class: 'form-hint' }, h('code', {}, '{level}'), ' Stufe. Jede Stufe nur einmal.')),
+        h('div', { class: 'bp-box' }, toggle('goal_on', '🎯 Ziele', 'Follower-, Abo- und Bits-Ziele aus dem Creator-Dashboard'),
+          text('goal_text', 'Ziel erreicht'),
+          h('p', { class: 'form-hint' }, h('code', {}, '{goal}'), ' Beschreibung, ', h('code', {}, '{current}'), ' / ', h('code', {}, '{target}'), ' Stand.')))) : h('p', { class: 'form-msg' }, MORE_MIGRATION),
+    scopeWarn('ads', 'Für die Werbepausen-Ansage fehlt ein Twitch-Recht – Twitch einmal neu verbinden.'),
+    scopeWarn('hype', 'Für den Hype-Train fehlt ein Twitch-Recht – Twitch einmal neu verbinden.'),
+    scopeWarn('goals', 'Für die Ziele fehlt ein Twitch-Recht – Twitch einmal neu verbinden.'),
+    h('p', { class: 'form-hint' }, 'Werbepausen und Hype-Trains gibt es bei Twitch nur für Affiliates und Partner.'),
+  ];
+}
+
+// ---------- Stichwort-Antworten (…_bot_more.sql) ----------
+async function faqCard(card) {
+  const listEl = h('ul', { class: 'bp-faqs' });
+  const add = h('form', { class: 'bp-faq-add', novalidate: true },
+    h('label', { class: 'field' }, h('span', {}, 'Stichwörter (mit Komma trennen)'), h('input', { name: 'keywords', maxlength: 300, placeholder: 'wann streamst, zeitplan, streamplan', autocomplete: 'off' })),
+    h('label', { class: 'field' }, h('span', {}, 'Antwort des Bots'), h('input', { name: 'answer', maxlength: 400, placeholder: 'Stream ist Mo, Mi und Fr ab 19 Uhr, {user} 💜', autocomplete: 'off' })),
+    select('match_all', 'Wann antworten', [['false', 'Eins der Stichwörter kommt vor'], ['true', 'Alle Stichwörter kommen vor']]),
+    h('label', { class: 'field bp-num' }, h('span', {}, 'Pause'), h('span', { class: 'bp-unit' }, h('input', { type: 'number', name: 'cooldown', min: 0, max: 3600, value: 120 }), h('em', {}, 's'))),
+    h('button', { class: 'btn btn--primary', type: 'submit' }, '＋ Anlegen'),
+    h('p', { class: 'form-msg', role: 'alert' }));
+  const gap = hasMore() ? settingsForm(toggle('faq_on', 'Stichwort-Antworten an'), num('faq_gap', 'Mindestens Pause zwischen zwei Antworten', 0, 600, 's')) : null;
+  gap?.classList.add('bp-form--inline');
+  card.replaceChildren(
+    head('💡', 'Stichwort-Antworten', 'Fragt jemand im Chat z. B. „wann streamst du?“, antwortet der Bot automatisch'),
+    add, listEl, gap ?? h('p', { class: 'form-msg' }, MORE_MIGRATION),
+    h('p', { class: 'form-hint' }, 'Stichwörter zählen als ganze Wörter bzw. Wortfolgen, Groß/klein und Satzzeichen egal („maus“ passt nicht zu „Mausi“). ',
+      h('code', {}, '{user}'), ' wird zum Namen. Befehle (!…) und der Streamer selbst lösen nichts aus, im Raid-Schutz schweigt der Bot.'));
+  if (gap) fill(gap);
+
+  const row = (f) => {
+    const li = h('li', { class: `bp-faq${f.enabled ? '' : ' is-off'}` },
+      h('label', { class: 'toggle', title: 'An/aus' }, h('input', { type: 'checkbox', name: 'enabled' }), h('span', { class: 'toggle-ui', 'aria-hidden': 'true' })),
+      h('input', { class: 'bp-faq-keys', name: 'keywords', maxlength: 300, 'aria-label': 'Stichwörter' }),
+      h('input', { class: 'bp-faq-answer', name: 'answer', maxlength: 400, 'aria-label': 'Antwort' }),
+      h('select', { name: 'match_all', 'aria-label': 'Wann antworten' }, h('option', { value: 'false' }, 'eins'), h('option', { value: 'true' }, 'alle')),
+      h('label', { class: 'bp-unit', title: 'Pause dieser Antwort' }, h('input', { type: 'number', name: 'cooldown', min: 0, max: 3600, 'aria-label': 'Pause in Sekunden' }), h('em', {}, 's')),
+      h('span', { class: 'bp-timer-sent', title: 'So oft geantwortet' }, `${f.hits ?? 0}×`),
+      h('button', { class: 'btn btn--primary btn--sm', type: 'button', 'data-save': '1' }, 'Speichern'),
+      h('button', { class: 'icon-btn', type: 'button', 'data-del': '1', 'aria-label': 'Stichwort-Antwort löschen' }, '🗑'));
+    const val = (n) => li.querySelector(`[name=${n}]`);
+    val('enabled').checked = !!f.enabled;
+    val('keywords').value = (f.keywords ?? []).join(', ');
+    val('answer').value = f.answer;
+    val('match_all').value = String(!!f.match_all);
+    val('cooldown').value = f.cooldown;
+    li.addEventListener('input', () => li.classList.add('is-dirty'));
+    li.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-save]')) {
+        try {
+          await ctx.api.botPlus.faq.save({ id: f.id, keywords: splitKeys(val('keywords').value), answer: val('answer').value.trim(),
+            match_all: val('match_all').value === 'true', cooldown: Math.round(Number(val('cooldown').value) || 0), enabled: val('enabled').checked });
+          ctx.toast('✓ Stichwort-Antwort gespeichert.', 'ok', 2500);
+          await load();
+        } catch (err) { ctx.toast(faqError(err), 'error', 6000); }
+      }
+      if (e.target.closest('[data-del]')) {
+        if (!confirm('Stichwort-Antwort wirklich löschen?')) return;
+        try { await ctx.api.botPlus.faq.remove(f.id); await load(); } catch (err) { ctx.toast(errText(err), 'error'); }
+      }
+    });
+    return li;
+  };
+  const load = async () => {
+    let list;
+    try { list = await ctx.api.botPlus.faq.list(); } catch (err) { listEl.replaceChildren(h('li', { class: 'cmd-empty' }, errText(err))); return; }
+    listEl.replaceChildren(...(list.length ? list.map(row) : [h('li', { class: 'cmd-empty' }, 'Noch keine Stichwort-Antworten – oben die erste anlegen.')]));
+  };
+  add.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = add.querySelector('.form-msg');
+    const f = { keywords: splitKeys(add.keywords.value), answer: add.answer.value.trim(), match_all: add.match_all.value === 'true',
+      cooldown: Math.round(Number(add.cooldown.value) || 0), enabled: true };
+    if (!f.keywords.length || !f.answer) { msg.textContent = 'Bitte Stichwörter und eine Antwort eintragen.'; return; }
+    msg.textContent = '';
+    try {
+      await ctx.api.botPlus.faq.save(f);
+      add.keywords.value = '';
+      add.answer.value = '';
+      await load();
+    } catch (err) {
+      msg.textContent = faqError(err);
+    }
+  });
+  await load();
+}
+const splitKeys = (v) => v.split(/[,\n]+/).map((k) => k.trim()).filter(Boolean).slice(0, 10);
+const faqError = (err) => (/Stichwort/.test(err?.message ?? '') ? err.message
+  : /check constraint|violates/i.test(err?.message ?? '') ? 'Höchstens 10 Stichwörter, Antwort 1–400 Zeichen, Pause 0–3600 s.' : errText(err));
+
 // ---------- Song-Wünsche ----------
 const PLAY_KEY = 'zd_song_player';
 const songPlayer = { on: false, frame: null, current: null, volume: 60, paused: false, ending: false };
@@ -427,6 +562,9 @@ export async function renderBotPlus(deps) {
     cards.mod.replaceChildren(...modCard());
     await timersCard(cards.timers);
     songCard(cards.songs);
+    if (cards.clips) clipsCard(cards.clips);
+    if (cards.notices) cards.notices.replaceChildren(...noticesCard());
+    if (cards.faq) await faqCard(cards.faq);
     loaded = true;
   }
   for (const form of document.querySelectorAll('[data-botplus] .bp-form')) if (!form.classList.contains('is-dirty')) fill(form);

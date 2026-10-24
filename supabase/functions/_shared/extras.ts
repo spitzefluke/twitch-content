@@ -11,13 +11,31 @@ const OUTBOX_MAX_AGE_MS = 3 * 60_000;
 // Offene Bot-Nachrichten verschicken. Jede Nachricht geht nur einmal raus: erst als
 // verschickt markieren (parallele Aufrufe bekommen sie dann nicht mehr), dann senden.
 // Ältere als 3 Minuten verfallen – sonst käme z. B. eine alte Quizfrage verspätet.
+// send_after (…_bot_more.sql, z. B. „Werbung vorbei“): erst ab diesem Zeitpunkt, die 3 Minuten zählen ab dann.
+let sendAfter = true;
 export async function flushOutbox(conn?: Connection | null) {
   const now = new Date();
+  const nowIso = now.toISOString();
   const since = new Date(now.getTime() - OUTBOX_MAX_AGE_MS).toISOString();
-  await db.from("bot_outbox").update({ sent_at: now.toISOString() }).is("sent_at", null).lt("created_at", since);
-  const { data, error } = await db.from("bot_outbox")
-    .update({ sent_at: now.toISOString() }).is("sent_at", null).gte("created_at", since).select("id, text");
-  if (error || !data?.length) return 0;
+  let data: { id: number; text: string }[] | null = null;
+  if (sendAfter) {
+    await db.from("bot_outbox").update({ sent_at: nowIso }).is("sent_at", null)
+      .or(`and(send_after.is.null,created_at.lt.${since}),send_after.lt.${since}`);
+    const res = await db.from("bot_outbox").update({ sent_at: nowIso }).is("sent_at", null)
+      .or(`and(send_after.is.null,created_at.gte.${since}),and(send_after.gte.${since},send_after.lte.${nowIso})`)
+      .select("id, text");
+    if (res.error && /send_after/.test(res.error.message)) sendAfter = false; // Migration fehlt: wie bisher
+    else if (res.error) return 0;
+    else data = res.data;
+  }
+  if (!sendAfter) {
+    await db.from("bot_outbox").update({ sent_at: nowIso }).is("sent_at", null).lt("created_at", since);
+    const res = await db.from("bot_outbox")
+      .update({ sent_at: nowIso }).is("sent_at", null).gte("created_at", since).select("id, text");
+    if (res.error) return 0;
+    data = res.data;
+  }
+  if (!data?.length) return 0;
   conn ??= await chatConnection();
   if (!conn) return 0;
   let sent = 0;

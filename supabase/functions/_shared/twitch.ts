@@ -86,6 +86,8 @@ export function currentChannelId(): Promise<string | null> {
 export const AFFILIATE_ONLY_EVENTS = [
   "channel.subscribe", "channel.subscription.message", "channel.subscription.gift", "channel.cheer",
   "channel.channel_points_custom_reward_redemption.add",
+  // Werbung und Hype-Train gibt es nur für Affiliates und Partner (…_bot_more.sql)
+  "channel.ad_break.begin", "channel.hype_train.begin", "channel.hype_train.progress", "channel.hype_train.end",
 ];
 export const isAffiliateType = (type: string | null | undefined) => type !== "";
 
@@ -287,6 +289,8 @@ export const BROADCASTER_SCOPES = [
   "moderator:read:chatters",
   // Chat-Bot (…_chat_bot_plus.sql): Moderation (löschen, Timeout) und Shoutouts – ausgeführt im Namen des Streamers
   "moderator:manage:chat_messages", "moderator:manage:banned_users", "moderator:manage:shoutouts",
+  // Chat-Bot (…_bot_more.sql): !clip, Werbepausen-Ansage, Hype-Train und Ziele
+  "clips:edit", "channel:read:ads", "channel:read:hype_train", "channel:read:goals",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und den Chat des Streamers lesen – für Befehle wie !füttern.

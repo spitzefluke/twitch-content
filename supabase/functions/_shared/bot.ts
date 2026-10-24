@@ -7,7 +7,9 @@
 // Dazu Danke für Follow, Abo, Bits und Raid (aus twitch-eventsub) und die Platzhalter {uptime} {game}
 // {title} {followage} in eigenen Befehlen. Was entschieden wird, steht in SQL (bot_chat, bot_event) –
 // hier passiert nur, was Twitch oder YouTube braucht.
-import { botsOff, chatConnection, db, getAppToken, getConnection, helix, sendChat, type Connection } from "./twitch.ts";
+// Mit …_bot_more.sql (bot_chat2): !clip, Stichwort-Antworten, !stats/!topchatter/!topwatch und die Ansagen
+// zu Werbepausen, Hype-Train und erreichten Zielen (botNotice, adWarnTick).
+import { botsOff, chatConnection, db, getAppToken, getConnection, helix, HelixError, sendChat, type Connection } from "./twitch.ts";
 import { lookupVideo, parseVideoId } from "./songs.ts";
 
 type Fragment = { type: string; text: string };
@@ -28,6 +30,7 @@ type BotResult = {
   target?: string;
   text?: string;
   song?: "request";
+  clip?: boolean;
 };
 
 const warn = (what: string) => (e: unknown) => console.warn(`${what}:`, (e as Error)?.message ?? e);
@@ -45,12 +48,14 @@ export function linkHosts(text: string): string[] {
 
 // ---------- Jede Chat-Nachricht ----------
 // Ergebnis: "mod" (gelöscht/Timeout – nichts weiter tun), "done" (Bot-Befehl erledigt), false (weiter wie gehabt)
+// bot_chat2 (…_bot_more.sql) erledigt alles von bot_chat und mehr; fehlt es, wie bisher bot_chat
+let chat2 = true;
 export async function handleBot(event: BotChatEvent): Promise<"mod" | "done" | false> {
   const text = (event.message?.text ?? "").trim();
   const frags = event.message?.fragments ?? [];
   const emotes = frags.filter((f) => f.type === "emote").length;
   const plain = frags.length ? frags.filter((f) => f.type === "text").map((f) => f.text).join("") : text;
-  const { data, error } = await db.rpc("bot_chat", {
+  const args = {
     p_user_id: event.chatter_user_id,
     p_login: event.chatter_user_login,
     p_name: event.chatter_user_name || event.chatter_user_login,
@@ -59,7 +64,12 @@ export async function handleBot(event: BotChatEvent): Promise<"mod" | "done" | f
     p_plain: plain.slice(0, 500),
     p_emotes: emotes,
     p_hosts: linkHosts(plain),
-  });
+  };
+  let { data, error } = await db.rpc(chat2 ? "bot_chat2" : "bot_chat", args);
+  if (error && chat2 && /bot_chat2/.test(error.message)) {
+    chat2 = false;
+    ({ data, error } = await db.rpc("bot_chat", args));
+  }
   if (error) {
     if (!/bot_chat/.test(error.message)) console.warn("bot_chat:", error.message); // Migration fehlt: nichts tun
     return false;
@@ -75,7 +85,29 @@ export async function handleBot(event: BotChatEvent): Promise<"mod" | "done" | f
   for (const r of res.replies ?? []) await sendChat(conn, r.text).catch(warn("Chat"));
   if (res.info) await streamInfo(conn, event, res).catch(warn("Stream-Info"));
   if (res.song === "request") await songRequest(conn, event, text).catch(warn("Song-Wunsch"));
+  if (res.clip) await makeClip(conn, event).catch(warn("Clip"));
   return res.stop ? "done" : false;
+}
+
+// ---------- !clip (…_bot_more.sql) ----------
+// Wer darf und wie oft, entscheidet bot_chat2. Den Clip macht Twitch mit dem Recht clips:edit des Streamers;
+// er ist nach ein paar Sekunden unter dem Link abrufbar.
+async function makeClip(conn: Connection, event: BotChatEvent) {
+  try {
+    const r = await helix("clips", conn.access_token, { method: "POST", query: { broadcaster_id: conn.broadcaster_id } });
+    const id = String(r?.data?.[0]?.id ?? "");
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(id)) throw new Error("Twitch hat keinen Clip geliefert");
+    await sendChat(conn, `🎬 Clip von ${nameOf(event)}: https://clips.twitch.tv/${id}`);
+    await db.rpc("bot_clip_add", { p_clip_id: id, p_who: event.chatter_user_name || event.chatter_user_login });
+  } catch (e) {
+    const status = e instanceof HelixError ? e.status : 0;
+    await sendChat(conn, status === 404
+      ? "🎬 Clips gehen nur, während der Stream läuft."
+      : status === 401 || status === 403
+        ? "🎬 Für !clip fehlt ein Twitch-Recht – der Streamer muss Twitch einmal neu verbinden."
+        : "🎬 Der Clip hat gerade nicht geklappt – versuch es gleich noch einmal.");
+    if (status !== 404) throw e;
+  }
 }
 
 async function moderate(conn: Connection, event: BotChatEvent, mod: NonNullable<BotResult["mod"]>) {
@@ -282,4 +314,75 @@ export async function thankEvent(type: string, event: TwitchEvent, messageId: st
     const { data: s } = await db.from("bot_settings").select("so_text").eq("id", 1).maybeSingle();
     await shoutout(conn, "", s?.so_text ?? "", event.from_broadcaster_user_id).catch(warn("Raid-Shoutout"));
   }
+}
+
+// ---------- Werbepausen, Hype-Train, Ziele (…_bot_more.sql) ----------
+// Aus twitch-eventsub: channel.ad_break.begin, channel.hype_train.begin/progress/end (v2), channel.goal.progress/end.
+// Ob und was der Bot sagt, entscheidet bot_notice (an/aus, Texte, jede Meldung genau einmal).
+type NoticeEvent = {
+  id?: string; level?: number; duration_seconds?: number; started_at?: string;
+  description?: string; type?: string; current_amount?: number; target_amount?: number; is_achieved?: boolean;
+};
+const GOAL_NAMES: Record<string, string> = {
+  follow: "Follower-Ziel", follower: "Follower-Ziel", subscription: "Abo-Ziel", subscription_count: "Abo-Ziel",
+  new_subscription: "Abo-Ziel", new_subscription_count: "Abo-Ziel", new_bit: "Bits-Ziel", new_cheerer: "Cheer-Ziel",
+};
+export const NOTICE_TYPES = [
+  "channel.ad_break.begin", "channel.hype_train.begin", "channel.hype_train.progress", "channel.hype_train.end",
+  "channel.goal.progress", "channel.goal.end",
+];
+
+export async function botNotice(type: string, event: NoticeEvent) {
+  if (!NOTICE_TYPES.includes(type) || await botsOff().catch(() => false)) return;
+  let kind = "";
+  let data: Record<string, unknown> = {};
+  if (type === "channel.ad_break.begin") {
+    kind = "ad_start";
+    data = { at: event.started_at ?? "", duration: event.duration_seconds ?? 0 };
+  } else if (type.startsWith("channel.hype_train.")) {
+    kind = type.endsWith(".begin") ? "hype_start" : type.endsWith(".end") ? "hype_end" : "hype_level";
+    data = { id: event.id ?? "", level: event.level ?? 1 };
+  } else if (type.startsWith("channel.goal.")) {
+    if (type === "channel.goal.end" && !event.is_achieved) return;
+    kind = "goal";
+    data = {
+      id: event.id ?? "", goal: (event.description || GOAL_NAMES[event.type ?? ""] || "").slice(0, 100),
+      current: event.current_amount ?? 0, target: event.target_amount ?? 0,
+    };
+  }
+  const { data: res, error } = await db.rpc("bot_notice", { p_kind: kind, p_data: data });
+  if (error) {
+    if (!/bot_notice/.test(error.message)) console.warn("bot_notice:", error.message); // Migration fehlt: nichts tun
+    return;
+  }
+  if (!res?.text) return;
+  const conn = await getConnection().catch(() => null);
+  if (!conn) return;
+  await sendChat(conn, String(res.text).slice(0, 480), undefined, "system").catch(warn("Ansage"));
+  // „Werbung vorbei“: kommt mit der Warteschlange, sobald die Pause um ist
+  if (res.end_text && Number(res.end_after) > 0) {
+    const at = new Date(Date.now() + Number(res.end_after) * 1000).toISOString();
+    const { error: outErr } = await db.from("bot_outbox").insert({ text: String(res.end_text).slice(0, 480), send_after: at });
+    if (outErr) console.warn("Werbung-vorbei-Nachricht:", outErr.message);
+  }
+}
+
+// Vorwarnung vor der nächsten geplanten Werbung (Recht channel:read:ads). Läuft mit jedem Watchtime-Durchgang
+// (höchstens jede Minute, nur live) – angesagt wird, wenn die Werbung in den nächsten 2½ Minuten kommt.
+const AD_WARN_WINDOW_S = 150;
+export async function adWarnTick(conn: Connection) {
+  if (!(conn.scopes ?? []).includes("channel:read:ads")) return;
+  const r = await helix("channels/ads", conn.access_token, { query: { broadcaster_id: conn.broadcaster_id } });
+  const ad = r?.data?.[0];
+  const raw = String(ad?.next_ad_at ?? "");
+  if (!raw) return;
+  // Früher eine Unix-Zeit als Text, heute RFC3339 – beides verstehen
+  const at = /^\d+$/.test(raw) ? Number(raw) * 1000 : Date.parse(raw);
+  const seconds = Math.round((at - Date.now()) / 1000);
+  if (!Number.isFinite(seconds) || seconds <= 0 || seconds > AD_WARN_WINDOW_S) return;
+  if (await botsOff().catch(() => false)) return;
+  const { data: res } = await db.rpc("bot_notice", {
+    p_kind: "ad_warn", p_data: { at: new Date(at).toISOString(), duration: Number(ad?.duration) || 0, seconds },
+  });
+  if (res?.text) await sendChat(conn, String(res.text).slice(0, 480), undefined, "system").catch(warn("Werbe-Vorwarnung"));
 }
