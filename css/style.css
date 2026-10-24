@@ -2249,3 +2249,51 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
   .obs-ctl { min-height: 48px; justify-content: flex-start; }
   .obs-ctl--ext { grid-column: auto; }
 }
+
+/* ---------- Anleitung „Overlay in OBS einrichten“ (js/obs-setup.js) ---------- */
+.obs-setup {
+  --s-bg: #161826; --s-surface: #232532; --s-line: #33364a; --s-text: #e9e9ed; --s-muted: #a9abbb; --s-acc: #9184d9; --s-acc-100: #f5f4ff; --s-mark: #ffb020;
+  width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; display: none; flex-direction: column; overflow: hidden;
+  background: var(--s-bg); color: var(--s-text); border: 1px solid var(--s-line); border-radius: 14px; font-family: Inter, var(--font-body), sans-serif;
+}
+.obs-setup[open] { display: flex; }
+.obs-setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 10px; }
+.obs-setup-head h2 { margin: 2px 0 0; font: 700 20px/1.2 Inter, var(--font-body), sans-serif; text-transform: none; letter-spacing: 0; }
+.obs-setup-count { margin: 0; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--s-acc); font-weight: 600; }
+.obs-setup-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 18px 6px; display: grid; gap: 12px; align-content: start; }
+.obs-setup-shot { margin: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--s-line); background: #1d1f26; aspect-ratio: 16 / 10; }
+.obs-setup-shot a { display: block; height: 100%; cursor: zoom-in; }
+.obs-setup-shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.obs-setup-text { display: grid; gap: 8px; font-size: 14.5px; line-height: 1.5; }
+.obs-setup-text p { margin: 0; }
+.obs-setup-text b { color: var(--s-acc-100); }
+.obs-setup-tip { padding: 8px 10px; border-radius: 8px; background: var(--s-surface); border: 1px solid var(--s-line); color: var(--s-muted); font-size: 13.5px; }
+.obs-setup-link { padding: 0; border: 0; background: none; color: var(--s-acc); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.obs-setup-list { margin: 0; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 6px; }
+.obs-setup-list li { counter-increment: s; position: relative; padding-left: 30px; }
+.obs-setup-list li::before {
+  content: counter(s); position: absolute; left: 0; top: 1px; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--s-mark); color: #1b1300; font-size: 12px; font-weight: 800;
+}
+.obs-setup kbd { padding: 1px 6px; border-radius: 4px; border: 1px solid var(--s-line); background: var(--s-surface); font: 600 12px/1.4 "JetBrains Mono", monospace; }
+.obs-setup-url { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 16px; border-radius: 8px; background: var(--s-surface); border: 1px solid var(--s-line); }
+.obs-setup-url input { min-width: 0; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-text); font: 13px "JetBrains Mono", monospace; }
+.obs-setup-status { padding: 10px 12px; border-radius: 8px; font-weight: 600; background: var(--s-surface); border: 1px solid var(--s-line); }
+.obs-setup-status[data-state="ok"] { border-color: #2fbf71; background: rgba(47, 191, 113, .1); color: #c9f5dc; }
+.obs-setup-status[data-state="wait"] { color: #ffe0a3; }
+.obs-setup-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px 16px; border-top: 1px solid var(--s-line); }
+.obs-setup-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.obs-setup-dot { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 0; background: var(--s-line); cursor: pointer; }
+.obs-setup-dot.is-done { background: #5b5490; }
+.obs-setup-dot.is-on { background: var(--s-acc); box-shadow: 0 0 0 3px rgba(145, 132, 217, .3); }
+.obs-setup-nav { display: flex; gap: 8px; }
+.obs-setup .icon-btn { color: var(--s-muted); }
+@media (max-width: 560px) {
+  .obs-setup { width: 100vw; max-width: 100vw; max-height: 100dvh; height: 100dvh; margin: 0; border-radius: 0; border: 0; }
+  .obs-setup-head h2 { font-size: 18px; }
+  .obs-setup-text { font-size: 14px; }
+  .obs-setup-url { grid-template-columns: 1fr; }
+  .obs-setup-nav .btn { min-height: 44px; min-width: 96px; }
+  .obs-setup-dots { gap: 5px; flex-wrap: nowrap; }
+  .obs-setup-dot { width: 9px; height: 9px; }
+}

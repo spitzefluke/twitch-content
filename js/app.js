@@ -17,7 +17,8 @@ import {
 import {
   KINDS, challengeBurst, challengeSummary, currentStage, doneCount, heartsHtml, pipsHtml, stageDone, stageLabel,
 } from './challenge.js';
-import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, openExtra, renderGuard, setupExtras } from './extras.js';
+import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, obsStatus, openExtra, renderGuard, setupExtras } from './extras.js';
+import { autoOpenObsSetup, openObsSetup, setupObsSetup } from './obs-setup.js';
 import { guardFrame } from './frame-guard.js';
 import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
 import { openLibrary, setupLibrary } from './library.js';
@@ -5752,6 +5753,18 @@ function setupObs() {
   form.addEventListener('change', () => updateObs());
   form.addEventListener('reset', () => setTimeout(() => { saveObs(null); updateObs(); }));
   $('#obs-copy').addEventListener('click', copyObsUrl);
+  // Anleitung „In OBS einrichten“ (js/obs-setup.js)
+  setupObsSetup({
+    url: () => $('#obs-url').value,
+    copy: copyObsUrl,
+    status: async () => obsStatus(),
+    connect: () => {
+      $('#obs-help').open = true;
+      $('#obs-connect').scrollIntoView({ block: 'center', behavior: 'smooth' });
+      $('#obs-ws-form').password.focus({ preventScroll: true });
+    },
+  });
+  $('#obs-setup-open').addEventListener('click', () => openObsSetup(0));
   setupObsModules();
   $('#obs-ticker-form').addEventListener('submit', saveTickerTexts);
   $('#obs-alert-upload-btn').addEventListener('click', uploadAlertSound);
@@ -6372,9 +6385,19 @@ const obsSceneNow = () => {
   const f = $('#obs-options');
   return f.elements.scene_on.checked ? f.elements.scene.value : '';
 };
+// Seite der Twitch-Erweiterung im Creator-Dashboard (Installieren/Aktivieren) – ohne Version zeigt Twitch nur die Startseite
+// ID und Version stehen in js/config.js (dort erlaubt sie auch der Secret-Scan)
+function extensionUrl() {
+  const id = CONFIG.TWITCH_EXTENSION_ID;
+  const version = CONFIG.TWITCH_EXTENSION_VERSION;
+  if (!id || !version) return $('#obs-ext-link').getAttribute('href');
+  return `https://dashboard.twitch.tv/extensions/${encodeURIComponent(id)}-${encodeURIComponent(version)}`;
+}
+
 function setupObsDocks() {
   const dlg = $('#obs-dialog');
   const body = dlg.querySelector('.obs-body');
+  $('#obs-ext-link').href = extensionUrl();
   const list = $('#obs-scene-list');
   list.replaceChildren(...OBS_SCENES.map(([id, name, icon]) => {
     const b = document.createElement('button');
@@ -6606,6 +6629,7 @@ async function openObsDialog({ page = false } = {}) {
   // Mods richten nichts in OBS ein – die Anleitungen zum Verbinden bleiben für sie weg
   $('#obs-dialog').classList.toggle('is-mod', isTeam() && !canStreamerView());
   applyObsGuide();
+  autoOpenObsSetup({ isMod: isTeam() && !canStreamerView() });
   updateObs({ now: true });
   recordObsHistory({ reset: true });
   loadTickerTexts();

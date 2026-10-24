@@ -39,5 +39,10 @@ export const openExtra = (kind) => byKind[kind]?.open();
 export const extraIcon = (kind) => byKind[kind]?.icon;
 export const paintExtraTiles = () => EXTRAS.forEach((f) => paintTile(f));
 export const renderGuard = () => { guard.render(); obsWatch.refresh(); };
+// OBS verbunden? (Anleitung im OBS-Editor) – wirft, solange die Migration fehlt oder niemand angemeldet ist
+export function obsStatus() {
+  X.api ??= createExtrasApi(X.ctx.state.api);
+  return X.api.obsWatch.status();
+}
 // Kanalpunkte-Belohnungen Vorlesen und Karten-Pack (für die Übersicht im Dashboard)
 export const listRewards = async () => (X.api ? X.api.rewards.list() : []);

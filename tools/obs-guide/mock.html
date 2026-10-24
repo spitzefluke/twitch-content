@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>OBS-Nachbau</title>
+<style>
+  :root {
+    --base: #1d1f26; --dock: #272a33; --dock-head: #2f323d; --line: #3b3e48; --btn: #3c404b; --btn-hi: #4a4f5c;
+    --input: #16171c; --text: #f2f3f5; --muted: #a3a6b0; --sel: #2c5ac4; --menu: #2b2e38; --mark: #ffb020;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; background: #555; font: 12px/1.35 Inter, "Segoe UI", sans-serif; color: var(--text); display: grid; gap: 20px; }
+  .frame { position: relative; width: 720px; height: 450px; overflow: hidden; background: var(--base); border-radius: 6px; }
+  /* Hauptfenster */
+  .title { height: 24px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; background: #15161b; color: var(--muted); font-size: 11px; }
+  .title .wc { display: flex; gap: 14px; color: #cfd1d6; }
+  .menubar { height: 22px; display: flex; gap: 14px; align-items: center; padding: 0 10px; background: var(--base); border-bottom: 1px solid var(--line); font-size: 11.5px; }
+  .preview { height: 236px; display: grid; place-items: center; background: #101116; }
+  .canvas { position: relative; width: 384px; height: 216px; background: linear-gradient(135deg, #1c3b5a, #2b1d45 55%, #4a2433); overflow: hidden; outline: 1px solid #000; }
+  .canvas .game { position: absolute; inset: 0; background:
+      radial-gradient(60% 40% at 30% 75%, rgba(80, 200, 120, .45), transparent 70%),
+      radial-gradient(50% 35% at 75% 30%, rgba(255, 190, 90, .35), transparent 70%),
+      linear-gradient(180deg, #355f8a 0%, #2a3f63 50%, #2f5a3a 51%, #24452d 100%); }
+  .canvas .cam { position: absolute; right: 10px; bottom: 10px; width: 108px; height: 72px; border-radius: 4px; background: linear-gradient(160deg, #3b3f4a, #23252c); overflow: hidden; border: 2px solid rgba(255,255,255,.15); }
+  .canvas .cam::before { content: ""; position: absolute; left: 50%; top: 18px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: #c99b7f; }
+  .canvas .cam::after { content: ""; position: absolute; left: 50%; bottom: -14px; width: 58px; height: 40px; margin-left: -29px; border-radius: 50% 50% 0 0; background: #5b6ee1; }
+  .ovl-ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 15px; background: rgba(15, 12, 30, .85); display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 7px; color: #e9e6ff; white-space: nowrap; }
+  .ovl-ticker b { background: #ffb020; color: #1b1300; padding: 1px 4px; border-radius: 2px; }
+  .ovl-alert { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(25, 18, 50, .92); border: 1px solid #9184d9; font-size: 9px; font-weight: 700; color: #f5f4ff; box-shadow: 0 0 18px rgba(145, 132, 217, .6); }
+  .ovl-card { position: absolute; left: 10px; top: 10px; width: 92px; padding: 5px 6px; border-radius: 6px; background: rgba(25, 18, 50, .85); border: 1px solid rgba(145,132,217,.6); font-size: 6.5px; color: #e9e6ff; }
+  .ovl-card i { display: block; height: 4px; margin-top: 3px; border-radius: 2px; background: linear-gradient(90deg, #9184d9 60%, rgba(255,255,255,.15) 60%); }
+  .docks { display: grid; grid-template-columns: 120px 190px 1fr 120px 120px; gap: 4px; height: 144px; padding: 4px; }
+  .dock { background: var(--dock); border: 1px solid var(--line); border-radius: 3px; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .dock h4 { margin: 0; height: 20px; display: flex; align-items: center; padding: 0 6px; background: var(--dock-head); font-size: 11px; font-weight: 600; }
+  .list { flex: 1; padding: 2px 0; overflow: hidden; }
+  .row { height: 21px; display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 11.5px; white-space: nowrap; }
+  .row.sel { background: var(--sel); }
+  .row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .row svg { width: 12px; height: 12px; flex: none; opacity: .9; }
+  .tools { height: 22px; display: flex; align-items: center; gap: 2px; padding: 0 3px; border-top: 1px solid var(--line); }
+  .tools span { width: 20px; height: 18px; display: grid; place-items: center; border-radius: 3px; }
+  .tools svg { width: 12px; height: 12px; }
+  .mixer { padding: 4px 6px; display: grid; gap: 6px; font-size: 10.5px; }
+  .meter { height: 5px; border-radius: 2px; background: linear-gradient(90deg, #39b54a 0 55%, #d6c22b 55% 75%, #c7422c 75%); opacity: .8; }
+  .ctrl { padding: 4px; display: grid; gap: 3px; }
+  .ctrl span { height: 18px; display: grid; place-items: center; border-radius: 3px; background: var(--btn); font-size: 10px; }
+  /* Markierung */
+  .mark { position: absolute; border-radius: 5px; box-shadow: 0 0 0 2.5px var(--mark), 0 0 14px 2px rgba(255, 176, 32, .55); pointer-events: none; }
+  .badge { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--mark); color: #1b1300; font-weight: 800; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+  .note { position: absolute; padding: 5px 9px; border-radius: 6px; background: var(--mark); color: #1b1300; font-weight: 700; font-size: 11.5px; box-shadow: 0 3px 10px rgba(0,0,0,.45); white-space: nowrap; }
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
+  /* Menü */
+  .menu { position: absolute; width: 196px; background: var(--menu); border: 1px solid #4a4e5a; border-radius: 4px; padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,.55); font-size: 11.5px; }
+  .menu .it { height: 21px; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+  .menu .it svg { width: 12px; height: 12px; opacity: .85; }
+  .menu .it.hi { background: var(--sel); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 3px 0; }
+  /* Dialog */
+  .dlg { position: absolute; background: var(--base); border: 1px solid #4a4e5a; border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.6); overflow: hidden; }
+  .dlg .dt { height: 26px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; background: #15161b; font-size: 11.5px; }
+  .dlg .db { padding: 10px 14px; display: grid; gap: 7px; }
+  .fld { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 8px; }
+  .fld label { text-align: right; color: #dfe1e6; }
+  .inp { height: 22px; display: flex; align-items: center; padding: 0 7px; background: var(--input); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; white-space: nowrap; font-size: 11.5px; }
+  .inp.num { width: 90px; justify-content: space-between; }
+  .chk { display: flex; align-items: center; gap: 7px; }
+  .box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #6b7080; background: var(--input); display: grid; place-items: center; flex: none; }
+  .box.on { background: var(--sel); border-color: var(--sel); }
+  .box.on::after { content: ""; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+  .radio { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #6b7080; background: var(--input); display: grid; place-items: center; flex: none; }
+  .radio.on::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .radio.on { background: var(--sel); border-color: var(--sel); }
+  .btns { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 14px 10px; }
+  .btn { height: 23px; min-width: 76px; padding: 0 10px; display: grid; place-items: center; border-radius: 3px; background: var(--btn); font-size: 11.5px; }
+  .btn.pri { background: var(--sel); }
+  .area { height: 46px; padding: 5px 7px; background: var(--input); border: 1px solid var(--line); border-radius: 3px; font: 10px/1.3 "JetBrains Mono", monospace; color: #b9bcc6; }
+  .sel-box { height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 7px; background: var(--btn); border-radius: 3px; }
+</style></head>
+<body>
+<script>
+const ic = {
+  plus: '<svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  trash: '<svg viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5" stroke="#fff" stroke-width="1.4" fill="none" stroke-linejoin="round"/></svg>',
+  gear: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4" stroke="#fff" stroke-width="1.4" fill="none"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  up: '<svg viewBox="0 0 16 16"><path d="M3.5 10L8 5.5l4.5 4.5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  down: '<svg viewBox="0 0 16 16"><path d="M3.5 6L8 10.5L12.5 6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  eye: '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" stroke="#fff" stroke-width="1.3" fill="none"/><circle cx="8" cy="8" r="2" fill="#fff"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" stroke="#fff" stroke-width="1.3" fill="none"/></svg>',
+  globe: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12" stroke="#fff" stroke-width="1.1" fill="none"/></svg>',
+  cam: '<svg viewBox="0 0 16 16"><rect x="1.5" y="4" width="9" height="8" rx="1.2" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M10.5 7l4-2v6l-4-2" stroke="#fff" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>',
+  game: '<svg viewBox="0 0 16 16"><rect x="1.5" y="5" width="13" height="7" rx="3.5" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M5 7v3M3.5 8.5h3" stroke="#fff" stroke-width="1.2"/><circle cx="11" cy="8" r=".9" fill="#fff"/><circle cx="12.5" cy="9.5" r=".9" fill="#fff"/></svg>',
+  mic: '<svg viewBox="0 0 16 16"><rect x="6" y="1.8" width="4" height="7.5" rx="2" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M3.8 7.5a4.2 4.2 0 0 0 8.4 0M8 11.7v2.5" stroke="#fff" stroke-width="1.3" fill="none"/></svg>',
+  img: '<svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M3 12l3.5-4 2.5 3 2-2 2 3" stroke="#fff" stroke-width="1.2" fill="none"/></svg>',
+  mon: '<svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="8.5" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M6 14h4M8 11v3" stroke="#fff" stroke-width="1.3"/></svg>',
+  win: '<svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M2 6h12" stroke="#fff" stroke-width="1.3"/></svg>',
+  txt: '<svg viewBox="0 0 16 16"><path d="M3 3.5h10M8 3.5V13" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  film: '<svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M5 2.5v11M11 2.5v11" stroke="#fff" stroke-width="1.1"/></svg>',
+  color: '<svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="#9184d9"/></svg>',
+  folder: '<svg viewBox="0 0 16 16"><path d="M1.8 4.5h4.4l1.4 1.5h6.6v6.8H1.8z" stroke="#fff" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>',
+  scene: '<svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><rect x="4.5" y="5.5" width="4" height="3" fill="#fff"/></svg>',
+  spk: '<svg viewBox="0 0 16 16"><path d="M2.5 6h2.5l3.5-3v10L5 10H2.5z" stroke="#fff" stroke-width="1.3" fill="none" stroke-linejoin="round"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5" stroke="#fff" stroke-width="1.3" fill="none"/></svg>',
+};
+const SRC_ICON = { 'StreamHelp': ic.globe, 'Kamera': ic.cam, 'Spielaufnahme': ic.game, 'Mikrofon': ic.mic };
+
+function mainWindow({ sources = ['Kamera', 'Spielaufnahme', 'Mikrofon'], sel = -1, overlay = false } = {}) {
+  const rows = sources.map((s, i) => `<div class="row${i === sel ? ' sel' : ''}">${SRC_ICON[s]}<span class="nm">${s}</span>${ic.eye}${ic.lock}</div>`).join('');
+  return `
+  <div class="title"><span>OBS 30.2.3 – Profil: Stream – Szenen: StreamHelp</span><span class="wc"><span>–</span><span>☐</span><span>✕</span></span></div>
+  <div class="menubar"><span>Datei</span><span>Bearbeiten</span><span>Ansicht</span><span>Docks</span><span>Profil</span><span>Szenensammlung</span><span>Werkzeuge</span><span>Hilfe</span></div>
+  <div class="preview"><div class="canvas"><div class="game"></div>${overlay ? `
+      <div class="ovl-card">🏆 Cup – Platz 1<i></i></div>
+      <div class="ovl-alert">💜 Mia folgt jetzt!</div>
+      <div class="ovl-ticker"><b>LIVE</b><span>!discord · !sounds · Danke für den Follow, Mia 💜 · Nächster Stream: Freitag 20 Uhr</span></div>` : ''}
+    <div class="cam"></div></div></div>
+  <div class="docks">
+    <div class="dock"><h4>Szenen</h4><div class="list"><div class="row sel">${ic.scene}<span class="nm">Live</span></div><div class="row">${ic.scene}<span class="nm">Just Chatting</span></div><div class="row">${ic.scene}<span class="nm">Pause</span></div></div>
+      <div class="tools"><span>${ic.plus}</span><span>${ic.trash}</span><span>${ic.gear}</span><span>${ic.up}</span><span>${ic.down}</span></div></div>
+    <div class="dock" id="dock-src"><h4>Quellen</h4><div class="list">${rows}</div>
+      <div class="tools"><span id="src-plus">${ic.plus}</span><span>${ic.trash}</span><span>${ic.gear}</span><span id="src-up">${ic.up}</span><span>${ic.down}</span></div></div>
+    <div class="dock"><h4>Audio-Mixer</h4><div class="mixer"><div>Desktop-Audio<div class="meter"></div></div><div>Mikrofon<div class="meter" style="opacity:.5"></div></div>${overlay ? '<div>StreamHelp<div class="meter" style="opacity:.6"></div></div>' : ''}</div></div>
+    <div class="dock"><h4>Szenenübergänge</h4><div class="ctrl"><span>Überblenden</span><span>Dauer 300 ms</span></div></div>
+    <div class="dock"><h4>Steuerung</h4><div class="ctrl"><span>Streaming starten</span><span>Aufnahme starten</span><span>Studiomodus</span><span>Einstellungen</span></div></div>
+  </div>`;
+}
+// Ort eines Elements im Rahmen (für Markierungen)
+function box(frame, sel, pad = 3) {
+  const f = frame.getBoundingClientRect();
+  const r = frame.querySelector(sel).getBoundingClientRect();
+  return { x: r.left - f.left - pad, y: r.top - f.top - pad, w: r.width + 2 * pad, h: r.height + 2 * pad };
+}
+function mark(frame, sel, n, { pad = 3, side = 'right', note = '' } = {}) {
+  const b = box(frame, sel, pad);
+  frame.insertAdjacentHTML('beforeend', `<div class="mark" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px"></div>`);
+  const bx = side === 'right' ? b.x + b.w + 6 : side === 'left' ? b.x - 28 : b.x + b.w / 2 - 11;
+  const by = side === 'top' ? b.y - 28 : side === 'bottom' ? b.y + b.h + 6 : b.y + b.h / 2 - 11;
+  if (n) frame.insertAdjacentHTML('beforeend', `<div class="badge" style="left:${bx}px;top:${by}px">${n}</div>`);
+  if (note) {
+    const nx = side === 'left' ? bx - 8 : bx + (n ? 28 : 0);
+    frame.insertAdjacentHTML('beforeend', `<div class="note" data-side="${side}" style="left:${nx}px;top:${by}px">${note}</div>`);
+    if (side === 'left') { const el = frame.lastElementChild; el.style.left = `${nx - el.offsetWidth}px`; }
+  }
+}
+function frame(id, html) {
+  const f = document.createElement('div');
+  f.className = 'frame'; f.id = id; f.innerHTML = html;
+  document.body.append(f);
+  return f;
+}
+const URL_TXT = 'https://spitzefluke.github.io/twitch-content/overlay.html?live=1&amp;c=dein-kanal';
+
+// 1) Quellen → +
+{
+  const f = frame('m1', mainWindow());
+  mark(f, '#src-plus', 1, { side: 'top', note: 'Auf + klicken' });
+}
+// 2) Menü → Browser
+{
+  const f = frame('m2', mainWindow());
+  const p = box(f, '#src-plus', 0);
+  const items = [['Audioausgabeaufnahme', ic.spk], ['Audioeingabeaufnahme', ic.mic], ['Bild', ic.img], ['Bildschirmaufnahme', ic.mon], ['Browser', ic.globe],
+    ['Diashow', ic.img], ['Farbquelle', ic.color], ['Fensteraufnahme', ic.win], ['Medienquelle', ic.film], ['Spielaufnahme', ic.game],
+    ['Szene', ic.scene], ['Text (FreeType 2)', ic.txt], ['Videoaufnahmegerät', ic.cam], 'hr', ['Gruppe', ic.folder]];
+  f.insertAdjacentHTML('beforeend', `<div class="menu" style="left:${p.x}px;bottom:${450 - p.y - 2}px">${items.map((it) => it === 'hr' ? '<hr>' : `<div class="it${it[0] === 'Browser' ? ' hi' : ''}" ${it[0] === 'Browser' ? 'id="it-browser"' : ''}>${it[1]}<span>${it[0]}</span></div>`).join('')}</div>`);
+  mark(f, '#it-browser', 1, { pad: 1, side: 'right', note: '„Browser“ wählen' });
+}
+// 3) Quelle erstellen
+{
+  const f = frame('m3', mainWindow() + '<div class="dim"></div>');
+  f.insertAdjacentHTML('beforeend', `<div class="dlg" style="left:170px;top:70px;width:380px">
+    <div class="dt"><span>Quelle erstellen/auswählen</span><span>✕</span></div>
+    <div class="db">
+      <div class="chk"><span class="radio on"></span>Neu erstellen</div>
+      <div class="inp" id="m3-name" style="margin-left:21px">StreamHelp</div>
+      <div class="chk"><span class="radio"></span>Vorhandene hinzufügen</div>
+      <div class="area" style="margin-left:21px;height:56px;background:#1a1b21"></div>
+      <div class="chk" id="m3-vis"><span class="box on"></span>Quelle sichtbar machen</div>
+    </div>
+    <div class="btns"><span class="btn pri" id="m3-ok">OK</span><span class="btn">Abbrechen</span></div></div>`);
+  mark(f, '#m3-name', 1, { side: 'right', note: 'Name: StreamHelp' });
+  mark(f, '#m3-ok', 2, { pad: 2, side: 'bottom' });
+}
+// 4) Eigenschaften
+{
+  const f = frame('m4', mainWindow() + '<div class="dim"></div>');
+  f.insertAdjacentHTML('beforeend', `<div class="dlg" style="left:22px;top:8px;width:520px">
+    <div class="dt"><span>Eigenschaften für „StreamHelp“</span><span>✕</span></div>
+    <div style="height:62px;margin:8px 14px 0;background:#101116;display:grid;place-items:center;color:#5c606b;font-size:10px;border-radius:3px">Vorschau</div>
+    <div class="db" style="gap:6px">
+      <div class="fld"><label></label><div class="chk"><span class="box"></span>Lokale Datei</div></div>
+      <div class="fld"><label>URL</label><div class="inp" id="m4-url">${URL_TXT}</div></div>
+      <div class="fld"><label>Breite</label><div class="inp num" id="m4-w">1920<span style="color:#777">⇕</span></div></div>
+      <div class="fld"><label>Höhe</label><div class="inp num" id="m4-h">1080<span style="color:#777">⇕</span></div></div>
+      <div class="fld"><label></label><div class="chk" id="m4-audio"><span class="box on"></span>Audio über OBS steuern</div></div>
+      <div class="fld"><label></label><div class="chk"><span class="box"></span>Benutzerdefinierte Bildrate verwenden</div></div>
+      <div class="fld"><label>Benutzerdefiniertes CSS</label><div class="area" style="height:30px">body { background-color: rgba(0, 0, 0, 0); …</div></div>
+      <div class="fld"><label></label><div class="chk" id="m4-shut"><span class="box"></span>Quelle herunterfahren, wenn nicht sichtbar</div></div>
+      <div class="fld"><label></label><div class="chk"><span class="box"></span>Browser aktualisieren, wenn Szene aktiv wird</div></div>
+    </div>
+    <div class="btns" style="justify-content:space-between"><span class="btn">Standardwerte</span><span style="display:flex;gap:6px"><span class="btn pri" id="m4-ok">OK</span><span class="btn">Abbrechen</span></span></div></div>`);
+  mark(f, '#m4-url', 1, { side: 'right', note: 'Adresse einfügen' });
+  mark(f, '#m4-w', 2, { side: 'right', note: '1920 × 1080' });
+  mark(f, '#m4-h', '', { side: 'right' });
+  mark(f, '#m4-audio', 3, { side: 'right', note: 'anhaken' });
+  mark(f, '#m4-shut', 4, { side: 'right', note: 'aus lassen' });
+  mark(f, '#m4-ok', 5, { pad: 2, side: 'left' });
+}
+// 5) Ganz nach oben
+{
+  const f = frame('m5', mainWindow({ sources: ['StreamHelp', 'Kamera', 'Spielaufnahme', 'Mikrofon'], sel: 0, overlay: true }));
+  mark(f, '#dock-src .row.sel', 1, { pad: 1, side: 'top', note: 'StreamHelp ganz oben' });
+  mark(f, '#src-up', 2, { pad: 2, side: 'right', note: 'mit ▲ nach oben' });
+}
+// 6) Weitere Szenen: Vorhandene hinzufügen
+{
+  const f = frame('m6', mainWindow() + '<div class="dim"></div>');
+  f.insertAdjacentHTML('beforeend', `<div class="dlg" style="left:170px;top:62px;width:380px">
+    <div class="dt"><span>Quelle erstellen/auswählen</span><span>✕</span></div>
+    <div class="db">
+      <div class="chk"><span class="radio"></span>Neu erstellen</div>
+      <div class="inp" style="margin-left:21px;color:#6b6f7a">Browser 2</div>
+      <div class="chk" id="m6-exist"><span class="radio on"></span>Vorhandene hinzufügen</div>
+      <div class="area" style="margin-left:21px;height:56px;padding:2px;background:#1a1b21">
+        <div class="row sel" id="m6-sh" style="height:19px">${ic.globe}<span class="nm" style="font:11.5px Inter, sans-serif;color:#fff">StreamHelp</span></div>
+      </div>
+      <div class="chk"><span class="box on"></span>Quelle sichtbar machen</div>
+    </div>
+    <div class="btns"><span class="btn pri">OK</span><span class="btn">Abbrechen</span></div></div>`);
+  mark(f, '#m6-exist', 1, { side: 'right' });
+  mark(f, '#m6-sh', 2, { pad: 2, side: 'right', note: 'dieselbe Quelle' });
+}
+// 7) Fertig
+{
+  frame('m7', mainWindow({ sources: ['StreamHelp', 'Kamera', 'Spielaufnahme', 'Mikrofon'], overlay: true }));
+}
+</script>
+</body></html>
