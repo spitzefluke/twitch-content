@@ -702,6 +702,16 @@ Einmal nötig: `supabase/migrations/20261031000000_security.sql` im SQL Editor a
 - **Bot-Schutz:** verstecktes Fangfeld und Mindestzeit beim Registrieren; optional **Cloudflare Turnstile**: Site Key in `js/config.js` (`TURNSTILE_SITE_KEY`), Secret Key **nur** in Supabase unter Authentication → Attack Protection → Captcha. Erst beides eintragen, dann einschalten.
 - **GitHub-Checks** bei jeder PR (`.github/workflows/security-checks.yml`): Versionsnummern/CSP, JS-Syntax, keine geheimen Schlüssel im Code (`tools/check-secrets.mjs`), Migrationen (`tools/check-sql.mjs`), Typprüfung und Tests der Edge Functions, Secret-Scan der ganzen Git-Historie (gitleaks, `.gitleaks.toml`). Dazu **CodeQL** (`.github/workflows/codeql.yml`, Funde unter Security → Code scanning).
 
+
+### Sicherheits-Audit (Migration `20261125000000_hardening.sql`)
+
+Einmal nötig: `supabase/migrations/20261125000000_hardening.sql` im SQL Editor ausführen (nach `…_bot_more.sql`). Ändert keine Daten. Die Edge Functions gehen beim Merge automatisch raus.
+
+- **Twitch verbinden nur durch den Inhaber:** Den Twitch-Login für einen Kanal startet nur, wem der Kanal auf StreamHelp gehört (bzw. der Plattform-Admin); geprüft beim Start und noch einmal beim Rückweg von Twitch. Vorher konnte ein Fremder den Login starten, dem Streamer den Freigabe-Link unterschieben und wäre danach als Inhaber eingetragen gewesen. Bei einem Kanal ohne Inhaber muss das StreamHelp-Konto selbst mit genau diesem Twitch-Konto angemeldet sein (oder Admin sein).
+- **Bits-Quittungen gelten plattformweit einmal:** Dieselbe Bits-Transaktion lässt sich nicht mehr in einem zweiten Kanal einlösen.
+- **Bot-Einstellungen und Auto-Nachrichten:** Die Regeln in der Datenbank prüfen jetzt den Kanal der Zeile (`is_admin_of(channel_id)`). `tools/check-sql.mjs` meldet künftig jede neue Policy, die nur `is_admin()` ohne `channel_id` prüft.
+- **Edge Functions:** Aufrufe an Twitch und YouTube brechen nach 8–10 Sekunden ab, statt die Function festzuhalten; `supabase-js` ist auf eine feste Version gepinnt (keine ungeprüfte neue Version beim nächsten Deployment).
+- **Tests:** `supabase/tests/hardening_test.sql` (gegen eine Testdatenbank mit allen Migrationen, alles in einer Transaktion mit `rollback` – nie gegen die echte Datenbank) und `supabase/functions/_shared/oauth_owner_test.ts` (läuft in den Sicherheits-Checks mit).
 ### Checkliste im Supabase-Dashboard (geht nur dort)
 
 1. **Authentication → Providers → Email:** „Confirm email“ an, **Minimum password length 10**, **„Prevent use of leaked passwords“** an.

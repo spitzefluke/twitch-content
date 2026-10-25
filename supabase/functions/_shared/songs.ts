@@ -18,7 +18,7 @@ export type VideoInfo = { ok: true; title: string; seconds: number } | { ok: fal
 export async function lookupVideo(id: string): Promise<VideoInfo> {
   if (!ID.test(id)) return { ok: false, reason: "missing" };
   const watch = `https://www.youtube.com/watch?v=${id}`;
-  const o = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(watch)}`);
+  const o = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(watch)}`, { signal: AbortSignal.timeout(8_000) });
   if (!o.ok) return { ok: false, reason: "missing" }; // gibt es nicht, privat oder nicht einbettbar
   const meta = await o.json().catch(() => ({}));
   const title = String(meta?.title ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || "YouTube-Video";
@@ -28,6 +28,7 @@ export async function lookupVideo(id: string): Promise<VideoInfo> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ videoId: id, context: { client: { clientName: "WEB", clientVersion: "2.20250101.00.00", hl: "de" } } }),
+      signal: AbortSignal.timeout(8_000),
     });
     const j = await r.json();
     seconds = Math.max(0, Math.min(86400, Number(j?.videoDetails?.lengthSeconds) || 0));
