@@ -37,6 +37,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
+import { renderBotStudio } from './bot-studio.js';
 import { renderBotLog, renderBotPick, setupBotLog } from './dash-bot.js';
 import { loadUpdates, setMyChannel, startPlatformNotices } from './platform-notices.js';
 import { noAffiliate, setAffiliate } from './affiliate.js';
@@ -539,10 +540,6 @@ function setupShell() {
     }
   });
   $('#bot-connect').addEventListener('click', connectBot);
-  $('#cmd-form').addEventListener('submit', addBotCommand);
-  $('#cmd-custom').addEventListener('click', botCommandClick);
-  $('#cmd-custom').addEventListener('input', (e) => e.target.closest('.cmd-row')?.classList.add('is-dirty'));
-  $('#cmd-custom').addEventListener('change', (e) => { if (e.target.name === 'enabled') saveBotCommand(e.target.closest('.cmd-row')); });
   $('#bot-disconnect').addEventListener('click', disconnectBot);
   // Aufnahme-Studio im eigenen Fenster (wie das OBS-Fenster)
   $('#open-record').addEventListener('click', () => {
@@ -7790,10 +7787,11 @@ function renderBotPanel() {
   setupBotLog(botCtx);
   renderBotLog(botCtx);
   renderCommands();
-  loadBotCommands();
   loadWatchtime();
   watchLive();
-  renderBotPlus({ api: state.api, toast, germanError });
+  // Erst die Bot-Einstellungen, dann der Editor (er zeigt deren An/Aus in der Liste)
+  renderBotPlus({ api: state.api, toast, germanError })
+    .then(() => renderBotStudio({ state, api: state.api, toast, cmdError, cleanCommand, streamerName }));
 }
 
 // Watchtime live: Jede Zählung (höchstens jede Minute, …_bot_stats.sql) lädt die Rangliste neu
@@ -7876,152 +7874,6 @@ const cmdError = (err) => (/duplicate key|bot_commands_command_key/i.test(err.me
         : /bot_commands|relation .* does not exist|schema cache/i.test(err.message) ? 'Einmal nötig: supabase/migrations/20261017000000_chat_bot_commands.sql im SQL Editor ausführen.'
           : germanError(err));
 const cleanCommand = (v) => `!${String(v ?? '').trim().toLowerCase().replace(/^!+/, '').replace(/\s+/g, '_')}`;
-
-async function loadBotCommands() {
-  const list = $('#cmd-custom');
-  try {
-    state.botCommands = await state.api.botCommands.list();
-  } catch (err) {
-    list.innerHTML = '';
-    const li = document.createElement('li');
-    li.className = 'cmd-empty';
-    li.textContent = cmdError(err);
-    list.append(li);
-    return;
-  }
-  renderBotCommands();
-}
-
-function renderBotCommands() {
-  const list = $('#cmd-custom');
-  const cmds = state.botCommands ?? [];
-  if (!cmds.length) {
-    list.innerHTML = '<li class="cmd-empty">Noch keine eigenen Befehle – oben den ersten anlegen.</li>';
-    return;
-  }
-  list.replaceChildren(...cmds.map((c) => {
-    const li = document.createElement('li');
-    li.className = 'cmd-row';
-    li.dataset.id = c.id;
-    li.innerHTML = `
-      <label class="toggle cmd-on" title="An/aus"><input type="checkbox" name="enabled"><span class="toggle-ui" aria-hidden="true"></span></label>
-      <input class="cmd-name" name="command" maxlength="26" aria-label="Befehl">
-      <input class="cmd-resp" name="response" maxlength="400" aria-label="Antwort">
-      <label class="cmd-cd" title="Pause zwischen zwei Antworten (für alle)"><input type="number" name="cooldown" min="0" max="3600" aria-label="Pause in Sekunden"><span>s</span></label>
-      <select class="cmd-perm" name="permission" aria-label="Wer darf" title="Wer darf den Befehl benutzen">
-        <option value="everyone">Alle</option><option value="sub">Abos</option><option value="vip">VIPs</option><option value="mod">Mods</option><option value="streamer">Streamer</option>
-      </select>
-      <span class="cmd-uses" title="So oft benutzt"></span>
-      <button class="icon-btn cmd-more" type="button" data-cmd-more aria-expanded="false" aria-label="Mehr Einstellungen" title="Mehr Einstellungen">⚙️</button>
-      <button class="btn btn--primary btn--sm cmd-save" type="button" data-cmd-save>Speichern</button>
-      <button class="icon-btn cmd-del" type="button" data-cmd-del aria-label="Befehl löschen">🗑</button>
-      <div class="cmd-extra" hidden>
-        <label class="field"><span>Weitere Namen (Aliase, mit Komma)</span><input name="aliases" maxlength="140" placeholder="!dc, !disc" autocomplete="off"></label>
-        <label class="field"><span>Pause je Zuschauer</span><span class="bp-unit"><input type="number" name="user_cooldown" min="0" max="3600"><em>s</em></span></label>
-        <label class="field"><span>Antwort</span><select name="reply_type"><option value="say">Normal in den Chat</option><option value="reply">Als Antwort auf die Nachricht</option><option value="mention">Mit @Name davor</option></select></label>
-        <label class="toggle"><input type="checkbox" name="live_only"><span class="toggle-ui" aria-hidden="true"></span>Nur während des Streams</label>
-      </div>`;
-    li.querySelector('[name="enabled"]').checked = !!c.enabled;
-    li.querySelector('[name="command"]').value = c.command;
-    li.querySelector('[name="response"]').value = c.response;
-    li.querySelector('[name="cooldown"]').value = c.cooldown_seconds ?? 10;
-    li.querySelector('[name="permission"]').value = c.permission ?? (c.mod_only ? 'mod' : 'everyone');
-    li.querySelector('[name="aliases"]').value = (c.aliases ?? []).join(', ');
-    li.querySelector('[name="user_cooldown"]').value = c.user_cooldown ?? 0;
-    li.querySelector('[name="reply_type"]').value = c.reply_type ?? 'say';
-    li.querySelector('[name="live_only"]').checked = !!c.live_only;
-    li.querySelector('.cmd-uses').textContent = `${Number(c.uses ?? 0).toLocaleString('de-DE')}×`;
-    li.classList.toggle('is-off', !c.enabled);
-    return li;
-  }));
-}
-
-function readCommandRow(li) {
-  const val = (name) => li.querySelector(`[name="${name}"]`);
-  return {
-    id: Number(li.dataset.id),
-    command: cleanCommand(val('command').value),
-    response: val('response').value.trim(),
-    enabled: val('enabled').checked,
-    mod_only: ['mod', 'streamer'].includes(val('permission').value),
-    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(val('cooldown').value) || 0))),
-    permission: val('permission').value,
-    aliases: [...new Set(val('aliases').value.split(/[\s,]+/).filter(Boolean).map(cleanCommand))].slice(0, 5),
-    user_cooldown: Math.max(0, Math.min(3600, Math.round(Number(val('user_cooldown').value) || 0))),
-    reply_type: val('reply_type').value,
-    live_only: val('live_only').checked,
-  };
-}
-
-async function addBotCommand(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const c = {
-    command: cleanCommand(form.command.value),
-    response: form.response.value.trim(),
-    enabled: true,
-    mod_only: form.mod_only.checked,
-    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(form.cooldown.value) || 0))),
-    ...(form.mod_only.checked ? { permission: 'mod' } : {}),
-  };
-  if (c.command.length < 3 || !c.response) return formMsg(form, 'Bitte Befehl und Antwort eintragen.');
-  const btn = form.querySelector('button[type="submit"]');
-  formMsg(form, '');
-  btn.disabled = true;
-  try {
-    const row = await state.api.botCommands.save(c);
-    state.botCommands = [...(state.botCommands ?? []), row].sort((a, b) => a.command.localeCompare(b.command));
-    form.reset();
-    form.cooldown.value = 10;
-    renderBotCommands();
-    formMsg(form, `✓ ${row.command} ist angelegt – gleich im Chat ausprobieren.`, true);
-  } catch (err) {
-    formMsg(form, cmdError(err));
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function saveBotCommand(li) {
-  const c = readCommandRow(li);
-  const btn = li.querySelector('[data-cmd-save]');
-  btn.disabled = true;
-  try {
-    const row = await state.api.botCommands.save(c);
-    state.botCommands = state.botCommands.map((x) => (x.id === row.id ? row : x));
-    li.classList.remove('is-dirty');
-    li.classList.toggle('is-off', !row.enabled);
-    toast(`✓ ${row.command} gespeichert.`, 'ok', 2500);
-  } catch (err) {
-    toast(cmdError(err), 'error', 7000);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function botCommandClick(e) {
-  const li = e.target.closest('.cmd-row');
-  if (!li) return;
-  if (e.target.closest('[data-cmd-save]')) return saveBotCommand(li);
-  const more = e.target.closest('[data-cmd-more]');
-  if (more) {
-    const box = li.querySelector('.cmd-extra');
-    box.hidden = !box.hidden;
-    more.setAttribute('aria-expanded', String(!box.hidden));
-    return;
-  }
-  if (e.target.closest('[data-cmd-del]')) {
-    const c = readCommandRow(li);
-    if (!confirm(`${c.command} wirklich löschen?`)) return;
-    try {
-      await state.api.botCommands.remove(c.id);
-      state.botCommands = state.botCommands.filter((x) => x.id !== c.id);
-      renderBotCommands();
-    } catch (err) {
-      toast(cmdError(err), 'error');
-    }
-  }
-}
 
 // ---------- Watchtime ----------
 // Rangliste (StreamHelp + Import), „zählt seit“, Twitch-Daten (Follower seit, Konto seit) und der

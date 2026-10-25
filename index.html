@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-49GLkB5DD24LGmDhjYlhPP++LiyBScK0oqBRNAIxx3Q=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FB1b8aS6tUo6qr5k6rLvKi76IzkBGLKTd8ln0YJyKUE=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,16 +47,16 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=c957b7dcc6">
-  <link rel="stylesheet" href="css/phosphor.css?v=f0e9112ffb">
+  <link rel="stylesheet" href="css/style.css?v=d51de074dd">
+  <link rel="stylesheet" href="css/phosphor.css?v=61477eddaf">
   <link rel="stylesheet" href="css/landing.css?v=666f93c533">
-  <link rel="stylesheet" href="css/shell.css?v=6da15e2390">
+  <link rel="stylesheet" href="css/shell.css?v=7cbf122091">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
   <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
-  <link rel="stylesheet" href="css/extras.css?v=fd6a111833">
+  <link rel="stylesheet" href="css/extras.css?v=59ae5a2ea9">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
@@ -65,10 +65,11 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=75ef654c5d",
-      "./js/app.js": "./js/app.js?v=77f3f634b4",
+      "./js/app.js": "./js/app.js?v=f5f6455298",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
-      "./js/bot-plus.js": "./js/bot-plus.js?v=cd21d5c771",
+      "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
+      "./js/bot-studio.js": "./js/bot-studio.js?v=44a852cd77",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=9ca5d517e8",
       "./js/config.js": "./js/config.js?v=e11c55eaa3",
@@ -89,7 +90,7 @@
       "./js/extras-heart.js": "./js/extras-heart.js?v=c35e588fc4",
       "./js/extras-hotwords.js": "./js/extras-hotwords.js?v=fea8926ca1",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
-      "./js/extras-obswatch.js": "./js/extras-obswatch.js?v=820a0df184",
+      "./js/extras-obswatch.js": "./js/extras-obswatch.js?v=a9ba0e26f0",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
       "./js/extras-poll.js": "./js/extras-poll.js?v=9d625d0b37",
       "./js/extras.js": "./js/extras.js?v=532671bb94",
@@ -840,77 +841,130 @@
 
         <!-- Bot & Chat -->
         <section class="page" data-page="bot" hidden>
-          <div class="dash-cards">
-            <article class="dash-card dash-card--wide" id="bot-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🤖</span><div><h2>Chat-Bot-Konto</h2><p id="bot-status" class="dash-status">Wird geladen …</p></div></header>
-              <p class="form-hint">Der Bot ist ein eigener Twitch-Account (nicht der Kanal des Streamers). Er liest Chat-Befehle mit und schreibt Ergebnisse in den Chat. Vor dem Verbinden auf twitch.tv mit dem Bot-Account anmelden.</p>
-              <div class="dash-actions">
-                <button class="btn btn--twitch" type="button" id="bot-connect">🤖 Bot verbinden</button>
-                <button class="btn btn--ghost" type="button" id="bot-disconnect" hidden>Bot trennen</button>
-              </div>
-              <fieldset class="bot-pick" id="bot-pick" hidden>
-                <legend>Welcher Bot schreibt in deinem Chat?</legend>
-                <div class="bot-pick-list" id="bot-pick-list"></div>
-                <p class="form-hint" id="bot-pick-hint">StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein.</p>
-              </fieldset>
-              <p class="form-msg" id="bot-msg" role="alert"></p>
-            </article>
-            <article class="dash-card dash-card--wide" id="botlog-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📋</span><div><h2>Bot-Protokoll</h2><p class="dash-status" id="botlog-status">Kommen die Nachrichten des Bots an?</p></div>
-                <div class="dash-actions botlog-actions">
-                  <button class="btn btn--primary btn--sm" type="button" id="botlog-test">✉️ Testnachricht senden</button>
-                  <button class="btn btn--ghost btn--sm" type="button" id="botlog-reload">↻</button>
+          <!-- Bot & Chat als Editor: Liste · Bearbeiten · Chat-Vorschau (js/bot-studio.js) -->
+          <div class="bot-wrap">
+            <div class="bot-studio" id="bot-studio">
+              <nav class="bs-list" aria-label="Bot-Bereiche">
+                <label class="bs-search"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><input id="bs-q" type="search" placeholder="Befehl oder Text suchen" aria-label="Befehl oder Text suchen" autocomplete="off"></label>
+                <div class="bs-groups" id="bs-groups"></div>
+              </nav>
+
+              <div class="bs-editor">
+                <header class="bs-head" id="bs-head" hidden>
+                  <span class="bs-ico" aria-hidden="true"><i class="ph ph-terminal" id="bs-ico"></i></span>
+                  <div class="bs-head-text"><h2 id="bs-title"></h2><p id="bs-sub"></p></div>
+                  <label class="toggle bs-on"><input type="checkbox" id="bs-on" form="bs-form"><span class="toggle-ui" aria-hidden="true"></span>Aktiv</label>
+                </header>
+                <div class="bs-body">
+                  <form class="bs-form" id="bs-form" novalidate hidden>
+                    <div class="bs-row" data-for-kind="cmd">
+                      <label class="field bs-grow"><span>Befehl</span><input name="command" maxlength="26" placeholder="!discord" autocomplete="off" class="bs-mono"></label>
+                      <label class="field bs-small"><span>Pause</span><span class="bp-unit"><input type="number" name="cooldown" min="0" max="3600" inputmode="numeric"><em>Sek.</em></span></label>
+                    </div>
+                    <label class="field">
+                      <span class="bs-label-row"><span id="bs-text-label">Antwort vom Bot</span><small class="bs-count" id="bs-count">0/400</small></span>
+                      <textarea name="text" maxlength="400" rows="4" id="bs-text"></textarea>
+                    </label>
+                    <div class="bs-chips" data-for-kind="cmd"><span>Einfügen:</span><button type="button" class="bs-chip" data-ph="{user}">{user}</button><button type="button" class="bs-chip" data-ph="{touser}">{touser}</button><button type="button" class="bs-chip" data-ph="{count}">{count}</button><button type="button" class="bs-chip" data-ph="{watchtime}">{watchtime}</button><button type="button" class="bs-chip" data-ph="{followage}">{followage}</button><button type="button" class="bs-chip" data-ph="{uptime}">{uptime}</button><button type="button" class="bs-chip" data-ph="{game}">{game}</button><button type="button" class="bs-chip" data-ph="{title}">{title}</button><button type="button" class="bs-chip" data-ph="{streamer}">{streamer}</button><button type="button" class="bs-chip" data-ph="{random:1-6}">{random:1-6}</button></div>
+                    <div class="bs-row" data-for-kind="timer">
+                      <label class="field"><span>Frühestens alle</span><span class="bp-unit"><input type="number" name="interval_min" min="5" max="240" inputmode="numeric"><em>Min</em></span></label>
+                      <label class="field"><span>Erst nach</span><span class="bp-unit"><input type="number" name="min_lines" min="0" max="200" inputmode="numeric"><em>Nachrichten</em></span></label>
+                    </div>
+                    <fieldset class="bs-box" data-for-kind="cmd">
+                      <legend>Wer darf den Befehl nutzen?</legend>
+                      <div class="bs-pills" id="bs-perm"><button type="button" data-perm="everyone" aria-pressed="false">Alle</button><button type="button" data-perm="sub" aria-pressed="false">Abonnenten</button><button type="button" data-perm="vip" aria-pressed="false">VIPs</button><button type="button" data-perm="mod" aria-pressed="false">Nur Mods</button><button type="button" data-perm="streamer" aria-pressed="false">Streamer</button></div>
+                    </fieldset>
+                    <div class="bs-row" data-for-kind="cmd">
+                      <label class="field bs-grow"><span>Weitere Namen (Alias)</span><input name="aliases" maxlength="140" placeholder="!dc, !disc" autocomplete="off" class="bs-mono"></label>
+                      <div class="field bs-stat"><span>Benutzt</span><p><b id="bs-uses">0×</b> seit Anlegen</p></div>
+                    </div>
+                    <details class="bs-more" data-for-kind="cmd">
+                      <summary>Mehr Einstellungen</summary>
+                      <div class="bs-row">
+                        <label class="field"><span>Pause je Zuschauer</span><span class="bp-unit"><input type="number" name="user_cooldown" min="0" max="3600" inputmode="numeric"><em>Sek.</em></span></label>
+                        <label class="field bs-grow"><span>Antwort</span><select name="reply_type"><option value="say">Normal in den Chat</option><option value="reply">Als Antwort auf die Nachricht</option><option value="mention">Mit @Name davor</option></select></label>
+                      </div>
+                      <label class="toggle"><input type="checkbox" name="live_only"><span class="toggle-ui" aria-hidden="true"></span>Nur während des Streams</label>
+                    </details>
+                    <div class="bs-stat-line" data-for-kind="timer"><b id="bs-sent">0×</b> gesendet · Platzhalter: <code>{streamer}</code> · Im Raid-Schutz pausieren Auto-Nachrichten.</div>
+                    <div class="bs-gap" id="bs-gap" data-for-kind="timer"></div>
+                    <p class="form-hint" data-for-kind="cmd">Eingebaute Befehle wie <code>!join</code> oder <code>!watchtime</code> lassen sich nicht überschreiben. <code>!befehle</code> listet alle aktiven Befehle im Chat.</p>
+                  </form>
+                  <div class="bs-panes" id="bs-panes">
+                <article class="dash-card" id="bot-card" data-pane="account" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🤖</span><div><h2>Chat-Bot-Konto</h2><p id="bot-status" class="dash-status">Wird geladen …</p></div></header>
+                  <p class="form-hint">Der Bot ist ein eigener Twitch-Account (nicht der Kanal des Streamers). Er liest Chat-Befehle mit und schreibt Ergebnisse in den Chat. Vor dem Verbinden auf twitch.tv mit dem Bot-Account anmelden.</p>
+                  <div class="dash-actions">
+                    <button class="btn btn--twitch" type="button" id="bot-connect">🤖 Bot verbinden</button>
+                    <button class="btn btn--ghost" type="button" id="bot-disconnect" hidden>Bot trennen</button>
+                  </div>
+                  <fieldset class="bot-pick" id="bot-pick" hidden>
+                    <legend>Welcher Bot schreibt in deinem Chat?</legend>
+                    <div class="bot-pick-list" id="bot-pick-list"></div>
+                    <p class="form-hint" id="bot-pick-hint">StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein.</p>
+                  </fieldset>
+                  <p class="form-msg" id="bot-msg" role="alert"></p>
+                </article>
+                <article class="dash-card" id="botlog-card" data-pane="log" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📋</span><div><h2>Bot-Protokoll</h2><p class="dash-status" id="botlog-status">Kommen die Nachrichten des Bots an?</p></div>
+                    <div class="dash-actions botlog-actions">
+                      <button class="btn btn--primary btn--sm" type="button" id="botlog-test">✉️ Testnachricht senden</button>
+                      <button class="btn btn--ghost btn--sm" type="button" id="botlog-reload">↻</button>
+                    </div>
+                  </header>
+                  <p class="form-msg" id="botlog-msg" role="status"></p>
+                  <ul class="botlog-list" id="botlog-list"></ul>
+                  <p class="form-hint">Jede Nachricht des Bots mit Status: ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit Grund, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt) oder nicht gesendet. Die letzten 7 Tage.</p>
+                </article>
+                <article class="dash-card" data-botplus="greet" data-pane="greet" hidden></article>
+                <article class="dash-card" data-botplus="mod" data-pane="mod" hidden></article>
+                <article class="dash-card" data-botplus="songs" data-pane="songs" id="bot-songs" hidden></article>
+                <article class="dash-card" data-botplus="faq" data-pane="faq" hidden></article>
+                <article class="dash-card" data-botplus="notices" data-pane="notices" hidden></article>
+                <article class="dash-card" data-botplus="clips" data-pane="clips" hidden></article>
+                <article class="dash-card" data-botplus="info" data-pane="info" hidden></article>
+                <article class="dash-card" id="watch-card" data-pane="watch" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
+                  <ol class="watch-top" id="watch-top"></ol>
+                  <!-- Alte Watchtime aus einem anderen Bot (js/watch-import.js), nur für den Streamer -->
+                  <div class="watch-import" id="watch-import" data-for="streamer"></div>
+                  <p class="form-hint">Twitch gibt keine alte Zuschauzeit heraus – StreamHelp zählt ab dem ersten Stream mit dem Overlay. Hast du vorher einen anderen Bot genutzt (StreamElements, Streamlabs …), lade dessen Watchtime-Export als CSV hoch; beides wird zusammengezählt. Zählt, solange der Stream live ist und das OBS-Overlay läuft – für alle im Chat (Twitch-Recht „Watchtime“, sonst alle, die in den letzten 10 Minuten geschrieben haben). Im Chat: <code>!watchtime</code> oder <code>!watchtime @name</code>.</p>
+                </article>
+                <article class="dash-card" data-pane="builtin" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
+                  <ul class="cmd-list" id="cmd-list"></ul>
+                </article>
+                <article class="dash-card" data-pane="builtin" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>
+                  <ul class="dash-list">
+                    <li>🎡 Ergebnis jeder Glücksrad-Drehung</li>
+                    <li>🧠 Quiz-Fragen und Auflösung</li>
+                    <li>🎮 Warteschlange: wer dran ist</li>
+                    <li>🚫 Verbotenes Wort erwischt</li>
+                    <li>🦖 Dino gefüttert, Kostüm gewechselt</li>
+                  </ul>
+                  <p class="form-hint">Eingetippte Texte wiederholt der Bot nie – nur feste Texte der Seite.</p>
+                </article>
+                  </div>
                 </div>
-              </header>
-              <p class="form-msg" id="botlog-msg" role="status"></p>
-              <ul class="botlog-list" id="botlog-list"></ul>
-              <p class="form-hint">Jede Nachricht des Bots mit Status: ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit Grund, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt) oder nicht gesendet. Die letzten 7 Tage.</p>
-            </article>
-            <article class="dash-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
-              <ul class="cmd-list" id="cmd-list"></ul>
-            </article>
-            <article class="dash-card dash-card--wide" id="cmd-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">✍️</span><div><h2>Eigene Befehle</h2><p class="dash-status">Befehl im Chat → feste Antwort vom Bot. Platzhalter: <code>{user}</code> Name, <code>{touser}</code> genannte Person, <code>{count}</code> wie oft benutzt, <code>{watchtime}</code>, <code>{followage}</code>, <code>{uptime}</code>, <code>{game}</code>, <code>{title}</code>, <code>{streamer}</code>, <code>{random}</code> bzw. <code>{random:1-6}</code> – mehr Einstellungen je Befehl unter ⚙️</p></div></header>
-              <form class="cmd-form" id="cmd-form" novalidate>
-                <label class="field cmd-f-cmd"><span>Befehl</span><input name="command" maxlength="26" placeholder="!discord" autocomplete="off" required></label>
-                <label class="field cmd-f-resp"><span>Antwort</span><input name="response" maxlength="400" placeholder="Unser Discord: discord.gg/… – {user}, komm vorbei!" autocomplete="off" required></label>
-                <label class="field cmd-f-cd"><span>Pause (Sek.)</span><input name="cooldown" type="number" min="0" max="3600" value="10"></label>
-                <label class="toggle cmd-f-mod"><input type="checkbox" name="mod_only"><span class="toggle-ui" aria-hidden="true"></span>Nur Mods</label>
-                <button class="btn btn--primary" type="submit">＋ Anlegen</button>
-                <p class="form-msg" role="alert"></p>
-              </form>
-              <ul class="cmd-custom" id="cmd-custom"></ul>
-              <p class="form-hint">Eingebaute Befehle wie <code>!join</code> oder <code>!watchtime</code> lassen sich nicht überschreiben. <code>!befehle</code> listet alle aktiven Befehle im Chat.</p>
-            </article>
-            <!-- Chat-Bot-Bereiche (js/bot-plus.js, Migration …_chat_bot_plus.sql) -->
-            <article class="dash-card" data-botplus="info"></article>
-            <article class="dash-card dash-card--wide" data-botplus="greet"></article>
-            <article class="dash-card dash-card--wide" data-botplus="timers"></article>
-            <article class="dash-card dash-card--wide" data-botplus="mod"></article>
-            <article class="dash-card dash-card--wide" data-botplus="songs" id="bot-songs"></article>
-            <!-- Clips & Statistik, Ansagen, Stichwort-Antworten (Migration …_bot_more.sql) -->
-            <article class="dash-card dash-card--wide" data-botplus="faq"></article>
-            <article class="dash-card dash-card--wide" data-botplus="clips"></article>
-            <article class="dash-card dash-card--wide" data-botplus="notices"></article>
-            <article class="dash-card" id="watch-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
-              <ol class="watch-top" id="watch-top"></ol>
-              <!-- Alte Watchtime aus einem anderen Bot (js/watch-import.js), nur für den Streamer -->
-              <div class="watch-import" id="watch-import" data-for="streamer"></div>
-              <p class="form-hint">Twitch gibt keine alte Zuschauzeit heraus – StreamHelp zählt ab dem ersten Stream mit dem Overlay. Hast du vorher einen anderen Bot genutzt (StreamElements, Streamlabs …), lade dessen Watchtime-Export als CSV hoch; beides wird zusammengezählt. Zählt, solange der Stream live ist und das OBS-Overlay läuft – für alle im Chat (Twitch-Recht „Watchtime“, sonst alle, die in den letzten 10 Minuten geschrieben haben). Im Chat: <code>!watchtime</code> oder <code>!watchtime @name</code>.</p>
-            </article>
-            <article class="dash-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>
-              <ul class="dash-list">
-                <li>🎡 Ergebnis jeder Glücksrad-Drehung</li>
-                <li>🧠 Quiz-Fragen und Auflösung</li>
-                <li>🎮 Warteschlange: wer dran ist</li>
-                <li>🚫 Verbotenes Wort erwischt</li>
-                <li>🦖 Dino gefüttert, Kostüm gewechselt</li>
-              </ul>
-              <p class="form-hint">Eingetippte Texte wiederholt der Bot nie – nur feste Texte der Seite.</p>
-            </article>
+                <footer class="bs-foot" id="bs-foot" hidden>
+                  <button type="button" class="bs-del" id="bs-del"><i class="ph ph-trash" aria-hidden="true"></i>Löschen</button>
+                  <span class="bs-state" id="bs-state" role="status">Alles gespeichert</span>
+                  <button type="button" class="btn btn--ghost" id="bs-discard">Verwerfen</button>
+                  <button type="submit" class="btn btn--primary" id="bs-save" form="bs-form">Speichern</button>
+                </footer>
+              </div>
+
+              <aside class="bs-chat" aria-label="Chat-Vorschau">
+                <header class="bs-chat-head"><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i><b>Chat-Vorschau</b><span id="bs-chat-mode"></span></header>
+                <ol class="bs-log" id="bs-log" aria-live="polite"></ol>
+                <form class="bs-test" id="bs-test" novalidate>
+                  <input name="msg" maxlength="200" placeholder="Als Zuschauer schreiben, z. B. !lurk" aria-label="Als Zuschauer schreiben" autocomplete="off">
+                  <button type="submit" aria-label="Senden"><i class="ph ph-paper-plane-right" aria-hidden="true"></i></button>
+                </form>
+                <p class="bs-chat-hint">Nur hier – nichts landet im echten Twitch-Chat.</p>
+              </aside>
+            </div>
           </div>
         </section>
 

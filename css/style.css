@@ -2030,7 +2030,7 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .games-strip { display: flex; gap: 6px; flex-wrap: wrap; }
 .game-chip {
   flex: none; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 10px;
-  border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text-strong); font: inherit; font-size: 13px; font-weight: 700;
+  border-radius: 10px; border: 1px solid var(--line); background: rgba(var(--surf-rgb), .7); color: var(--text-strong); font: inherit; font-size: 13px; font-weight: 700;
   cursor: pointer; transition: border-color .2s, background-color .2s;
 }
 .game-chip:hover, .game-chip:focus-visible { border-color: rgba(var(--acc-rgb), .55); outline: none; }
@@ -2095,7 +2095,7 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
   width: 100%; min-height: 0; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0;
   background: none; transform: none; box-shadow: none; animation: none;
 }
-.grid.is-list .tile::after { content: "\e13a"; font-family: "Phosphor"; color: var(--faint); grid-column: 4; grid-row: 1; }
+.grid.is-list .tile::after { content: "\e13a"; font-family: "Phosphor"; color: var(--dim); grid-column: 4; grid-row: 1; }
 .grid.is-list .tile:hover, .grid.is-list .tile:focus-visible { background: rgba(var(--acc-rgb), .08); }
 .grid.is-list .tile-bg {
   position: relative; inset: auto; z-index: 0; grid-column: 1; grid-row: 1; width: 56px; height: 40px;
