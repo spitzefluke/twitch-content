@@ -345,6 +345,7 @@ function showAuth() {
   auth.classList.remove('is-leaving', 'is-going');
   auth.hidden = false;
   document.body.classList.remove('in-app');
+  applyLook();
   if (location.hash !== '#login' && !OBS_PAGE) history.replaceState(null, '', `${location.pathname}${location.search}#login`);
   scrollTo(0, 0);
   $('#form-login input[name="email"]')?.focus({ preventScroll: true });
@@ -372,6 +373,7 @@ function showLanding() {
   setupHelp($('#landing'), state.api);
   renderLandingChannels();
   document.body.classList.remove('in-app');
+  applyLook();
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
 }
 
@@ -425,10 +427,10 @@ function setupShell() {
   }));
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLandingMenus(); });
 
-  // Seitenleiste: eingeklappt nur Symbole, ausgeklappt alles
+  // Seitenleiste: ausgeklappt alles (Standard), eingeklappt Symbol und Kurzname
   const app = $('#app');
-  let open = false;
-  try { open = localStorage.getItem(SB_KEY) === '1'; } catch { /* egal */ }
+  let open = true;
+  try { open = localStorage.getItem(SB_KEY) !== '0'; } catch { /* egal */ }
   const narrow = () => matchMedia('(max-width: 860px)').matches;
   const setOpen = (on, remember = true) => {
     app.classList.toggle('sb-open', on);
@@ -442,6 +444,37 @@ function setupShell() {
   $('#sb-toggle').addEventListener('click', () => setOpen(!app.classList.contains('sb-open')));
   $('#sb-mobile').addEventListener('click', () => setOpen(!app.classList.contains('sb-open'), false));
   $('#sb-scrim').addEventListener('click', () => setOpen(false, false));
+  // Bereich suchen: filtert die Leiste; „/“ springt ins Suchfeld
+  const search = $('#sb-search');
+  const filterNav = () => {
+    const q = search.value.trim().toLowerCase();
+    let any = false;
+    document.querySelectorAll('#sidebar .sb-sec').forEach((sec) => {
+      let hits = 0;
+      sec.querySelectorAll('.sb-item').forEach((it) => {
+        const hit = !q || (it.querySelector('.sb-label')?.textContent ?? '').toLowerCase().includes(q);
+        it.hidden = !hit;
+        if (hit && getComputedStyle(it).display !== 'none') hits++;
+      });
+      sec.hidden = !hits;
+      if (hits) any = true;
+    });
+    $('#sb-empty').hidden = any;
+  };
+  search.addEventListener('input', filterNav);
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { search.value = ''; filterNav(); search.blur(); }
+    if (e.key === 'Enter') { $('#sidebar .sb-sec:not([hidden]) .sb-item:not([hidden])')?.click(); search.value = ''; filterNav(); }
+  });
+  $('#sb-search-btn').addEventListener('click', () => { setOpen(true); search.focus(); });
+  addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || app.hidden) return;
+    if (e.target.closest('input, textarea, select, [contenteditable="true"]') || document.querySelector('dialog[open]')) return;
+    e.preventDefault();
+    setOpen(true, !narrow());
+    search.focus();
+  });
+  state.filterNav = filterNav;
   // Eingeklappt: Tooltip mit Namen und Zähler neben dem Symbol (die Leiste selbst schneidet alles ab)
   const tip = document.createElement('div');
   tip.className = 'sb-tip';
@@ -482,6 +515,8 @@ function setupShell() {
   });
 
   $('#health-btn').addEventListener('click', () => setPage('alerts'));
+  setupLook();
+  setupPops();
   $('#health-check').addEventListener('click', () => runHealth({ force: true, loud: true }));
   // Fehlende Rechte oder abgelaufener Zugang: direkt neu verbinden (nicht „Mit Twitch anmelden“ –
   // das meldet nur bei der Webseite an und erneuert den Streamer-Zugang nicht)
@@ -519,6 +554,67 @@ function setupShell() {
     const btn = e.target.closest('[data-points-open]');
     if (btn) POINTS_OPEN[btn.dataset.pointsOpen]?.();
   });
+}
+
+// ---------- Darstellung: Hell/Dunkel, Akzentfarbe, Kontrast (gilt nur im Dashboard, gemerkt im Browser) ----------
+const LOOK_KEY = 'sh_look';
+const LOOK_DEFAULT = { theme: 'dark', accent: 'lila', contrast: 'normal' };
+const LOOK_VALUES = { theme: ['dark', 'light'], accent: ['lila', 'logo', 'gruen', 'blau', 'pink'], contrast: ['normal', 'hoch'] };
+function readLook() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(LOOK_KEY) || '{}') ?? {}; } catch { /* egal */ }
+  const look = { ...LOOK_DEFAULT };
+  for (const k of Object.keys(LOOK_VALUES)) if (LOOK_VALUES[k].includes(saved[k])) look[k] = saved[k];
+  return look;
+}
+// Startseite, Anmeldung und das OBS-Fenster bleiben wie gestaltet (dunkel, lila)
+function applyLook() {
+  const root = document.documentElement;
+  const on = document.body.classList.contains('in-app') && !OBS_PAGE;
+  const look = readLook();
+  for (const k of Object.keys(LOOK_VALUES)) {
+    if (on && look[k] !== LOOK_DEFAULT[k]) root.dataset[k] = look[k];
+    else delete root.dataset[k];
+  }
+  document.querySelectorAll('#look-pop [data-look]').forEach((group) => {
+    group.querySelectorAll('[data-value]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === look[group.dataset.look])));
+  });
+  const btn = $('#look-btn i');
+  if (btn) btn.className = `ph ${look.theme === 'light' ? 'ph-sun' : 'ph-moon-stars'}`;
+}
+function setupLook() {
+  $('#look-pop').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-value]');
+    const group = b?.closest('[data-look]');
+    if (!group) return;
+    const look = { ...readLook(), [group.dataset.look]: b.dataset.value };
+    try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); } catch { /* egal */ }
+    applyLook();
+  });
+  applyLook();
+}
+
+// Aufklapp-Menüs in der Kopfzeile (Darstellung, Konto): eins zur Zeit, Klick daneben oder Esc schließt
+function setupPops() {
+  const pairs = [['#look-btn', '#look-pop'], ['#acct-btn', '#acct-pop']];
+  const close = (except) => pairs.forEach(([b, p]) => {
+    if (p === except) return;
+    $(p).hidden = true;
+    $(b).setAttribute('aria-expanded', 'false');
+  });
+  for (const [b, p] of pairs) {
+    $(b).addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = $(p).hidden;
+      close(open ? p : null);
+      $(p).hidden = !open;
+      $(b).setAttribute('aria-expanded', String(open));
+    });
+  }
+  // Ein Klick auf einen Eintrag im Kontomenü schließt es
+  $('#acct-pop').addEventListener('click', (e) => { if (e.target.closest('button')) close(); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.pop-wrap')) close(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
 // Zähler für den Tooltip der eingeklappten Seitenleiste
@@ -827,6 +923,7 @@ async function enterApp(user, { animate = false } = {}) {
   const appEl = $('#app');
   appEl.hidden = false;
   document.body.classList.add('in-app');
+  applyLook();
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
   if (animate && !reducedMotion) {
     appEl.classList.add('is-entering');
@@ -957,7 +1054,22 @@ function renderHeader() {
 
   // Die Plakette zeigt, ob Zuschauer das Rad gerade per Kanalpunkten drehen können.
   $('#live-pill').hidden = !(twitch.connected && twitch.reward_active);
+  renderAcctHead();
   renderTwitchPanel();
+}
+
+// Kopf des Kontomenüs und Punkt am Avatar: Twitch-Stand fürs Team, sonst wer angemeldet ist
+function renderAcctHead(level = state.health?.level) {
+  const team = isTeam() && !OBS_PAGE;
+  const connected = !!state.twitch?.connected;
+  const lvl = !team ? '' : !connected ? 'error' : level || 'ok';
+  $('#acct-tw').textContent = !team ? `Angemeldet als ${state.profile?.username ?? ''}`
+    : !connected ? 'Twitch nicht verbunden' : lvl === 'error' ? 'Twitch: Problem' : lvl === 'warn' ? 'Twitch: Hinweise' : 'Twitch verbunden';
+  $('#acct-tw-sub').textContent = !team ? (state.channel ? `Kanal: ${channelLabel(state.channel)}` : '')
+    : !connected ? 'Ohne Verbindung keine Alerts und Kanalpunkte' : lvl === 'error' ? 'Details unter Alerts' : 'Alerts und Kanalpunkte laufen';
+  $('#acct-tw-dot').dataset.state = lvl;
+  $('#acct-dot').hidden = !team;
+  $('#acct-dot').dataset.state = lvl;
 }
 
 // ---------- Als Nächstes & Glücksrad ----------
@@ -1531,7 +1643,7 @@ function tourSteps() {
     { target: '#games-section', title: '🎮 Games', text: 'Wähle das Game – darunter stehen die passenden Content-Ideen. Ist der Stream live, ist das richtige Game schon ausgewählt.' },
     { target: '#next-departure', title: '⏰ Als Nächstes', text: 'Hier steht, was als Nächstes im Stream passiert – mit Countdown.' },
     { target: '#grid .tile', title: '🎬 Content-Ideen', text: 'Klick auf eine Kachel und mach mit: Glücksrad, Bingo, Verlosung, Hot Words und vieles mehr.' },
-    { target: '#channel-btn', title: '📺 Kanal', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp. Streamer finden hier auch den Link zu ihrem eigenen Kanal.' },
+    { target: '#acct-btn', title: '📺 Kanal & Konto', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp, stellst Hell/Dunkel nebenan ein und meldest dich ab.' },
     team && { target: '#sidebar', title: '🧰 Stream-Werkzeuge', text: 'In der Leiste links: Bot & Chat, Kanalpunkte, Alerts, Overlay, Design-Bibliothek, Raid-Schutz und Mods.' },
     team && { target: '#games-edit', title: '⚙️ Games verwalten', text: 'Welche Games bei dir zur Auswahl stehen, stellst du hier ein – auf Wunsch automatisch nach der Twitch-Kategorie.' },
     team && { target: '#obs-btn', title: '🎛️ OBS', text: 'Hier richtest du das Overlay für OBS ein: eine Browserquelle für alles, Änderungen sind nach Sekunden live.' },
@@ -8088,6 +8200,8 @@ function renderHealth() {
   btn.textContent = level === 'ok' ? 'Twitch OK' : level === 'warn' ? 'Twitch: Hinweise' : `Twitch: ${errors.length} ${errors.length === 1 ? 'Problem' : 'Probleme'}`;
   btn.title = 'Twitch-Verbindung – Details unter „Alerts“';
   $('#sb-alert-badge').hidden = !errors.length || !isTeam();
+  h.level = level;
+  renderAcctHead(level);
   $('#sb-alert-badge').textContent = String(errors.length);
   const banner = $('#health-banner');
   banner.hidden = !errors.length || !isTeam() || state.page === 'alerts';

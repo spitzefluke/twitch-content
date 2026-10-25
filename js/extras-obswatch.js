@@ -93,6 +93,14 @@ export const obsWatch = {
     const admin = isAdmin();
     const paused = !!d?.sales_paused;
 
+    // OBS-Knopf in der Kopfzeile: „verbunden“, „nicht verbunden“ oder „einrichten“ (ohne Daten: „bereit“)
+    const ctaDot = $('#obs-cta-dot');
+    const ctaState = $('#obs-cta-state');
+    if (ctaDot && ctaState) {
+      ctaState.textContent = !this.on || !d ? 'bereit' : d.online ? 'verbunden' : d.seen_at ? 'nicht verbunden' : 'einrichten';
+      ctaDot.dataset.state = this.on && d && !d.online ? 'off' : 'on';
+    }
+
     const banner = $('#obswatch-banner');
     if (banner) {
       // Hinweis nur, wenn er etwas bringt: OBS fehlt während des Streams (pausieren) oder ist zurück (freigeben)

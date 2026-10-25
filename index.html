@@ -619,40 +619,77 @@
   <div id="app" class="app" hidden data-view="viewer">
     <aside class="sidebar" id="sidebar" aria-label="Bereiche">
       <div class="sb-head">
-        <button class="sb-toggle" id="sb-toggle" type="button" aria-expanded="false" aria-controls="sidebar" title="Leiste ausklappen">
-          <span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="visually-hidden">Leiste ausklappen</span>
+        <span class="sb-brand-wrap">
+          <svg class="sb-logo" viewBox="245 122 254 254" fill="none" aria-hidden="true">
+            <defs><linearGradient id="sb-logo-bg" x1="0" y1="123" x2="0" y2="379" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1b1560"/><stop offset="1" stop-color="#34379a"/></linearGradient></defs>
+            <path d="M286 154V348L456 251Z" fill="url(#sb-logo-bg)" stroke="url(#sb-logo-bg)" stroke-width="56" stroke-linejoin="round"/>
+            <g stroke-linecap="round" stroke-width="7.5">
+              <path class="lg-draw" pathLength="1" d="M279 178Q279 151 305 156L445 236Q466 252 445 268L305 348Q279 356 279 326Z" stroke="#78b900" stroke-linejoin="round" style="animation-duration:1.1s;animation-delay:.15s"/>
+              <path class="lg-draw" pathLength="1" d="M296 157.5L382.5 310" stroke="#2c8a1f" style="animation-duration:.6s;animation-delay:.55s"/>
+              <path class="lg-draw" pathLength="1" d="M279.5 265L337.5 231" stroke="#2c8a1f" style="animation-duration:.4s;animation-delay:.7s"/>
+              <path class="lg-draw" pathLength="1" d="M277.5 212.5L337.5 231L389 201" stroke="#78b900" style="animation-duration:.5s;animation-delay:.8s"/>
+              <path class="lg-draw" pathLength="1" d="M337.5 231L456 255" stroke="#78b900" style="animation-duration:.45s;animation-delay:.95s"/>
+              <path class="lg-draw" pathLength="1" d="M279.5 265L382.5 310" stroke="#78b900" style="animation-duration:.45s;animation-delay:1s"/>
+            </g>
+            <g fill="#78b900"><circle class="lg-node" cx="296" cy="157.5" r="8.5" style="animation-delay:0.73s"/><circle class="lg-node" cx="277.5" cy="212.5" r="10" style="animation-delay:0.85s"/><circle class="lg-node" cx="337.5" cy="231" r="11" style="animation-delay:0.97s"/><circle class="lg-node" cx="389" cy="201" r="11" style="animation-delay:1.09s"/><circle class="lg-node" cx="279.5" cy="265" r="8.5" style="animation-delay:1.21s"/><circle class="lg-node" cx="382.5" cy="310" r="8.5" style="animation-delay:1.33s"/><circle class="lg-node" cx="456" cy="255" r="5" style="animation-delay:1.45s"/></g>
+            <g fill="none" stroke="#b5ff3a" stroke-width="3"><circle class="lg-ping" cx="296" cy="157.5" r="8.5" style="animation-delay:1.8s"/><circle class="lg-ping" cx="277.5" cy="212.5" r="10" style="animation-delay:2.4s"/><circle class="lg-ping" cx="337.5" cy="231" r="11" style="animation-delay:3.0s"/><circle class="lg-ping" cx="389" cy="201" r="11" style="animation-delay:3.6s"/><circle class="lg-ping" cx="279.5" cy="265" r="8.5" style="animation-delay:4.2s"/><circle class="lg-ping" cx="382.5" cy="310" r="8.5" style="animation-delay:4.8s"/></g>
+          </svg>
+          <span class="sb-brand"><span class="sb-word">Stream<b>help</b></span><span class="sb-since">SEIT 2026</span></span>
+        </span>
+        <button class="sb-toggle" id="sb-toggle" type="button" aria-expanded="true" aria-controls="sidebar" title="Leiste einklappen">
+          <i class="ph ph-sidebar-simple sb-toggle-close" aria-hidden="true"></i><i class="ph ph-list sb-toggle-open" aria-hidden="true"></i>
+          <span class="visually-hidden">Leiste ein- und ausklappen</span>
         </button>
-        <span class="sh-brand sb-brand"><span class="sh-logo" aria-hidden="true"></span><span>Stream<b>Help</b></span></span>
       </div>
+      <label class="sb-search">
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+        <input id="sb-search" type="search" placeholder="Bereich suchen …" aria-label="Bereich suchen" autocomplete="off">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <button class="sb-search-btn" id="sb-search-btn" type="button" title="Bereich suchen"><i class="ph ph-magnifying-glass" aria-hidden="true"></i></button>
       <nav class="sb-nav">
-        <button class="sb-item" type="button" data-page="ideas" aria-current="page" title="Content-Ideen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Content-Ideen</span></button>
-        <button class="sb-item" type="button" data-page="community" title="Vorschläge &amp; Archiv"><span class="sb-ico" aria-hidden="true">💡</span><span class="sb-label">Vorschläge &amp; Archiv</span></button>
-        <p class="sb-group" data-for="team">Stream-Werkzeuge</p>
-        <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><span class="sb-ico" aria-hidden="true">🤖</span><span class="sb-label">Bot &amp; Chat</span></button>
-        <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><span class="sb-ico" aria-hidden="true">🎟️</span><span class="sb-label">Kanalpunkte</span></button>
-        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><span class="sb-ico" aria-hidden="true">🔔</span><span class="sb-label">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
-        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><span class="sb-ico" aria-hidden="true">📈</span><span class="sb-label">Statistik</span></button>
-        <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><span class="sb-ico" aria-hidden="true">🎛️</span><span class="sb-label">Overlay &amp; OBS</span></button>
-        <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Video aufnehmen</span></button>
-        <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><span class="sb-ico" aria-hidden="true">📚</span><span class="sb-label">Design-Bibliothek</span></button>
-        <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz und Soundkäufe pausieren"><span class="sb-ico" aria-hidden="true">🛡️</span><span class="sb-label">Raid-Schutz</span></button>
-        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><span class="sb-ico" aria-hidden="true">👥</span><span class="sb-label">Mods</span></button>
-        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><span class="sb-ico" aria-hidden="true">🟣</span><span class="sb-label">Twitch-Verbindung</span></button>
-        <button class="sb-item" type="button" data-page="security" title="Sicherheit"><span class="sb-ico" aria-hidden="true">🔐</span><span class="sb-label">Sicherheit</span></button>
+        <div class="sb-sec">
+          <p class="sb-group">Inhalte</p>
+        <button class="sb-item" type="button" data-page="ideas" aria-current="page" title="Content-Ideen"><i class="sb-ico ph ph-film-slate" aria-hidden="true"></i><span class="sb-label">Content-Ideen</span><span class="sb-short" aria-hidden="true">Ideen</span></button>
+        <button class="sb-item" type="button" data-page="community" title="Vorschläge &amp; Archiv"><i class="sb-ico ph ph-lightbulb" aria-hidden="true"></i><span class="sb-label">Vorschläge &amp; Archiv</span><span class="sb-short" aria-hidden="true">Archiv</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Live-Steuerung</p>
+        <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><i class="sb-ico ph ph-robot" aria-hidden="true"></i><span class="sb-label">Bot &amp; Chat</span><span class="sb-short" aria-hidden="true">Bot</span></button>
+        <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><i class="sb-ico ph ph-ticket" aria-hidden="true"></i><span class="sb-label">Kanalpunkte</span><span class="sb-short" aria-hidden="true">Punkte</span></button>
+        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><i class="sb-ico ph ph-bell-ringing" aria-hidden="true"></i><span class="sb-label">Alerts</span><span class="sb-short" aria-hidden="true">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
+        <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz und Soundkäufe pausieren"><i class="sb-ico ph ph-shield-check" aria-hidden="true"></i><span class="sb-label">Raid-Schutz</span><span class="sb-short" aria-hidden="true">Schutz</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Stream-Setup</p>
+        <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><i class="sb-ico ph ph-sliders-horizontal" aria-hidden="true"></i><span class="sb-label">Overlay &amp; OBS</span><span class="sb-short" aria-hidden="true">Overlay</span></button>
+        <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><i class="sb-ico ph ph-books" aria-hidden="true"></i><span class="sb-label">Design-Bibliothek</span><span class="sb-short" aria-hidden="true">Designs</span></button>
+        <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><i class="sb-ico ph ph-video-camera" aria-hidden="true"></i><span class="sb-label">Video aufnehmen</span><span class="sb-short" aria-hidden="true">Video</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Auswertung</p>
+        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><i class="sb-ico ph ph-chart-line-up" aria-hidden="true"></i><span class="sb-label">Statistik</span><span class="sb-short" aria-hidden="true">Statistik</span></button>
+        </div>
+        <div class="sb-sec">
+          <p class="sb-group">Kanal &amp; Team</p>
+        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
+        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span></button>
+        <button class="sb-item" type="button" data-page="security" title="Sicherheit"><i class="sb-ico ph ph-lock-key" aria-hidden="true"></i><span class="sb-label">Sicherheit</span><span class="sb-short" aria-hidden="true">Sicherheit</span></button>
+        </div>
+        <p class="sb-empty" id="sb-empty" hidden>Kein Bereich gefunden.</p>
       </nav>
       <div class="sb-foot">
-        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><span class="sb-ico" aria-hidden="true">📲</span><span class="sb-label">App installieren</span></button>
-        <button id="updates-btn" class="sb-item" type="button" title="Neuigkeiten" hidden><span class="sb-ico" aria-hidden="true">🆕</span><span class="sb-label">Was ist neu</span><span class="sb-badge" hidden></span></button>
-        <button id="tour-btn" class="sb-item" type="button" title="Einführung"><span class="sb-ico" aria-hidden="true">❓</span><span class="sb-label">Einführung</span></button>
-        <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><span class="sb-ico" aria-hidden="true">⚙️</span><span class="sb-label">Admin-Bereich</span></a>
+        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><i class="sb-ico ph ph-device-mobile" aria-hidden="true"></i><span class="sb-label">App installieren</span><span class="sb-short" aria-hidden="true">App</span></button>
+        <button id="updates-btn" class="sb-item" type="button" title="Neuigkeiten" hidden><i class="sb-ico ph ph-sparkle" aria-hidden="true"></i><span class="sb-label">Was ist neu</span><span class="sb-short" aria-hidden="true">Neu</span><span class="sb-badge" hidden></span></button>
+        <button id="tour-btn" class="sb-item" type="button" title="Einführung"><i class="sb-ico ph ph-question" aria-hidden="true"></i><span class="sb-label">Einführung</span><span class="sb-short" aria-hidden="true">Hilfe</span></button>
+        <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><i class="sb-ico ph ph-gear-six" aria-hidden="true"></i><span class="sb-label">Admin-Bereich</span><span class="sb-short" aria-hidden="true">Admin</span></a>
       </div>
     </aside>
     <div class="sb-scrim" id="sb-scrim" hidden></div>
 
     <div class="app-main">
       <header class="topbar">
-        <button class="sb-mobile" id="sb-mobile" type="button" aria-controls="sidebar" aria-label="Menü öffnen"><span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <button class="sb-mobile" id="sb-mobile" type="button" aria-controls="sidebar" aria-label="Menü öffnen"><i class="ph ph-list" aria-hidden="true"></i></button>
         <div class="topbar-title">
           <p class="topbar-greeting" id="greeting"></p>
           <h1 id="page-title">Content-Ideen</h1>
@@ -665,18 +702,49 @@
         <div class="topbar-actions">
           <span id="live-pill" class="live-pill" hidden>Kanalpunkte aktiv</span>
           <button id="health-btn" class="health-btn" type="button" hidden></button>
-          <button id="channel-btn" class="channel-chip" type="button" hidden title="Kanal wechseln">
-            <span class="channel-chip-ava" id="channel-avatar" aria-hidden="true"></span>
-            <span class="channel-chip-text"><small>Kanal</small><b id="channel-name"></b></span>
-            <span aria-hidden="true">▾</span>
-          </button>
-          <div class="user-chip">
-            <span class="avatar" id="user-avatar" aria-hidden="true"></span>
-            <span id="user-name"></span>
-            <span id="user-role" class="role-badge" hidden>Admin</span>
+          <!-- Darstellung: Hell/Dunkel, Akzentfarbe, Kontrast (js/app.js setupLook) -->
+          <div class="pop-wrap">
+            <button id="look-btn" class="round-btn" type="button" title="Darstellung" aria-expanded="false" aria-controls="look-pop"><i class="ph ph-moon-stars" aria-hidden="true"></i></button>
+            <div class="pop look-pop" id="look-pop" hidden>
+              <div class="look-row"><span class="pop-label">Modus</span>
+                <div class="seg" data-look="theme"><button type="button" data-value="dark"><i class="ph ph-moon-stars" aria-hidden="true"></i>Dunkel</button><button type="button" data-value="light"><i class="ph ph-sun" aria-hidden="true"></i>Hell</button></div></div>
+              <div class="look-row"><span class="pop-label">Akzentfarbe</span>
+                <div class="swatches" data-look="accent">
+                  <button type="button" data-value="lila" title="Lila"><span style="background:linear-gradient(135deg,#9146ff 45%,#ff5fd2)"></span>Lila</button>
+                  <button type="button" data-value="logo" title="Logo"><span style="background:linear-gradient(135deg,#34379a 45%,#78b900)"></span>Logo</button>
+                  <button type="button" data-value="gruen" title="Grün"><span style="background:linear-gradient(135deg,#16884e 45%,#b5e61d)"></span>Grün</button>
+                  <button type="button" data-value="blau" title="Blau"><span style="background:linear-gradient(135deg,#1673d6 45%,#5ee7ff)"></span>Blau</button>
+                  <button type="button" data-value="pink" title="Pink"><span style="background:linear-gradient(135deg,#d6247a 45%,#ffb347)"></span>Pink</button>
+                </div></div>
+              <div class="look-row"><span class="pop-label">Kontrast</span>
+                <div class="seg" data-look="contrast"><button type="button" data-value="normal"><i class="ph ph-circle-half" aria-hidden="true"></i>Normal</button><button type="button" data-value="hoch"><i class="ph ph-circle-half-tilt" aria-hidden="true"></i>Hoch</button></div></div>
+            </div>
           </div>
-          <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
-          <button id="obs-btn" class="btn btn--primary btn--sm obs-top" type="button">🎛️ OBS</button>
+          <button id="obs-btn" class="obs-cta" type="button" title="OBS-Overlay öffnen">
+            <span class="obs-cta-ico"><i class="ph ph-broadcast" aria-hidden="true"></i></span>
+            <span class="obs-cta-text"><b>OBS-Overlay</b><small><span class="obs-cta-dot" id="obs-cta-dot"></span><span id="obs-cta-state">bereit</span></small></span>
+          </button>
+          <div class="pop-wrap">
+            <button id="acct-btn" class="acct-btn" type="button" aria-expanded="false" aria-controls="acct-pop">
+              <span class="avatar" id="user-avatar" aria-hidden="true"></span>
+              <span class="acct-dot" id="acct-dot" hidden></span>
+              <b id="user-name"></b>
+              <i class="ph ph-caret-down" aria-hidden="true"></i>
+            </button>
+            <div class="pop acct-pop" id="acct-pop" hidden>
+              <div class="acct-head">
+                <span class="acct-head-dot" id="acct-tw-dot"></span>
+                <span class="acct-head-text"><b id="acct-tw">Angemeldet</b><small id="acct-tw-sub"></small></span>
+                <span id="user-role" class="role-badge" hidden>Admin</span>
+              </div>
+              <button id="channel-btn" class="pop-item" type="button" hidden title="Kanal wechseln">
+                <i class="ph ph-swap" aria-hidden="true"></i><span class="pop-item-text">Kanal wechseln<small id="channel-name"></small></span>
+                <span class="channel-chip-ava" id="channel-avatar" aria-hidden="true"></span>
+              </button>
+              <button class="pop-item" type="button" data-goto="security"><i class="ph ph-lock-key" aria-hidden="true"></i>Sicherheit</button>
+              <button id="logout-btn" class="pop-item pop-item--danger" type="button"><i class="ph ph-sign-out" aria-hidden="true"></i>Abmelden</button>
+            </div>
+          </div>
         </div>
       </header>
 
