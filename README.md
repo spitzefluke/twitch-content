@@ -236,17 +236,19 @@ Neue Nutzer bekommen automatisch den Anzeigenamen vom jeweiligen Anbieter. „Mi
 
 ## Dashboard: Streameransicht, Modansicht und Mods
 
-Nach dem Anmelden kommt das **Dashboard**. Links die **Seitenleiste** (☰ klappt sie aus, der Zustand bleibt gespeichert; auf dem Handy öffnet ☰ sie über dem Inhalt). Zuerst stehen immer die **🎬 Content-Ideen**. Zuschauer sehen nur Content-Ideen und Vorschläge & Archiv; Streamer, Admins und freigegebene Mods zusätzlich die **Stream-Werkzeuge**:
+Nach dem Anmelden kommt das **Dashboard**. Links die **Seitenleiste**, nach Themen gruppiert (Inhalte, Live-Steuerung, Stream-Setup, Auswertung, Kanal & Team), mit **Bereich suchen** (Taste `/`). Der Knopf oben klappt sie ein – dann bleiben Symbol und Kurzname stehen; der Zustand bleibt gespeichert, auf dem Handy öffnet ☰ sie über dem Inhalt. Oben rechts: **Darstellung** (Hell/Dunkel, Akzentfarbe, Kontrast – gilt nur in diesem Browser), der Knopf **OBS-Overlay** mit Status und das **Konto-Menü** (Twitch-Status, Kanal wechseln, Sicherheit, Abmelden). Zuerst stehen immer die **🎬 Content-Ideen**. Zuschauer sehen nur Content-Ideen und Vorschläge & Archiv; Streamer, Admins und freigegebene Mods zusätzlich die **Stream-Werkzeuge**:
 
 | Bereich | Was es dort gibt |
 |---|---|
-| 🤖 **Bot & Chat** | Bot-Konto verbinden/trennen, alle Chat-Befehle, was der Bot von selbst schreibt |
+| 🤖 **Bot & Chat** | Editor in drei Spalten: links die Liste (Bot-Konto, Protokoll, eigene Befehle, Auto-Nachrichten, Begrüßung, Moderation, Songs …), in der Mitte bearbeiten mit Speichern/Verwerfen, rechts eine **Chat-Vorschau** zum Ausprobieren (nur im Browser, nichts geht in den echten Chat) |
 | 🎟️ **Kanalpunkte** | alle Belohnungen mit Kosten und Stand; „Kosten & Einstellungen“ öffnet das passende Fenster |
 | 🔔 **Alerts** | Twitch-Gesundheitscheck mit „Jetzt prüfen & reparieren“, Probe-Alerts (auch Kanalpunkte) |
 | 🎛️ **Overlay & OBS** | Adresse der Browserquelle, OBS-Fenster öffnen |
 | 🛡️ **Raid-Schutz** | alle Zuschauer-Aktionen mit einem Klick pausieren |
 | 👥 **Mods** | Mods von Twitch holen, Freigabe (nur Streamer) |
 | 🟣 **Twitch-Verbindung** | Kanal verbinden, neu verbinden, trennen (nur Streameransicht) |
+
+Die **🎬 Content-Ideen** beginnen mit einer Begrüßung und dem Countdown zum nächsten Termin. Darunter filtern Chips nach Art (Mit Termin, Mitmachen, Chat-Spiele, Overlay) und nach Game; Suche und der Wechsel zwischen **Raster und Liste** stehen rechts (die Ansicht merkt sich der Browser).
 
 Eingeklappt zeigt die Seitenleiste beim Drüberfahren den Namen jedes Bereichs mit einem Zähler (z. B. „16 Kacheln“, „3 Vorschläge“, „1 Twitch-Problem“). Countdowns, die in weniger als 24 Stunden ablaufen, leuchten gelb, die Sekunden pulsieren.
 
@@ -798,7 +800,7 @@ Alles im Dashboard unter **🤖 Bot & Chat** (Streamer und freigegebene Mods mit
 - **Danke:** für Follow (höchstens alle 5 s, gegen Follow-Bots), Abo, Resub (`{months}`), verschenkte Abos und Bits ab einer Mindestzahl (`{amount}`), Raids (`{amount}` = Zuschauer) – auf Wunsch mit automatischem Shoutout für den Raider. Raids kommen über das EventSub-Abo `channel.raid` (legt der Gesundheitscheck an).
 - **Auto-Nachrichten:** Texte, die frühestens alle X Minuten kommen und erst nach N neuen Chat-Nachrichten (läuft nichts im Chat, schweigt der Bot); zwischen zwei Auto-Nachrichten liegt eine Pause für alle.
 - **Moderation:** Links (mit erlaubten Seiten; Mods geben mit `!permit @name` einen Link frei), GROSSBUCHSTABEN (Anteil ab Mindestlänge), Spam (gleiches Zeichen zu oft hintereinander, zu viele Emotes), gesperrte Wörter (ganzes Wort). Folge: Nachricht löschen oder Timeout, auf Wunsch eine Ermahnung (höchstens alle 30 s je Person). Mods und der Streamer sind immer ausgenommen, VIPs und Abonnenten auf Wunsch. Moderierte Nachrichten zählen für nichts (Hot Words, Befehle, Watchtime).
-- **Eigene Befehle** haben unter ⚙️ mehr Einstellungen: weitere Namen (Aliase), wer darf (alle, Abos, VIPs, Mods, Streamer), Pause je Zuschauer, Antwortart (normal, als Antwort auf die Nachricht, mit @Name) und „nur während des Streams“. Neue Platzhalter: `{touser}` (genannte Person – nur bekannte Namen aus der Watchtime-Liste, sonst der Schreiber), `{random}` bzw. `{random:1-6}`, `{uptime}`, `{game}`, `{title}`, `{followage}`.
+- **Eigene Befehle** haben im Editor unter „Mehr Einstellungen“ zusätzlich: weitere Namen (Aliase), wer darf (alle, Abos, VIPs, Mods, Streamer), Pause je Zuschauer, Antwortart (normal, als Antwort auf die Nachricht, mit @Name) und „nur während des Streams“. Neue Platzhalter: `{touser}` (genannte Person – nur bekannte Namen aus der Watchtime-Liste, sonst der Schreiber), `{random}` bzw. `{random:1-6}`, `{uptime}`, `{game}`, `{title}`, `{followage}`.
 - **Song-Wünsche:** `!sr <YouTube-Link>` trägt den Song in die Warteschlange ein (Titel und Länge von YouTube; nur einbettbare Videos, keine Livestreams). Einstellbar: wer darf, Wünsche je Person, Größe der Warteschlange, Höchstlänge, Pause je Person. Im Chat außerdem `!song`, `!queue`, `!wrongsong` (eigenen Wunsch zurücknehmen) und für Mods `!skip`. **Abgespielt wird im Dashboard**: „🔊 Hier abspielen“ in genau einem Browserfenster anschalten – der Player (youtube-nocookie.com) spielt die Wünsche nacheinander, OBS nimmt den Ton über das Desktop-Audio auf. Warteschlange sortieren, sofort spielen, entfernen, per Link selbst eintragen. Die OBS-Ebene **„Song-Wünsche“** (auch als Modul) zeigt den laufenden Song mit Namen und die nächsten drei.
 
 Nebenbei repariert die Migration die Rechte der Edge Functions auf neuere Tabellen (z. B. Chat-Kommandos, Umfragen): Die Service-Rolle darf jetzt alle Tabellen in `core` lesen und schreiben.

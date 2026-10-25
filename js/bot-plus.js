@@ -560,13 +560,23 @@ export async function renderBotPlus(deps) {
     cards.info.replaceChildren(...infoCard());
     cards.greet.replaceChildren(...greetCard());
     cards.mod.replaceChildren(...modCard());
-    await timersCard(cards.timers);
+    if (cards.timers) await timersCard(cards.timers);
     songCard(cards.songs);
     if (cards.clips) clipsCard(cards.clips);
     if (cards.notices) cards.notices.replaceChildren(...noticesCard());
     if (cards.faq) await faqCard(cards.faq);
     loaded = true;
   }
-  for (const form of document.querySelectorAll('[data-botplus] .bp-form')) if (!form.classList.contains('is-dirty')) fill(form);
+  for (const form of document.querySelectorAll('[data-botplus] .bp-form, .bs-gap .bp-form')) if (!form.classList.contains('is-dirty')) fill(form);
   paintWarnings();
+}
+
+// Für den Bot-Editor (js/bot-studio.js): aktueller Stand und die Pause zwischen Auto-Nachrichten
+export const botSettings = () => settings;
+export function timerGapForm() {
+  if (!settings) return null;
+  const form = settingsForm(num('timer_gap', 'Mindestens Pause zwischen zwei Auto-Nachrichten (für alle)', 30, 3600, 's'));
+  form.classList.add('bp-form--inline');
+  fill(form);
+  return form;
 }

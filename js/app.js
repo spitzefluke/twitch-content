@@ -37,6 +37,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
+import { renderBotStudio } from './bot-studio.js';
 import { renderBotLog, renderBotPick, setupBotLog } from './dash-bot.js';
 import { loadUpdates, setMyChannel, startPlatformNotices } from './platform-notices.js';
 import { noAffiliate, setAffiliate } from './affiliate.js';
@@ -345,6 +346,7 @@ function showAuth() {
   auth.classList.remove('is-leaving', 'is-going');
   auth.hidden = false;
   document.body.classList.remove('in-app');
+  applyLook();
   if (location.hash !== '#login' && !OBS_PAGE) history.replaceState(null, '', `${location.pathname}${location.search}#login`);
   scrollTo(0, 0);
   $('#form-login input[name="email"]')?.focus({ preventScroll: true });
@@ -372,6 +374,7 @@ function showLanding() {
   setupHelp($('#landing'), state.api);
   renderLandingChannels();
   document.body.classList.remove('in-app');
+  applyLook();
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
 }
 
@@ -425,10 +428,10 @@ function setupShell() {
   }));
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLandingMenus(); });
 
-  // Seitenleiste: eingeklappt nur Symbole, ausgeklappt alles
+  // Seitenleiste: ausgeklappt alles (Standard), eingeklappt Symbol und Kurzname
   const app = $('#app');
-  let open = false;
-  try { open = localStorage.getItem(SB_KEY) === '1'; } catch { /* egal */ }
+  let open = true;
+  try { open = localStorage.getItem(SB_KEY) !== '0'; } catch { /* egal */ }
   const narrow = () => matchMedia('(max-width: 860px)').matches;
   const setOpen = (on, remember = true) => {
     app.classList.toggle('sb-open', on);
@@ -442,6 +445,43 @@ function setupShell() {
   $('#sb-toggle').addEventListener('click', () => setOpen(!app.classList.contains('sb-open')));
   $('#sb-mobile').addEventListener('click', () => setOpen(!app.classList.contains('sb-open'), false));
   $('#sb-scrim').addEventListener('click', () => setOpen(false, false));
+  // Fenster schmal gezogen: Schublade zu; wieder breit: wie zuletzt gewählt
+  matchMedia('(max-width: 860px)').addEventListener('change', (e) => {
+    let stored = true;
+    try { stored = localStorage.getItem(SB_KEY) !== '0'; } catch { /* egal */ }
+    setOpen(!e.matches && stored, false);
+  });
+  // Bereich suchen: filtert die Leiste; „/“ springt ins Suchfeld
+  const search = $('#sb-search');
+  const filterNav = () => {
+    const q = search.value.trim().toLowerCase();
+    let any = false;
+    document.querySelectorAll('#sidebar .sb-sec').forEach((sec) => {
+      let hits = 0;
+      sec.querySelectorAll('.sb-item').forEach((it) => {
+        const hit = !q || (it.querySelector('.sb-label')?.textContent ?? '').toLowerCase().includes(q);
+        it.hidden = !hit;
+        if (hit && getComputedStyle(it).display !== 'none') hits++;
+      });
+      sec.hidden = !hits;
+      if (hits) any = true;
+    });
+    $('#sb-empty').hidden = any;
+  };
+  search.addEventListener('input', filterNav);
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { search.value = ''; filterNav(); search.blur(); }
+    if (e.key === 'Enter') { $('#sidebar .sb-sec:not([hidden]) .sb-item:not([hidden])')?.click(); search.value = ''; filterNav(); }
+  });
+  $('#sb-search-btn').addEventListener('click', () => { setOpen(true); search.focus(); });
+  addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || app.hidden) return;
+    if (e.target.closest('input, textarea, select, [contenteditable="true"]') || document.querySelector('dialog[open]')) return;
+    e.preventDefault();
+    setOpen(true, !narrow());
+    search.focus();
+  });
+  state.filterNav = filterNav;
   // Eingeklappt: Tooltip mit Namen und Zähler neben dem Symbol (die Leiste selbst schneidet alles ab)
   const tip = document.createElement('div');
   tip.className = 'sb-tip';
@@ -482,6 +522,8 @@ function setupShell() {
   });
 
   $('#health-btn').addEventListener('click', () => setPage('alerts'));
+  setupLook();
+  setupPops();
   $('#health-check').addEventListener('click', () => runHealth({ force: true, loud: true }));
   // Fehlende Rechte oder abgelaufener Zugang: direkt neu verbinden (nicht „Mit Twitch anmelden“ –
   // das meldet nur bei der Webseite an und erneuert den Streamer-Zugang nicht)
@@ -498,10 +540,6 @@ function setupShell() {
     }
   });
   $('#bot-connect').addEventListener('click', connectBot);
-  $('#cmd-form').addEventListener('submit', addBotCommand);
-  $('#cmd-custom').addEventListener('click', botCommandClick);
-  $('#cmd-custom').addEventListener('input', (e) => e.target.closest('.cmd-row')?.classList.add('is-dirty'));
-  $('#cmd-custom').addEventListener('change', (e) => { if (e.target.name === 'enabled') saveBotCommand(e.target.closest('.cmd-row')); });
   $('#bot-disconnect').addEventListener('click', disconnectBot);
   // Aufnahme-Studio im eigenen Fenster (wie das OBS-Fenster)
   $('#open-record').addEventListener('click', () => {
@@ -519,6 +557,67 @@ function setupShell() {
     const btn = e.target.closest('[data-points-open]');
     if (btn) POINTS_OPEN[btn.dataset.pointsOpen]?.();
   });
+}
+
+// ---------- Darstellung: Hell/Dunkel, Akzentfarbe, Kontrast (gilt nur im Dashboard, gemerkt im Browser) ----------
+const LOOK_KEY = 'sh_look';
+const LOOK_DEFAULT = { theme: 'dark', accent: 'lila', contrast: 'normal' };
+const LOOK_VALUES = { theme: ['dark', 'light'], accent: ['lila', 'logo', 'gruen', 'blau', 'pink'], contrast: ['normal', 'hoch'] };
+function readLook() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(LOOK_KEY) || '{}') ?? {}; } catch { /* egal */ }
+  const look = { ...LOOK_DEFAULT };
+  for (const k of Object.keys(LOOK_VALUES)) if (LOOK_VALUES[k].includes(saved[k])) look[k] = saved[k];
+  return look;
+}
+// Startseite, Anmeldung und das OBS-Fenster bleiben wie gestaltet (dunkel, lila)
+function applyLook() {
+  const root = document.documentElement;
+  const on = document.body.classList.contains('in-app') && !OBS_PAGE;
+  const look = readLook();
+  for (const k of Object.keys(LOOK_VALUES)) {
+    if (on && look[k] !== LOOK_DEFAULT[k]) root.dataset[k] = look[k];
+    else delete root.dataset[k];
+  }
+  document.querySelectorAll('#look-pop [data-look]').forEach((group) => {
+    group.querySelectorAll('[data-value]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === look[group.dataset.look])));
+  });
+  const btn = $('#look-btn i');
+  if (btn) btn.className = `ph ${look.theme === 'light' ? 'ph-sun' : 'ph-moon-stars'}`;
+}
+function setupLook() {
+  $('#look-pop').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-value]');
+    const group = b?.closest('[data-look]');
+    if (!group) return;
+    const look = { ...readLook(), [group.dataset.look]: b.dataset.value };
+    try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); } catch { /* egal */ }
+    applyLook();
+  });
+  applyLook();
+}
+
+// Aufklapp-Menüs in der Kopfzeile (Darstellung, Konto): eins zur Zeit, Klick daneben oder Esc schließt
+function setupPops() {
+  const pairs = [['#look-btn', '#look-pop'], ['#acct-btn', '#acct-pop']];
+  const close = (except) => pairs.forEach(([b, p]) => {
+    if (p === except) return;
+    $(p).hidden = true;
+    $(b).setAttribute('aria-expanded', 'false');
+  });
+  for (const [b, p] of pairs) {
+    $(b).addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = $(p).hidden;
+      close(open ? p : null);
+      $(p).hidden = !open;
+      $(b).setAttribute('aria-expanded', String(open));
+    });
+  }
+  // Ein Klick auf einen Eintrag im Kontomenü schließt es
+  $('#acct-pop').addEventListener('click', (e) => { if (e.target.closest('button')) close(); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.pop-wrap')) close(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
 // Zähler für den Tooltip der eingeklappten Seitenleiste
@@ -827,6 +926,7 @@ async function enterApp(user, { animate = false } = {}) {
   const appEl = $('#app');
   appEl.hidden = false;
   document.body.classList.add('in-app');
+  applyLook();
   if (location.hash === '#login') history.replaceState(null, '', `${location.pathname}${location.search}`);
   if (animate && !reducedMotion) {
     appEl.classList.add('is-entering');
@@ -953,11 +1053,26 @@ function renderHeader() {
   const hour = new Date().getHours();
   const hello = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
   $('#greeting').textContent = `${hello}, ${profile.username}`;
-  $('#today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#hello-title').textContent = `${hello}, ${profile.username}!`;
 
   // Die Plakette zeigt, ob Zuschauer das Rad gerade per Kanalpunkten drehen können.
   $('#live-pill').hidden = !(twitch.connected && twitch.reward_active);
+  renderAcctHead();
   renderTwitchPanel();
+}
+
+// Kopf des Kontomenüs und Punkt am Avatar: Twitch-Stand fürs Team, sonst wer angemeldet ist
+function renderAcctHead(level = state.health?.level) {
+  const team = isTeam() && !OBS_PAGE;
+  const connected = !!state.twitch?.connected;
+  const lvl = !team ? '' : !connected ? 'error' : level || 'ok';
+  $('#acct-tw').textContent = !team ? `Angemeldet als ${state.profile?.username ?? ''}`
+    : !connected ? 'Twitch nicht verbunden' : lvl === 'error' ? 'Twitch: Problem' : lvl === 'warn' ? 'Twitch: Hinweise' : 'Twitch verbunden';
+  $('#acct-tw-sub').textContent = !team ? (state.channel ? `Kanal: ${channelLabel(state.channel)}` : '')
+    : !connected ? 'Ohne Verbindung keine Alerts und Kanalpunkte' : lvl === 'error' ? 'Details unter Alerts' : 'Alerts und Kanalpunkte laufen';
+  $('#acct-tw-dot').dataset.state = lvl;
+  $('#acct-dot').hidden = !team;
+  $('#acct-dot').dataset.state = lvl;
 }
 
 // ---------- Als Nächstes & Glücksrad ----------
@@ -1311,8 +1426,14 @@ function nextDeparture() {
 
 function renderHero() {
   const next = nextDeparture();
-  $('#next-title').textContent = next?.title ?? 'Kein Termin geplant';
-  $('#next-desc').textContent = next?.description ?? 'Sobald eine Idee einen Termin bekommt, steht sie hier.';
+  const desc = $('#next-desc');
+  if (next) {
+    const d = new Date(next.target_at);
+    const when = `${d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })} um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+    desc.replaceChildren('Schön, dass du da bist. Als Nächstes steht ', h('b', {}, next.title), ` an – ${when}.`);
+  } else {
+    desc.textContent = 'Schön, dass du da bist. Noch steht kein Termin an – sobald eine Idee einen Termin bekommt, läuft hier der Countdown.';
+  }
   $('.nd-bg').style.backgroundImage = `url(${JSON.stringify(heroImage(next))})`;
 
   const cd = $('#next-countdown');
@@ -1324,22 +1445,6 @@ function renderHero() {
   } else {
     delete cd.dataset.target;
   }
-
-  const wheelTile = state.tiles.find((t) => t.kind === 'wheel');
-  const card = $('#wheel-card');
-  const [c1, c2, c3] = state.variants.map((v) => v.color);
-  card.style.setProperty('--c1', c1 ?? '#ffb81c');
-  card.style.setProperty('--c2', c2 ?? '#3ddc84');
-  card.style.setProperty('--c3', c3 ?? '#9146ff');
-  $('#wheel-card-title').textContent = wheelTile?.title ?? 'Fortnite-Glücksrad';
-  $('#wheel-card-desc').textContent = wheelTile?.description ?? '';
-  $('#wheel-card-tag').textContent = state.twitch.reward_active
-    ? `Jederzeit · ${Number(state.twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte`
-    : `Jederzeit · ${state.variants.length} Varianten`;
-  card.setAttribute('aria-label', `${wheelTile?.title ?? 'Glücksrad'} öffnen`);
-
-  const count = state.tiles.filter((t) => t.kind !== 'countdown' || isPlanned(t)).length;
-  $('#plan-count').textContent = `${count} ${count === 1 ? 'Idee' : 'Ideen'}`;
 }
 
 function heroImage(tile) {
@@ -1472,51 +1577,119 @@ async function submitIdea(e) {
 }
 
 // ---------- Kacheln ----------
+// Arten für die Filter-Chips über dem Raster (Farbe = Punkt auf Chip und Kachel)
+const IDEA_CATS = [
+  { id: 'all', label: 'Alle' },
+  { id: 'dated', label: 'Mit Termin', dot: '#ffb81c' },
+  { id: 'join', label: 'Mitmachen', dot: 'var(--acc-3)' },
+  { id: 'chat', label: 'Chat-Spiele', dot: '#4fd6ff' },
+  { id: 'overlay', label: 'Overlay', dot: '#3ddc84' },
+];
+const CHAT_KINDS = new Set(['forbidden', 'quiz', 'queue', 'giveaway', 'hotwords', 'poll', 'counter', 'chatcontrol', 'cup']);
+const OVERLAY_KINDS = new Set(['wheel', 'subathon', 'pause', 'gamewheel', 'heart']);
+const ideaCat = (t) => (t.kind === 'countdown' ? 'dated' : CHAT_KINDS.has(t.kind) ? 'chat' : OVERLAY_KINDS.has(t.kind) ? 'overlay' : 'join');
+const IDEAS_VIEW_KEY = 'sh_ideas_view';
+function ideasView() {
+  try { return localStorage.getItem(IDEAS_VIEW_KEY) === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
+}
+
 function renderGrid() {
   const grid = $('#grid');
   // „Ärgere den Streamer“ und das Bingo haben keinen Termin und stehen immer bei den Content-Ideen.
   // Vor dem Start sehen Zuschauer statt der Aktion einen Countdown (isLocked).
   const build = {
-    prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
+    wheel: buildWheelTile, prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
     ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
   };
   const all = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
-  // Suche (Titel + Beschreibung) und Favoriten zuerst – beides nur in diesem Browser
-  const query = ($('#grid-search')?.value ?? '').trim().toLowerCase();
-  const favs = favTiles();
-  const shown = all
-    .filter((t) => !query || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(query))
-    .sort((a, b) => favs.has(b.id) - favs.has(a.id));
-  const make = (tile, i) => withFav(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i), favs);
   // Games: je Game erst die passenden Ideen, dann was zu jedem Game passt
   const game = gameById(selectedGame());
-  $('#grid-title').textContent = game ? `Content-Ideen für ${game.name}` : 'Alle Content-Ideen';
-  $('#wheel-card').hidden = !!game && !game.ideas.includes('wheel');
-  if (query && !shown.length) {
-    grid.replaceChildren(h('p', { class: 'grid-empty' }, `Keine Kachel passt zu „${query}“.`));
-  } else if (!game || query) {
+  const planned = all.filter(isPlanned);
+  const { mine, general } = game ? splitTiles(all.filter((t) => !isPlanned(t)), game.id) : { mine: [], general: all.filter((t) => !isPlanned(t)) };
+  const pool = [...planned, ...mine, ...general];
+  // Suche (Titel + Beschreibung), Art und Favoriten zuerst – Favoriten und Ansicht nur in diesem Browser
+  const query = ($('#grid-search')?.value ?? '').trim().toLowerCase();
+  const found = pool.filter((t) => !query || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(query));
+  if (!IDEA_CATS.some((c) => c.id === state.ideaCat)) state.ideaCat = 'all';
+  const cat = state.ideaCat;
+  const favs = favTiles();
+  const shown = found.filter((t) => cat === 'all' || ideaCat(t) === cat)
+    .sort((a, b) => favs.has(b.id) - favs.has(a.id));
+  renderCatChips(found);
+  $('#plan-count').textContent = `${shown.length} von ${pool.length}`;
+  $('#grid-title').textContent = game ? `Ideen für ${game.name}` : 'Content-Ideen';
+  const view = ideasView();
+  grid.classList.toggle('is-list', view === 'list');
+  $('#view-toggle').querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+
+  const make = (tile, i) => withFav(tile, withCat(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)), favs);
+  if (!shown.length) {
+    grid.replaceChildren(h('div', { class: 'grid-empty' }, query ? `Keine Idee passt zu „${query}“. ` : 'Keine Idee passt zu diesem Filter. ',
+      h('button', { type: 'button', class: 'link-btn', onclick: resetIdeaFilters }, 'Filter zurücksetzen')));
+  } else if (!game || query || cat !== 'all') {
     grid.replaceChildren(...shown.map(make));
   } else {
     const isFav = (t) => favs.has(t.id);
-    const planned = shown.filter(isPlanned);
-    const { mine, general } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
+    const { mine: mineShown, general: generalShown } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
+    const plannedShown = shown.filter(isPlanned);
     // Favoriten (die zu diesem Game passen) als eigene Gruppe ganz oben
-    const starred = [...planned, ...mine, ...general].filter(isFav);
+    const starred = shown.filter(isFav);
     const rest = (list) => list.filter((t) => !isFav(t));
     let i = 0;
     grid.replaceChildren(
       ...(starred.length ? [gridHead('★ Deine Favoriten'), ...starred.map((t) => make(t, i++))] : []),
-      ...(starred.length && planned.some((t) => !isFav(t)) ? [gridHead('⏰ Geplant')] : []),
-      ...rest(planned).map((t) => make(t, i++)),
+      ...(starred.length && plannedShown.some((t) => !isFav(t)) ? [gridHead('⏰ Geplant')] : []),
+      ...rest(plannedShown).map((t) => make(t, i++)),
       gridHead(`${game.icon} Passt zu ${game.name}`),
-      ...(mine.length ? rest(mine).map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
-      ...(rest(general).length ? [gridHead('🎮 Passt zu jedem Game'), ...rest(general).map((t) => make(t, i++))] : []),
+      ...(mineShown.length ? rest(mineShown).map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
+      ...(rest(generalShown).length ? [gridHead('🎮 Passt zu jedem Game'), ...rest(generalShown).map((t) => make(t, i++))] : []),
     );
   }
   // Läuft ein Countdown ab, wird die Kachel von selbst zur Aktion.
   state.unlockAt = Math.min(...shown.filter(isLocked).map((t) => Date.parse(t.target_at)), Infinity);
   updateCountdowns();  // Streameransicht offen? Dann die Content-Liste mitziehen
   if ($('#obs-dialog')?.open && state.profile?.is_admin) renderObsContent();
+}
+
+function renderCatChips(found) {
+  const cur = state.ideaCat ?? 'all';
+  $('#cat-chips').replaceChildren(...IDEA_CATS.map((c) => {
+    const n = c.id === 'all' ? found.length : found.filter((t) => ideaCat(t) === c.id).length;
+    return h('button', {
+      type: 'button', class: 'cat-chip', 'aria-pressed': String(c.id === cur), hidden: c.id !== 'all' && c.id !== cur && !n,
+      style: c.dot ? `--dot:${c.dot}` : null, onclick: () => { state.ideaCat = c.id; renderGrid(); },
+    }, c.dot && h('span', { class: 'cat-dot', 'aria-hidden': 'true' }), c.label, h('span', { class: 'cat-n' }, String(n)));
+  }));
+}
+
+function resetIdeaFilters() {
+  state.ideaCat = 'all';
+  $('#grid-search').value = '';
+  renderGrid();
+}
+
+// Art der Idee als Plakette oben links auf der Kachel
+function withCat(tile, el) {
+  if (!el.classList.contains('tile')) return el;
+  const c = IDEA_CATS.find((x) => x.id === ideaCat(tile));
+  el.dataset.cat = c.id;
+  el.style.setProperty('--dot', c.dot);
+  el.prepend(h('span', { class: 'tile-cat' }, h('span', { class: 'cat-dot', 'aria-hidden': 'true' }), c.label));
+  return el;
+}
+
+// Glücksrad: eigene Kachel im Raster, die Scheibe dreht sich im Hintergrund
+function buildWheelTile(tile, i) {
+  const el = buildActionTile(tile, i, { cls: 'tile--wheel', cta: 'Rad drehen →', onClick: openWheel });
+  const [c1, c2, c3] = state.variants.map((v) => v.color);
+  el.style.setProperty('--c1', c1 ?? '#ffb81c');
+  el.style.setProperty('--c2', c2 ?? '#3ddc84');
+  el.style.setProperty('--c3', c3 ?? '#9146ff');
+  el.querySelector('.tile-bg').after(h('span', { class: 'wheel-card-disc', 'aria-hidden': 'true' }));
+  el.querySelector('.tile-live-status').textContent = state.twitch.reward_active
+    ? `${Number(state.twitch.reward_cost ?? 10000).toLocaleString('de-DE')} Punkte`
+    : `${state.variants.length} Varianten`;
+  return el;
 }
 
 // ============================================================
@@ -1531,7 +1704,7 @@ function tourSteps() {
     { target: '#games-section', title: '🎮 Games', text: 'Wähle das Game – darunter stehen die passenden Content-Ideen. Ist der Stream live, ist das richtige Game schon ausgewählt.' },
     { target: '#next-departure', title: '⏰ Als Nächstes', text: 'Hier steht, was als Nächstes im Stream passiert – mit Countdown.' },
     { target: '#grid .tile', title: '🎬 Content-Ideen', text: 'Klick auf eine Kachel und mach mit: Glücksrad, Bingo, Verlosung, Hot Words und vieles mehr.' },
-    { target: '#channel-btn', title: '📺 Kanal', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp. Streamer finden hier auch den Link zu ihrem eigenen Kanal.' },
+    { target: '#acct-btn', title: '📺 Kanal & Konto', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp, stellst Hell/Dunkel nebenan ein und meldest dich ab.' },
     team && { target: '#sidebar', title: '🧰 Stream-Werkzeuge', text: 'In der Leiste links: Bot & Chat, Kanalpunkte, Alerts, Overlay, Design-Bibliothek, Raid-Schutz und Mods.' },
     team && { target: '#games-edit', title: '⚙️ Games verwalten', text: 'Welche Games bei dir zur Auswahl stehen, stellst du hier ein – auf Wunsch automatisch nach der Twitch-Kategorie.' },
     team && { target: '#obs-btn', title: '🎛️ OBS', text: 'Hier richtest du das Overlay für OBS ein: eine Browserquelle für alles, Änderungen sind nach Sekunden live.' },
@@ -1629,7 +1802,7 @@ function renderGames() {
   $('#games-edit').hidden = !state.profile?.is_admin;
   const sel = selectedGame();
   const live = liveGameId(g.data);
-  const items = [{ id: 'all', name: 'Alle Ideen', icon: '✨' }, ...activeGames(g.data)];
+  const items = [{ id: 'all', name: 'Alle Games', icon: '✨' }, ...activeGames(g.data)];
   $('#games-strip').replaceChildren(...items.map((game) => h('button', {
     type: 'button', role: 'tab', class: 'game-chip', 'aria-selected': String(game.id === sel), onclick: () => selectGame(game.id),
   }, h('span', { class: 'game-chip-ico', 'aria-hidden': 'true' }, game.icon), h('span', { class: 'game-chip-name' }, game.name),
@@ -1734,7 +1907,7 @@ function buildPrankTile(tile, i) {
   const body = div('tile-body');
   const tag = document.createElement('span');
   tag.className = 'tile-tag';
-  tag.textContent = 'Jederzeit · live';
+  tag.textContent = 'Jederzeit';
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
@@ -1773,7 +1946,7 @@ function buildBingoTile(tile, i) {
   const body = div('tile-body');
   const tag = document.createElement('span');
   tag.className = 'tile-tag';
-  tag.textContent = 'Jederzeit · live';
+  tag.textContent = 'Jederzeit';
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
@@ -1820,19 +1993,25 @@ function buildTile(tile, i) {
   el.append(bg, div('tile-shade'), div('tile-shine'));
 
   const body = div('tile-body');
+  // Datum und kurzer Countdown („in 6 T“) in einer Zeile
   const tag = document.createElement('span');
-  tag.className = 'tile-tag';
-  tag.textContent = 'Startet in';
+  tag.className = 'tile-tag tile-tag--date';
+  const at = tile.target_at ? new Date(tile.target_at) : null;
+  tag.textContent = at && !Number.isNaN(at.getTime())
+    ? `${at.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}, ${at.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Termin folgt';
+  const cd = document.createElement('span');
+  cd.className = 'countdown countdown--mini';
+  if (at) cd.dataset.target = tile.target_at;
+  tag.append(cd);
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
   const desc = document.createElement('p');
   desc.className = 'tile-desc';
   desc.textContent = tile.description;
-  const cd = div('countdown');
-  cd.dataset.target = tile.target_at ?? '';
 
-  body.append(tag, title, desc, cd);
+  body.append(tag, title, desc);
   el.append(body);
   el.addEventListener('click', () => openTile(tile.id));
   if (finePointer && !reducedMotion) addTilt(el);
@@ -1885,6 +2064,21 @@ function renderCountdown(el, targetIso) {
   }
   let secs = Math.max(0, Math.floor((target - Date.now()) / 1000));
   const tag = el.closest('.tile')?.querySelector('.tile-tag');
+  // Kachel: nur „· in 6 T“ hinter dem Datum
+  if (el.classList.contains('countdown--mini')) {
+    if (secs === 0) {
+      if (tag) { tag.textContent = 'Live · jetzt'; tag.classList.add('is-live'); }
+      return;
+    }
+    const soon = secs < 86400;
+    el.closest('.tile')?.classList.toggle('is-soon', soon);
+    tag?.classList.toggle('is-soon', soon);
+    const pad = (n) => String(n).padStart(2, '0');
+    el.textContent = ` · in ${secs >= 86400 ? `${Math.floor(secs / 86400)} T`
+      : secs >= 3600 ? `${Math.floor(secs / 3600)} Std`
+        : `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`}`;
+    return;
+  }
   if (secs === 0) {
     el.classList.add('countdown--done');
     el.textContent = 'Los geht’s · jetzt live!';
@@ -1948,7 +2142,12 @@ function setupDialogs() {
   $('#games-edit').addEventListener('click', openGamesDialog);
   setupTour();
   $('#games-form').addEventListener('submit', saveGames);
-  $('#wheel-card').addEventListener('click', () => { markStart(START, 'idea'); openWheel(); });
+  $('#view-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-view]');
+    if (!btn) return;
+    try { localStorage.setItem(IDEAS_VIEW_KEY, btn.dataset.view); } catch { /* egal */ }
+    renderGrid();
+  });
   $('#grid').addEventListener('click', (e) => { if (e.target.closest('.tile') && !e.target.closest('.tile--placeholder')) markStart(START, 'idea'); });
   let searchTimer = 0;
   $('#grid-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderGrid, 120); });
@@ -3821,7 +4020,7 @@ function buildActionTile(tile, i, { cls, cta, onClick }) {
   const body = div('tile-body');
   const tag = document.createElement('span');
   tag.className = 'tile-tag';
-  tag.textContent = 'Jederzeit · live';
+  tag.textContent = 'Jederzeit';
   const title = document.createElement('h3');
   title.className = 'tile-title';
   title.textContent = tile.title;
@@ -7588,10 +7787,11 @@ function renderBotPanel() {
   setupBotLog(botCtx);
   renderBotLog(botCtx);
   renderCommands();
-  loadBotCommands();
   loadWatchtime();
   watchLive();
-  renderBotPlus({ api: state.api, toast, germanError });
+  // Erst die Bot-Einstellungen, dann der Editor (er zeigt deren An/Aus in der Liste)
+  renderBotPlus({ api: state.api, toast, germanError })
+    .then(() => renderBotStudio({ state, api: state.api, toast, cmdError, cleanCommand, streamerName }));
 }
 
 // Watchtime live: Jede Zählung (höchstens jede Minute, …_bot_stats.sql) lädt die Rangliste neu
@@ -7674,152 +7874,6 @@ const cmdError = (err) => (/duplicate key|bot_commands_command_key/i.test(err.me
         : /bot_commands|relation .* does not exist|schema cache/i.test(err.message) ? 'Einmal nötig: supabase/migrations/20261017000000_chat_bot_commands.sql im SQL Editor ausführen.'
           : germanError(err));
 const cleanCommand = (v) => `!${String(v ?? '').trim().toLowerCase().replace(/^!+/, '').replace(/\s+/g, '_')}`;
-
-async function loadBotCommands() {
-  const list = $('#cmd-custom');
-  try {
-    state.botCommands = await state.api.botCommands.list();
-  } catch (err) {
-    list.innerHTML = '';
-    const li = document.createElement('li');
-    li.className = 'cmd-empty';
-    li.textContent = cmdError(err);
-    list.append(li);
-    return;
-  }
-  renderBotCommands();
-}
-
-function renderBotCommands() {
-  const list = $('#cmd-custom');
-  const cmds = state.botCommands ?? [];
-  if (!cmds.length) {
-    list.innerHTML = '<li class="cmd-empty">Noch keine eigenen Befehle – oben den ersten anlegen.</li>';
-    return;
-  }
-  list.replaceChildren(...cmds.map((c) => {
-    const li = document.createElement('li');
-    li.className = 'cmd-row';
-    li.dataset.id = c.id;
-    li.innerHTML = `
-      <label class="toggle cmd-on" title="An/aus"><input type="checkbox" name="enabled"><span class="toggle-ui" aria-hidden="true"></span></label>
-      <input class="cmd-name" name="command" maxlength="26" aria-label="Befehl">
-      <input class="cmd-resp" name="response" maxlength="400" aria-label="Antwort">
-      <label class="cmd-cd" title="Pause zwischen zwei Antworten (für alle)"><input type="number" name="cooldown" min="0" max="3600" aria-label="Pause in Sekunden"><span>s</span></label>
-      <select class="cmd-perm" name="permission" aria-label="Wer darf" title="Wer darf den Befehl benutzen">
-        <option value="everyone">Alle</option><option value="sub">Abos</option><option value="vip">VIPs</option><option value="mod">Mods</option><option value="streamer">Streamer</option>
-      </select>
-      <span class="cmd-uses" title="So oft benutzt"></span>
-      <button class="icon-btn cmd-more" type="button" data-cmd-more aria-expanded="false" aria-label="Mehr Einstellungen" title="Mehr Einstellungen">⚙️</button>
-      <button class="btn btn--primary btn--sm cmd-save" type="button" data-cmd-save>Speichern</button>
-      <button class="icon-btn cmd-del" type="button" data-cmd-del aria-label="Befehl löschen">🗑</button>
-      <div class="cmd-extra" hidden>
-        <label class="field"><span>Weitere Namen (Aliase, mit Komma)</span><input name="aliases" maxlength="140" placeholder="!dc, !disc" autocomplete="off"></label>
-        <label class="field"><span>Pause je Zuschauer</span><span class="bp-unit"><input type="number" name="user_cooldown" min="0" max="3600"><em>s</em></span></label>
-        <label class="field"><span>Antwort</span><select name="reply_type"><option value="say">Normal in den Chat</option><option value="reply">Als Antwort auf die Nachricht</option><option value="mention">Mit @Name davor</option></select></label>
-        <label class="toggle"><input type="checkbox" name="live_only"><span class="toggle-ui" aria-hidden="true"></span>Nur während des Streams</label>
-      </div>`;
-    li.querySelector('[name="enabled"]').checked = !!c.enabled;
-    li.querySelector('[name="command"]').value = c.command;
-    li.querySelector('[name="response"]').value = c.response;
-    li.querySelector('[name="cooldown"]').value = c.cooldown_seconds ?? 10;
-    li.querySelector('[name="permission"]').value = c.permission ?? (c.mod_only ? 'mod' : 'everyone');
-    li.querySelector('[name="aliases"]').value = (c.aliases ?? []).join(', ');
-    li.querySelector('[name="user_cooldown"]').value = c.user_cooldown ?? 0;
-    li.querySelector('[name="reply_type"]').value = c.reply_type ?? 'say';
-    li.querySelector('[name="live_only"]').checked = !!c.live_only;
-    li.querySelector('.cmd-uses').textContent = `${Number(c.uses ?? 0).toLocaleString('de-DE')}×`;
-    li.classList.toggle('is-off', !c.enabled);
-    return li;
-  }));
-}
-
-function readCommandRow(li) {
-  const val = (name) => li.querySelector(`[name="${name}"]`);
-  return {
-    id: Number(li.dataset.id),
-    command: cleanCommand(val('command').value),
-    response: val('response').value.trim(),
-    enabled: val('enabled').checked,
-    mod_only: ['mod', 'streamer'].includes(val('permission').value),
-    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(val('cooldown').value) || 0))),
-    permission: val('permission').value,
-    aliases: [...new Set(val('aliases').value.split(/[\s,]+/).filter(Boolean).map(cleanCommand))].slice(0, 5),
-    user_cooldown: Math.max(0, Math.min(3600, Math.round(Number(val('user_cooldown').value) || 0))),
-    reply_type: val('reply_type').value,
-    live_only: val('live_only').checked,
-  };
-}
-
-async function addBotCommand(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const c = {
-    command: cleanCommand(form.command.value),
-    response: form.response.value.trim(),
-    enabled: true,
-    mod_only: form.mod_only.checked,
-    cooldown_seconds: Math.max(0, Math.min(3600, Math.round(Number(form.cooldown.value) || 0))),
-    ...(form.mod_only.checked ? { permission: 'mod' } : {}),
-  };
-  if (c.command.length < 3 || !c.response) return formMsg(form, 'Bitte Befehl und Antwort eintragen.');
-  const btn = form.querySelector('button[type="submit"]');
-  formMsg(form, '');
-  btn.disabled = true;
-  try {
-    const row = await state.api.botCommands.save(c);
-    state.botCommands = [...(state.botCommands ?? []), row].sort((a, b) => a.command.localeCompare(b.command));
-    form.reset();
-    form.cooldown.value = 10;
-    renderBotCommands();
-    formMsg(form, `✓ ${row.command} ist angelegt – gleich im Chat ausprobieren.`, true);
-  } catch (err) {
-    formMsg(form, cmdError(err));
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function saveBotCommand(li) {
-  const c = readCommandRow(li);
-  const btn = li.querySelector('[data-cmd-save]');
-  btn.disabled = true;
-  try {
-    const row = await state.api.botCommands.save(c);
-    state.botCommands = state.botCommands.map((x) => (x.id === row.id ? row : x));
-    li.classList.remove('is-dirty');
-    li.classList.toggle('is-off', !row.enabled);
-    toast(`✓ ${row.command} gespeichert.`, 'ok', 2500);
-  } catch (err) {
-    toast(cmdError(err), 'error', 7000);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function botCommandClick(e) {
-  const li = e.target.closest('.cmd-row');
-  if (!li) return;
-  if (e.target.closest('[data-cmd-save]')) return saveBotCommand(li);
-  const more = e.target.closest('[data-cmd-more]');
-  if (more) {
-    const box = li.querySelector('.cmd-extra');
-    box.hidden = !box.hidden;
-    more.setAttribute('aria-expanded', String(!box.hidden));
-    return;
-  }
-  if (e.target.closest('[data-cmd-del]')) {
-    const c = readCommandRow(li);
-    if (!confirm(`${c.command} wirklich löschen?`)) return;
-    try {
-      await state.api.botCommands.remove(c.id);
-      state.botCommands = state.botCommands.filter((x) => x.id !== c.id);
-      renderBotCommands();
-    } catch (err) {
-      toast(cmdError(err), 'error');
-    }
-  }
-}
 
 // ---------- Watchtime ----------
 // Rangliste (StreamHelp + Import), „zählt seit“, Twitch-Daten (Follower seit, Konto seit) und der
@@ -8088,6 +8142,8 @@ function renderHealth() {
   btn.textContent = level === 'ok' ? 'Twitch OK' : level === 'warn' ? 'Twitch: Hinweise' : `Twitch: ${errors.length} ${errors.length === 1 ? 'Problem' : 'Probleme'}`;
   btn.title = 'Twitch-Verbindung – Details unter „Alerts“';
   $('#sb-alert-badge').hidden = !errors.length || !isTeam();
+  h.level = level;
+  renderAcctHead(level);
   $('#sb-alert-badge').textContent = String(errors.length);
   const banner = $('#health-banner');
   banner.hidden = !errors.length || !isTeam() || state.page === 'alerts';

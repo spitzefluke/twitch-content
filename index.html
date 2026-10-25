@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-49GLkB5DD24LGmDhjYlhPP++LiyBScK0oqBRNAIxx3Q=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FB1b8aS6tUo6qr5k6rLvKi76IzkBGLKTd8ln0YJyKUE=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,16 +47,16 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=c957b7dcc6">
-  <link rel="stylesheet" href="css/phosphor.css?v=f0e9112ffb">
+  <link rel="stylesheet" href="css/style.css?v=c8e55aa627">
+  <link rel="stylesheet" href="css/phosphor.css?v=61477eddaf">
   <link rel="stylesheet" href="css/landing.css?v=666f93c533">
-  <link rel="stylesheet" href="css/shell.css?v=6da15e2390">
+  <link rel="stylesheet" href="css/shell.css?v=2bb3247400">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
-  <link rel="stylesheet" href="css/bingo.css?v=11d2e5d62d">
+  <link rel="stylesheet" href="css/bingo.css?v=51e329f61b">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
-  <link rel="stylesheet" href="css/shop.css?v=19893e12d6">
+  <link rel="stylesheet" href="css/shop.css?v=e8584edd68">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
-  <link rel="stylesheet" href="css/extras.css?v=fd6a111833">
+  <link rel="stylesheet" href="css/extras.css?v=3da2f37651">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
@@ -65,10 +65,11 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=75ef654c5d",
-      "./js/app.js": "./js/app.js?v=77f3f634b4",
+      "./js/app.js": "./js/app.js?v=f5f6455298",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
-      "./js/bot-plus.js": "./js/bot-plus.js?v=cd21d5c771",
+      "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
+      "./js/bot-studio.js": "./js/bot-studio.js?v=44a852cd77",
       "./js/challenge.js": "./js/challenge.js?v=e9003437a5",
       "./js/channel.js": "./js/channel.js?v=9ca5d517e8",
       "./js/config.js": "./js/config.js?v=e11c55eaa3",
@@ -89,7 +90,7 @@
       "./js/extras-heart.js": "./js/extras-heart.js?v=c35e588fc4",
       "./js/extras-hotwords.js": "./js/extras-hotwords.js?v=fea8926ca1",
       "./js/extras-live.js": "./js/extras-live.js?v=869fb7dfb4",
-      "./js/extras-obswatch.js": "./js/extras-obswatch.js?v=820a0df184",
+      "./js/extras-obswatch.js": "./js/extras-obswatch.js?v=a9ba0e26f0",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
       "./js/extras-poll.js": "./js/extras-poll.js?v=9d625d0b37",
       "./js/extras.js": "./js/extras.js?v=532671bb94",
@@ -619,40 +620,77 @@
   <div id="app" class="app" hidden data-view="viewer">
     <aside class="sidebar" id="sidebar" aria-label="Bereiche">
       <div class="sb-head">
-        <button class="sb-toggle" id="sb-toggle" type="button" aria-expanded="false" aria-controls="sidebar" title="Leiste ausklappen">
-          <span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="visually-hidden">Leiste ausklappen</span>
+        <span class="sb-brand-wrap">
+          <svg class="sb-logo" viewBox="245 122 254 254" fill="none" aria-hidden="true">
+            <defs><linearGradient id="sb-logo-bg" x1="0" y1="123" x2="0" y2="379" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1b1560"/><stop offset="1" stop-color="#34379a"/></linearGradient></defs>
+            <path d="M286 154V348L456 251Z" fill="url(#sb-logo-bg)" stroke="url(#sb-logo-bg)" stroke-width="56" stroke-linejoin="round"/>
+            <g stroke-linecap="round" stroke-width="7.5">
+              <path class="lg-draw" pathLength="1" d="M279 178Q279 151 305 156L445 236Q466 252 445 268L305 348Q279 356 279 326Z" stroke="#78b900" stroke-linejoin="round" style="animation-duration:1.1s;animation-delay:.15s"/>
+              <path class="lg-draw" pathLength="1" d="M296 157.5L382.5 310" stroke="#2c8a1f" style="animation-duration:.6s;animation-delay:.55s"/>
+              <path class="lg-draw" pathLength="1" d="M279.5 265L337.5 231" stroke="#2c8a1f" style="animation-duration:.4s;animation-delay:.7s"/>
+              <path class="lg-draw" pathLength="1" d="M277.5 212.5L337.5 231L389 201" stroke="#78b900" style="animation-duration:.5s;animation-delay:.8s"/>
+              <path class="lg-draw" pathLength="1" d="M337.5 231L456 255" stroke="#78b900" style="animation-duration:.45s;animation-delay:.95s"/>
+              <path class="lg-draw" pathLength="1" d="M279.5 265L382.5 310" stroke="#78b900" style="animation-duration:.45s;animation-delay:1s"/>
+            </g>
+            <g fill="#78b900"><circle class="lg-node" cx="296" cy="157.5" r="8.5" style="animation-delay:0.73s"/><circle class="lg-node" cx="277.5" cy="212.5" r="10" style="animation-delay:0.85s"/><circle class="lg-node" cx="337.5" cy="231" r="11" style="animation-delay:0.97s"/><circle class="lg-node" cx="389" cy="201" r="11" style="animation-delay:1.09s"/><circle class="lg-node" cx="279.5" cy="265" r="8.5" style="animation-delay:1.21s"/><circle class="lg-node" cx="382.5" cy="310" r="8.5" style="animation-delay:1.33s"/><circle class="lg-node" cx="456" cy="255" r="5" style="animation-delay:1.45s"/></g>
+            <g fill="none" stroke="#b5ff3a" stroke-width="3"><circle class="lg-ping" cx="296" cy="157.5" r="8.5" style="animation-delay:1.8s"/><circle class="lg-ping" cx="277.5" cy="212.5" r="10" style="animation-delay:2.4s"/><circle class="lg-ping" cx="337.5" cy="231" r="11" style="animation-delay:3.0s"/><circle class="lg-ping" cx="389" cy="201" r="11" style="animation-delay:3.6s"/><circle class="lg-ping" cx="279.5" cy="265" r="8.5" style="animation-delay:4.2s"/><circle class="lg-ping" cx="382.5" cy="310" r="8.5" style="animation-delay:4.8s"/></g>
+          </svg>
+          <span class="sb-brand"><span class="sb-word">Stream<b>help</b></span><span class="sb-since">SEIT 2026</span></span>
+        </span>
+        <button class="sb-toggle" id="sb-toggle" type="button" aria-expanded="true" aria-controls="sidebar" title="Leiste einklappen">
+          <i class="ph ph-sidebar-simple sb-toggle-close" aria-hidden="true"></i><i class="ph ph-list sb-toggle-open" aria-hidden="true"></i>
+          <span class="visually-hidden">Leiste ein- und ausklappen</span>
         </button>
-        <span class="sh-brand sb-brand"><span class="sh-logo" aria-hidden="true"></span><span>Stream<b>Help</b></span></span>
       </div>
+      <label class="sb-search">
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+        <input id="sb-search" type="search" placeholder="Bereich suchen …" aria-label="Bereich suchen" autocomplete="off">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <button class="sb-search-btn" id="sb-search-btn" type="button" title="Bereich suchen"><i class="ph ph-magnifying-glass" aria-hidden="true"></i></button>
       <nav class="sb-nav">
-        <button class="sb-item" type="button" data-page="ideas" aria-current="page" title="Content-Ideen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Content-Ideen</span></button>
-        <button class="sb-item" type="button" data-page="community" title="Vorschläge &amp; Archiv"><span class="sb-ico" aria-hidden="true">💡</span><span class="sb-label">Vorschläge &amp; Archiv</span></button>
-        <p class="sb-group" data-for="team">Stream-Werkzeuge</p>
-        <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><span class="sb-ico" aria-hidden="true">🤖</span><span class="sb-label">Bot &amp; Chat</span></button>
-        <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><span class="sb-ico" aria-hidden="true">🎟️</span><span class="sb-label">Kanalpunkte</span></button>
-        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><span class="sb-ico" aria-hidden="true">🔔</span><span class="sb-label">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
-        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><span class="sb-ico" aria-hidden="true">📈</span><span class="sb-label">Statistik</span></button>
-        <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><span class="sb-ico" aria-hidden="true">🎛️</span><span class="sb-label">Overlay &amp; OBS</span></button>
-        <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><span class="sb-ico" aria-hidden="true">🎬</span><span class="sb-label">Video aufnehmen</span></button>
-        <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><span class="sb-ico" aria-hidden="true">📚</span><span class="sb-label">Design-Bibliothek</span></button>
-        <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz und Soundkäufe pausieren"><span class="sb-ico" aria-hidden="true">🛡️</span><span class="sb-label">Raid-Schutz</span></button>
-        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><span class="sb-ico" aria-hidden="true">👥</span><span class="sb-label">Mods</span></button>
-        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><span class="sb-ico" aria-hidden="true">🟣</span><span class="sb-label">Twitch-Verbindung</span></button>
-        <button class="sb-item" type="button" data-page="security" title="Sicherheit"><span class="sb-ico" aria-hidden="true">🔐</span><span class="sb-label">Sicherheit</span></button>
+        <div class="sb-sec">
+          <p class="sb-group">Inhalte</p>
+        <button class="sb-item" type="button" data-page="ideas" aria-current="page" title="Content-Ideen"><i class="sb-ico ph ph-film-slate" aria-hidden="true"></i><span class="sb-label">Content-Ideen</span><span class="sb-short" aria-hidden="true">Ideen</span></button>
+        <button class="sb-item" type="button" data-page="community" title="Vorschläge &amp; Archiv"><i class="sb-ico ph ph-lightbulb" aria-hidden="true"></i><span class="sb-label">Vorschläge &amp; Archiv</span><span class="sb-short" aria-hidden="true">Archiv</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Live-Steuerung</p>
+        <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><i class="sb-ico ph ph-robot" aria-hidden="true"></i><span class="sb-label">Bot &amp; Chat</span><span class="sb-short" aria-hidden="true">Bot</span></button>
+        <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><i class="sb-ico ph ph-ticket" aria-hidden="true"></i><span class="sb-label">Kanalpunkte</span><span class="sb-short" aria-hidden="true">Punkte</span></button>
+        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><i class="sb-ico ph ph-bell-ringing" aria-hidden="true"></i><span class="sb-label">Alerts</span><span class="sb-short" aria-hidden="true">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
+        <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz und Soundkäufe pausieren"><i class="sb-ico ph ph-shield-check" aria-hidden="true"></i><span class="sb-label">Raid-Schutz</span><span class="sb-short" aria-hidden="true">Schutz</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Stream-Setup</p>
+        <button class="sb-item" type="button" data-page="overlay" data-for="team" title="Overlay &amp; OBS"><i class="sb-ico ph ph-sliders-horizontal" aria-hidden="true"></i><span class="sb-label">Overlay &amp; OBS</span><span class="sb-short" aria-hidden="true">Overlay</span></button>
+        <button class="sb-item" type="button" data-page="library" data-for="team" title="Design-Bibliothek"><i class="sb-ico ph ph-books" aria-hidden="true"></i><span class="sb-label">Design-Bibliothek</span><span class="sb-short" aria-hidden="true">Designs</span></button>
+        <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><i class="sb-ico ph ph-video-camera" aria-hidden="true"></i><span class="sb-label">Video aufnehmen</span><span class="sb-short" aria-hidden="true">Video</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Auswertung</p>
+        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><i class="sb-ico ph ph-chart-line-up" aria-hidden="true"></i><span class="sb-label">Statistik</span><span class="sb-short" aria-hidden="true">Statistik</span></button>
+        </div>
+        <div class="sb-sec">
+          <p class="sb-group">Kanal &amp; Team</p>
+        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
+        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span></button>
+        <button class="sb-item" type="button" data-page="security" title="Sicherheit"><i class="sb-ico ph ph-lock-key" aria-hidden="true"></i><span class="sb-label">Sicherheit</span><span class="sb-short" aria-hidden="true">Sicherheit</span></button>
+        </div>
+        <p class="sb-empty" id="sb-empty" hidden>Kein Bereich gefunden.</p>
       </nav>
       <div class="sb-foot">
-        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><span class="sb-ico" aria-hidden="true">📲</span><span class="sb-label">App installieren</span></button>
-        <button id="updates-btn" class="sb-item" type="button" title="Neuigkeiten" hidden><span class="sb-ico" aria-hidden="true">🆕</span><span class="sb-label">Was ist neu</span><span class="sb-badge" hidden></span></button>
-        <button id="tour-btn" class="sb-item" type="button" title="Einführung"><span class="sb-ico" aria-hidden="true">❓</span><span class="sb-label">Einführung</span></button>
-        <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><span class="sb-ico" aria-hidden="true">⚙️</span><span class="sb-label">Admin-Bereich</span></a>
+        <button id="install-btn" class="sb-item" type="button" title="Als App installieren" hidden><i class="sb-ico ph ph-device-mobile" aria-hidden="true"></i><span class="sb-label">App installieren</span><span class="sb-short" aria-hidden="true">App</span></button>
+        <button id="updates-btn" class="sb-item" type="button" title="Neuigkeiten" hidden><i class="sb-ico ph ph-sparkle" aria-hidden="true"></i><span class="sb-label">Was ist neu</span><span class="sb-short" aria-hidden="true">Neu</span><span class="sb-badge" hidden></span></button>
+        <button id="tour-btn" class="sb-item" type="button" title="Einführung"><i class="sb-ico ph ph-question" aria-hidden="true"></i><span class="sb-label">Einführung</span><span class="sb-short" aria-hidden="true">Hilfe</span></button>
+        <a id="admin-btn" class="sb-item" href="admin.html" hidden title="Admin-Bereich"><i class="sb-ico ph ph-gear-six" aria-hidden="true"></i><span class="sb-label">Admin-Bereich</span><span class="sb-short" aria-hidden="true">Admin</span></a>
       </div>
     </aside>
     <div class="sb-scrim" id="sb-scrim" hidden></div>
 
     <div class="app-main">
       <header class="topbar">
-        <button class="sb-mobile" id="sb-mobile" type="button" aria-controls="sidebar" aria-label="Menü öffnen"><span class="sb-burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
+        <button class="sb-mobile" id="sb-mobile" type="button" aria-controls="sidebar" aria-label="Menü öffnen"><i class="ph ph-list" aria-hidden="true"></i></button>
         <div class="topbar-title">
           <p class="topbar-greeting" id="greeting"></p>
           <h1 id="page-title">Content-Ideen</h1>
@@ -665,18 +703,49 @@
         <div class="topbar-actions">
           <span id="live-pill" class="live-pill" hidden>Kanalpunkte aktiv</span>
           <button id="health-btn" class="health-btn" type="button" hidden></button>
-          <button id="channel-btn" class="channel-chip" type="button" hidden title="Kanal wechseln">
-            <span class="channel-chip-ava" id="channel-avatar" aria-hidden="true"></span>
-            <span class="channel-chip-text"><small>Kanal</small><b id="channel-name"></b></span>
-            <span aria-hidden="true">▾</span>
-          </button>
-          <div class="user-chip">
-            <span class="avatar" id="user-avatar" aria-hidden="true"></span>
-            <span id="user-name"></span>
-            <span id="user-role" class="role-badge" hidden>Admin</span>
+          <!-- Darstellung: Hell/Dunkel, Akzentfarbe, Kontrast (js/app.js setupLook) -->
+          <div class="pop-wrap">
+            <button id="look-btn" class="round-btn" type="button" title="Darstellung" aria-expanded="false" aria-controls="look-pop"><i class="ph ph-moon-stars" aria-hidden="true"></i></button>
+            <div class="pop look-pop" id="look-pop" hidden>
+              <div class="look-row"><span class="pop-label">Modus</span>
+                <div class="seg" data-look="theme"><button type="button" data-value="dark"><i class="ph ph-moon-stars" aria-hidden="true"></i>Dunkel</button><button type="button" data-value="light"><i class="ph ph-sun" aria-hidden="true"></i>Hell</button></div></div>
+              <div class="look-row"><span class="pop-label">Akzentfarbe</span>
+                <div class="swatches" data-look="accent">
+                  <button type="button" data-value="lila" title="Lila"><span style="background:linear-gradient(135deg,#9146ff 45%,#ff5fd2)"></span>Lila</button>
+                  <button type="button" data-value="logo" title="Logo"><span style="background:linear-gradient(135deg,#34379a 45%,#78b900)"></span>Logo</button>
+                  <button type="button" data-value="gruen" title="Grün"><span style="background:linear-gradient(135deg,#16884e 45%,#b5e61d)"></span>Grün</button>
+                  <button type="button" data-value="blau" title="Blau"><span style="background:linear-gradient(135deg,#1673d6 45%,#5ee7ff)"></span>Blau</button>
+                  <button type="button" data-value="pink" title="Pink"><span style="background:linear-gradient(135deg,#d6247a 45%,#ffb347)"></span>Pink</button>
+                </div></div>
+              <div class="look-row"><span class="pop-label">Kontrast</span>
+                <div class="seg" data-look="contrast"><button type="button" data-value="normal"><i class="ph ph-circle-half" aria-hidden="true"></i>Normal</button><button type="button" data-value="hoch"><i class="ph ph-circle-half-tilt" aria-hidden="true"></i>Hoch</button></div></div>
+            </div>
           </div>
-          <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Abmelden</button>
-          <button id="obs-btn" class="btn btn--primary btn--sm obs-top" type="button">🎛️ OBS</button>
+          <button id="obs-btn" class="obs-cta" type="button" title="OBS-Overlay öffnen">
+            <span class="obs-cta-ico"><i class="ph ph-broadcast" aria-hidden="true"></i></span>
+            <span class="obs-cta-text"><b>OBS-Overlay</b><small><span class="obs-cta-dot" id="obs-cta-dot"></span><span id="obs-cta-state">bereit</span></small></span>
+          </button>
+          <div class="pop-wrap">
+            <button id="acct-btn" class="acct-btn" type="button" aria-expanded="false" aria-controls="acct-pop">
+              <span class="avatar" id="user-avatar" aria-hidden="true"></span>
+              <span class="acct-dot" id="acct-dot" hidden></span>
+              <b id="user-name"></b>
+              <i class="ph ph-caret-down" aria-hidden="true"></i>
+            </button>
+            <div class="pop acct-pop" id="acct-pop" hidden>
+              <div class="acct-head">
+                <span class="acct-head-dot" id="acct-tw-dot"></span>
+                <span class="acct-head-text"><b id="acct-tw">Angemeldet</b><small id="acct-tw-sub"></small></span>
+                <span id="user-role" class="role-badge" hidden>Admin</span>
+              </div>
+              <button id="channel-btn" class="pop-item" type="button" hidden title="Kanal wechseln">
+                <i class="ph ph-swap" aria-hidden="true"></i><span class="pop-item-text">Kanal wechseln<small id="channel-name"></small></span>
+                <span class="channel-chip-ava" id="channel-avatar" aria-hidden="true"></span>
+              </button>
+              <button class="pop-item" type="button" data-goto="security"><i class="ph ph-lock-key" aria-hidden="true"></i>Sicherheit</button>
+              <button id="logout-btn" class="pop-item pop-item--danger" type="button"><i class="ph ph-sign-out" aria-hidden="true"></i>Abmelden</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -700,46 +769,42 @@
         <section class="page" data-page="ideas" aria-labelledby="page-title">
           <!-- Ruhiger Einstieg für Streamer (js/dash-start.js) -->
           <div id="start-slot" hidden></div>
-          <div class="dash-hero">
-            <article class="next-departure" id="next-departure">
-              <span class="nd-bg" aria-hidden="true"></span>
-              <span class="nd-shade" aria-hidden="true"></span>
-              <div class="nd-body">
-                <p class="eyebrow">Als Nächstes · <span id="today"></span></p>
-                <h2 id="next-title">Kein Termin geplant</h2>
-                <p class="nd-desc" id="next-desc">Sobald eine Idee einen Termin bekommt, steht sie hier.</p>
-                <div class="countdown countdown--lg" id="next-countdown"></div>
-              </div>
-            </article>
-
-            <button type="button" class="wheel-card" id="wheel-card">
-              <span class="wheel-card-disc" aria-hidden="true"></span>
-              <span class="wheel-card-shade" aria-hidden="true"></span>
-              <span class="tile-tag" id="wheel-card-tag">Jederzeit</span>
-              <span class="wheel-card-title" id="wheel-card-title">Fortnite-Glücksrad</span>
-              <span class="wheel-card-desc" id="wheel-card-desc"></span>
-              <span class="wheel-card-cta">Rad drehen →</span>
-            </button>
-          </div>
-
-          <!-- Games: je Game die passenden Content-Ideen (Migration …_games.sql) -->
-          <div class="section games-section" id="games-section" hidden>
-            <div class="section-head">
-              <h2>Games</h2>
-              <button type="button" class="btn btn--ghost btn--sm" id="games-edit" hidden>⚙️ Games verwalten</button>
+          <!-- Begrüßung mit Countdown zum nächsten Termin -->
+          <article class="hello-hero" id="next-departure">
+            <span class="nd-bg" aria-hidden="true"></span>
+            <div class="hh-text">
+              <h2 id="hello-title">Hallo!</h2>
+              <p id="next-desc">Schön, dass du da bist.</p>
             </div>
-            <div class="games-strip" id="games-strip" role="tablist" aria-label="Game wählen"></div>
+            <div class="countdown countdown--hero" id="next-countdown" hidden></div>
+          </article>
+
+          <div class="section ideas-section">
+            <div class="ideas-head">
+              <h2 id="grid-title">Content-Ideen</h2>
+              <span class="ideas-count" id="plan-count"></span>
+              <div class="ideas-tools">
+                <label class="ideas-search">
+                  <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+                  <input id="grid-search" type="search" placeholder="Idee suchen …" aria-label="Content-Ideen durchsuchen" autocomplete="off">
+                </label>
+                <div class="view-toggle" id="view-toggle" role="group" aria-label="Ansicht">
+                  <button type="button" data-view="grid" aria-pressed="true" title="Raster" aria-label="Raster"><i class="ph ph-squares-four" aria-hidden="true"></i></button>
+                  <button type="button" data-view="list" aria-pressed="false" title="Liste" aria-label="Liste"><i class="ph ph-list-bullets" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ideas-filters">
+              <div class="cat-chips" id="cat-chips" role="group" aria-label="Nach Art filtern"></div>
+              <!-- Games: je Game die passenden Content-Ideen (Migration …_games.sql) -->
+              <div class="games-section" id="games-section" hidden>
+                <div class="games-strip" id="games-strip" role="tablist" aria-label="Game wählen"></div>
+                <button type="button" class="game-chip game-chip--edit" id="games-edit" hidden title="Games verwalten"><i class="ph ph-gear-six" aria-hidden="true"></i><span>Games verwalten</span></button>
+              </div>
+            </div>
             <p class="games-live" id="games-live" hidden></p>
-          </div>
 
-          <div class="section">
-            <div class="section-head">
-              <h2 id="grid-title">Alle Content-Ideen</h2>
-              <div class="grid-tools">
-                <input class="grid-search" id="grid-search" type="search" placeholder="Kachel suchen …" aria-label="Content-Ideen durchsuchen" autocomplete="off">
-                <span id="plan-count"></span>
-              </div>
-            </div>
             <div id="grid" class="grid" aria-live="polite"></div>
           </div>
         </section>
@@ -776,77 +841,130 @@
 
         <!-- Bot & Chat -->
         <section class="page" data-page="bot" hidden>
-          <div class="dash-cards">
-            <article class="dash-card dash-card--wide" id="bot-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🤖</span><div><h2>Chat-Bot-Konto</h2><p id="bot-status" class="dash-status">Wird geladen …</p></div></header>
-              <p class="form-hint">Der Bot ist ein eigener Twitch-Account (nicht der Kanal des Streamers). Er liest Chat-Befehle mit und schreibt Ergebnisse in den Chat. Vor dem Verbinden auf twitch.tv mit dem Bot-Account anmelden.</p>
-              <div class="dash-actions">
-                <button class="btn btn--twitch" type="button" id="bot-connect">🤖 Bot verbinden</button>
-                <button class="btn btn--ghost" type="button" id="bot-disconnect" hidden>Bot trennen</button>
-              </div>
-              <fieldset class="bot-pick" id="bot-pick" hidden>
-                <legend>Welcher Bot schreibt in deinem Chat?</legend>
-                <div class="bot-pick-list" id="bot-pick-list"></div>
-                <p class="form-hint" id="bot-pick-hint">StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein.</p>
-              </fieldset>
-              <p class="form-msg" id="bot-msg" role="alert"></p>
-            </article>
-            <article class="dash-card dash-card--wide" id="botlog-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📋</span><div><h2>Bot-Protokoll</h2><p class="dash-status" id="botlog-status">Kommen die Nachrichten des Bots an?</p></div>
-                <div class="dash-actions botlog-actions">
-                  <button class="btn btn--primary btn--sm" type="button" id="botlog-test">✉️ Testnachricht senden</button>
-                  <button class="btn btn--ghost btn--sm" type="button" id="botlog-reload">↻</button>
+          <!-- Bot & Chat als Editor: Liste · Bearbeiten · Chat-Vorschau (js/bot-studio.js) -->
+          <div class="bot-wrap">
+            <div class="bot-studio" id="bot-studio">
+              <nav class="bs-list" aria-label="Bot-Bereiche">
+                <label class="bs-search"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><input id="bs-q" type="search" placeholder="Befehl oder Text suchen" aria-label="Befehl oder Text suchen" autocomplete="off"></label>
+                <div class="bs-groups" id="bs-groups"></div>
+              </nav>
+
+              <div class="bs-editor">
+                <header class="bs-head" id="bs-head" hidden>
+                  <span class="bs-ico" aria-hidden="true"><i class="ph ph-terminal" id="bs-ico"></i></span>
+                  <div class="bs-head-text"><h2 id="bs-title"></h2><p id="bs-sub"></p></div>
+                  <label class="toggle bs-on"><input type="checkbox" id="bs-on" form="bs-form"><span class="toggle-ui" aria-hidden="true"></span>Aktiv</label>
+                </header>
+                <div class="bs-body">
+                  <form class="bs-form" id="bs-form" novalidate hidden>
+                    <div class="bs-row" data-for-kind="cmd">
+                      <label class="field bs-grow"><span>Befehl</span><input name="command" maxlength="26" placeholder="!discord" autocomplete="off" class="bs-mono"></label>
+                      <label class="field bs-small"><span>Pause</span><span class="bp-unit"><input type="number" name="cooldown" min="0" max="3600" inputmode="numeric"><em>Sek.</em></span></label>
+                    </div>
+                    <label class="field">
+                      <span class="bs-label-row"><span id="bs-text-label">Antwort vom Bot</span><small class="bs-count" id="bs-count">0/400</small></span>
+                      <textarea name="text" maxlength="400" rows="4" id="bs-text"></textarea>
+                    </label>
+                    <div class="bs-chips" data-for-kind="cmd"><span>Einfügen:</span><button type="button" class="bs-chip" data-ph="{user}">{user}</button><button type="button" class="bs-chip" data-ph="{touser}">{touser}</button><button type="button" class="bs-chip" data-ph="{count}">{count}</button><button type="button" class="bs-chip" data-ph="{watchtime}">{watchtime}</button><button type="button" class="bs-chip" data-ph="{followage}">{followage}</button><button type="button" class="bs-chip" data-ph="{uptime}">{uptime}</button><button type="button" class="bs-chip" data-ph="{game}">{game}</button><button type="button" class="bs-chip" data-ph="{title}">{title}</button><button type="button" class="bs-chip" data-ph="{streamer}">{streamer}</button><button type="button" class="bs-chip" data-ph="{random:1-6}">{random:1-6}</button></div>
+                    <div class="bs-row" data-for-kind="timer">
+                      <label class="field"><span>Frühestens alle</span><span class="bp-unit"><input type="number" name="interval_min" min="5" max="240" inputmode="numeric"><em>Min</em></span></label>
+                      <label class="field"><span>Erst nach</span><span class="bp-unit"><input type="number" name="min_lines" min="0" max="200" inputmode="numeric"><em>Nachrichten</em></span></label>
+                    </div>
+                    <fieldset class="bs-box" data-for-kind="cmd">
+                      <legend>Wer darf den Befehl nutzen?</legend>
+                      <div class="bs-pills" id="bs-perm"><button type="button" data-perm="everyone" aria-pressed="false">Alle</button><button type="button" data-perm="sub" aria-pressed="false">Abonnenten</button><button type="button" data-perm="vip" aria-pressed="false">VIPs</button><button type="button" data-perm="mod" aria-pressed="false">Nur Mods</button><button type="button" data-perm="streamer" aria-pressed="false">Streamer</button></div>
+                    </fieldset>
+                    <div class="bs-row" data-for-kind="cmd">
+                      <label class="field bs-grow"><span>Weitere Namen (Alias)</span><input name="aliases" maxlength="140" placeholder="!dc, !disc" autocomplete="off" class="bs-mono"></label>
+                      <div class="field bs-stat"><span>Benutzt</span><p><b id="bs-uses">0×</b> seit Anlegen</p></div>
+                    </div>
+                    <details class="bs-more" data-for-kind="cmd">
+                      <summary>Mehr Einstellungen</summary>
+                      <div class="bs-row">
+                        <label class="field"><span>Pause je Zuschauer</span><span class="bp-unit"><input type="number" name="user_cooldown" min="0" max="3600" inputmode="numeric"><em>Sek.</em></span></label>
+                        <label class="field bs-grow"><span>Antwort</span><select name="reply_type"><option value="say">Normal in den Chat</option><option value="reply">Als Antwort auf die Nachricht</option><option value="mention">Mit @Name davor</option></select></label>
+                      </div>
+                      <label class="toggle"><input type="checkbox" name="live_only"><span class="toggle-ui" aria-hidden="true"></span>Nur während des Streams</label>
+                    </details>
+                    <div class="bs-stat-line" data-for-kind="timer"><b id="bs-sent">0×</b> gesendet · Platzhalter: <code>{streamer}</code> · Im Raid-Schutz pausieren Auto-Nachrichten.</div>
+                    <div class="bs-gap" id="bs-gap" data-for-kind="timer"></div>
+                    <p class="form-hint" data-for-kind="cmd">Eingebaute Befehle wie <code>!join</code> oder <code>!watchtime</code> lassen sich nicht überschreiben. <code>!befehle</code> listet alle aktiven Befehle im Chat.</p>
+                  </form>
+                  <div class="bs-panes" id="bs-panes">
+                <article class="dash-card" id="bot-card" data-pane="account" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🤖</span><div><h2>Chat-Bot-Konto</h2><p id="bot-status" class="dash-status">Wird geladen …</p></div></header>
+                  <p class="form-hint">Der Bot ist ein eigener Twitch-Account (nicht der Kanal des Streamers). Er liest Chat-Befehle mit und schreibt Ergebnisse in den Chat. Vor dem Verbinden auf twitch.tv mit dem Bot-Account anmelden.</p>
+                  <div class="dash-actions">
+                    <button class="btn btn--twitch" type="button" id="bot-connect">🤖 Bot verbinden</button>
+                    <button class="btn btn--ghost" type="button" id="bot-disconnect" hidden>Bot trennen</button>
+                  </div>
+                  <fieldset class="bot-pick" id="bot-pick" hidden>
+                    <legend>Welcher Bot schreibt in deinem Chat?</legend>
+                    <div class="bot-pick-list" id="bot-pick-list"></div>
+                    <p class="form-hint" id="bot-pick-hint">StreamHelp hat zwei Bots. Ist deiner gerade nicht verbunden, springt der andere ein.</p>
+                  </fieldset>
+                  <p class="form-msg" id="bot-msg" role="alert"></p>
+                </article>
+                <article class="dash-card" id="botlog-card" data-pane="log" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📋</span><div><h2>Bot-Protokoll</h2><p class="dash-status" id="botlog-status">Kommen die Nachrichten des Bots an?</p></div>
+                    <div class="dash-actions botlog-actions">
+                      <button class="btn btn--primary btn--sm" type="button" id="botlog-test">✉️ Testnachricht senden</button>
+                      <button class="btn btn--ghost btn--sm" type="button" id="botlog-reload">↻</button>
+                    </div>
+                  </header>
+                  <p class="form-msg" id="botlog-msg" role="status"></p>
+                  <ul class="botlog-list" id="botlog-list"></ul>
+                  <p class="form-hint">Jede Nachricht des Bots mit Status: ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit Grund, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt) oder nicht gesendet. Die letzten 7 Tage.</p>
+                </article>
+                <article class="dash-card" data-botplus="greet" data-pane="greet" hidden></article>
+                <article class="dash-card" data-botplus="mod" data-pane="mod" hidden></article>
+                <article class="dash-card" data-botplus="songs" data-pane="songs" id="bot-songs" hidden></article>
+                <article class="dash-card" data-botplus="faq" data-pane="faq" hidden></article>
+                <article class="dash-card" data-botplus="notices" data-pane="notices" hidden></article>
+                <article class="dash-card" data-botplus="clips" data-pane="clips" hidden></article>
+                <article class="dash-card" data-botplus="info" data-pane="info" hidden></article>
+                <article class="dash-card" id="watch-card" data-pane="watch" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
+                  <ol class="watch-top" id="watch-top"></ol>
+                  <!-- Alte Watchtime aus einem anderen Bot (js/watch-import.js), nur für den Streamer -->
+                  <div class="watch-import" id="watch-import" data-for="streamer"></div>
+                  <p class="form-hint">Twitch gibt keine alte Zuschauzeit heraus – StreamHelp zählt ab dem ersten Stream mit dem Overlay. Hast du vorher einen anderen Bot genutzt (StreamElements, Streamlabs …), lade dessen Watchtime-Export als CSV hoch; beides wird zusammengezählt. Zählt, solange der Stream live ist und das OBS-Overlay läuft – für alle im Chat (Twitch-Recht „Watchtime“, sonst alle, die in den letzten 10 Minuten geschrieben haben). Im Chat: <code>!watchtime</code> oder <code>!watchtime @name</code>.</p>
+                </article>
+                <article class="dash-card" data-pane="builtin" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
+                  <ul class="cmd-list" id="cmd-list"></ul>
+                </article>
+                <article class="dash-card" data-pane="builtin" hidden>
+                  <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>
+                  <ul class="dash-list">
+                    <li>🎡 Ergebnis jeder Glücksrad-Drehung</li>
+                    <li>🧠 Quiz-Fragen und Auflösung</li>
+                    <li>🎮 Warteschlange: wer dran ist</li>
+                    <li>🚫 Verbotenes Wort erwischt</li>
+                    <li>🦖 Dino gefüttert, Kostüm gewechselt</li>
+                  </ul>
+                  <p class="form-hint">Eingetippte Texte wiederholt der Bot nie – nur feste Texte der Seite.</p>
+                </article>
+                  </div>
                 </div>
-              </header>
-              <p class="form-msg" id="botlog-msg" role="status"></p>
-              <ul class="botlog-list" id="botlog-list"></ul>
-              <p class="form-hint">Jede Nachricht des Bots mit Status: ✓ gesendet (mit Antwortzeit von Twitch), ✕ von Twitch blockiert (mit Grund, z. B. Link-Sperre, doppelte Nachricht, Bot gebannt) oder nicht gesendet. Die letzten 7 Tage.</p>
-            </article>
-            <article class="dash-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">💬</span><div><h2>Chat-Befehle</h2><p class="dash-status">Das tippen Zuschauer in den Twitch-Chat</p></div></header>
-              <ul class="cmd-list" id="cmd-list"></ul>
-            </article>
-            <article class="dash-card dash-card--wide" id="cmd-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">✍️</span><div><h2>Eigene Befehle</h2><p class="dash-status">Befehl im Chat → feste Antwort vom Bot. Platzhalter: <code>{user}</code> Name, <code>{touser}</code> genannte Person, <code>{count}</code> wie oft benutzt, <code>{watchtime}</code>, <code>{followage}</code>, <code>{uptime}</code>, <code>{game}</code>, <code>{title}</code>, <code>{streamer}</code>, <code>{random}</code> bzw. <code>{random:1-6}</code> – mehr Einstellungen je Befehl unter ⚙️</p></div></header>
-              <form class="cmd-form" id="cmd-form" novalidate>
-                <label class="field cmd-f-cmd"><span>Befehl</span><input name="command" maxlength="26" placeholder="!discord" autocomplete="off" required></label>
-                <label class="field cmd-f-resp"><span>Antwort</span><input name="response" maxlength="400" placeholder="Unser Discord: discord.gg/… – {user}, komm vorbei!" autocomplete="off" required></label>
-                <label class="field cmd-f-cd"><span>Pause (Sek.)</span><input name="cooldown" type="number" min="0" max="3600" value="10"></label>
-                <label class="toggle cmd-f-mod"><input type="checkbox" name="mod_only"><span class="toggle-ui" aria-hidden="true"></span>Nur Mods</label>
-                <button class="btn btn--primary" type="submit">＋ Anlegen</button>
-                <p class="form-msg" role="alert"></p>
-              </form>
-              <ul class="cmd-custom" id="cmd-custom"></ul>
-              <p class="form-hint">Eingebaute Befehle wie <code>!join</code> oder <code>!watchtime</code> lassen sich nicht überschreiben. <code>!befehle</code> listet alle aktiven Befehle im Chat.</p>
-            </article>
-            <!-- Chat-Bot-Bereiche (js/bot-plus.js, Migration …_chat_bot_plus.sql) -->
-            <article class="dash-card" data-botplus="info"></article>
-            <article class="dash-card dash-card--wide" data-botplus="greet"></article>
-            <article class="dash-card dash-card--wide" data-botplus="timers"></article>
-            <article class="dash-card dash-card--wide" data-botplus="mod"></article>
-            <article class="dash-card dash-card--wide" data-botplus="songs" id="bot-songs"></article>
-            <!-- Clips & Statistik, Ansagen, Stichwort-Antworten (Migration …_bot_more.sql) -->
-            <article class="dash-card dash-card--wide" data-botplus="faq"></article>
-            <article class="dash-card dash-card--wide" data-botplus="clips"></article>
-            <article class="dash-card dash-card--wide" data-botplus="notices"></article>
-            <article class="dash-card" id="watch-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">⏱️</span><div><h2>Watchtime</h2><p class="dash-status" id="watch-status">Wird geladen …</p></div></header>
-              <ol class="watch-top" id="watch-top"></ol>
-              <!-- Alte Watchtime aus einem anderen Bot (js/watch-import.js), nur für den Streamer -->
-              <div class="watch-import" id="watch-import" data-for="streamer"></div>
-              <p class="form-hint">Twitch gibt keine alte Zuschauzeit heraus – StreamHelp zählt ab dem ersten Stream mit dem Overlay. Hast du vorher einen anderen Bot genutzt (StreamElements, Streamlabs …), lade dessen Watchtime-Export als CSV hoch; beides wird zusammengezählt. Zählt, solange der Stream live ist und das OBS-Overlay läuft – für alle im Chat (Twitch-Recht „Watchtime“, sonst alle, die in den letzten 10 Minuten geschrieben haben). Im Chat: <code>!watchtime</code> oder <code>!watchtime @name</code>.</p>
-            </article>
-            <article class="dash-card">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">📣</span><div><h2>Bot-Nachrichten</h2><p class="dash-status">Was der Bot von selbst schreibt</p></div></header>
-              <ul class="dash-list">
-                <li>🎡 Ergebnis jeder Glücksrad-Drehung</li>
-                <li>🧠 Quiz-Fragen und Auflösung</li>
-                <li>🎮 Warteschlange: wer dran ist</li>
-                <li>🚫 Verbotenes Wort erwischt</li>
-                <li>🦖 Dino gefüttert, Kostüm gewechselt</li>
-              </ul>
-              <p class="form-hint">Eingetippte Texte wiederholt der Bot nie – nur feste Texte der Seite.</p>
-            </article>
+                <footer class="bs-foot" id="bs-foot" hidden>
+                  <button type="button" class="bs-del" id="bs-del"><i class="ph ph-trash" aria-hidden="true"></i>Löschen</button>
+                  <span class="bs-state" id="bs-state" role="status">Alles gespeichert</span>
+                  <button type="button" class="btn btn--ghost" id="bs-discard">Verwerfen</button>
+                  <button type="submit" class="btn btn--primary" id="bs-save" form="bs-form">Speichern</button>
+                </footer>
+              </div>
+
+              <aside class="bs-chat" aria-label="Chat-Vorschau">
+                <header class="bs-chat-head"><i class="ph ph-chat-teardrop-text" aria-hidden="true"></i><b>Chat-Vorschau</b><span id="bs-chat-mode"></span></header>
+                <ol class="bs-log" id="bs-log" aria-live="polite"></ol>
+                <form class="bs-test" id="bs-test" novalidate>
+                  <input name="msg" maxlength="200" placeholder="Als Zuschauer schreiben, z. B. !lurk" aria-label="Als Zuschauer schreiben" autocomplete="off">
+                  <button type="submit" aria-label="Senden"><i class="ph ph-paper-plane-right" aria-hidden="true"></i></button>
+                </form>
+                <p class="bs-chat-hint">Nur hier – nichts landet im echten Twitch-Chat.</p>
+              </aside>
+            </div>
           </div>
         </section>
 
