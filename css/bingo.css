@@ -102,7 +102,7 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
 .bingo-rownum {
   display: grid; place-items: center;
   font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 1.1em; font-weight: 800; line-height: 1;
-  color: #ffd36b; text-shadow: 0 .06em 0 rgba(0, 0, 0, .5);
+  color: var(--gold-ink, #ffd36b); text-shadow: 0 .06em 0 rgba(0, 0, 0, .5);
 }
 .bingo-free { display: grid; place-items: center; font-size: 1.9em; line-height: 1; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
 .bingo-free b { font-size: .34em; text-transform: uppercase; letter-spacing: .08em; }
