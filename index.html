@@ -768,46 +768,42 @@
         <section class="page" data-page="ideas" aria-labelledby="page-title">
           <!-- Ruhiger Einstieg für Streamer (js/dash-start.js) -->
           <div id="start-slot" hidden></div>
-          <div class="dash-hero">
-            <article class="next-departure" id="next-departure">
-              <span class="nd-bg" aria-hidden="true"></span>
-              <span class="nd-shade" aria-hidden="true"></span>
-              <div class="nd-body">
-                <p class="eyebrow">Als Nächstes · <span id="today"></span></p>
-                <h2 id="next-title">Kein Termin geplant</h2>
-                <p class="nd-desc" id="next-desc">Sobald eine Idee einen Termin bekommt, steht sie hier.</p>
-                <div class="countdown countdown--lg" id="next-countdown"></div>
-              </div>
-            </article>
-
-            <button type="button" class="wheel-card" id="wheel-card">
-              <span class="wheel-card-disc" aria-hidden="true"></span>
-              <span class="wheel-card-shade" aria-hidden="true"></span>
-              <span class="tile-tag" id="wheel-card-tag">Jederzeit</span>
-              <span class="wheel-card-title" id="wheel-card-title">Fortnite-Glücksrad</span>
-              <span class="wheel-card-desc" id="wheel-card-desc"></span>
-              <span class="wheel-card-cta">Rad drehen →</span>
-            </button>
-          </div>
-
-          <!-- Games: je Game die passenden Content-Ideen (Migration …_games.sql) -->
-          <div class="section games-section" id="games-section" hidden>
-            <div class="section-head">
-              <h2>Games</h2>
-              <button type="button" class="btn btn--ghost btn--sm" id="games-edit" hidden>⚙️ Games verwalten</button>
+          <!-- Begrüßung mit Countdown zum nächsten Termin -->
+          <article class="hello-hero" id="next-departure">
+            <span class="nd-bg" aria-hidden="true"></span>
+            <div class="hh-text">
+              <h2 id="hello-title">Hallo!</h2>
+              <p id="next-desc">Schön, dass du da bist.</p>
             </div>
-            <div class="games-strip" id="games-strip" role="tablist" aria-label="Game wählen"></div>
+            <div class="countdown countdown--hero" id="next-countdown" hidden></div>
+          </article>
+
+          <div class="section ideas-section">
+            <div class="ideas-head">
+              <h2 id="grid-title">Content-Ideen</h2>
+              <span class="ideas-count" id="plan-count"></span>
+              <div class="ideas-tools">
+                <label class="ideas-search">
+                  <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+                  <input id="grid-search" type="search" placeholder="Idee suchen …" aria-label="Content-Ideen durchsuchen" autocomplete="off">
+                </label>
+                <div class="view-toggle" id="view-toggle" role="group" aria-label="Ansicht">
+                  <button type="button" data-view="grid" aria-pressed="true" title="Raster" aria-label="Raster"><i class="ph ph-squares-four" aria-hidden="true"></i></button>
+                  <button type="button" data-view="list" aria-pressed="false" title="Liste" aria-label="Liste"><i class="ph ph-list-bullets" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ideas-filters">
+              <div class="cat-chips" id="cat-chips" role="group" aria-label="Nach Art filtern"></div>
+              <!-- Games: je Game die passenden Content-Ideen (Migration …_games.sql) -->
+              <div class="games-section" id="games-section" hidden>
+                <div class="games-strip" id="games-strip" role="tablist" aria-label="Game wählen"></div>
+                <button type="button" class="game-chip game-chip--edit" id="games-edit" hidden title="Games verwalten"><i class="ph ph-gear-six" aria-hidden="true"></i><span>Games verwalten</span></button>
+              </div>
+            </div>
             <p class="games-live" id="games-live" hidden></p>
-          </div>
 
-          <div class="section">
-            <div class="section-head">
-              <h2 id="grid-title">Alle Content-Ideen</h2>
-              <div class="grid-tools">
-                <input class="grid-search" id="grid-search" type="search" placeholder="Kachel suchen …" aria-label="Content-Ideen durchsuchen" autocomplete="off">
-                <span id="plan-count"></span>
-              </div>
-            </div>
             <div id="grid" class="grid" aria-live="polite"></div>
           </div>
         </section>
