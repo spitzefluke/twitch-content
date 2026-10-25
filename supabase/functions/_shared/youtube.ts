@@ -152,7 +152,7 @@ export function parseChatResponse(data: any) {
 }
 
 async function page(url: string) {
-  const res = await fetch(url, { headers: HEADERS, redirect: "follow" });
+  const res = await fetch(url, { headers: HEADERS, redirect: "follow", signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`YouTube ${res.status}`);
   return await res.text();
 }
@@ -182,6 +182,7 @@ export async function pollChat(continuation: string, clientVersion: string, apiK
     method: "POST",
     headers: { ...HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: version, hl: "de", gl: "DE" } }, continuation }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`YouTube ${res.status}`);
   return parseChatResponse(await res.json());

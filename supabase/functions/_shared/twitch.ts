@@ -1,6 +1,6 @@
 // Gemeinsame Helfer für alle Edge Functions.
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.118.0";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -255,6 +255,26 @@ export async function isChannelOwner(userId: string): Promise<boolean> {
   return !!profile?.is_admin;
 }
 
+// Darf dieses StreamHelp-Konto den Kanal mit dem Twitch-Konto twitchId verbinden?
+export async function starterMayConnect(
+  userId: string, channel: { owner_id: string | null } | null, twitchId: string, starterIsAdmin: boolean,
+  deps = { isChannelOwner, twitchIdsOf },
+): Promise<boolean> {
+  if (channel?.owner_id) return await deps.isChannelOwner(userId);
+  if (starterIsAdmin) return true;
+  return (await deps.twitchIdsOf(userId)).includes(twitchId);
+}
+
+// Twitch-IDs, mit denen sich dieses Konto bei StreamHelp anmeldet (Supabase-Login über Twitch)
+async function twitchIdsOf(userId: string): Promise<string[]> {
+  const { data, error } = await db.auth.admin.getUserById(userId);
+  if (error || !data?.user) return [];
+  return (data.user.identities ?? [])
+    .filter((i) => i.provider === "twitch")
+    .map((i) => String(i.identity_data?.provider_id ?? i.identity_data?.sub ?? i.id ?? ""))
+    .filter(Boolean);
+}
+
 // Angemeldeten Supabase-User aus dem Authorization-Header lesen.
 // Zwei-Faktor-Anmeldung: Hat das Konto 2FA eingerichtet, zählt die Sitzung erst nach
 // bestätigtem Code (aal2) – vorher gilt die Anfrage als nicht angemeldet.
@@ -326,6 +346,9 @@ export async function startTwitchLogin(userId: string, kind: "broadcaster" | "bo
   return auth.toString();
 }
 
+// Antwortet Twitch nicht, bricht die Anfrage ab – statt die Function bis zu ihrem Zeitlimit festzuhalten
+export const TWITCH_TIMEOUT_MS = 10_000;
+
 export async function twitchToken(params: Record<string, string>) {
   const res = await fetch("https://id.twitch.tv/oauth2/token", {
     method: "POST",
@@ -335,6 +358,7 @@ export async function twitchToken(params: Record<string, string>) {
       client_secret: env("TWITCH_CLIENT_SECRET"),
       ...params,
     }),
+    signal: AbortSignal.timeout(TWITCH_TIMEOUT_MS),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(`Twitch-Token: ${data.message ?? res.status}`);
@@ -375,6 +399,7 @@ export async function helix(
       ...(init.body ? { "Content-Type": "application/json" } : {}),
     },
     body: init.body ? JSON.stringify(init.body) : undefined,
+    signal: AbortSignal.timeout(TWITCH_TIMEOUT_MS),
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;

@@ -38,7 +38,9 @@ const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-event
 
 // Welche Rechte hat der Token wirklich? (Twitch sagt es beim Prüfen des Tokens)
 async function tokenScopes(token: string): Promise<string[] | null> {
-  const res = await fetch("https://id.twitch.tv/oauth2/validate", { headers: { Authorization: `OAuth ${token}` } });
+  const res = await fetch("https://id.twitch.tv/oauth2/validate", {
+    headers: { Authorization: `OAuth ${token}` }, signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) return null;
   const data = await res.json();
   return Array.isArray(data.scopes) ? data.scopes : [];

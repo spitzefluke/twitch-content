@@ -322,6 +322,7 @@ function showTwitchReturn(status, reason, detail, bot) {
   }
   const reasons = {
     wrong_account: 'Verbinden darf nur das Twitch-Konto, dem dieser Kanal gehört. Auf twitch.tv abmelden, mit dem richtigen Konto anmelden und noch einmal verbinden.',
+    not_owner: 'Twitch verbindet nur der Streamer selbst: Auf StreamHelp mit dem Konto anmelden, dem der Kanal gehört (bzw. mit dem Twitch-Konto des Kanals), und noch einmal verbinden.',
     bot_is_broadcaster: 'Das war der Account des Streamers. Der Bot braucht einen eigenen: Auf twitch.tv abmelden, mit dem Bot-Account anmelden und noch einmal verbinden.',
     no_broadcaster_login: 'In Supabase fehlt das Secret BROADCASTER_LOGIN (Twitch-Name des Streamers). Ohne es darf sich aus Sicherheitsgründen nur ein Admin verbinden. Secret unter Edge Functions → Secrets eintragen und erneut verbinden.',
     redirect_uri: `Twitch hat nach der Freigabe nicht zu StreamHelp zurückgeleitet. In der Twitch-App (dev.twitch.tv → Console → Anwendungen → Verwalten) unter „OAuth Redirect URLs“ zusätzlich ${CONFIG.SUPABASE_URL}/functions/v1/twitch-oauth eintragen, speichern und noch einmal verbinden.`,

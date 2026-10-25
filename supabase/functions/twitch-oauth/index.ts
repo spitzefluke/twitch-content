@@ -19,7 +19,7 @@
 import {
   activeChannels, audit, backToSite, channelKey, channelServe, CodedError, corsHeaders, currentChannel, currentChannelId, db, env, forgetBots,
   getAppToken, getBot, getConnection, sendChat,
-  broadcasterType, getUserFromRequest, helix, HelixError, isAdminUser, isAffiliateType, isChannelOwner, isPlatformAdmin, json,
+  broadcasterType, getUserFromRequest, helix, starterMayConnect, HelixError, isAdminUser, isAffiliateType, isChannelOwner, isPlatformAdmin, json,
   oauthRedirectUri, rateLimit, saveBroadcasterType, startTwitchLogin, tooMany, twitchToken, withChannel,
 } from "../_shared/twitch.ts";
 import { disableSoundRewards, ensureRedemptionSubscription, syncPrankRewards } from "../_shared/pranks.ts";
@@ -58,6 +58,12 @@ Deno.serve(channelServe(async (req) => {
       if (action === "bot_select") return await botSelect(user.id, body.slot);
       if (action === "bot_test") return await botTest(user.id);
       if (action === "start") {
+        // Nur wer den Kanal schon besitzt, startet das Verbinden – sonst könnte ein Fremder dem Streamer
+        // seinen Freigabe-Link unterschieben und stünde danach als Inhaber da (connected_by).
+        const channel = await currentChannel();
+        if (channel?.owner_id && !(await isChannelOwner(user.id))) {
+          return json({ error: "Twitch verbindet nur der Streamer selbst – mit dem StreamHelp-Konto, dem der Kanal gehört." }, 403);
+        }
         await audit(user.id, "twitch_connect");
         return json({ url: await startTwitchLogin(user.id, "broadcaster") });
       }
@@ -138,6 +144,11 @@ async function finishCallback(url: URL, st: any) {
       if (expected && me.login.toLowerCase() !== expected) throw new CodedError("wrong_account");
       if (!expected && !starterIsAdmin) throw new CodedError("no_broadcaster_login");
     }
+
+    // Und der StreamHelp-Nutzer, der den Login gestartet hat, muss zum Kanal gehören: Inhaber (bzw. Admin),
+    // bei einem Kanal ohne Inhaber selbst mit genau diesem Twitch-Konto angemeldet. Sonst reicht ein
+    // untergeschobener Freigabe-Link, und der Fremde wäre danach Inhaber (connected_by, owner_id).
+    if (!(await starterMayConnect(st.user_id, channel, me.id, starterIsAdmin))) throw new CodedError("not_owner");
 
     const { data: previous } = await db.from("twitch_connection").select("*").eq("id", 1).maybeSingle();
     if (previous && previous.broadcaster_id !== me.id && !starterIsAdmin) throw new CodedError("wrong_account");
