@@ -13,6 +13,7 @@ const STATUS = {
   error: ['⚠️', 'Fehler'],
   no_bot: ['⚠️', 'kein Bot verbunden'],
   off: ['⏸', 'Chat-Bot plattformweit aus'],
+  retry: ['↻', 'kommt gleich noch einmal'],
 };
 const SOURCE = { chat: 'Antwort', outbox: 'Ansage', test: 'Test', mod: 'Moderation', system: 'Automatisch' };
 const timeOf = (iso) => new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });

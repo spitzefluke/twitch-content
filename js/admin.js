@@ -1011,7 +1011,7 @@ async function disconnectBot(slot, btn) {
 }
 
 // Bot-Protokoll aller Kanäle: je Kanal die letzten 24 Stunden, darunter die einzelnen Nachrichten
-const BOT_STATUS = { sent: '✓ gesendet', dropped: '✕ blockiert', error: '⚠️ Fehler', no_bot: '⚠️ kein Bot', off: '⏸ Notfall-Schalter' };
+const BOT_STATUS = { sent: '✓ gesendet', dropped: '✕ blockiert', error: '⚠️ Fehler', no_bot: '⚠️ kein Bot', off: '⏸ Notfall-Schalter', retry: '↻ kommt gleich noch einmal' };
 async function loadBotLog() {
   const btn = $('#botlog-load');
   btn.disabled = true;
