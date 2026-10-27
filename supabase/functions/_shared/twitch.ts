@@ -503,6 +503,34 @@ async function logChat(text: string, status: string, reason: string, source: Cha
     .then(() => {}, () => {});
 }
 
+// Twitch lässt einen Bot, der im Kanal kein Mod ist, nur etwa 20 Nachrichten in 30 Sekunden schreiben.
+// Deshalb geht je Kanal höchstens alle 1,6 s eine Nachricht raus (Platz vergibt die Datenbank,
+// …_bot_pacing.sql – auch über gleichzeitige Aufrufe hinweg). Bremst Twitch trotzdem (429), wartet der
+// Bot und versucht es noch zweimal; danach kommt die Nachricht in die Warteschlange statt verloren zu gehen.
+// (ein Objekt, damit Tests die Zeiten verkürzen können)
+export const chatPace = { gapMs: 1600, maxWaitMs: 15_000, retryMs: [2_000, 5_000], requeueMs: 10_000 };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Wartezeit bis zum eigenen Sendeplatz (0, wenn die Migration fehlt oder die Datenbank hakt)
+async function chatSlot(): Promise<number> {
+  try {
+    const { data, error } = await db.rpc("bot_send_slot", { p_gap_ms: chatPace.gapMs });
+    return error ? 0 : Math.max(0, Number(data) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+// Später noch einmal (bot_outbox mit send_after, …_bot_more.sql) – false, wenn das nicht ging
+async function requeueChat(text: string, delayMs: number): Promise<boolean> {
+  const sendAfter = new Date(Date.now() + delayMs).toISOString();
+  let { error } = await db.from("bot_outbox").insert({ text, send_after: sendAfter });
+  if (error && /send_after/.test(error.message)) ({ error } = await db.from("bot_outbox").insert({ text }));
+  return !error;
+}
+
+export const isChatRateLimit = (e: unknown) => e instanceof HelixError && e.status === 429;
+
 // replyTo: als Antwort auf diese Chat-Nachricht (Twitch zeigt sie dann verknüpft)
 // source: wofür die Nachricht war (fürs Protokoll). Liefert die Antwortzeit von Twitch in ms.
 export async function sendChat(conn: Connection, message: string, replyTo?: string, source: ChatSource = "chat") {
@@ -513,19 +541,40 @@ export async function sendChat(conn: Connection, message: string, replyTo?: stri
     await logChat(text, "no_bot", "Kein Chat-Bot verbunden", source, "", null);
     throw new CodedError("no_bot", "Kein Chat-Bot verbunden – Nachricht nicht gesendet");
   }
+  // Eigenen Sendeplatz abwarten (höchstens 15 s – bremst Twitch dann doch, greift der Versuch unten)
+  const wait = await chatSlot();
+  if (wait > 0) await sleep(Math.min(wait, chatPace.maxWaitMs));
+
   const started = Date.now();
   let res;
-  try {
-    res = await helix("chat/messages", await getAppToken(), {
-      method: "POST",
-      body: {
-        broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: text,
-        ...(replyTo ? { reply_parent_message_id: replyTo } : {}),
-      },
-    });
-  } catch (e) {
-    await logChat(text, "error", (e as Error).message, source, bot.login, Date.now() - started);
-    throw e;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await helix("chat/messages", await getAppToken(), {
+        method: "POST",
+        body: {
+          broadcaster_id: conn.broadcaster_id, sender_id: bot.user_id, message: text,
+          ...(replyTo ? { reply_parent_message_id: replyTo } : {}),
+        },
+      });
+      break;
+    } catch (e) {
+      if (isChatRateLimit(e) && attempt < chatPace.retryMs.length) {
+        await sleep(chatPace.retryMs[attempt]);
+        continue;
+      }
+      if (isChatRateLimit(e)) {
+        const why = "Twitch bremst den Bot (zu viele Nachrichten auf einmal)";
+        // Einmal in die Warteschlange (Nachrichten von dort nicht noch einmal – sonst liefen sie im Kreis)
+        if (source !== "test" && source !== "outbox" && (await requeueChat(text, chatPace.requeueMs))) {
+          await logChat(text, "retry", `${why} – kommt gleich noch einmal`, source, bot.login, Date.now() - started);
+          return null;
+        }
+        await logChat(text, "error", why, source, bot.login, Date.now() - started);
+        throw new CodedError("rate_limited", `${why}. In ein paar Sekunden noch einmal versuchen – als Mod hat der Bot ein höheres Limit.`);
+      }
+      await logChat(text, "error", (e as Error).message, source, bot.login, Date.now() - started);
+      throw e;
+    }
   }
   const ms = Date.now() - started;
   const r = res?.data?.[0];

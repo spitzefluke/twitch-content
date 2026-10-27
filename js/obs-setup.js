@@ -143,7 +143,8 @@ function go(i) {
     : h('figure', { class: 'obs-setup-shot' },
       // Antippen öffnet das Bild groß (am Handy sonst zu klein zum Lesen)
       h('a', { href: IMG(s.img), target: '_blank', rel: 'noopener', title: 'Bild groß öffnen' },
-        h('img', { src: IMG(s.img), alt: s.alt, width: 1440, height: 900, loading: 'eager', decoding: 'async' })));
+        h('img', { src: IMG(s.img), alt: s.alt, width: 1440, height: 900, loading: 'eager', decoding: 'async' }),
+        h('span', { class: 'obs-setup-zoom', 'aria-hidden': 'true' }, '🔍 Antippen zum Vergrößern')));
   const text = s.body();
   document.getElementById('obs-setup-body').replaceChildren(media, h('div', { class: 'obs-setup-text' }, ...(Array.isArray(text) ? text : [text])));
   document.querySelectorAll('#obs-setup-dots .obs-setup-dot').forEach((d, k) => {
