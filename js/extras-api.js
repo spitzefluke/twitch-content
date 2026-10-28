@@ -1,7 +1,7 @@
 // Datenzugriff für die neueren Content-Ideen (Migration …_stream_extras.sql):
 // Verbotenes Wort, Subathon, Pause, Quiz, Mitspielen, Vorlesen (TTS), Sammelkarten; dazu die Verlosung (…_giveaway.sql)
 // und Hot Words (…_hotwords.sql), Umfragen (…_polls.sql), Zähler, Spiel-Rad und Herzfrequenz (…_game_packs.sql), Chat-Kommandos (…_chat_control.sql),
-// Cup (…_cup.sql).
+// Cup (…_cup.sql), Zuschauer-Wette und Rubbellos (…_bet_scratch.sql).
 // Live über Supabase (RPCs), im Demo-Modus mit localStorage – dieselben Regeln, vereinfacht.
 import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
@@ -181,6 +181,36 @@ function liveExtras({ sb, unwrap, invoke }) {
       addTest: null, // nur im Demo-Modus
     },
 
+    // ---------- Zuschauer-Wette (…_bet_scratch.sql) ----------
+    // Tippen im Chat (!tipp 1) oder hier; Punkte und Rangliste ohne Twitch-IDs (bet_top)
+    bet: {
+      get: () => one('bets'),
+      top: (limit = 10) => rpc('bet_top', { p_limit: limit }),
+      me: () => rpc('bet_me'),
+      tip: (choice) => rpc('bet_tip_web', { p_choice: choice }),
+      async start({ question, options, minutes }) {
+        const r = await rpc('bet_start', { p_question: question, p_options: options, p_minutes: minutes });
+        flush();
+        return r;
+      },
+      async lock() { const r = await rpc('bet_lock'); flush(); return r; },
+      async resolve(winner) { const r = await rpc('bet_resolve', { p_winner: winner }); flush(); return r; },
+      async cancel() { const r = await rpc('bet_cancel'); flush(); return r; },
+      resetScores: () => rpc('bet_reset_scores'),
+      async tick() { await rpc('bet_tick'); flush(); },
+      addTest: null, // nur im Demo-Modus – echte Tipps kommen aus dem Chat
+    },
+    // ---------- Rubbellos (…_bet_scratch.sql) ----------
+    // Lose zieht der Chat mit !rubbeln; hier Einstellungen, letzte Lose und ein Probe-Los fürs Overlay
+    scratch: {
+      get: () => rpc('scratch_get'),
+      save: ({ enabled, who, cooldown, prizes }) => rpc('scratch_save', { p_enabled: enabled, p_who: who, p_cooldown_min: cooldown, p_prizes: prizes }),
+      // Die letzten Lose (für alle lesbar, ohne Twitch-ID)
+      draws: async (limit = 12) => unwrap(await sb.from('scratch_draws').select('id, name, label, emoji, win, source, created_at').order('id', { ascending: false }).limit(limit)),
+      test: () => rpc('scratch_test'),
+      simulate: null, // nur im Demo-Modus
+    },
+
     // ---------- Cup (…_cup.sql) ----------
     // Rangliste ohne Twitch-IDs (cup_board), Spielcode nur für Streamer und Mods (cup_admin).
     // Beitreten per Chat mit „!cup join“; Punkte vergeben Streamer und Mods hier.
@@ -333,6 +363,15 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
   const GWH0 = { id: 1, challenges: {}, auto_switch: true, n: 0, mode: 'game', game: '', options: [], result_index: null, result: '', spun_by: '', spun_at: null };
   const CC0 = { id: 1, enabled: true, mode: 'direct', vote_seconds: 30, user_cooldown: 20, show_seconds: 6, round: 0, round_ends_at: null, tally: {}, voters: 0 };
   const HR0 = { id: 1, bpm: null, at: null, alarm: 140, session_at: null, s_min: null, s_max: null, s_sum: 0, s_n: 0 };
+  const DEMO_NAMES = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia', 'SnipeSina', 'LamaLeni', 'NoScopeNils', 'VictoryVera'];
+  const BET0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, winner: null, points: 0, opened_at: null, lock_at: null, resolved_at: null };
+  const SCR0 = {
+    id: 1, enabled: true, who: 'all', cooldown_min: 30, prizes: [
+      { label: 'Niete – nächstes Mal!', emoji: '🍀', weight: 50, win: false }, { label: 'Shoutout vom Streamer', emoji: '📣', weight: 15, win: true },
+      { label: 'Ein Sound deiner Wahl', emoji: '🔊', weight: 12, win: true }, { label: 'Emote-Regen für dich', emoji: '🌧️', weight: 12, win: true },
+      { label: 'Du suchst das nächste Game mit aus', emoji: '🎮', weight: 8, win: true }, { label: 'Hauptgewinn: Ehrenplatz im Chat', emoji: '👑', weight: 3, win: true },
+    ],
+  };
   const PL0 = { id: 1, status: 'idle', round: 0, question: '', options: [], counts: [], total: 0, chat_vote: true, opened_at: null, ends_at: null, closed_at: null };
   const CUP0 = { id: 1, title: 'Community-Cup', rules: '', prizes: [], open: false, round: 1, players: 0, code_sent_at: null };
   const GW0 = { id: 1, round: 0, status: 'idle', prize: '', command: '!verlosung', followers_only: true, confirm_in_chat: true, one_win_per_day: true, entries: 0, opened_at: null, ends_at: null, winner_name: '', drawn_at: null, draws: 0 };
@@ -1146,6 +1185,134 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
           this.cast(`demo:${nextId++}`, choice);
         }
         return oneRow('polls', PL0);
+      },
+    },
+    // Zuschauer-Wette: wie bet_start/bet_tip/bet_resolve in der Migration
+    bet: {
+      get: async () => oneRow('bets', BET0),
+      async top(limit = 10) {
+        return Object.values(store.get('bet_scores', {})).filter((s) => s.points > 0)
+          .sort((a, b) => b.points - a.points || b.wins - a.wins || a.name.localeCompare(b.name)).slice(0, limit)
+          .map(({ name: n, points, wins, tips }) => ({ name: n, points, wins, tips }));
+      },
+      async me() {
+        const b = oneRow('bets', BET0);
+        return { choice: store.get('bet_votes', {})[`${b.round}:${key()}`]?.choice ?? null, points: store.get('bet_scores', {})[key()]?.points ?? 0 };
+      },
+      autolock() {
+        const b = oneRow('bets', BET0);
+        if (b.status === 'open' && b.lock_at && Date.parse(b.lock_at) <= Date.now()) return put('bets', BET0, { status: 'locked' });
+        return b;
+      },
+      async start({ question, options, minutes = 0 }) {
+        await requireAdmin();
+        const q = String(question ?? '').replace(/\s+/g, ' ').trim();
+        const opts = (options ?? []).map((o) => String(o).replace(/\s+/g, ' ').trim().slice(0, 40)).filter(Boolean);
+        if (q.length < 3 || q.length > 120) throw new Error('Die Frage braucht 3 bis 120 Zeichen.');
+        if (opts.length < 2 || opts.length > 4) throw new Error('Eine Wette braucht 2 bis 4 Antworten.');
+        if (new Set(opts.map((o) => o.toLowerCase())).size !== opts.length) throw new Error('Zwei Antworten sind gleich.');
+        const b = this.autolock();
+        if (['open', 'locked'].includes(b.status)) throw new Error('Es läuft noch eine Wette – erst auflösen oder abbrechen.');
+        const m = clampInt(minutes, 0, 60, 0);
+        store.set('bet_votes', {});
+        return put('bets', BET0, {
+          status: 'open', round: b.round + 1, question: q, options: opts, counts: opts.map(() => 0), total: 0, winner: null, points: 0,
+          opened_at: now(), resolved_at: null, lock_at: m ? new Date(Date.now() + m * 60000).toISOString() : null,
+        });
+      },
+      async lock() {
+        await requireAdmin();
+        const b = oneRow('bets', BET0);
+        return b.status === 'open' ? put('bets', BET0, { status: 'locked', lock_at: now() }) : b;
+      },
+      async resolve(winner) {
+        await requireAdmin();
+        const b = oneRow('bets', BET0);
+        if (!['open', 'locked'].includes(b.status)) throw new Error('Gerade läuft keine Wette.');
+        if (!(winner >= 1 && winner <= b.options.length)) throw new Error('Diese Antwort gibt es nicht.');
+        const right = b.counts[winner - 1] ?? 0;
+        const points = right ? Math.min(20, Math.max(1, Math.ceil(b.total / right))) : 0;
+        const scores = store.get('bet_scores', {});
+        for (const [k, v] of Object.entries(store.get('bet_votes', {}))) {
+          const [round, voter] = [Number(k.split(':')[0]), k.slice(k.indexOf(':') + 1)];
+          if (round !== b.round) continue;
+          const s = scores[voter] ?? { name: v.name, points: 0, wins: 0, tips: 0 };
+          const ok = v.choice === winner;
+          scores[voter] = { ...s, name: v.name || s.name, points: s.points + (ok ? points : 0), wins: s.wins + (ok ? 1 : 0), tips: s.tips + 1 };
+        }
+        store.set('bet_scores', scores);
+        return put('bets', BET0, { status: 'resolved', winner, points, resolved_at: now() });
+      },
+      async cancel() {
+        await requireAdmin();
+        const b = oneRow('bets', BET0);
+        return put('bets', BET0, { status: ['open', 'locked'].includes(b.status) ? 'cancelled' : 'idle' });
+      },
+      async resetScores() {
+        await requireAdmin();
+        store.set('bet_scores', {});
+      },
+      async tick() { this.autolock(); },
+      cast(voter, voterName, choice) {
+        const b = this.autolock();
+        if (b.status !== 'open' || !tileOpen('bet')) return { ok: false, reason: 'closed' };
+        if (!(choice >= 1 && choice <= b.options.length)) return { ok: false, reason: 'choice' };
+        const votes = store.get('bet_votes', {});
+        const k = `${b.round}:${voter}`;
+        const old = votes[k]?.choice;
+        const counts = [...b.counts];
+        let total = b.total;
+        if (!old) { counts[choice - 1] += 1; total += 1; }
+        else if (old !== choice) { counts[old - 1] = Math.max(0, counts[old - 1] - 1); counts[choice - 1] += 1; }
+        votes[k] = { name: voterName, choice };
+        store.set('bet_votes', votes);
+        if (old !== choice) put('bets', BET0, { counts, total });
+        return { ok: true, choice, counts, total };
+      },
+      async tip(choice) { needUser(); return this.cast(key(), name(), Number(choice)); },
+      // Demo: der „Chat“ tippt
+      async addTest(n = 8) {
+        await requireAdmin();
+        const b = this.autolock();
+        if (b.status !== 'open') throw new Error('Gerade sind keine Tipps offen.');
+        for (let i = 0; i < n; i++) this.cast(`demo:${nextId++}`, pick(DEMO_NAMES), 1 + randomInt(b.options.length));
+        return oneRow('bets', BET0);
+      },
+    },
+    // Rubbellos: wie scratch_draw in der Migration (Pause und Abo-Regel zählen nur im Chat)
+    scratch: {
+      async get() {
+        await requireAdmin();
+        const s = oneRow('scratch', SCR0);
+        return { enabled: s.enabled, who: s.who, cooldown_min: s.cooldown_min, prizes: s.prizes, recent: store.get('scratch_draws', []).slice().reverse().slice(0, 20) };
+      },
+      async save({ enabled = true, who = 'all', cooldown = 30, prizes = [] }) {
+        await requireAdmin();
+        const clean = (prizes ?? []).slice(0, 12).filter((p) => String(p?.label ?? '').trim() && /^\d{1,4}(\.\d+)?$/.test(String(p?.weight ?? '')))
+          .map((p) => ({ label: String(p.label).trim().slice(0, 60), emoji: String(p.emoji ?? '').slice(0, 8), weight: clampInt(p.weight, 0, 1000, 0), win: p.win !== false }));
+        if (!clean.length) throw new Error('Mindestens ein Gewinn mit Text und Häufigkeit.');
+        if (!clean.some((p) => p.weight > 0)) throw new Error('Mindestens ein Gewinn braucht eine Häufigkeit über 0.');
+        put('scratch', SCR0, { enabled: !!enabled, who: ['all', 'subs', 'mods'].includes(who) ? who : 'all', cooldown_min: clampInt(cooldown, 0, 1440, 30), prizes: clean });
+        return this.get();
+      },
+      draw(voterName, source) {
+        const s = oneRow('scratch', SCR0);
+        const sum = s.prizes.reduce((a, p) => a + p.weight, 0);
+        if (sum <= 0) return { ok: false, reason: 'off' };
+        let roll = randomInt(sum);
+        const prize = s.prizes.find((p) => (roll -= p.weight) < 0) ?? s.prizes[0];
+        const row = { id: nextId++, name: voterName, label: prize.label, emoji: prize.emoji, win: prize.win, source, created_at: now() };
+        store.set('scratch_draws', [...store.get('scratch_draws', []), row].slice(-50));
+        emit('scratch_draws', row);
+        return { ok: true, label: prize.label, emoji: prize.emoji, win: prize.win };
+      },
+      draws: async (limit = 12) => store.get('scratch_draws', []).slice().reverse().slice(0, limit),
+      async test() { await requireAdmin(); return this.draw('Test', 'test'); },
+      // Demo: ein Zuschauer schreibt !rubbeln
+      async simulate() {
+        await requireAdmin();
+        if (!oneRow('scratch', SCR0).enabled) throw new Error('Das Rubbellos ist ausgeschaltet.');
+        return this.draw(pick(DEMO_NAMES), 'chat');
       },
     },
     // Hot Words: wie hotwords_note/-refresh in der Migration (ohne Spam-Schutz)

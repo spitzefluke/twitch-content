@@ -342,6 +342,8 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
 | `cards=br` / … · `cdsize=120` | Sammelkarten: epische und legendäre Ziehungen |
 | `giveaway=tc` / … · `gwsize=120` | Verlosung: Preis, Befehl, Zeit, Zahl im Lostopf; beim Ziehen die Auslosung |
+| `bet=x,y` / … · `btsize=120` | Zuschauer-Wette: Frage, Balken mit Quote, Restzeit; nach der Auflösung Ergebnis und Top 3 |
+| `scratch=x,y` / … · `scsize=120` | Rubbellos: jedes `!rubbeln` als Los, das live freigerubbelt wird |
 | `pet=1` | Stream-Dino an |
 | `dsize=130` | Größe des Dinos in Prozent |
 | `pground=edge` | Dino läuft am Bildrand statt oben auf dem Laufband |
@@ -375,6 +377,8 @@ OBS-Editor → „Bei Aktion“ → **Emote-Regen** (`erain=1`, `js/overlay-emot
 - **`!regen`** (Befehl änderbar): Die Emotes aus der Nachricht regnen – ohne Emote die zuletzt im Chat benutzten. Einstellbar: wer darf (alle / Abonnenten, VIPs, Mods / nur Mods) und die Pause dazwischen. Streamer und Mods dürfen immer.
 - **Emote-Combo:** Schreibt der Chat dasselbe Emote oft genug innerhalb von 8 Sekunden („Combo ab“, 0 = aus), regnet es von selbst.
 - Optional fällt zu **jedem Emote** im Chat eins herunter; dazu Menge und Größe.
+- Im Dashboard erklärt die Kachel **„Emote-Regen“** (Kategorie Overlay) den Befehl für Zuschauer; Streamer und Mods kommen von dort in den OBS-Editor. Die Kachel bringt die Migration `…_bet_scratch.sql` mit.
+- In Modulen gehört die Ebene zu **🔔 Alerts & Ziele** – sie regnet nur in der Quelle, die sie enthält.
 - Parameter: `ercmd`, `erwho=all|subs|mods`, `ercool` (Sekunden), `ercombo`, `erall=1`, `ermax`, `ersize`. Mit `test=1` regnet es alle paar Sekunden zur Probe.
 
 ### Chat im Overlay (Twitch + YouTube)
@@ -682,6 +686,26 @@ Ein Turnier mit der Community (Kachel „Cup“, Migration `supabase/migrations/
 - **Neuer Cup:** Punkte auf 0 (Spieler bleiben) oder alle Spieler entfernen; der Spielcode wird dabei geleert.
 - **Mod-Rechte:** Bereich „Spiele & Mitmachen“. Alles steht im Protokoll.
 - **Im Stream (OBS):** Ebene **„Cup“** im OBS-Fenster einschalten (gehört zum Modul „Spiele & Mitmachen“). Sie zeigt Titel, „Anmeldung offen: !cup join“ bzw. „Spielcode ist raus“, die **Rangliste** mit 🥇🥈🥉, Punkten und Preisgeldern (3–10 Plätze einstellbar, dazu „+ N weitere“) und auf Wunsch die **Regeln**. Neue Punkte leuchten kurz auf, die Reihenfolge stellt sich sofort um. Die Karte erscheint, sobald es Spieler gibt oder die Anmeldung offen ist. Keine eigene Migration nötig.
+
+## Zuschauer-Wette und Rubbellos
+
+Zwei Chat-Spiele ohne Kanalpunkte und ohne Geld (Kacheln „Zuschauer-Wette“ und „Rubbellos“, Kategorie Chat-Spiele). Einmal nötig: Migration **`supabase/migrations/20261201000000_bet_scratch.sql`** (nach `…_profile_schedule.sql`, braucht `…_cup.sql`). Tests dazu: `supabase/tests/bet_scratch_test.sql`. Der Chat-Bot leitet `!tipp`/`!tip`/`!wette`/`!bet` und `!rubbeln`/`!rubbellos`/`!los` an `fun_chat` weiter (`supabase/functions/_shared/chat.ts`) – nach dem Merge die Edge Function `twitch-eventsub` neu deployen (passiert mit den anderen Functions automatisch).
+
+**Zuschauer-Wette** (`js/extras-bet.js`):
+- Streamer und Mods stellen eine Frage mit **2–4 Antworten** („Ja / Nein“ auf Knopfdruck) und wählen, wie lange getippt werden darf (oder bis „🔒 Tipps schließen“). Der Bot kündigt sie an, beim Schließen und bei der Auflösung meldet er sich wieder.
+- **Tippen:** `!tipp 1` oder `!tipp ja` im Chat, angemeldet auch auf der Seite. Jeder hat einen Tipp und darf ihn ändern, solange die Tipps offen sind.
+- **Quote:** Wer richtig liegt, bekommt **Tipp-Punkte = Tipps gesamt ÷ richtige Tipps** (aufgerundet, 1–20). Je weniger richtig lagen, desto mehr Punkte. Die Quote steht als „×Zahl“ neben jeder Antwort.
+- **Rangliste** aller Tipp-Punkte (ohne Twitch-IDs, für alle lesbar); im Chat `!tipp top` (Top 5, höchstens alle 15 s) und `!tipp punkte` (eigene Punkte, je Zuschauer alle 30 s). Löschen darf sie nur der Streamer.
+- **Im Stream (OBS):** Ebene **„Zuschauer-Wette“** – Frage, Balken mit Quote, Restzeit; nach der Auflösung leuchtet die richtige Antwort, darunter die Top 3.
+
+**Rubbellos** (`js/extras-scratch.js`):
+- `!rubbeln` zieht ein Los. **Gewinne** (bis 12) mit Emoji, Text, **Häufigkeit** (Gewicht – die Chance steht daneben) und „Gewinn/Niete“ stellt der Streamer ein; Vorgabe: Niete, Shoutout, Sound, Emote-Regen, Game aussuchen, Ehrenplatz.
+- **Pause je Zuschauer** (Standard 30 Minuten), auf Wunsch nur für Abos/VIPs/Mods. Wer zu früh rubbelt, bekommt höchstens einmal pro Minute einen Hinweis.
+- Der Bot schreibt das Ergebnis; Gewinne löst der Streamer selbst ein – es gibt kein Geld.
+- **Im Stream (OBS):** Ebene **„Rubbellos“** – jedes Los erscheint mit Namen und wird live freigerubbelt, bei Gewinn glitzert es. „Probe-Los“ im Dashboard testet das Overlay.
+- Gespeichert wird je Los nur Name, Gewinn und Uhrzeit (für alle lesbar, die letzten 200); wann wer zuletzt gerubbelt hat, steht getrennt und ist nicht öffentlich.
+
+**Mod-Rechte:** beides im Bereich „Spiele & Mitmachen“. Raid-Schutz und Starttermin der Kachel gelten wie bei den anderen Spielen.
 
 ## Sicherheit
 

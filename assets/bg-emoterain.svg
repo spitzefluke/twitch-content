@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#170a33"/><stop offset="1" stop-color="#0a0518"/></linearGradient>
+<radialGradient id="glow" cx=".66" cy=".45" r=".6"><stop offset="0" stop-color="#9146ff" stop-opacity=".5"/><stop offset="1" stop-color="#9146ff" stop-opacity="0"/></radialGradient>
+<g id="face"><circle r="26" fill="#ffd34d"/><circle cx="-9" cy="-6" r="4" fill="#3a2600"/><circle cx="9" cy="-6" r="4" fill="#3a2600"/><path d="M-12 7 q12 12 24 0" stroke="#3a2600" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+<g id="heart"><path d="M0 18 C-26 0 -22 -22 -8 -22 C-2 -22 0 -16 0 -14 C0 -16 2 -22 8 -22 C22 -22 26 0 0 18 z" fill="#ff4f9a"/></g>
+<g id="star"><path d="M0 -24 l7 15 l16 2 l-12 11 l3 16 l-14 -8 l-14 8 l3 -16 l-12 -11 l16 -2 z" fill="#b388ff"/></g>
+</defs>
+<rect width="800" height="500" fill="url(#sky)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g opacity=".95">
+<use href="#face" transform="translate(430 70) rotate(-12)"/>
+<use href="#heart" transform="translate(520 150) rotate(10) scale(1.2)"/>
+<use href="#star" transform="translate(640 80) rotate(18)"/>
+<use href="#face" transform="translate(700 210) rotate(20) scale(.8)"/>
+<use href="#heart" transform="translate(410 250) rotate(-16) scale(.9)"/>
+<use href="#star" transform="translate(590 290) scale(1.3)"/>
+<use href="#face" transform="translate(500 380) rotate(8) scale(1.1)"/>
+<use href="#heart" transform="translate(730 400) rotate(-8)"/>
+<use href="#star" transform="translate(360 420) rotate(-20) scale(.8)"/>
+</g>
+<g stroke="#b388ff" stroke-width="3" stroke-linecap="round" opacity=".35">
+<path d="M470 20 v30"/><path d="M560 40 v40"/><path d="M680 140 v26"/><path d="M450 170 v34"/><path d="M640 330 v30"/><path d="M760 300 v40"/>
+</g>
+<text x="400" y="480" font-family="Arial, sans-serif" font-weight="900" font-size="24" fill="#d9c4ff" opacity=".8">!regen</text>
+</svg>
