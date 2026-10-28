@@ -1014,6 +1014,16 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 
 **Ohne Twitch ansehen:** `extension/config.html` direkt im Browser öffnen (Vorschau geht, Speichern nicht – die Einstellungen stehen unten als Text). `panel.html?demo` zeigt Beispieldaten; `component.html?demo`, `video-overlay.html?demo` bzw. `mobile.html?demo` die anderen Ansichten, `?theme=light` hell, `?platform=mobile` Handy, `?language=en` eine Sprache. **Nach jedem Update der Dateien in `extension/` eine neue Version hochladen** (Schritt 7–9). Neue Games kommen wie gehabt in `js/games.js` und `supabase/functions/_shared/games.ts`.
 
+## Profil & Zeitplan
+
+Im Dashboard unter **Profil & Zeitplan** (Streamer, Admins, freigegebene Mods; `js/dash-profile.js`). Einmal nötig: Migration **`supabase/migrations/20261129000000_profile_schedule.sql`** (nach `…_bot_pacing.sql`). Tests dazu: `supabase/tests/profile_schedule_test.sql`.
+
+- **Wochenplan:** bis zu 21 feste Termine pro Woche – Wochentag, Startzeit, Dauer, Titel und Game. Rechts stehen die nächsten Termine (14 Tage), wie sie auf dem Profil erscheinen.
+- **Pause:** „Pause bis …“ mit Hinweis (z. B. Urlaub) – Termine bis dahin fallen weg, das Profil zeigt den Hinweis.
+- **Öffentliches Profil** `profil.html?c=<twitch-login>` (`js/profile.js`, `css/profile.css`): Bild und Name von Twitch, Live-Anzeige, Kurztext, Links mit Logo, nächster Stream mit Countdown, Wochenplan (Zeitzone des Streamers) und die nächsten Termine in der Zeitzone des Besuchers. **In den Kalender** lädt den Plan als `.ics` (wöchentlich wiederholt), **Teilen** nutzt das Teilen-Menü des Geräts. Hell/Dunkel folgt dem System.
+- **Zustimmung:** Öffentlich wird das Profil erst, wenn der **Streamer selbst** den Schalter umlegt (Mods und Admins können Text, Links und Plan pflegen, aber nicht veröffentlichen). Ohne Zustimmung liefert `public_profile()` nichts. Links müssen mit `https://` beginnen.
+- **Startseite:** Im Streamer-Showcase führt die Kachel aufs Profil, wenn es öffentlich ist – sonst wie bisher zu Twitch.
+
 ## Einführung
 
 Nach der ersten Anmeldung (und nach „Bist du Streamer?“) öffnet sich einmal die Einführung (`js/intro.js`); danach jederzeit links unter **Einführung**.

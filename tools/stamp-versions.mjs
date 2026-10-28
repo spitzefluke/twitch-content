@@ -2,7 +2,7 @@
 // neue Dateien mischen (GitHub Pages lässt Dateien 10 Minuten im Cache).
 //
 // Jede Datei bekommt ?v=<Hash ihres Inhalts>. Für die JS-Module steht das in einer
-// Import-Map in index.html, overlay.html, admin.html und record.html (zwischen den Markierungen
+// Import-Map in index.html, overlay.html, admin.html, record.html und profil.html (zwischen den Markierungen
 // <!-- versions:start --> und <!-- versions:end -->), für CSS direkt am <link>.
 // Ändert sich eine Datei, ändert sich ihre Adresse – der Browser lädt sie neu.
 //
@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js' };
+const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js', 'profil.html': 'profile.js' };
 const check = process.argv.includes('--check');
 
 // Song-Wünsche (js/bot-plus.js): eingebetteter YouTube-Player (ohne Cookies) im Dashboard

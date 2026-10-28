@@ -28,6 +28,7 @@ const ERRORS = [
   // Supabase konnte den Code von Twitch & Co. nicht gegen ein Token tauschen: fast immer passt
   // das Client-Secret in Supabase nicht (mehr) zur App beim Anbieter
   [/unable to exchange external code/i, 'Der Anbieter hat die Anmeldung nicht bestätigt. In Supabase unter Authentication → Providers → Twitch stimmt das Client-Secret nicht (mehr) mit der Twitch-App überein – z. B. nach „Neues Secret“ in der Twitch-Konsole. Secret neu eintragen, dann klappt es wieder.'],
+  [/could not find the function '?public\.(profile_get|profile_save|schedule_save|public_profile)/i, 'In der Datenbank fehlen Profil und Zeitplan: supabase/migrations/20261129000000_profile_schedule.sql im SQL Editor ausführen.'],
   [/invalid login credentials/i, 'E-Mail oder Passwort ist falsch.'],
   [/already registered|already been registered/i, 'Diese E-Mail ist bereits registriert.'],
   [/password should be at least (\d+)/i, 'Das Passwort ist zu kurz.'],
@@ -215,6 +216,15 @@ async function createSupabaseApi() {
     async showcaseList() { return unwrap(await sb.rpc('showcase_list')); },
     async channelShowcase() { return unwrap(await sb.rpc('channel_showcase')); },
     async setChannelShowcase(on) { return unwrap(await sb.rpc('channel_showcase_set', { p_on: on })); },
+    // Profil & Zeitplan, öffentliche Seite profil.html (Migration …_profile_schedule.sql)
+    async profileGet() { return unwrap(await sb.rpc('profile_get')); },
+    async profileSave(p) {
+      return unwrap(await sb.rpc('profile_save', {
+        p_bio: p.bio, p_links: p.links, p_tz: p.tz, p_away_until: p.away_until || null, p_away_note: p.away_note, p_public: p.is_public ?? null,
+      }));
+    },
+    async scheduleSave(slots) { return unwrap(await sb.rpc('schedule_save', { p_slots: slots })); },
+    async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
     // Dashboard → Statistik (Migration …_dashboard.sql)
     async channelStats(days) { return unwrap(await sb.rpc('channel_stats', { p_days: days })); },
     // Statistik → OBS & Daten (Migration …_overlay_usage.sql)
@@ -986,6 +996,33 @@ function createLocalApi() {
     });
   }
 
+  // Demo: Profil, Plan und die nächsten Termine (14 Tage) aus diesem Browser
+  function demoProfile() {
+    const p = store.get('profile', {});
+    const slots = store.get('schedule', []);
+    const awayUntil = p.away_until || null;
+    const upcoming = [];
+    const now = new Date();
+    for (let d = -1; d <= 14; d++) {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d);
+      const iso = ((day.getDay() + 6) % 7) + 1;
+      const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      if (awayUntil && ymd <= awayUntil) continue;
+      for (const s of slots.filter((x) => x.weekday === iso)) {
+        const [hh, mm] = s.start.split(':').map(Number);
+        const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm);
+        if (at.getTime() + s.minutes * 60_000 > now.getTime()) upcoming.push({ at: at.toISOString(), minutes: s.minutes, title: s.title, game: s.game });
+      }
+    }
+    upcoming.sort((a, b) => a.at.localeCompare(b.at));
+    return {
+      login: 'streamhelp', display_name: 'StreamHelp', can_publish: true,
+      is_public: !!p.is_public, bio: p.bio ?? '', links: p.links ?? [], tz: p.tz ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+      away_until: awayUntil, away_note: p.away_note ?? '',
+      slots: [...slots].sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start)), upcoming: upcoming.slice(0, 8),
+    };
+  }
+
   async function requireAdmin() {
     const u = store.get('users', {})[current?.email];
     if (!u?.is_admin) throw new Error('Nur Admins dürfen das.');
@@ -1258,11 +1295,48 @@ function createLocalApi() {
     },
     async showcaseList() {
       const on = store.get('showcase', true);
-      return on ? [{ login: 'streamhelp', display_name: 'StreamHelp', avatar_url: '', live: true, category: 'Fortnite' },
+      return on ? [{ login: 'streamhelp', display_name: 'StreamHelp', avatar_url: '', live: true, category: 'Fortnite', profile: !!store.get('profile', {}).is_public },
         { login: 'retrolena', display_name: 'RetroLena', avatar_url: '', live: false, category: '' }] : [];
     },
     async channelShowcase() { return store.get('showcase', true); },
     async setChannelShowcase(on) { await requireAdmin(); store.set('showcase', !!on); return !!on; },
+    // Demo: Profil und Zeitplan in diesem Browser; Termine in der Zeitzone des Browsers
+    async profileGet() {
+      await requireAdmin();
+      return demoProfile();
+    },
+    async profileSave(p) {
+      await requireAdmin();
+      const links = (Array.isArray(p.links) ? p.links : []).slice(0, 8)
+        .filter((l) => /^https:\/\/[^\s<>"'\\]{3,}$/.test(l?.url ?? '') && l.url.length <= 300)
+        .map((l) => ({ label: String(l.label ?? '').trim().slice(0, 30), url: l.url.trim() }));
+      const old = store.get('profile', {});
+      store.set('profile', {
+        ...old, bio: String(p.bio ?? '').trim().slice(0, 300), links, tz: p.tz || 'Europe/Berlin',
+        away_until: p.away_until || null, away_note: String(p.away_note ?? '').trim().slice(0, 120),
+        is_public: p.is_public ?? old.is_public ?? false,
+      });
+      return demoProfile();
+    },
+    async scheduleSave(slots) {
+      await requireAdmin();
+      if (!Array.isArray(slots) || slots.length > 21) throw new Error('Höchstens 21 Termine pro Woche.');
+      for (const x of slots) {
+        if (!/^[1-7]$/.test(String(x.weekday)) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(x.start ?? '')) throw new Error('Ungültiger Termin: Wochentag 1–7 und Uhrzeit HH:MM.');
+      }
+      store.set('schedule', slots.map((x) => ({
+        weekday: Number(x.weekday), start: x.start, minutes: Math.min(Math.max(Number(x.minutes) || 120, 15), 1440),
+        title: String(x.title ?? '').trim().slice(0, 80), game: String(x.game ?? '').trim().slice(0, 60),
+      })));
+      return demoProfile();
+    },
+    async publicProfile() {
+      const p = demoProfile();
+      if (!p.is_public) return null;
+      const away = p.away_until && p.away_until >= new Date().toISOString().slice(0, 10);
+      return { login: p.login, display_name: p.display_name, avatar_url: '', live: false, category: '', bio: p.bio, links: p.links, tz: p.tz,
+        away_until: away ? p.away_until : null, away_note: away ? p.away_note : '', slots: p.slots, upcoming: p.upcoming };
+    },
     // Demo: Beispielzahlen, die je Tag gleich bleiben (kein Zufall – sonst springt die Statistik)
     async channelStats(days = 7) {
       await requireAdmin();
