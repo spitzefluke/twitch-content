@@ -309,3 +309,17 @@
 .cpo-rules { margin: 0 .9em .7em; padding-top: .45em; border-top: 1px solid rgba(255, 255, 255, .1); font-size: .78em; line-height: 1.35; opacity: .85;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .cpo-row.is-up, .cpo-row.is-down { animation: none; } }
+
+/* ---------- Emote-Regen (js/overlay-emoterain.js) ---------- */
+.ov-erain { position: fixed; inset: 0; z-index: 60; overflow: hidden; pointer-events: none; }
+.er-drop {
+  position: absolute; top: -16%; display: grid; place-items: center; font-size: 42px; line-height: 1;
+  animation-name: er-fall; animation-timing-function: cubic-bezier(.45, .05, .75, .6); animation-fill-mode: both; will-change: transform;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .45));
+}
+.er-drop img { width: 100%; height: 100%; object-fit: contain; }
+@keyframes er-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate3d(var(--er-sway, 0), 128vh, 0) rotate(var(--er-rot, 0deg)); opacity: .2; }
+}

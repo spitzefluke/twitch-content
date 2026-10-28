@@ -7,7 +7,7 @@
 import { SOCIAL_ICONS, socialBadge } from './social-icons.js';
 
 const IRC_URL = 'wss://irc-ws.chat.twitch.tv:443';
-const EMOTE_URL = (id) => `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
+export const EMOTE_URL = (id) => `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
 
 // Bekannte Bots – im Overlay standardmäßig ausgeblendet
 export const CHAT_BOTS = ['streamelements', 'nightbot', 'moobot', 'streamlabs', 'fossabot', 'wizebot', 'soundalerts', 'sery_bot', 'kofistreambot', 'botrixoficial'];

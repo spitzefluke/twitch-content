@@ -368,6 +368,15 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 
 Alles, was im Overlay Töne macht, hat im OBS-Fenster unter **„Aussehen & Ton“ → 🎚️ Lautstärke je Ebene** einen eigenen Regler: Glücksrad, Alerts, Würfe & Sounds, Dino, Fragen, Bingo, Kisten-Shop, Win-Challenge, Vorlesen, Quiz, Verbotenes Wort, Subathon, Pause, Sammelkarten und Verlosung. 100 % = so laut wie die Gesamtlautstärke, 0 % = stumm (🔇), bis 200 % lauter. Regler ausgeschalteter Ebenen sind abgeblendet. Wie alles andere gilt die Änderung nach wenigen Sekunden in OBS (Parameter `vwheel`, `valert`, `vprank`, `vpet`, `vquest`, `vbingo`, `vshop`, `vchal`, `vtts`, `vquiz`, `vforbid`, `vsub`, `vpause`, `vcards`, `vgive`). Keine Migration nötig.
 
+### Emote-Regen
+
+OBS-Editor → „Bei Aktion“ → **Emote-Regen** (`erain=1`, `js/overlay-emoterain.js`): Emotes aus dem Twitch-Chat regnen übers ganze Bild. Das Overlay liest den Chat dafür nur mit – kein Bot, keine Datenbank, keine Migration nötig.
+
+- **`!regen`** (Befehl änderbar): Die Emotes aus der Nachricht regnen – ohne Emote die zuletzt im Chat benutzten. Einstellbar: wer darf (alle / Abonnenten, VIPs, Mods / nur Mods) und die Pause dazwischen. Streamer und Mods dürfen immer.
+- **Emote-Combo:** Schreibt der Chat dasselbe Emote oft genug innerhalb von 8 Sekunden („Combo ab“, 0 = aus), regnet es von selbst.
+- Optional fällt zu **jedem Emote** im Chat eins herunter; dazu Menge und Größe.
+- Parameter: `ercmd`, `erwho=all|subs|mods`, `ercool` (Sekunden), `ercombo`, `erall=1`, `ermax`, `ersize`. Mit `test=1` regnet es alle paar Sekunden zur Probe.
+
 ### Chat im Overlay (Twitch + YouTube)
 
 Im OBS-Dialog unter „Immer im Bild“ → **Chat (Twitch + YouTube)** einschalten: Der Chat des Kanals läuft als Karte im Bild mit – mit Emotes, Namensfarben und Abzeichen (Streamer, Mod, VIP, Abo bzw. YouTube-Mitglied). Löschen Mods eine Nachricht oder sperren jemanden, verschwindet sie auch im Overlay. Befehle und bekannte Bots sind standardmäßig ausgeblendet; Größe, Zeilenzahl und Ausblenden stehen beim Chat im OBS-Dialog. Ohne Nachrichten ist die Karte unsichtbar.

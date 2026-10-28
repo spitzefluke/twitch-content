@@ -27,6 +27,7 @@
 //   apreview=1                 nur die Vorschau im Alert-Designer: zeigt allein den Alert, gesteuert per postMessage
 //   vwheel=100, vprank=100 …   Lautstärke je Ebene in Prozent (0–200, mal vol), siehe MIX
 //   bingo=tr|…                 Bingo-Karte an dieser Stelle; fehlt es, ist sie aus
+//   erain=1                    Emote-Regen (js/overlay-emoterain.js): !regen, Emote-Combos; ercmd, erwho, ercool, ercombo, erall, ermax, ersize
 //   bsize=100                  Größe der Bingo-Karte in Prozent (50 – 200)
 //   bstyle=classic|neon|paper  Design der Bingo-Karte: bunt (Standard), Neon oder Papier
 //   prank=1                    „Ärgere den Streamer“ an (Würfe und Sounds)
@@ -100,6 +101,7 @@ import { GOLD, pointsText, renderLoadout, renderTug, scoreOf, versusLive, winner
 import { setupOverlayExtras } from './overlay-extras.js';
 import { setupOverlayStage } from './overlay-stage.js';
 import { startHack } from './overlay-hack.js';
+import { readEmoteRain, setupEmoteRain } from './overlay-emoterain.js';
 import { startAnniversary } from './overlay-anniversary.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
@@ -461,6 +463,9 @@ async function start() {
   if (opt.chat) setupChat(source);
   setupOverlayExtras({ params, position, flag, number, place, opt, client: source.client ?? null, editTests });
   setupOverlayStage({ params, position, flag, number, text, place, opt, source, streamer: STREAMER, onAlerts: (cb) => onAlerts(source, cb) });
+  // Emote-Regen (js/overlay-emoterain.js): liest den Chat selbst mit
+  const erain = readEmoteRain({ flag, number, params });
+  if (erain) setupEmoteRain(erain, { channel: STREAMER.login, test: opt.test });
   if (LIVE) watchOverlayConfig(source);
   watchOverlayGate(); // pausiert oder „Alle neu laden“ im Admin-Bereich
   startWatchtime();
