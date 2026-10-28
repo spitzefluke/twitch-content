@@ -6783,6 +6783,12 @@ function openObsWindow() {
 }
 
 function startObsPage() {
+  // Den OBS-Editor nutzen nur Streamer, Admins und freigegebene Mods – alle anderen zurück aufs Dashboard
+  if (!isTeam()) {
+    const c = channelParam();
+    location.replace(`${location.pathname}${c ? `#/c/${c}` : ''}`);
+    return;
+  }
   document.body.classList.add('obs-page');
   document.title = 'OBS · StreamHelp';
   if (new URLSearchParams(location.search).has('welcome')) {

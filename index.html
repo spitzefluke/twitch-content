@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-k+yUJAouwGTgWRQFltGTQezQhNF8uo2/8y9sCs+NJr4=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-GVbG8BzVcXoKxpR86A3TgWdSpCMzKOqd67SZ4ESsdBU=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -65,7 +65,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
       "./js/api.js": "./js/api.js?v=75ef654c5d",
-      "./js/app.js": "./js/app.js?v=6fe06024db",
+      "./js/app.js": "./js/app.js?v=953578c105",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
@@ -721,7 +721,7 @@
                 <div class="seg" data-look="contrast"><button type="button" data-value="normal"><i class="ph ph-circle-half" aria-hidden="true"></i>Normal</button><button type="button" data-value="hoch"><i class="ph ph-circle-half-tilt" aria-hidden="true"></i>Hoch</button></div></div>
             </div>
           </div>
-          <button id="obs-btn" class="obs-cta" type="button" title="OBS-Overlay öffnen">
+          <button id="obs-btn" class="obs-cta" type="button" title="OBS-Overlay öffnen" data-for="team">
             <span class="obs-cta-ico"><i class="ph ph-broadcast" aria-hidden="true"></i></span>
             <span class="obs-cta-text"><b>OBS-Overlay</b><small><span class="obs-cta-dot" id="obs-cta-dot"></span><span id="obs-cta-state">bereit</span></small></span>
           </button>
@@ -1034,7 +1034,7 @@
                     <label class="ad-row"><span>Darunter</span><input type="text" name="text" maxlength="120"></label>
                     <p class="ad-chips" id="ad-chips"><span>Einfügen:</span></p>
                     <label class="ad-row"><span>Textanimation</span><select name="anim"></select></label>
-                    <div class="ad-row"><span>Farbe</span><span class="ad-color"><input type="color" name="color" value="#9146ff"><label class="toggle"><input type="checkbox" name="color_on"><span class="toggle-ui" aria-hidden="true"></span>eigene Farbe</label></span></div>
+                    <div class="ad-row"><span>Farbe</span><span class="ad-color"><input type="color" name="color" value="#9146ff" aria-label="Farbe"><label class="toggle"><input type="checkbox" name="color_on"><span class="toggle-ui" aria-hidden="true"></span>eigene Farbe</label></span></div>
                   </fieldset>
                   <fieldset class="ad-sec">
                     <legend>📐 Layout &amp; Dauer</legend>
