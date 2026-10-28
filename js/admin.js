@@ -4,6 +4,7 @@ import { isDemo } from './api.js';
 import { DEFAULT_VARIANTS } from './defaults.js';
 import { guardFrame } from './frame-guard.js';
 import { botHint } from './bot-reasons.js';
+import { artistFileUrl, isArtistVideo } from './artist-files.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const TOKEN_KEY = 'zd_admin_token';
@@ -76,6 +77,42 @@ function demoCall(action, extra) {
     const next = extra.delete ? list.filter((m) => m.id !== extra.id) : list.map((m) => (m.id === extra.id ? { ...m, status: extra.status } : m));
     localStorage.setItem('zd_contact_messages', JSON.stringify(next));
     return { ok: true };
+  }
+  // Artists: dieselben Daten wie js/api.js (Demo) – Bewerbungen je E-Mail, Uploads, Meldungen
+  if (['artists', 'artist_review', 'artist_asset_review'].includes(action)) {
+    const artists = read('artists', {});
+    let assets = read('artist_assets', []);
+    let reports = read('artist_reports', []);
+    const now = new Date().toISOString();
+    if (action === 'artist_review') {
+      const a = artists[extra.user_id];
+      if (!a) throw new Error('Artist nicht gefunden.');
+      Object.assign(a, { status: extra.status, note: extra.note ?? '', reviewed_at: now });
+      localStorage.setItem('zd_artists', JSON.stringify(artists));
+    }
+    if (action === 'artist_asset_review') {
+      const x = assets.find((r) => r.id === extra.id);
+      if (!x) throw new Error('Upload nicht gefunden.');
+      Object.assign(x, { status: extra.status, note: extra.note ?? '', reviewed_at: now });
+      reports = reports.map((r) => (r.asset_id === x.id ? { ...r, status: 'done' } : r));
+      if (extra.status !== 'approved') {
+        const files = read('artist_files', {});
+        delete files[x.file];
+        if (x.extra?.alert) delete files[x.extra.alert];
+        localStorage.setItem('zd_artist_files', JSON.stringify(files));
+      }
+      localStorage.setItem('zd_artist_assets', JSON.stringify(assets));
+      localStorage.setItem('zd_artist_reports', JSON.stringify(reports));
+    }
+    assets = read('artist_assets', []);
+    const open = (id) => reports.filter((r) => r.asset_id === id && r.status === 'open').map(({ id: rid, reason, created_at }) => ({ id: rid, reason, created_at }));
+    return {
+      artists: Object.entries(artists).map(([email, a]) => ({ user_id: email, email, ...a, note: a.note ?? '', assets: assets.filter((x) => x.artist === email && x.status === 'approved').length }))
+        .sort((x, y) => (y.status === 'pending') - (x.status === 'pending') || y.applied_at.localeCompare(x.applied_at)),
+      assets: assets.filter((x) => x.status === 'pending' || open(x.id).length).map((x) => ({
+        asset: x, artist: { user_id: x.artist, name: artists[x.artist]?.name ?? '?', slug: artists[x.artist]?.slug ?? '' }, reports: open(x.id),
+      })),
+    };
   }
   if (action === 'mfa_setup') return { secret: 'DEMODEMODEMODEMODEMODEMODEMODEMO', qr: '', uri: '' };
   if (action === 'mfa_enable') {
@@ -209,6 +246,7 @@ function init() {
   $('#mfa-cancel').addEventListener('click', () => logout());
   $('#security-check').addEventListener('click', checkSecurity);
   $('#inbox-done').addEventListener('change', renderInbox);
+  $('#artists-all').addEventListener('change', renderArtists);
   $('#inbox').addEventListener('click', inboxClick);
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
@@ -470,6 +508,129 @@ function showApp() {
   refresh();
   loadChannels();
   loadPlatform();
+  loadArtists();
+}
+
+// ============================================================
+// Artists: Bewerbungen und Uploads prüfen (Migration …_artists.sql)
+// ============================================================
+const ARTIST_STATUS = { pending: ['chip--warn', '⏳ Wartet'], approved: ['chip--ok', '✓ Freigeschaltet'], rejected: ['chip--bad', '✖ Abgelehnt'], blocked: ['chip--bad', '🚫 Gesperrt'] };
+const ARTIST_KIND = { alert: '🔔 Alert-Grafik', background: '🖼️ Hintergrund', look: '🎨 Look', card: '🃏 Sammelkarte' };
+
+async function loadArtists() {
+  try {
+    state.artists = await call('artists');
+    $('#artists-note').textContent = '';
+  } catch (err) {
+    if (err.status === 401) return;
+    state.artists = { artists: [], assets: [] };
+    $('#artists-note').textContent = err.message;
+  }
+  renderArtists();
+}
+
+const mkEl = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text !== undefined ? { textContent: text } : {});
+function artistMedia(path, alt) {
+  const src = artistFileUrl(path);
+  if (!src) return mkEl('span', 'muted', 'Datei fehlt');
+  if (isArtistVideo(path)) return Object.assign(document.createElement('video'), { src, muted: true, loop: true, autoplay: true, playsInline: true, controls: true });
+  return Object.assign(new Image(), { src, alt, loading: 'lazy' });
+}
+
+function renderArtists() {
+  const data = state.artists ?? { artists: [], assets: [] };
+  const pending = data.artists.filter((a) => a.status === 'pending');
+  const assets = data.assets ?? [];
+  $('#artists-count').textContent = data.artists.length ? `(${pending.length ? `${pending.length} warten · ` : ''}${assets.length} Uploads offen)` : '';
+  $('#artists-assets-count').textContent = assets.length ? `(${assets.length})` : '';
+
+  const al = $('#artists-assets');
+  if (!assets.length) al.replaceChildren(mkEl('li', 'muted', 'Nichts zu prüfen.'));
+  else al.replaceChildren(...assets.map(({ asset: x, artist, reports }) => {
+    const li = mkEl('li', `ar-adm-asset${reports.length ? ' is-reported' : ''}`);
+    const thumbs = mkEl('div', 'ar-adm-media');
+    thumbs.append(artistMedia(x.file, x.title));
+    if (x.extra?.alert) thumbs.append(artistMedia(x.extra.alert, 'Alert-Bild'));
+    const body = mkEl('div', 'ar-adm-body');
+    body.append(mkEl('b', '', x.title), mkEl('small', 'muted', `${ARTIST_KIND[x.kind] ?? x.kind} · von ${artist.name} (@${artist.slug}) · ${new Date(x.created_at).toLocaleString('de-DE')}`));
+    if (x.description) body.append(mkEl('p', '', x.description));
+    const facts = [x.tags?.length && `Schlagwörter: ${x.tags.join(', ')}`, x.extra?.base && `Grund-Design: ${x.extra.base}`, x.extra?.accent && `Farbe: ${x.extra.accent}`,
+      x.extra?.rarity && `Seltenheit: ${x.extra.rarity}`, x.status === 'approved' && `freigegeben · ${x.uses} Kanäle`].filter(Boolean);
+    if (facts.length) body.append(mkEl('small', 'muted', facts.join(' · ')));
+    for (const r of reports) body.append(mkEl('p', 'ar-adm-report', `⚠️ Gemeldet: ${r.reason}`));
+    const note = Object.assign(document.createElement('input'), { maxLength: 300, placeholder: 'Hinweis an den Artist (z. B. Grund der Ablehnung)', className: 'ar-adm-note' });
+    note.setAttribute('aria-label', `Hinweis zu ${x.title}`);
+    const actions = mkEl('div', 'inbox-actions');
+    const btn = (label, status, cls = 'btn--ghost') => {
+      const b = mkEl('button', `btn ${cls} btn--sm`, label);
+      b.type = 'button';
+      b.addEventListener('click', () => reviewAsset(x, status, note.value, b));
+      return b;
+    };
+    if (x.status === 'pending') actions.append(btn('✓ Freigeben', 'approved', 'btn--primary'), btn('✖ Ablehnen', 'rejected'));
+    else actions.append(btn('Meldung erledigt, bleibt', 'approved'), btn('🚫 Entfernen', 'removed', 'btn--primary'));
+    body.append(note, actions);
+    li.append(thumbs, body);
+    return li;
+  }));
+
+  const showAll = $('#artists-all').checked;
+  const list = showAll ? data.artists : pending;
+  const ul = $('#artists-list');
+  if (!list.length) { ul.replaceChildren(mkEl('li', 'muted', showAll ? 'Noch keine Artists.' : 'Keine offenen Bewerbungen.')); return; }
+  ul.replaceChildren(...list.map((a) => {
+    const li = mkEl('li', 'ar-adm-artist');
+    const head = mkEl('div', 'inbox-head');
+    const [cls, label] = ARTIST_STATUS[a.status] ?? ['', a.status];
+    head.append(mkEl('span', `chip ${cls}`, label), mkEl('b', '', `${a.name} (@${a.slug})`),
+      mkEl('small', 'muted', [a.email, `beworben ${new Date(a.applied_at).toLocaleDateString('de-DE')}`, a.assets ? `${a.assets} Designs online` : ''].filter(Boolean).join(' · ')));
+    li.append(head);
+    if (a.bio) li.append(mkEl('p', 'inbox-text', a.bio));
+    const links = mkEl('div', 'ar-adm-links');
+    for (const l of a.links ?? []) {
+      const link = Object.assign(document.createElement('a'), { href: l, textContent: l, target: '_blank', rel: 'noopener noreferrer nofollow' });
+      links.append(link);
+    }
+    li.append(links);
+    const note = Object.assign(document.createElement('input'), { maxLength: 300, placeholder: 'Nachricht an den Artist (optional)', className: 'ar-adm-note', value: a.note ?? '' });
+    note.setAttribute('aria-label', `Nachricht an ${a.name}`);
+    const actions = mkEl('div', 'inbox-actions');
+    const btn = (label, status, cls = 'btn--ghost') => {
+      const b = mkEl('button', `btn ${cls} btn--sm`, label);
+      b.type = 'button';
+      b.addEventListener('click', () => reviewArtist(a, status, note.value, b));
+      return b;
+    };
+    if (a.status !== 'approved') actions.append(btn('✓ Freischalten', 'approved', 'btn--primary'));
+    if (a.status === 'pending') actions.append(btn('✖ Ablehnen', 'rejected'));
+    if (a.status !== 'blocked') actions.append(btn('🚫 Sperren', 'blocked'));
+    li.append(note, actions);
+    return li;
+  }));
+}
+
+async function reviewArtist(a, status, note, btn) {
+  if (status === 'blocked' && !confirm(`${a.name} sperren? Alle Designs verschwinden aus der Bibliothek.`)) return;
+  btn.disabled = true;
+  try {
+    state.artists = await call('artist_review', { user_id: a.user_id, status, note });
+    renderArtists();
+  } catch (err) {
+    $('#artists-note').textContent = err.message;
+    btn.disabled = false;
+  }
+}
+
+async function reviewAsset(x, status, note, btn) {
+  if (status === 'removed' && !confirm(`„${x.title}“ entfernen? Die Datei wird gelöscht.`)) return;
+  btn.disabled = true;
+  try {
+    state.artists = await call('artist_asset_review', { id: x.id, status, note });
+    renderArtists();
+  } catch (err) {
+    $('#artists-note').textContent = err.message;
+    btn.disabled = false;
+  }
 }
 
 // ============================================================

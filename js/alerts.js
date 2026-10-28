@@ -203,7 +203,8 @@ export const ALERT_PRESETS = [
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;
-const MEDIA = /^(b:[a-z]{2,20}|u:[a-z0-9-]{1,64}\.(png|jpe?g|gif|webp|webm|mp4))$/;
+// b: eingebaut · u: eigene Datei (mit Kanal-Ordner) · a: Design eines Artists (js/artist-files.js)
+const MEDIA = /^(b:[a-z]{2,20}|u:([0-9a-f-]{36}\/)?[a-z0-9-]{1,64}\.(png|jpe?g|gif|webp|webm|mp4)|a:[0-9a-f-]{36}\/[0-9a-f-]{36}\.(png|jpg|gif|webp|webm|mp4))$/;
 const pick = (v, list, fallback) => (list.some((x) => x.id === v) ? v : fallback);
 const clampNum = (v, min, max, fallback) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Math.min(max, Math.max(min, Math.round(Number(v)))) : fallback);
 const tpl = (v) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').slice(0, 120) : '');

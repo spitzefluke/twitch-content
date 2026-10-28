@@ -7,6 +7,7 @@
 //                              Chatting (große Kamera mit Rahmen, Chat daneben; die Kamera bleibt frei)
 //   sctitle=… / scsub=…        eigene Überschrift und Zeile darunter
 //   sctime=20:15               Countdown bis zu dieser Uhrzeit (Start und Pause)
+//   scbg=<Artist-Datei>        eigener Hintergrund aus der Design-Bibliothek (Bucket artist-assets, js/artist-files.js)
 //   camframe=1                 Rahmen um die Kamera (Bereich aus cam=…)      cfstyle=glow|clean|corners|neon
 //   cflabel=0                  ohne Namensschild am Kamera-Rahmen
 //   labels=bl|…                Info-Leiste: letzter Follower, letztes Abo, letzte Bits, Zuschauer, Laufzeit
@@ -17,6 +18,7 @@
 // (Migration …_overlay_designs.sql) – beides ohne Anmeldung. Im Demo-Modus aus localStorage.
 import { CONFIG } from './config.js';
 import { channelHeaders } from './channel.js';
+import { artistFileUrl } from './artist-files.js';
 
 export const OVERLAY_THEMES = [
   { id: 'standard', name: 'Standard', desc: 'Dunkle Karten, klar und ruhig' },
@@ -130,6 +132,16 @@ function setupScene(o, data, kind) {
       <div class="sc-thanks" hidden><span>Danke an</span><p></p></div>
     </div>
     <div class="sc-foot"><span class="sc-live-dot" aria-hidden="true"></span><b class="sc-name"></b><span class="sc-url"></span></div>`;
+  // Hintergrund eines Artists (Bild, kein Video) über den Lichtflecken
+  const art = /\.(png|jpg|gif|webp)$/.test(o.params.get('scbg') ?? '') ? artistFileUrl(o.params.get('scbg')) : '';
+  if (art) {
+    const layer = document.createElement('div');
+    layer.className = 'sc-art';
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.backgroundImage = `url("${art.replace(/["\\]/g, '')}")`;
+    el.querySelector('.sc-bg').after(layer);
+    el.classList.add('has-art');
+  }
   el.querySelector('.sc-tag').textContent = s.tag;
   el.querySelector('.sc-title').textContent = o.text('sctitle', s.title, 60);
   el.querySelector('.sc-sub').textContent = o.text('scsub', s.sub(o.streamer.name), 90);

@@ -23,6 +23,7 @@ import { CONFIG } from './config.js';
 import { channelHeaders, rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
 import { Wheel } from './wheel.js';
+import { artistFileUrl } from './artist-files.js';
 
 const RARITY = { common: 'Gewöhnlich', uncommon: 'Ungewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -169,7 +170,8 @@ function liveData(sb) {
     scratchAfter: (id) => rows(sb.from('scratch_draws').select('id, name, label, emoji, win, source, created_at').gt('id', id).order('id').limit(5)),
     scratchLast: async () => (await rows(sb.from('scratch_draws').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
     songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
-    cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
+    cardUrl: (path) => (!path ? '' : path.startsWith('a:') ? artistFileUrl(path.slice(2))
+      : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}`),
   };
 }
 
@@ -207,7 +209,7 @@ function demoData() {
         else cb(v, 'UPDATE');
       });
     },
-    cardUrl: (path) => path || '',
+    cardUrl: (path) => (path?.startsWith('a:') ? artistFileUrl(path.slice(2)) : path || ''),
   };
 }
 

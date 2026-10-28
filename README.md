@@ -337,6 +337,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `forbid=tr` / … · `fwsize=120` | Verbotenes Wort (Karte) und ihre Größe |
 | `subathon=tc` / … · `sasize=120` | Subathon-Timer |
 | `pause=1` | Pausen-Bildschirm (ganzes Bild, nur während einer Pause) |
+| `scbg=<Datei>` | Hintergrund der Szenen-Bildschirme aus einem Artist-Design (Design-Bibliothek → Von Artists) |
 | `quiz=bl` / … · `qzsize=120` | Quizfrage (nur solange eine läuft) |
 | `queue=tl` / … · `qusize=120` | Mitspielen: wer dran ist, wer wartet |
 | `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
@@ -706,6 +707,18 @@ Zwei Chat-Spiele ohne Kanalpunkte und ohne Geld (Kacheln „Zuschauer-Wette“ u
 - Gespeichert wird je Los nur Name, Gewinn und Uhrzeit (für alle lesbar, die letzten 200); wann wer zuletzt gerubbelt hat, steht getrennt und ist nicht öffentlich.
 
 **Mod-Rechte:** beides im Bereich „Spiele & Mitmachen“. Raid-Schutz und Starttermin der Kachel gelten wie bei den anderen Spielen.
+
+## Artists: Designs hochladen
+
+Artists stellen Streamern eigene Designs zur Verfügung – **kostenlos, mit Credit**. Einmal nötig: Migration **`supabase/migrations/20261203000000_artists.sql`** (nach `…_bet_scratch.sql`). Tests dazu: `supabase/tests/artists_test.sql`. Die Admin-Aktionen laufen über die Edge Function `admin` (wird mit den anderen Functions deployt).
+
+- **Bewerben** (Dashboard → **Artist-Bereich**, für alle mit Konto, `js/dash-artist.js`): Artist-Name, Kennung, Kurztext und 1–4 Links zu eigenen Arbeiten (nur `https://`), dazu die Regeln bestätigen (nur eigene Werke, kostenlos mit Credit, Prüfung).
+- **Freischalten** (admin.html → **Artists**): Bewerbungen freischalten, ablehnen (mit Nachricht) oder sperren. Gesperrte Artists verschwinden mit allen Designs aus der Bibliothek.
+- **Hochladen** (nur freigeschaltet): **Alert-Grafik** (PNG/JPG/GIF/WebP oder kurzes WebM/MP4), **Szenen-Hintergrund** (Bild), **kompletter Look** (Hintergrund + Grund-Design + Akzentfarbe, optional eigenes Alert-Bild) oder **Sammelkarte** (Bild + Seltenheit). Höchstens 10 MB je Datei, 10 Uploads gleichzeitig in Prüfung, 200 je Artist. Beim Hochladen bestätigt der Artist die Rechte; die Vorschau zeigt, wie es im Stream aussieht.
+- **Prüfung:** Jeder Upload wartet im Admin-Bereich auf **Freigeben** oder **Ablehnen** (mit Hinweis an den Artist). Abgelehnte und entfernte Dateien werden gelöscht. Der Artist sieht Status, Hinweis und wie viele Kanäle sein Design nutzen.
+- **Design-Bibliothek → Von Artists:** freigegebene Designs mit Name und Links des Artists. Übernehmen setzt je nach Art das Bild für alle Alerts (`a:<Datei>` im Alert-Designer, danach speichern), den Hintergrund der Szenen „Gleich live“, „Pause“ und „Stream-Ende“ (`scbg=`), Grund-Design + Farbe + Hintergrund (Look) oder legt eine neue Sammelkarte an. Jede Übernahme zählt je Kanal einmal. **Melden** schickt das Design mit Grund an den Admin (er kann es entfernen oder die Meldung schließen).
+- **Dateien:** öffentlicher Bucket `artist-assets`, Ordner = Konto des Artists. Hochladen nur in den eigenen Ordner und nur freigeschaltet. Wird ein Design entfernt, zeigt das Overlay an der Stelle nichts mehr – Streamer wählen dann einfach ein anderes.
+- **Demo-Modus:** Beispiel-Designs von „PixelPinsel“; eigene Uploads liegen im Browser (höchstens 1,5 MB je Datei), freischalten im Admin-Bereich mit Passwort „demo“.
 
 ## Sicherheit
 
