@@ -15,6 +15,7 @@ import { handleBot } from "./bot.ts";
 
 const CHAT_EVENT = "channel.chat.message";
 const VOTE_COMMANDS = new Set(["vote", "abstimmen"]);
+const FUN_COMMANDS = new Set(["tipp", "tip", "wette", "bet", "rubbeln", "rubbellos", "los"]);
 
 // Kostüme in fester Reihenfolge („!change“ allein nimmt das nächste) und was Zuschauer dafür tippen dürfen
 const COSTUMES = ["schaffner", "lok", "bau"] as const;
@@ -119,6 +120,11 @@ async function handleChat(event: ChatMessage, self: Awaited<ReturnType<typeof ge
     if (await handleRpcChat("cup_chat", event, text).catch((e) => { console.warn("Cup:", e); return false; })) return;
   }
 
+  // Zuschauer-Wette („!tipp 1“, „!tipp ja“, „!tipp top“) und Rubbellos („!rubbeln“) (Migration …_bet_scratch.sql)
+  if ((!self || event.chatter_user_id !== self.user_id) && FUN_COMMANDS.has(normalize(command))) {
+    if (await handleRpcChat("fun_chat", event, text).catch((e) => { console.warn("Wette/Rubbellos:", e); return false; })) return;
+  }
+
   // Zähler („!tode“, Mods: „!tode +“) und „!puls“ (Migration …_game_packs.sql)
   if (!self || event.chatter_user_id !== self.user_id) {
     if (await handleRpcChat("game_chat", event, text).catch((e) => { console.warn("Zähler/Puls:", e); return false; })) return;
@@ -147,7 +153,7 @@ async function handleChat(event: ChatMessage, self: Awaited<ReturnType<typeof ge
 // ---------- Zähler und Puls (…_game_packs.sql), Cup (…_cup.sql) ----------
 // Die Datenbank-Funktion entscheidet und antwortet: {handled, reply?}. Liefert true, wenn der Befehl
 // erledigt ist (Antwort geht gleich raus).
-async function handleRpcChat(fn: "game_chat" | "cup_chat", event: ChatMessage, text: string) {
+async function handleRpcChat(fn: "game_chat" | "cup_chat" | "fun_chat", event: ChatMessage, text: string) {
   const { data, error } = await db.rpc(fn, {
     p_user_id: event.chatter_user_id,
     p_name: event.chatter_user_name || event.chatter_user_login,

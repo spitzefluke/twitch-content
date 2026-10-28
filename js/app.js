@@ -1591,8 +1591,8 @@ const IDEA_CATS = [
   { id: 'chat', label: 'Chat-Spiele', dot: '#4fd6ff' },
   { id: 'overlay', label: 'Overlay', dot: '#3ddc84' },
 ];
-const CHAT_KINDS = new Set(['forbidden', 'quiz', 'queue', 'giveaway', 'hotwords', 'poll', 'counter', 'chatcontrol', 'cup']);
-const OVERLAY_KINDS = new Set(['wheel', 'subathon', 'pause', 'gamewheel', 'heart']);
+const CHAT_KINDS = new Set(['forbidden', 'quiz', 'queue', 'giveaway', 'hotwords', 'poll', 'counter', 'chatcontrol', 'cup', 'bet', 'scratch']);
+const OVERLAY_KINDS = new Set(['wheel', 'subathon', 'pause', 'gamewheel', 'heart', 'emoterain']);
 const ideaCat = (t) => (t.kind === 'countdown' ? 'dated' : CHAT_KINDS.has(t.kind) ? 'chat' : OVERLAY_KINDS.has(t.kind) ? 'overlay' : 'join');
 const IDEAS_VIEW_KEY = 'sh_ideas_view';
 function ideasView() {
@@ -5910,11 +5910,11 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws'; // früher Klartext in localStorage – wird beim ersten Lesen verschlüsselt umgezogen
-const OBS_UNITS = { ercool: ' s', ercombo: '×', ermax: '', ersize: '%', lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', sosize: '%', cpsize: '%', cptop: '', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
-const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'cup', 'scene', 'labels', 'goal'];
+const OBS_UNITS = { ercool: ' s', ercombo: '×', ermax: '', ersize: '%', lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', sosize: '%', cpsize: '%', cptop: '', btsize: '%', scsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'cup', 'bet', 'scratch', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
-  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', hotwords: 'hwsize', poll: 'plsize', counter: 'ctsize', gamewheel: 'sgsize', heart: 'hrsize', chatcontrol: 'cmsize', songs: 'sosize', cup: 'cpsize', labels: 'lbsize', goal: 'gsize',
+  forbid: 'fwsize', subathon: 'sasize', quiz: 'qzsize', queue: 'qusize', tts: 'ttsize', cards: 'cdsize', giveaway: 'gwsize', hotwords: 'hwsize', poll: 'plsize', counter: 'ctsize', gamewheel: 'sgsize', heart: 'hrsize', chatcontrol: 'cmsize', songs: 'sosize', cup: 'cpsize', bet: 'btsize', scratch: 'scsize', labels: 'lbsize', goal: 'gsize',
 };
 const obs = { ws: null, scene: null, shotTimer: 0, busy: false, stream: null, sources: [], previewSound: false, presets: null };
 // Live-Overlay: Einstellungen liegen in overlay_config, OBS lädt overlay.html?live=1
@@ -6180,7 +6180,7 @@ function paintObsHistory() {
 // Jede Ebene (Karte im Overlay) hat eine Zeile: Schalter, Name, Größe – aufgeklappt
 // die Einstellungen. Die Felder selbst sind die alten (Namen = Parameter im Overlay).
 const OBS_LAYER_SWITCH = { wheel: 'wheel_on', next: 'next_on', bingo: 'bingo_on', quest: 'quest_on', shop: 'shop_on', challenge: 'challenge_on', alerts: 'alerts_on', recent: 'recent_on', chat: 'chat_on', prank: 'prank', pet: 'pet', ticker: 'ticker_show',
-  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', hotwords: 'hotwords_on', poll: 'poll_on', counter: 'counter_on', gamewheel: 'gamewheel_on', heart: 'heart_on', chatcontrol: 'chatcontrol_on', songs: 'songs_on', cup: 'cup_on', pause: 'pause',
+  forbid: 'forbid_on', subathon: 'subathon_on', quiz: 'quiz_on', queue: 'queue_on', tts: 'tts_on', cards: 'cards_on', giveaway: 'giveaway_on', hotwords: 'hotwords_on', poll: 'poll_on', counter: 'counter_on', gamewheel: 'gamewheel_on', heart: 'heart_on', chatcontrol: 'chatcontrol_on', songs: 'songs_on', cup: 'cup_on', bet: 'bet_on', scratch: 'scratch_on', pause: 'pause',
   scene: 'scene_on', camframe: 'camframe', labels: 'labels_on', goal: 'goal_on', erain: 'erain',
 };
 const OBS_LAYER_SIZE = { ...OBS_SIZE, prank: 'psize', pet: 'dsize', ticker: 'tsize', erain: 'ersize' };
@@ -6248,7 +6248,7 @@ function setupObsLayers() {
 
 // ---------- Aussehen je Ebene: Farbe, Schrift, Einblenden (Parameter lc_/lcc_/lf_/la_/ls_, siehe js/overlay.js) ----------
 const LOOK_LAYERS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'ticker', 'forbid', 'subathon',
-  'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'cup', 'labels', 'goal'];
+  'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'cup', 'bet', 'scratch', 'labels', 'goal'];
 const LOOK_NO_ANIM = new Set(['wheel', 'alerts', 'ticker']); // haben eigene Effekte (Rad-Auftritt, Alert-Designer, Lauftext)
 const LOOK_COLORS = [['', 'Design-Farbe'], ['ffb81c', 'Gold'], ['9146ff', 'Twitch-Lila'], ['ff4fd8', 'Pink'], ['ff5a4e', 'Rot'], ['ff7a28', 'Orange'],
   ['3ddc84', 'Grün'], ['35c7ff', 'Türkis'], ['4f7cff', 'Blau'], ['ffffff', 'Weiß'], ['custom', 'Eigene Farbe …']];

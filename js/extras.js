@@ -15,8 +15,11 @@ import { gamewheel } from './extras-gamewheel.js';
 import { heart } from './extras-heart.js';
 import { chatcontrol } from './extras-chatcontrol.js';
 import { cup } from './extras-cup.js';
+import { bet } from './extras-bet.js';
+import { scratch } from './extras-scratch.js';
+import { emoterain } from './extras-emoterain.js';
 
-export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart, chatcontrol, cup];
+export const EXTRAS = [forbidden, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart, chatcontrol, cup, bet, scratch, emoterain];
 export const EXTRA_KINDS = EXTRAS.map((f) => f.kind);
 const byKind = Object.fromEntries(EXTRAS.map((f) => [f.kind, f]));
 

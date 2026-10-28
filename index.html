@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3/OLiWPDFJ7km0+Bm50t9aY7MN3pUoYXvPfjFRoqT0g=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-YYsf0BsDODYzBVFUW/IOOcEtPYdjkrjiAqj5a7q3Acg=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -56,7 +56,7 @@
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
   <link rel="stylesheet" href="css/shop.css?v=e8584edd68">
   <link rel="stylesheet" href="css/challenge.css?v=4c0dae8d37">
-  <link rel="stylesheet" href="css/extras.css?v=3da2f37651">
+  <link rel="stylesheet" href="css/extras.css?v=a8eeec5b37">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
@@ -65,7 +65,7 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=f1dfad4c3a",
       "./js/api.js": "./js/api.js?v=038f9e36f5",
-      "./js/app.js": "./js/app.js?v=e94d8d426a",
+      "./js/app.js": "./js/app.js?v=fe25f22dc0",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
@@ -78,12 +78,14 @@
       "./js/dash-profile.js": "./js/dash-profile.js?v=715814ade0",
       "./js/dash-start.js": "./js/dash-start.js?v=19702535f8",
       "./js/dash-stats.js": "./js/dash-stats.js?v=2d5450ae6c",
-      "./js/defaults.js": "./js/defaults.js?v=e12c81d760",
-      "./js/extras-api.js": "./js/extras-api.js?v=cf5ae69939",
+      "./js/defaults.js": "./js/defaults.js?v=f836aba809",
+      "./js/extras-api.js": "./js/extras-api.js?v=08b38205e5",
+      "./js/extras-bet.js": "./js/extras-bet.js?v=5c0cc72358",
       "./js/extras-chatcontrol.js": "./js/extras-chatcontrol.js?v=58d325d442",
       "./js/extras-core.js": "./js/extras-core.js?v=11e697c4d7",
       "./js/extras-counter.js": "./js/extras-counter.js?v=f5ef93b3a8",
       "./js/extras-cup.js": "./js/extras-cup.js?v=9eff968373",
+      "./js/extras-emoterain.js": "./js/extras-emoterain.js?v=260fb52829",
       "./js/extras-fun.js": "./js/extras-fun.js?v=dcf17541ef",
       "./js/extras-gamewheel.js": "./js/extras-gamewheel.js?v=f9e4229236",
       "./js/extras-giveaway.js": "./js/extras-giveaway.js?v=f10ed16401",
@@ -94,7 +96,8 @@
       "./js/extras-obswatch.js": "./js/extras-obswatch.js?v=a9ba0e26f0",
       "./js/extras-play.js": "./js/extras-play.js?v=24950909df",
       "./js/extras-poll.js": "./js/extras-poll.js?v=9d625d0b37",
-      "./js/extras.js": "./js/extras.js?v=532671bb94",
+      "./js/extras-scratch.js": "./js/extras-scratch.js?v=3e50c227be",
+      "./js/extras.js": "./js/extras.js?v=ffe0fcb1ef",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=1dbc5571d9",
       "./js/help.js": "./js/help.js?v=21aa55fa82",
@@ -117,12 +120,12 @@
       "./js/obs-ws.js": "./js/obs-ws.js?v=d1b1d7463c",
       "./js/overlay-anniversary.js": "./js/overlay-anniversary.js?v=697507dd0e",
       "./js/overlay-emoterain.js": "./js/overlay-emoterain.js?v=ccb1b9951d",
-      "./js/overlay-extras.js": "./js/overlay-extras.js?v=6fcc384de6",
+      "./js/overlay-extras.js": "./js/overlay-extras.js?v=f3a1b65d14",
       "./js/overlay-hack.js": "./js/overlay-hack.js?v=5ca451921f",
-      "./js/overlay-modules.js": "./js/overlay-modules.js?v=ed42a3b345",
+      "./js/overlay-modules.js": "./js/overlay-modules.js?v=5ebde12772",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=eeda490bf6",
       "./js/overlay-usage.js": "./js/overlay-usage.js?v=c51b368be2",
-      "./js/overlay.js": "./js/overlay.js?v=00e170e7f0",
+      "./js/overlay.js": "./js/overlay.js?v=57d6ab200f",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
@@ -2893,6 +2896,34 @@
                   <p class="obs-row-hint">Titel, „Anmeldung offen: !cup join“ und die Rangliste mit Punkten und Preisgeldern – neue Punkte leuchten kurz auf. Erscheint, sobald es Spieler gibt oder die Anmeldung offen ist. Eingerichtet wird der Cup im Dashboard unter der Kachel „Cup“.</p>
                 </div>
               </div>
+              <div class="obs-layer" data-layer="bet" style="--lc: #ff8c32">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="bet_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Zuschauer-Wette zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Zuschauer-Wette</button>
+                  <span class="obs-layer-size" data-size-for="bet"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="btsize" min="50" max="200" step="5" value="100"><output name="btsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="bet"></span><button class="obs-mini-btn" type="button" data-reset-pos="bet">Zurück an den Standardplatz</button></span></div>
+                  <p class="obs-row-hint">Frage, Antworten mit Balken und Quote (×Zahl = Tipp-Punkte bei Treffer) und die Restzeit. Nach der Auflösung leuchtet die richtige Antwort, darunter die Top 3. Gestartet wird die Wette im Dashboard unter der Kachel „Zuschauer-Wette“, getippt mit <b>!tipp 1</b>.</p>
+                </div>
+              </div>
+              <div class="obs-layer" data-layer="scratch" style="--lc: #d6b24a">
+                <div class="obs-layer-head">
+                  <label class="toggle obs-switch"><input type="checkbox" name="scratch_on"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Rubbellos zeigen</span></label>
+                  <span class="obs-layer-dot" aria-hidden="true"></span>
+                  <button class="obs-layer-name" type="button" aria-expanded="false">Rubbellos</button>
+                  <span class="obs-layer-size" data-size-for="scratch"></span>
+                  <span class="obs-layer-chev" aria-hidden="true">▾</span>
+                </div>
+                <div class="obs-layer-body" hidden>
+                  <label class="obs-row"><span>Größe</span><input type="range" name="scsize" min="50" max="200" step="5" value="100"><output name="scsize-out"></output></label>
+                  <div class="obs-row"><span>Platz</span><span class="obs-place"><span class="obs-pos" data-pos-for="scratch"></span><button class="obs-mini-btn" type="button" data-reset-pos="scratch">Zurück an den Standardplatz</button></span></div>
+                  <p class="obs-row-hint">Schreibt jemand <b>!rubbeln</b>, erscheint ein Los mit Namen und wird live freigerubbelt – bei einem Gewinn glitzert es. Gewinne, Häufigkeit und Pause stellst du im Dashboard unter der Kachel „Rubbellos“ ein, dort gibt es auch ein Probe-Los.</p>
+                </div>
+              </div>
               <div class="obs-layer" data-layer="pause" style="--lc: #ffb81c">
                 <div class="obs-layer-head">
                   <label class="toggle obs-switch"><input type="checkbox" name="pause"><span class="toggle-ui" aria-hidden="true"></span><span class="sr-only">Pausen-Bildschirm zeigen</span></label>
@@ -3009,6 +3040,8 @@
           <input type="text" name="chatcontrol" value="38,58" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="songs" value="2,82" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="cup" value="74,8" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="bet" value="54,36" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" name="scratch" value="40,70" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="alerts" value="tr" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="recent" value="tl" hidden aria-hidden="true" tabindex="-1">
           <input type="text" name="chat" value="76,22" hidden aria-hidden="true" tabindex="-1">

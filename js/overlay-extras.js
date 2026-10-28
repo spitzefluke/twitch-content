@@ -16,6 +16,8 @@
 //   songs=bl|…       Song-Wünsche (!sr): laufender Song mit Namen und die nächsten drei (nur solange es Wünsche gibt)   sosize=100
 //   cup=tr|…         Cup: Titel, Anmeldung (!cup join), Rangliste mit Punkten und Preisgeldern; neue Punkte leuchten auf   cpsize=100
 //                    cptop=5 Plätze (3–10) · cprules=1 dazu die Regeln (nur solange es Spieler gibt oder die Anmeldung offen ist)
+//   bet=tr|…         Zuschauer-Wette: Frage, Antworten mit Balken und Quote, Restzeit; nach der Auflösung Ergebnis und Top 3   btsize=100
+//   scratch=bc|…     Rubbellos: bei jedem !rubbeln erscheint ein Los und wird live freigerubbelt                          scsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { channelHeaders, rtSpec } from './channel.js';
@@ -44,8 +46,10 @@ export function setupOverlayExtras(o) {
     chatcontrol: o.position(o.params.get('chatcontrol'), null),
     songs: o.position(o.params.get('songs'), null),
     cup: o.position(o.params.get('cup'), null),
+    bet: o.position(o.params.get('bet'), null),
+    scratch: o.position(o.params.get('scratch'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos', cpsize: '--cps' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos', cpsize: '--cps', btsize: '--bts', scsize: '--scs' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -65,6 +69,8 @@ export function setupOverlayExtras(o) {
   if (cfg.chatcontrol) setupChatControl(ctx, card('ov-x-chatcontrol', 'chatcontrol', cfg.chatcontrol, o));
   if (cfg.songs) setupSongs(ctx, card('ov-x-songs', 'songs', cfg.songs, o));
   if (cfg.cup) setupCup(ctx, card('ov-x-cup', 'cup', cfg.cup, o));
+  if (cfg.bet) setupBet(ctx, card('ov-x-bet', 'bet', cfg.bet, o));
+  if (cfg.scratch) setupScratch(ctx, card('ov-x-scratch', 'scratch', cfg.scratch, o));
 }
 
 function card(id, key, pos, o) {
@@ -156,6 +162,12 @@ function liveData(sb) {
     counters: () => rows(sb.from('counters').select('id, label, emoji, value, show, position').eq('show', true).order('position').order('id').limit(8)),
     // Cup: Rangliste ohne Twitch-IDs (cup_board, für alle lesbar)
     cupBoard: () => rows(sb.rpc('cup_board')),
+    // Zuschauer-Wette: Zeit um → Tipps schließen lassen (darf jeder, passiert nur, wenn sie wirklich abgelaufen ist)
+    betTick: () => rows(sb.rpc('bet_tick')).catch(() => null).finally(flushBot),
+    betTop: (n) => rows(sb.rpc('bet_top', { p_limit: n })),
+    // Rubbellos: neue Lose seit id (für alle lesbar, ohne Twitch-ID)
+    scratchAfter: (id) => rows(sb.from('scratch_draws').select('id, name, label, emoji, win, source, created_at').gt('id', id).order('id').limit(5)),
+    scratchLast: async () => (await rows(sb.from('scratch_draws').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
     songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
     cardUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
   };
@@ -175,6 +187,11 @@ function demoData() {
     ccTick: async () => null,
     counters: async () => read('counters', []).filter((c) => c.show).sort((a, b) => a.position - b.position).slice(0, 8),
     songs: async () => read('bot_songs', []).filter((s) => ['queued', 'playing'].includes(s.status)).sort((a, b) => a.position - b.position || a.id - b.id),
+    betTick: async () => null,
+    betTop: async (n) => Object.values(read('bet_scores', {})).filter((x) => x.points > 0)
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || a.name.localeCompare(b.name)).slice(0, n),
+    scratchAfter: async (id) => read('scratch_draws', []).filter((d) => d.id > id).slice(0, 5),
+    scratchLast: async () => read('scratch_draws', []).at(-1)?.id ?? 0,
     // wie cupBoard in js/extras-api.js (Demo)
     cupBoard: async () => {
       const c = { title: 'Community-Cup', rules: '', prizes: [], open: false, round: 1, code_sent_at: null, ...read('cup', {}) };
@@ -1197,4 +1214,229 @@ async function setupCup({ src, opt, params, editTests }, el) {
   let t = 0;
   src.on('cup', () => { clearTimeout(t); t = setTimeout(load, 150); });
   setInterval(() => load(), 60000);
+}
+
+// ============================================================
+// Zuschauer-Wette (…_bet_scratch.sql): Frage, Antworten mit Balken und Quote; nach der Auflösung Ergebnis und Top 3
+// ============================================================
+async function setupBet({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🎯 Wette</span><span class="ov-sep">·</span><span class="bto-time" data-time></span></header>
+    <b class="plo-q bto-q" data-q></b>
+    <ol class="plo-list bto-list" data-list></ol>
+    <p class="plo-foot" data-foot></p>
+    <ol class="bto-top" data-top hidden></ol>`;
+  const $ = (sel) => el.querySelector(sel);
+  let b = null;
+  let before = [];
+  let ticked = 0;
+  let top = [];
+  let shownRound = 0;
+  let lastStatus = '';
+
+  const quote = (n, total) => (n ? Math.min(20, Math.max(1, Math.ceil(total / n))) : 0);
+  const isOpen = () => b?.status === 'open' && !(b.lock_at && Date.parse(b.lock_at) <= Date.now());
+  const paint = () => {
+    const shown = !!b && ['open', 'locked', 'resolved'].includes(b.status) && (b.options ?? []).length > 0;
+    el.hidden = !(shown || opt.edit);
+    if (!shown) return;
+    const open = isOpen();
+    const done = b.status === 'resolved';
+    el.classList.toggle('is-done', !open);
+    if (b.round !== shownRound) { shownRound = b.round; before = []; restart(el, 'is-new'); }
+    if (done && lastStatus && lastStatus !== 'resolved') { restart(el, 'is-resolved'); beep(opt.vols.bet ?? opt.volume, [[523, 0, 0.12], [659, 0.12, 0.12], [784, 0.24, 0.12], [1047, 0.36, 0.35]]); }
+    lastStatus = b.status;
+    $('[data-q]').textContent = b.question;
+    const counts = b.counts ?? [];
+    $('[data-list]').replaceChildren(...b.options.map((label, i) => {
+      const n = counts[i] ?? 0;
+      const share = b.total ? n / b.total : 0;
+      const win = done && b.winner === i + 1;
+      const li = document.createElement('li');
+      li.className = `plo-row bto-row${win ? ' is-win' : ''}${done && !win ? ' is-lose' : ''}`;
+      li.style.setProperty('--p', share.toFixed(3));
+      const q = quote(n, b.total);
+      li.innerHTML = `<span class="plo-n">${win ? '✓' : i + 1}</span><b class="plo-label">${esc(label)}</b><span class="bto-quote">${q ? `×${q}` : ''}</span><span class="plo-pct">${Math.round(share * 100)} %</span>`;
+      if (before[i] !== undefined && n > before[i]) li.querySelector('.plo-pct').classList.add('is-bump');
+      return li;
+    }));
+    before = [...counts];
+    const right = done ? counts[b.winner - 1] ?? 0 : 0;
+    $('[data-foot]').textContent = done
+      ? (right ? `${right} ${right === 1 ? 'Tipp' : 'Tipps'} richtig · je ${b.points} Tipp-Punkte` : 'Niemand lag richtig!')
+      : `${b.total} ${b.total === 1 ? 'Tipp' : 'Tipps'}${open ? ` · !tipp 1–${b.options.length}` : ''}`;
+    const list = $('[data-top]');
+    list.hidden = !done || !top.length;
+    list.replaceChildren(...(done ? top : []).map((r, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${['🥇', '🥈', '🥉'][i] ?? i + 1}</span><b>${esc(r.name)}</b><span>${r.points} P</span>`;
+      return li;
+    }));
+    time();
+  };
+  const time = () => {
+    const t = $('[data-time]');
+    if (!b || !['open', 'locked', 'resolved'].includes(b.status)) { t.textContent = ''; return; }
+    if (b.status === 'resolved') { t.textContent = 'Auflösung'; return; }
+    if (!isOpen()) { t.textContent = '🔒 Tipps zu'; return; }
+    if (!b.lock_at) { t.textContent = 'jetzt tippen'; return; }
+    const left = Math.max(0, Math.ceil((Date.parse(b.lock_at) - Date.now()) / 1000));
+    t.textContent = `${Math.floor(left / 60)}:${pad(left % 60)}`;
+    if (left === 0 && Date.now() - ticked > 10000) {
+      ticked = Date.now();
+      src.betTick().then(reload);
+    }
+  };
+
+  if (opt.test || opt.edit) {
+    const fresh = () => ({ round: 1, status: 'open', question: 'Schaffe ich den Boss im 1. Versuch?', options: ['Ja', 'Nein'], counts: [9, 14], total: 23, winner: null, points: 0, lock_at: new Date(Date.now() + 2 * 60000).toISOString() });
+    b = fresh();
+    top = [{ name: 'NightOwl_Mia', points: 12 }, { name: 'PixelPaul', points: 9 }, { name: 'GG_Gina', points: 7 }];
+    paint();
+    const bump = () => {
+      if (b.status !== 'open') return;
+      const i = Math.random() < 0.4 ? 0 : 1;
+      b = { ...b, counts: b.counts.map((n, j) => (j === i ? n + 1 : n)), total: b.total + 1 };
+      paint();
+    };
+    const resolve = () => { b = { ...b, status: 'resolved', winner: 1, points: quote(b.counts[0], b.total) }; paint(); };
+    if (editTests) editTests.bet = () => { if (b.status === 'resolved') b = fresh(); else resolve(); paint(); };
+    if (opt.test && !opt.edit) {
+      let n = 0;
+      setInterval(() => { n += 1; if (n % 12 === 0) { b = fresh(); paint(); } else if (n % 12 === 9) resolve(); else bump(); }, 1500);
+    }
+    setInterval(time, 1000);
+    return;
+  }
+
+  async function reload() {
+    const fresh = await src.one('bets').catch(() => null);
+    if (!fresh) return;
+    if (fresh.status === 'resolved' && (b?.status !== 'resolved' || b?.round !== fresh.round)) top = await src.betTop(3).catch(() => []) ?? [];
+    b = fresh;
+    paint();
+  }
+  await reload();
+  let timer = 0;
+  src.on('bets', () => { clearTimeout(timer); timer = setTimeout(reload, 120); });
+  setInterval(time, 1000);
+  setInterval(reload, 30000);
+}
+
+// ============================================================
+// Rubbellos (…_bet_scratch.sql): bei jedem !rubbeln ein Los, das live freigerubbelt wird
+// ============================================================
+const SCRATCH_TEST = [
+  { name: 'NightOwl_Mia', label: 'Shoutout vom Streamer', emoji: '📣', win: true },
+  { name: 'PixelPaul', label: 'Niete – nächstes Mal!', emoji: '🍀', win: false },
+  { name: 'GG_Gina', label: 'Hauptgewinn: Ehrenplatz im Chat', emoji: '👑', win: true },
+  { name: 'LootLukas', label: 'Ein Sound deiner Wahl', emoji: '🔊', win: true },
+];
+async function setupScratch({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <header class="ov-head"><span class="ov-dot" aria-hidden="true"></span><span>🎟️ Rubbellos</span><span class="ov-sep">·</span><span class="ov-who" data-who></span></header>
+    <div class="sco-ticket">
+      <div class="sco-prize"><span class="sco-emoji" data-emoji></span><b class="sco-label" data-label></b></div>
+      <canvas class="sco-foil" data-foil width="320" height="150" aria-hidden="true"></canvas>
+    </div>
+    <p class="sco-foot" data-foot>!rubbeln im Chat</p>`;
+  const $ = (sel) => el.querySelector(sel);
+  const foil = $('[data-foil]');
+  const g = foil.getContext('2d');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const queue = [];
+  let busy = false;
+  let lastId = 0;
+
+  function paintFoil() {
+    g.globalCompositeOperation = 'source-over';
+    const grad = g.createLinearGradient(0, 0, foil.width, foil.height);
+    grad.addColorStop(0, '#e9edf2');
+    grad.addColorStop(0.5, '#a9b1bd');
+    grad.addColorStop(1, '#d7dce3');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, foil.width, foil.height);
+    g.fillStyle = 'rgba(80, 90, 105, .55)';
+    g.font = '900 22px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.fillText('HIER RUBBELN', foil.width / 2, foil.height / 2 + 8);
+  }
+  // Münze im Zickzack über die Folie – was sie berührt, wird durchsichtig
+  const scratchAway = (ms) => new Promise((resolve) => {
+    if (reduced) { g.clearRect(0, 0, foil.width, foil.height); resolve(); return; }
+    const t0 = performance.now();
+    const rows = 6;
+    let prev = null;
+    g.globalCompositeOperation = 'destination-out';
+    g.lineCap = 'round';
+    g.lineWidth = 34;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms);
+      const pos = k * rows;
+      const row = Math.min(rows - 1, Math.floor(pos));
+      const f = pos - row;
+      const x = (row % 2 ? 1 - f : f) * (foil.width + 20) - 10;
+      const y = ((row + 0.5) / rows) * foil.height + Math.sin(pos * 9) * 6;
+      if (prev) { g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(x, y); g.stroke(); }
+      prev = { x, y };
+      if (k < 1) requestAnimationFrame(step);
+      else { g.clearRect(0, 0, foil.width, foil.height); resolve(); }
+    };
+    requestAnimationFrame(step);
+  });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function show(d) {
+    busy = true;
+    $('[data-who]').textContent = d.source === 'test' ? 'Probe-Los' : d.name || 'Zuschauer';
+    $('[data-emoji]').textContent = d.emoji || '🎟️';
+    $('[data-label]').textContent = d.label;
+    $('[data-foot]').textContent = d.source === 'test' ? 'Probe-Los wird gerubbelt …' : `${d.name || 'Zuschauer'} rubbelt …`;
+    el.classList.remove('is-win', 'is-lose', 'is-revealed');
+    paintFoil();
+    el.hidden = false;
+    restart(el, 'is-new');
+    await wait(reduced ? 200 : 700);
+    beep(opt.vols.scratch ?? opt.volume, [[300 + Math.random() * 80, 0, 0.06, 'sawtooth'], [320, 0.25, 0.06, 'sawtooth'], [280, 0.5, 0.06, 'sawtooth']]);
+    await scratchAway(1800);
+    el.classList.add('is-revealed', d.win ? 'is-win' : 'is-lose');
+    if (d.win) beep(opt.vols.scratch ?? opt.volume, [[659, 0, 0.12], [784, 0.12, 0.12], [1047, 0.24, 0.4]]);
+    $('[data-foot]').textContent = d.win ? 'Gewonnen! Der Streamer löst ein.' : 'Diesmal nicht – nächstes Mal!';
+    await wait(queue.length ? 3500 : 6500);
+    if (!opt.edit) el.hidden = true;
+    busy = false;
+    if (queue.length) show(queue.shift());
+  }
+  const enqueue = (d) => { if (queue.length < 6) queue.push(d); if (!busy) show(queue.shift()); };
+
+  if (opt.test || opt.edit) {
+    let n = 0;
+    const next = () => enqueue({ ...SCRATCH_TEST[n++ % SCRATCH_TEST.length], source: 'chat' });
+    if (opt.edit) {
+      el.hidden = false;
+      $('[data-who]').textContent = 'NightOwl_Mia';
+      $('[data-foot]').textContent = 'NightOwl_Mia rubbelt …';
+      $('[data-emoji]').textContent = '📣';
+      $('[data-label]').textContent = 'Shoutout vom Streamer';
+      paintFoil();
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath(); g.arc(foil.width * 0.35, foil.height * 0.5, 48, 0, Math.PI * 2); g.fill();
+    }
+    if (editTests) editTests.scratch = next;
+    if (opt.test && !opt.edit) { next(); setInterval(() => { if (!busy) next(); }, 11000); }
+    return;
+  }
+
+  lastId = await src.scratchLast().catch(() => 0);
+  async function pull() {
+    const fresh = await src.scratchAfter(lastId).catch(() => null);
+    for (const d of fresh ?? []) {
+      lastId = Math.max(lastId, d.id);
+      // Nur frische Lose (z. B. nach einem Verbindungsabbruch keine alten nachholen)
+      if (Date.now() - Date.parse(d.created_at) < 120000) enqueue(d);
+    }
+  }
+  let timer = 0;
+  src.on('scratch_draws', () => { clearTimeout(timer); timer = setTimeout(pull, 80); });
+  setInterval(pull, 20000);
 }
