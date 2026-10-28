@@ -243,4 +243,8 @@ export default [
   "Kann ich Werbung im Stream zeigen?",
   "Ja, als Text im Laufband deines OBS-Overlays. Schreib „Werbung“ oder „Anzeige“ davor – Twitch und das Gesetz verlangen die Kennzeichnung. In der Twitch-Erweiterung (Panel, Komponente, Overlay) zeigt StreamHelp keine Werbung: Twitch erlaubt dort keine Werbe- oder Sponsoring-Inhalte.",
   "Nutzungsbedingungen",
+  "Community",
+  "Der StreamHelp-Discord",
+  "Tausch dich mit anderen Streamern aus, stell Fragen und erfahre als Erstes von neuen Funktionen.",
+  "Discord beitreten",
 ];

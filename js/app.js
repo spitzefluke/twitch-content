@@ -39,6 +39,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderProfile } from './dash-profile.js';
 import { renderArtist } from './dash-artist.js';
+import { renderDiscord } from './dash-discord.js';
 import { extractColors, inkOn } from './brand-colors.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
@@ -392,7 +393,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich',
+  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord',
 };
 
 function setupShell() {
@@ -712,6 +713,9 @@ const PAGE_ENTER = {
     profileUrl: (login) => new URL(`profil.html?c=${encodeURIComponent(login ?? '')}`, location.href).href,
   }),
   artist: () => renderArtist($('#artist-slot'), { api: state.api, toast, germanError, openLibrary: () => setPage('library') }),
+  discord: () => renderDiscord($('#discord-slot'), {
+    api: state.api, toast, germanError, streamer: () => state.streamer.name, tiles: () => state.tiles ?? [],
+  }),
   ideas: () => renderStart(START),
 };
 
@@ -5814,6 +5818,7 @@ async function saveTileStart(input) {
   try {
     const updated = await state.api.updateTile(tile.id, { target_at: target ? target.toISOString() : null });
     state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
+    discordAnnounceTile(updated);
     renderGrid();
     if (input.dataset.tileStart === 'prank' && state.twitch.connected) syncPrankRewards();
     toast(target && target > new Date()
@@ -5894,6 +5899,7 @@ async function saveTile(e) {
     const updated = await state.api.updateTile(state.activeTile.id, patch);
     state.tiles = state.tiles.map((t) => (t.id === updated.id ? updated : t));
     state.activeTile = updated;
+    discordAnnounceTile(updated);
     renderHero();
     renderGrid();
     renderArchive();
@@ -5901,6 +5907,13 @@ async function saveTile(e) {
     showTileForm(false);
     toast('Gespeichert.', 'ok');
   });
+}
+
+// Discord (…_discord.sql): neuer Termin einer Content-Idee – postet nur, wenn „Neue Termine ankündigen“
+// an ist, und je Termin einmal (entscheidet der Server). Fehler stören das Speichern nicht.
+function discordAnnounceTile(tile) {
+  if (!tile?.target_at || Date.parse(tile.target_at) <= Date.now() || !state.api.discordPost) return;
+  state.api.discordPost('idea', tile.id, true).catch((err) => console.warn('Discord-Ankündigung:', err?.message ?? err));
 }
 
 function toLocalInput(d) {

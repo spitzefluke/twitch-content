@@ -2546,6 +2546,42 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
   .pf-link .pf-del { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
 }
 
+/* ---------- Discord (Dashboard, js/dash-discord.js) ---------- */
+.dc-cards { align-items: start; }
+.dc-card .dash-actions .btn, .dc-community .btn { display: inline-flex; align-items: center; gap: 6px; }
+.dc-community .btn { flex: 0 0 auto; }
+.dc-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-2); font-size: 14px; }
+.dc-connect { display: grid; gap: 10px; }
+.dc-connect input { font-family: var(--font-mono); font-size: 13px; }
+.dc-danger:hover, .dc-danger:focus-visible { border-color: var(--danger); color: var(--danger); }
+.dc-state { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; }
+.dc-state--ok { color: var(--muted); }
+.dc-state--ok i { color: #3ddc97; }
+.dc-state--bad { color: var(--danger); font-weight: 600; }
+.dc-toggles { display: grid; gap: 10px; }
+.dc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.dc-fields { display: grid; gap: 10px; }
+.dc-fields .form-hint { margin: -4px 0 0; }
+.dc-fields input[type="text"] { margin-top: 6px; }
+.dc-preview { display: grid; gap: 6px; padding: 14px; border-radius: 12px; background: #313338; color: #dbdee1; font-size: 14px; line-height: 1.4; }
+.dc-msg-head { display: flex; align-items: center; gap: 8px; }
+.dc-msg-head b { color: #f2f3f5; }
+.dc-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #9146ff; color: #fff; font-weight: 700; font-size: 13px; }
+.dc-bot { padding: 1px 5px; border-radius: 4px; background: #5865f2; color: #fff; font-size: 10px; font-weight: 700; }
+.dc-msg-text { margin: 0; overflow-wrap: anywhere; }
+.dc-mention { padding: 0 2px; border-radius: 3px; background: rgba(88, 101, 242, .3); color: #c9cdfb; }
+.dc-embed { display: grid; gap: 4px; padding: 10px 12px; border-left: 4px solid #eb0400; border-radius: 4px; background: #2b2d31; }
+.dc-embed b { color: #00a8fc; }
+.dc-embed-img { display: grid; place-items: center; aspect-ratio: 16 / 9; max-width: 320px; margin-top: 4px; border-radius: 6px; background: linear-gradient(135deg, #1f1534, #9146ff); color: #fff; font-size: 28px; }
+.dc-post { display: grid; gap: 10px; }
+.dc-post-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: rgba(var(--surf-rgb), .7); }
+.dc-post-row > span { color: var(--text-2); font-size: 14px; }
+.dc-post-row select { flex: 1 1 220px; min-height: 38px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg); color: var(--text); font: inherit; font-size: 14px; }
+.dc-post-row .btn { display: inline-flex; align-items: center; gap: 6px; }
+.dash-card.dc-community { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(120deg, rgba(88, 101, 242, .22), rgba(var(--surf-rgb), .7)); }
+.dc-community h2 { margin: 0 0 4px; font-size: 17px; }
+@media (max-width: 760px) { .dc-grid { grid-template-columns: 1fr; } }
+
 /* ---------- Artist-Bereich (js/dash-artist.js) ---------- */
 .ar-cards { align-items: start; }
 .ar-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }

@@ -148,7 +148,7 @@ export function fmtSince(fromIso: string, now = new Date()) {
   return parts.filter(Boolean).join(" ") || "heute";
 }
 
-async function liveData(conn: Connection) {
+export async function liveData(conn: Connection) {
   const app = await getAppToken();
   const [stream, channel] = await Promise.all([
     helix("streams", app, { query: { user_id: conn.broadcaster_id } }).catch(() => null),

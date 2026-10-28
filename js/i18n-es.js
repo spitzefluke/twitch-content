@@ -240,4 +240,8 @@ export default [
   "¿Puedo mostrar publicidad en el directo?",
   "Sí, como texto en la cinta de tu overlay de OBS. Pon «Publicidad» o «Anuncio» delante: Twitch y la ley exigen la etiqueta. En la extensión de Twitch (panel, componente, overlay) StreamHelp no muestra publicidad: Twitch no permite allí contenido publicitario ni de patrocinio.",
   "Condiciones de uso",
+  "Comunidad",
+  "El Discord de StreamHelp",
+  "Habla con otros streamers, haz preguntas y entérate antes que nadie de las novedades.",
+  "Unirse a Discord",
 ];

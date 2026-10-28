@@ -240,4 +240,8 @@ export default [
   "Posso mostrar publicidade na live?",
   "Sim, como texto na faixa do seu overlay do OBS. Coloque “Publicidade” ou “Anúncio” na frente – a Twitch e a lei exigem a identificação. Na extensão da Twitch (painel, componente, overlay) o StreamHelp não mostra publicidade: a Twitch não permite conteúdo publicitário ou de patrocínio ali.",
   "Termos de uso",
+  "Comunidade",
+  "O Discord do StreamHelp",
+  "Converse com outros streamers, tire dúvidas e saiba antes de todo mundo das novidades.",
+  "Entrar no Discord",
 ];

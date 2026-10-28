@@ -715,6 +715,18 @@ Zwei Chat-Spiele ohne Kanalpunkte und ohne Geld (Kacheln „Zuschauer-Wette“ u
 - **Markenfarbe** (`js/brand-colors.js`): Logo wählen – die Farben liest der Browser selbst heraus, **das Logo wird nirgends hochgeladen**. Im OBS-Fenster → Design neben der Akzentfarbe („Farbe aus deinem Logo“) und im Look-Baukasten. Fürs **öffentliche Profil** gibt es unter „Profil & Zeitplan“ → „Farbe deiner Seite“ eine eigene Farbe (Migration **`supabase/migrations/20261205000000_brand_color.sql`**, Tests: `supabase/tests/brand_color_test.sql`).
 - **Look-Baukasten** (Design-Bibliothek → **＋ Eigener Look**, `js/look-builder.js`): Farbe (auch aus dem Logo), Karten-Design, Kamera-Rahmen, Alert-Design, Chat, Laufband, Bingo-Karte und Szenen-Bewegung wählen – mit Live-Vorschau (Gameplay, Gleich live, Pause). Optional „Alerts in dieser Farbe“ und „Auch für mein öffentliches Profil“. Gespeichert als Overlay-Vorlage mit `look=1` (keine eigene Tabelle); die Looks stehen in der Bibliothek unter **Eigene Looks** (Bearbeiten, Löschen, Installieren) und nicht in der Vorlagen-Liste des OBS-Fensters.
 
+## Discord: Live-Meldung, Rückblick, Ankündigungen
+
+Einmal nötig: Migration **`supabase/migrations/20261207000000_discord.sql`** (nach `…_brand_color.sql`). Tests: `supabase/tests/discord_test.sql` (SQL) und `supabase/functions/_shared/discord_test.ts` (Deno). Gepostet wird von den Edge Functions `twitch-eventsub` und `stream-tools` (werden mit den anderen Functions deployt) – über einen **Webhook**, kein Discord-Bot, keine neuen Secrets.
+
+- **Verbinden** (Dashboard → **Discord**, `js/dash-discord.js`): In Discord am Kanal → Integrationen → Webhooks → Neuer Webhook → Adresse kopieren und einfügen. `stream-tools` (`discord_connect`) prüft die Adresse bei Discord und speichert sie. Die Adresse ist geheim: Sie liegt nur in `core.discord_settings` (kein Zugriff für Browser), das Dashboard sieht nur den Namen des Webhooks. Gepostet wird ausschließlich an `https://discord.com/api/webhooks/…` (Format in Datenbank und Edge Function geprüft).
+- **Live-Benachrichtigung** beim Stream-Start (EventSub `stream.online`): eigener Text mit `{streamer}`, `{title}`, `{game}`, `{link}`, Vorschaubild von Twitch, wahlweise mit `@here`, `@everyone` oder einer Rolle (nur diese Erwähnung pingt – `@everyone` im Stream-Titel nicht). Höchstens einmal je 30 Minuten.
+- **Rückblick** nach dem Stream (`stream.offline`, nachdem die Statistik den Stream abgeschlossen hat): Dauer, Ø/Spitze Zuschauer, Chatter, neue Follower, Abos, Bits.
+- **Ankündigungen:** „Wochenplan posten“ (aus Profil & Zeitplan, Zeiten als Discord-Zeitstempel in der Zeitzone der Lesenden) und „Idee posten“ (Content-Idee mit Termin). Mit „Neue Termine ankündigen“ geht ein neuer oder verschobener Termin einer Content-Idee automatisch raus – je Termin einmal.
+- Status im Dashboard: wann zuletzt gepostet wurde, sonst die letzte Fehlermeldung (z. B. Webhook in Discord gelöscht). **Testnachricht** und **Trennen** dort.
+- **Mod-Rechte:** Bereich „Bot & Chat“. **Demo-Modus:** Einstellungen im Browser, es wird nichts gepostet.
+- **Startseite:** Link zum StreamHelp-Discord (https://discord.gg/XkVG2ZEDG) im Menü, im Kontaktbereich und in der Fußzeile; auch die KI-Hilfe kennt ihn.
+
 ## Artists: Designs hochladen
 
 Artists stellen Streamern eigene Designs zur Verfügung – **kostenlos, mit Credit**. Einmal nötig: Migration **`supabase/migrations/20261203000000_artists.sql`** (nach `…_bet_scratch.sql`). Tests dazu: `supabase/tests/artists_test.sql`. Die Admin-Aktionen laufen über die Edge Function `admin` (wird mit den anderen Functions deployt).

@@ -19,6 +19,10 @@ Content-Ideen (Kacheln im Dashboard, Zuschauer machen über Seite oder Chat mit)
 
 Mods: Der Streamer holt seine Mods von Twitch und gibt sie frei („Für Mods freigeben“). Er kann einzelnen Mods Bereiche sperren (Rechte je Mod) und sieht im Mod-Protokoll, wer was geändert hat. Twitch-Verbindung, Freigabe und Export bleiben beim Streamer.
 
+Discord für Streamer: Dashboard → „Discord“ → in Discord am Kanal Integrationen → Webhooks → Neuer Webhook → Adresse kopieren und einfügen. Dann postet StreamHelp automatisch die Live-Benachrichtigung (Text und @here/@everyone/Rolle wählbar), einen Rückblick nach dem Stream und auf Wunsch neue Termine von Content-Ideen; Wochenplan und Ideen gehen auch per Knopfdruck. Kein Bot nötig.
+
+StreamHelp-Community: Der StreamHelp-Discord ist https://discord.gg/XkVG2ZEDG – für Fragen, Ideen und Neuigkeiten.
+
 Raid-Schutz: Ein Klick pausiert alle Zuschauer-Aktionen; Kanalpunkte gehen automatisch zurück.
 
 Aufnahme-Studio: Videos für YouTube, Shorts und TikTok aufnehmen, auf Wunsch ohne Overlay. Dashboard → „Video aufnehmen“.
