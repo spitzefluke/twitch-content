@@ -491,6 +491,7 @@ function paintHero() {
   $('#lb-kind-wrap').hidden = !alert;
   $('#lb-replay').hidden = !alert;
   $('#lb-compare').checked = lib.compare;
+  $('#lb-compare').closest('label').hidden = lib.scene === 'card';
   $('#lb-split').hidden = !lib.compare;
   $('#lb-full-name').textContent = x.name;
   $('#lb-full-sub').textContent = `${TYPES[x.type].name} · ${THEME_SCENES.find((s) => s.id === lib.scene)?.name ?? ''}`;

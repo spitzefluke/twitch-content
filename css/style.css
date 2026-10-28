@@ -2637,9 +2637,10 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
 .lb-credit small { color: var(--muted); }
 .lb-report { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
 .lb-report:hover, .lb-report:focus-visible { color: var(--danger); border-color: var(--danger); outline: none; }
-.lb-card-prev { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(120% 120% at 30% 20%, #2a1d52, #0b0b14); }
-.lb-card-face { display: grid; gap: 6px; justify-items: center; width: min(34%, 260px); padding: 10px 10px 12px; border-radius: 16px; background: linear-gradient(160deg, #3d2a7a, #1b1240); border: 3px solid #d6b24a; color: #fff; box-shadow: 0 20px 40px -12px rgba(0, 0, 0, .7); }
-.lb-card-face img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 10px; }
+.lb-card-prev { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(120% 120% at 30% 20%, #2a1d52, #0b0b14); }
+.lb-card-face { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: 6px; justify-items: center; height: 86%; aspect-ratio: 5 / 8; padding: 10px 10px 12px; border-radius: 16px; background: linear-gradient(160deg, #3d2a7a, #1b1240); border: 3px solid #d6b24a; color: #fff; box-shadow: 0 20px 40px -12px rgba(0, 0, 0, .7); }
+.lb-card-face img { width: 100%; height: 100%; min-height: 0; object-fit: cover; border-radius: 10px; }
+.lb-card-face b { font-size: clamp(11px, 1.6vw, 16px); }
 .lb-card-face b { text-align: center; overflow-wrap: anywhere; }
 .lb-card-face small { color: #ffd36b; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
 .lb-card-face.is-epic { border-color: #b388ff; }
