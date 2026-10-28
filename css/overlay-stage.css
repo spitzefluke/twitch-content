@@ -145,6 +145,77 @@ html[data-theme="xmas"] { --accent: #e3283e; }
 :where(html[data-theme="xmas"]) .ov-head { background: var(--c, var(--accent)); color: #fff; border: 0; font-weight: 800; }
 :where(html[data-theme="xmas"]) .ov-head .ov-dot { background: #fff; box-shadow: none; }
 
+/* Lo-Fi: warmes Lampenlicht, gedämpftes Lila, weiche Kante */
+html[data-theme="lofi"] { --accent: #f2a65a; }
+:where(html[data-theme="lofi"]) .ov-card {
+  border-radius: 1.2em; border: 1px solid rgba(242, 166, 90, .35);
+  background: radial-gradient(90% 70% at 100% 0%, rgba(242, 166, 90, .16), transparent 70%), linear-gradient(170deg, rgba(43, 35, 80, calc(.9 * var(--bga) + .06)), rgba(29, 24, 48, calc(.9 * var(--bga) + .06)));
+  box-shadow: 0 1.2em 2.4em -1em rgba(10, 6, 20, .7), inset 0 1px 0 rgba(255, 230, 200, .12);
+}
+:where(html[data-theme="lofi"]) .ov-head { background: transparent; color: #f6d9b2; border-bottom-color: rgba(242, 166, 90, .25); letter-spacing: .14em; }
+:where(html[data-theme="lofi"]) .ov-head .ov-dot { background: #f2a65a; box-shadow: 0 0 .6em rgba(242, 166, 90, .8); }
+
+/* Manga: Panel mit Tuscherand, Rasterpunkte, versetzter Schatten */
+html[data-theme="manga"] { --accent: #ff4d6d; }
+:where(html[data-theme="manga"]) .ov-card {
+  border-radius: .2em; border: .18em solid #fff;
+  background: radial-gradient(circle, rgba(255, 77, 109, .22) 0 .12em, transparent .14em) 0 0 / .6em .6em, linear-gradient(180deg, rgba(20, 9, 31, calc(.95 * var(--bga) + .03)), rgba(12, 6, 20, calc(.95 * var(--bga) + .03)));
+  box-shadow: .4em .4em 0 var(--c, var(--accent)), 0 1.2em 2em -1em rgba(0, 0, 0, .7);
+}
+:where(html[data-theme="manga"]) .ov-head { background: #fff; color: #14091f; border: 0; font-style: italic; font-weight: 900; letter-spacing: .08em; }
+:where(html[data-theme="manga"]) .ov-head .ov-dot { background: var(--c, var(--accent)); box-shadow: none; }
+
+/* Cyberpunk: abgeschrägte Ecke, gelber Streifen, Cyan-Kante */
+html[data-theme="cyberpunk"] { --accent: #fcee0a; }
+:where(html[data-theme="cyberpunk"]) .ov-card {
+  border-radius: 0; border: 1px solid rgba(53, 240, 255, .55);
+  clip-path: polygon(0 0, calc(100% - 1.2em) 0, 100% 1.2em, 100% 100%, 1.2em 100%, 0 calc(100% - 1.2em));
+  background: linear-gradient(90deg, var(--c, var(--accent)) 0 .3em, transparent .3em), repeating-linear-gradient(0deg, rgba(53, 240, 255, .05) 0 1px, transparent 1px 3px), linear-gradient(160deg, rgba(18, 10, 38, calc(.94 * var(--bga) + .04)), rgba(8, 6, 22, calc(.94 * var(--bga) + .04)));
+  box-shadow: 0 0 1.2em rgba(255, 61, 240, .3);
+}
+:where(html[data-theme="cyberpunk"]) .ov-head { background: var(--c, var(--accent)); color: #0a0820; border: 0; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
+:where(html[data-theme="cyberpunk"]) .ov-head .ov-dot { background: #0a0820; box-shadow: none; }
+
+/* Valentinstag: Rosé, rund, Herzglanz */
+html[data-theme="valentine"] { --accent: #ff5c8a; }
+:where(html[data-theme="valentine"]) .ov-card {
+  border-radius: 1.4em; border: .12em solid rgba(255, 154, 184, .65);
+  background: radial-gradient(70% 60% at 0% 0%, rgba(255, 154, 184, .22), transparent 70%), linear-gradient(170deg, rgba(122, 26, 62, calc(.92 * var(--bga) + .05)), rgba(42, 6, 20, calc(.92 * var(--bga) + .05)));
+  box-shadow: 0 0 1.4em rgba(255, 92, 138, .35), 0 1.2em 2.4em -1em rgba(0, 0, 0, .6);
+}
+:where(html[data-theme="valentine"]) .ov-head { background: linear-gradient(90deg, #ff5c8a, #ff9ab8); color: #fff; border: 0; font-weight: 800; }
+:where(html[data-theme="valentine"]) .ov-head .ov-dot { background: #fff; box-shadow: none; }
+
+/* Ostern: Frühlingsgrün mit Pastell-Punkten */
+html[data-theme="easter"] { --accent: #9be38b; }
+:where(html[data-theme="easter"]) .ov-card {
+  border-radius: 1.2em; border: .16em dashed #ffe08a;
+  background: radial-gradient(circle, rgba(255, 179, 199, .35) 0 .14em, transparent .16em) 0 0 / 1.4em 1.4em, linear-gradient(170deg, rgba(28, 74, 52, calc(.94 * var(--bga) + .04)), rgba(14, 44, 32, calc(.94 * var(--bga) + .04)));
+  box-shadow: 0 1.2em 2.4em -1em rgba(0, 0, 0, .6);
+}
+:where(html[data-theme="easter"]) .ov-head { background: #ffe08a; color: #2e4a1a; border: 0; font-weight: 800; border-radius: 1em 1em 0 0; }
+:where(html[data-theme="easter"]) .ov-head .ov-dot { background: #ff9ab8; box-shadow: none; }
+
+/* Sommer: Sonnenuntergang, Orange und Pink */
+html[data-theme="summer"] { --accent: #ffb02e; }
+:where(html[data-theme="summer"]) .ov-card {
+  border-radius: 1em; border: 1px solid rgba(255, 176, 46, .5);
+  background: radial-gradient(80% 60% at 100% 100%, rgba(255, 111, 97, .3), transparent 70%), linear-gradient(170deg, rgba(59, 29, 94, calc(.92 * var(--bga) + .05)), rgba(27, 18, 50, calc(.92 * var(--bga) + .05)));
+  box-shadow: 0 .3em 0 rgba(255, 111, 97, .55), 0 1.2em 2.4em -1em rgba(0, 0, 0, .6);
+}
+:where(html[data-theme="summer"]) .ov-head { background: linear-gradient(90deg, #ff6f61, #ffb02e); color: #2a1430; border: 0; font-weight: 800; }
+:where(html[data-theme="summer"]) .ov-head .ov-dot { background: #fff6c2; box-shadow: none; }
+
+/* Silvester: Nachtblau mit Gold und Funken */
+html[data-theme="newyear"] { --accent: #ffd76a; }
+:where(html[data-theme="newyear"]) .ov-card {
+  border-radius: .8em; border: .12em solid #ffd76a;
+  background: radial-gradient(circle, rgba(255, 215, 106, .55) 0 1px, transparent 1.6px) 0 0 / 2.2em 2.2em, radial-gradient(circle, rgba(255, 255, 255, .35) 0 1px, transparent 1.5px) 1.1em 1.1em / 3.1em 3.1em, linear-gradient(170deg, rgba(14, 18, 52, calc(.95 * var(--bga) + .03)), rgba(7, 10, 32, calc(.95 * var(--bga) + .03)));
+  box-shadow: 0 0 1.2em rgba(255, 215, 106, .3), 0 1.2em 2.4em -1em rgba(0, 0, 0, .7);
+}
+:where(html[data-theme="newyear"]) .ov-head { background: transparent; color: #ffd76a; border-bottom-color: rgba(255, 215, 106, .35); letter-spacing: .24em; }
+:where(html[data-theme="newyear"]) .ov-head .ov-dot { background: #ffd76a; box-shadow: 0 0 .6em #ffd76a; }
+
 /* ---------- Szenen-Bildschirm (hinter allen Karten) ---------- */
 .ov-scene {
   position: fixed; inset: 0; z-index: -1; display: grid; place-items: center; overflow: hidden;
@@ -276,7 +347,8 @@ html[data-theme="gamer"] .cf-tag, html[data-theme="retro"] .cf-tag { border-radi
 /* Szenen je Overlay-Design: eigener Hintergrund (assets/bg-<design>.svg), das Perspektiv-Gitter passt nur zu Neon & Co. */
 html[data-theme="space"] .ov-scene, html[data-theme="hud"] .ov-scene, html[data-theme="kawaii"] .ov-scene, html[data-theme="horror"] .ov-scene,
 html[data-theme="forest"] .ov-scene, html[data-theme="fantasy"] .ov-scene, html[data-theme="ocean"] .ov-scene, html[data-theme="spooky"] .ov-scene,
-html[data-theme="xmas"] .ov-scene { background: linear-gradient(180deg, rgba(5, 4, 12, .25), rgba(5, 4, 12, .6)), var(--scene-bg) center / cover; }
+html[data-theme="xmas"] .ov-scene,
+html[data-theme="lofi"] .ov-scene, html[data-theme="manga"] .ov-scene, html[data-theme="cyberpunk"] .ov-scene, html[data-theme="valentine"] .ov-scene, html[data-theme="easter"] .ov-scene, html[data-theme="summer"] .ov-scene, html[data-theme="newyear"] .ov-scene { background: linear-gradient(180deg, rgba(5, 4, 12, .25), rgba(5, 4, 12, .6)), var(--scene-bg) center / cover; }
 html[data-theme="space"] { --scene-bg: url("../assets/bg-space.svg"); }
 html[data-theme="hud"] { --scene-bg: url("../assets/bg-hud.svg"); }
 html[data-theme="kawaii"] { --scene-bg: url("../assets/bg-kawaii.svg"); }
@@ -286,8 +358,15 @@ html[data-theme="fantasy"] { --scene-bg: url("../assets/bg-fantasy.svg"); }
 html[data-theme="ocean"] { --scene-bg: url("../assets/bg-ocean.svg"); }
 html[data-theme="spooky"] { --scene-bg: url("../assets/bg-spooky.svg"); }
 html[data-theme="xmas"] { --scene-bg: url("../assets/bg-xmas.svg"); }
-:is(html[data-theme="space"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-grid { display: none; }
+html[data-theme="lofi"] { --scene-bg: url("../assets/bg-lofi.svg"); }
+html[data-theme="manga"] { --scene-bg: url("../assets/bg-manga.svg"); }
+html[data-theme="cyberpunk"] { --scene-bg: url("../assets/bg-cyberpunk.svg"); }
+html[data-theme="valentine"] { --scene-bg: url("../assets/bg-valentine.svg"); }
+html[data-theme="easter"] { --scene-bg: url("../assets/bg-easter.svg"); }
+html[data-theme="summer"] { --scene-bg: url("../assets/bg-summer.svg"); }
+html[data-theme="newyear"] { --scene-bg: url("../assets/bg-newyear.svg"); }
+:is(html[data-theme="space"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"], html[data-theme="lofi"], html[data-theme="manga"], html[data-theme="cyberpunk"], html[data-theme="valentine"], html[data-theme="easter"], html[data-theme="summer"], html[data-theme="newyear"]) .sc-grid { display: none; }
 /* Eigener Hintergrund: nur ein schwacher Lichtfleck in der Design-Farbe, keine lila-blauen Schleier */
-:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"]) .sc-bg { --l2: none; --l3: none; --a1: .22; }
+:is(html[data-theme="space"], html[data-theme="hud"], html[data-theme="kawaii"], html[data-theme="horror"], html[data-theme="forest"], html[data-theme="fantasy"], html[data-theme="ocean"], html[data-theme="spooky"], html[data-theme="xmas"], html[data-theme="lofi"], html[data-theme="manga"], html[data-theme="cyberpunk"], html[data-theme="valentine"], html[data-theme="easter"], html[data-theme="summer"], html[data-theme="newyear"]) .sc-bg { --l2: none; --l3: none; --a1: .22; }
 html[data-theme="horror"] .sc-title, html[data-theme="fantasy"] .sc-title { font-family: Georgia, "Times New Roman", serif; text-transform: none; }
 html[data-theme="kawaii"] .sc-title { color: #fff; text-shadow: 0 .06em 0 #ff8fc8, 0 .12em .3em rgba(106, 35, 80, .6); }

@@ -35,20 +35,27 @@ const MOOD_ICON = {
 const OVERLAY_MOOD = {
   standard: 'minimal', neon: 'gaming', glass: 'elegant', gamer: 'gaming', retro: 'retro', gold: 'elegant', candy: 'fun', minimal: 'minimal',
   space: 'scifi', hud: 'scifi', kawaii: 'fun', horror: 'fantasy', forest: 'nature', fantasy: 'fantasy', ocean: 'nature', spooky: 'seasonal', xmas: 'seasonal',
+  lofi: 'cozy', manga: 'fun', cyberpunk: 'scifi', valentine: 'seasonal', easter: 'seasonal', summer: 'seasonal', newyear: 'seasonal',
 };
 const OVERLAY_COLOR = {
   standard: '#9146ff', neon: '#ff4fd8', glass: '#cfb3ff', gamer: '#ff2e4d', retro: '#3ddc84', gold: '#e8c46a', candy: '#ff7ac8', minimal: '#ffb81c',
   space: '#8ea2ff', hud: '#35f0ff', kawaii: '#ff8fc8', horror: '#d1162f', forest: '#79c95a', fantasy: '#d8a64a', ocean: '#2fd3c6', spooky: '#ff8a1c', xmas: '#e3283e',
+  lofi: '#f2a65a', manga: '#ff4d6d', cyberpunk: '#fcee0a', valentine: '#ff5c8a', easter: '#9be38b', summer: '#ffb02e', newyear: '#ffd76a',
 };
-const OVERLAY_BG = { space: 'bg-space', hud: 'bg-hud', kawaii: 'bg-kawaii', horror: 'bg-horror', forest: 'bg-forest', fantasy: 'bg-fantasy', ocean: 'bg-ocean', spooky: 'bg-spooky', xmas: 'bg-xmas' };
+const OVERLAY_BG = { space: 'bg-space', hud: 'bg-hud', kawaii: 'bg-kawaii', horror: 'bg-horror', forest: 'bg-forest', fantasy: 'bg-fantasy', ocean: 'bg-ocean', spooky: 'bg-spooky', xmas: 'bg-xmas',
+  lofi: 'bg-lofi', manga: 'bg-manga', cyberpunk: 'bg-cyberpunk', valentine: 'bg-valentine', easter: 'bg-easter', summer: 'bg-summer', newyear: 'bg-newyear' };
 const ALERT_MOOD = {
   party: 'fun', star: 'cozy', neon: 'gaming', arcade: 'retro', comic: 'fun', royal: 'elegant', hype: 'gaming', glitch: 'gaming', fire: 'gaming',
   diamond: 'elegant', gift: 'fun', ice: 'cozy', champ: 'gaming', clean: 'minimal', cosmos: 'scifi', mission: 'scifi', kawaii: 'fun',
   bloodmoon: 'fantasy', forest: 'nature', quest: 'fantasy', deepsea: 'nature', halloween: 'seasonal', xmas: 'seasonal',
+  lofi: 'cozy', manga: 'fun', cyberpunk: 'scifi', valentine: 'seasonal', easter: 'seasonal', summer: 'seasonal', newyear: 'seasonal',
 };
 const HOT = new Set(['look:neon-night', 'look:pixel', 'look:cozy', 'look:party', 'look:halloween', 'overlay:neon', 'overlay:glass', 'alert:party', 'alert:hype', 'alert:neon']);
 const NEW = new Set(['look:kosmos', 'look:mission', 'look:kawaii', 'look:bloodmoon', 'look:heroes', 'overlay:space', 'overlay:hud', 'overlay:kawaii',
-  'alert:cosmos', 'alert:mission', 'alert:bloodmoon', 'alert:quest']);
+  'alert:cosmos', 'alert:mission', 'alert:bloodmoon', 'alert:quest',
+  'look:lofi', 'look:manga', 'look:neoncity', 'look:valentine', 'look:easter', 'look:summer', 'look:newyear',
+  'overlay:lofi', 'overlay:manga', 'overlay:cyberpunk', 'overlay:valentine', 'overlay:easter', 'overlay:summer', 'overlay:newyear',
+  'alert:lofi', 'alert:manga', 'alert:cyberpunk', 'alert:valentine', 'alert:easter', 'alert:summer', 'alert:newyear']);
 const NAMES = {
   cfstyle: { glow: 'Leuchten', clean: 'Schlicht', corners: 'Ecken', neon: 'Neon' },
   tstyle: { bar: 'Laufband', neon: 'Neon', board: 'LED-Anzeige' },

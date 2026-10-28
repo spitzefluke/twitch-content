@@ -172,4 +172,46 @@ export const THEME_PACKS = [
     overlay: { otheme: 'xmas', cfstyle: 'clean', alook: 'classic', tstyle: 'bar', chstyle: 'card', bstyle: 'classic' },
     alert: 'xmas',
   },
+  {
+    id: 'lofi', name: 'Lo-Fi & Chill', cat: 'cozy', color: '#f2a65a', bg: 'bg-lofi',
+    desc: 'Regen am Fenster, Lampenlicht, Schallplatte: gedämpfte Karten in Lila und Bernstein – für ruhige Abende und Just Chatting.',
+    overlay: { otheme: 'lofi', cfstyle: 'clean', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'paper' },
+    alert: 'lofi',
+  },
+  {
+    id: 'manga', name: 'Manga-Panel', cat: 'fun', color: '#ff4d6d', bg: 'bg-manga',
+    desc: 'Wie ein Comicheft aus Japan: Panel-Rahmen mit Tuscheschatten, Rasterpunkte, Speedlines und Kirschblüten-Alerts – eigene Entwürfe, keine fremden Figuren.',
+    overlay: { otheme: 'manga', cfstyle: 'corners', alook: 'bubble', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic' },
+    alert: 'manga',
+  },
+  {
+    id: 'neoncity', name: 'Cyberpunk-City', cat: 'scifi', color: '#fcee0a', bg: 'bg-cyberpunk',
+    desc: 'Neonstadt bei Regen: Gelb und Cyan, abgeschrägte Ecken, Glitch-Laufband und ein Chip, der bei jedem Alert aufleuchtet.',
+    overlay: { otheme: 'cyberpunk', cfstyle: 'neon', alook: 'glitch', tstyle: 'board', chstyle: 'clean', bstyle: 'neon' },
+    alert: 'cyberpunk',
+  },
+  {
+    id: 'valentine', name: 'Valentinstag', cat: 'seasonal', color: '#ff5c8a', bg: 'bg-valentine',
+    desc: 'Für den Februar: Rosé-Karten mit Herzglanz, schwebende Herzen in der Szene und ein Liebesbrief als Alert.',
+    overlay: { otheme: 'valentine', cfstyle: 'glow', alook: 'classic', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic' },
+    alert: 'valentine',
+  },
+  {
+    id: 'easter', name: 'Osterwiese', cat: 'seasonal', color: '#9be38b', bg: 'bg-easter',
+    desc: 'Für den Frühling: grüne Karten mit Pastell-Punkten, bunte Eier auf der Wiese und ein wackelndes Osterei als Alert.',
+    overlay: { otheme: 'easter', cfstyle: 'clean', alook: 'bubble', tstyle: 'bar', chstyle: 'bubble', bstyle: 'paper' },
+    alert: 'easter',
+  },
+  {
+    id: 'summer', name: 'Sommerabend', cat: 'seasonal', color: '#ffb02e', bg: 'bg-summer',
+    desc: 'Sonnenuntergang am Meer: Karten in Orange und Pink, Palmen in der Szene und eine Sonne mit Sonnenbrille als Alert.',
+    overlay: { otheme: 'summer', cfstyle: 'glow', alook: 'banner', tstyle: 'bar', chstyle: 'card', bstyle: 'classic' },
+    alert: 'summer',
+  },
+  {
+    id: 'newyear', name: 'Silvester', cat: 'seasonal', color: '#ffd76a', bg: 'bg-newyear',
+    desc: 'Für den Jahreswechsel: Nachtblau mit Gold und Funken, Feuerwerk über der Stadt und ein Feuerwerk-Alert.',
+    overlay: { otheme: 'newyear', cfstyle: 'corners', alook: 'gold', tstyle: 'board', chstyle: 'card', bstyle: 'classic' },
+    alert: 'newyear',
+  },
 ];
