@@ -1874,6 +1874,13 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .obs-theme-thumb[data-theme="ocean"] { --c: #2fd3c6; border-color: rgba(120, 240, 230, .4); border-radius: 16px; background: radial-gradient(60% 50% at 100% 100%, rgba(47, 211, 198, .35), transparent 70%), linear-gradient(170deg, #062e42, #031222); }
 .obs-theme-thumb[data-theme="spooky"] { --c: #ff8a1c; border: 2px solid #ff8a1c; border-radius: 10px; background: linear-gradient(160deg, #2a1038, #100616); box-shadow: inset 0 -4px 0 rgba(140, 60, 200, .5); }
 .obs-theme-thumb[data-theme="xmas"] { --c: #e3283e; border: 2px solid #fff; border-radius: 12px; background: radial-gradient(circle, rgba(255, 255, 255, .6) 0 1px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(170deg, #14462c, #082216); box-shadow: 0 0 0 2px #e3283e; }
+.obs-theme-thumb[data-theme="lofi"] { --c: #f2a65a; border: 1px solid rgba(242, 166, 90, .45); border-radius: 12px; background: radial-gradient(90% 70% at 100% 0%, rgba(242, 166, 90, .25), transparent 70%), linear-gradient(170deg, #2b2350, #1d1830); }
+.obs-theme-thumb[data-theme="manga"] { --c: #ff4d6d; border: 3px solid #fff; border-radius: 3px; background: radial-gradient(circle, rgba(255, 77, 109, .35) 0 1px, transparent 1.4px) 0 0 / 6px 6px, #14091f; box-shadow: 4px 4px 0 #ff4d6d; }
+.obs-theme-thumb[data-theme="cyberpunk"] { --c: #fcee0a; border: 1px solid #35f0ff; border-radius: 0; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); background: linear-gradient(90deg, #fcee0a 0 4px, transparent 4px), linear-gradient(160deg, #120a26, #080616); }
+.obs-theme-thumb[data-theme="valentine"] { --c: #ff5c8a; border: 2px solid #ff9ab8; border-radius: 16px; background: linear-gradient(170deg, #7a1a3e, #2a0614); box-shadow: 0 0 10px rgba(255, 92, 138, .45); }
+.obs-theme-thumb[data-theme="easter"] { --c: #9be38b; border: 2px dashed #ffe08a; border-radius: 14px; background: radial-gradient(circle, rgba(255, 179, 199, .45) 0 1.4px, transparent 1.6px) 0 0 / 12px 12px, linear-gradient(170deg, #1c4a34, #0e2c20); }
+.obs-theme-thumb[data-theme="summer"] { --c: #ffb02e; border: 1px solid rgba(255, 176, 46, .6); border-radius: 12px; background: radial-gradient(80% 60% at 100% 100%, rgba(255, 111, 97, .45), transparent 70%), linear-gradient(170deg, #3b1d5e, #1b1232); box-shadow: inset 0 -3px 0 #ff6f61; }
+.obs-theme-thumb[data-theme="newyear"] { --c: #ffd76a; border: 2px solid #ffd76a; border-radius: 10px; background: radial-gradient(circle, rgba(255, 215, 106, .7) 0 1px, transparent 1.6px) 0 0 / 11px 11px, linear-gradient(170deg, #0e1234, #070a20); }
 .obs-lbitems { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; font-size: 13px; }
 .obs-scene-links { display: flex; flex-wrap: wrap; gap: 6px; }
 .obs-row input[type="time"], .obs-row input[type="date"], .obs-row input[type="number"] {
@@ -2069,7 +2076,7 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .th-t-bar { position: absolute; left: 6%; bottom: 10%; display: flex; gap: 4px; padding: 5px 7px; border-radius: 6px; background: rgba(10, 8, 20, .8); border: 1px solid color-mix(in srgb, var(--tc) 60%, transparent); }
 .th-t-bar i { width: 26px; height: 5px; border-radius: 3px; background: var(--tc); }
 .th-t-bar i + i { width: 18px; background: rgba(255, 255, 255, .7); }
-.th-thumb[data-otheme="gamer"] .th-t-bar, .th-thumb[data-otheme="retro"] .th-t-bar { border-radius: 0; }
+.th-thumb[data-otheme="gamer"] .th-t-bar, .th-thumb[data-otheme="retro"] .th-t-bar, .th-thumb[data-otheme="cyberpunk"] .th-t-bar, .th-thumb[data-otheme="manga"] .th-t-bar { border-radius: 0; }
 .th-thumb[data-otheme="candy"] .th-t-bar, .th-thumb[data-otheme="glass"] .th-t-bar { border-radius: 12px; background: rgba(255, 255, 255, .14); }
 .th-t-alert { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); display: grid; place-items: center; width: 22%; aspect-ratio: 1; border-radius: 10px; background: rgba(10, 8, 20, .7); border: 1px solid color-mix(in srgb, var(--tc) 70%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--tc) 45%, transparent); }
 .th-t-alert img { width: 70%; height: 70%; }

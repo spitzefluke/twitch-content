@@ -1,5 +1,6 @@
 // OBS-Overlay: Design fürs ganze Overlay und Stream-Grafiken rundherum.
-//   otheme=standard|neon|glass|gamer|retro|gold|candy|minimal|space|hud|kawaii|horror|forest|fantasy|ocean|spooky|xmas
+//   otheme=standard|neon|glass|gamer|retro|gold|candy|minimal|space|hud|kawaii|horror|forest|fantasy|ocean|spooky|xmas|
+//          lofi|manga|cyberpunk|valentine|easter|summer|newyear
 //                              Design aller Karten (OVERLAY_THEMES); eigene Szenen-Hintergründe in assets/bg-<design>.svg
 //   scene=start|brb|end|chat   Szenen-Bildschirm über das ganze Bild (liegt hinter allen Karten):
 //                              Start mit Countdown, Pause („Bin gleich zurück“), Ende mit Dank,
@@ -35,6 +36,13 @@ export const OVERLAY_THEMES = [
   { id: 'ocean', name: 'Ozean', desc: 'Türkis-Verlauf wie unter Wasser' },
   { id: 'spooky', name: 'Halloween', desc: 'Kürbis-Orange und Lila' },
   { id: 'xmas', name: 'Weihnachten', desc: 'Tannengrün, Rot und Schnee' },
+  { id: 'lofi', name: 'Lo-Fi', desc: 'Warmes Lampenlicht, gedämpftes Lila, weich' },
+  { id: 'manga', name: 'Manga', desc: 'Panel-Rahmen, Rasterpunkte, Tuscheschatten' },
+  { id: 'cyberpunk', name: 'Cyberpunk', desc: 'Gelb-Cyan, abgeschrägte Ecke, Neonkante' },
+  { id: 'valentine', name: 'Valentinstag', desc: 'Rosé, rund, Herzglanz' },
+  { id: 'easter', name: 'Ostern', desc: 'Frühlingsgrün mit Pastell-Punkten' },
+  { id: 'summer', name: 'Sommer', desc: 'Sonnenuntergang, Orange und Pink' },
+  { id: 'newyear', name: 'Silvester', desc: 'Nachtblau mit Gold und Funken' },
 ];
 export const SCENES = {
   start: { tag: '● Gleich live', title: 'Gleich geht’s los!', sub: (n) => `${n} startet in Kürze` },

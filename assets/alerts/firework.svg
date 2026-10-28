@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>.b{animation:b 1.6s ease-out infinite;transform-origin:100px 90px}.c{animation:b 1.6s .5s ease-out infinite;transform-origin:150px 60px}@keyframes b{0%{transform:scale(.2);opacity:0}20%{opacity:1}100%{transform:scale(1.15);opacity:0}}</style>
+<g class="b" stroke="#ffd76a" stroke-width="6" stroke-linecap="round"><path d="M100 60V30M100 120v30M70 90H40M130 90h30M79 69 58 48M121 111l21 21M121 69l21-21M79 111l-21 21"/></g>
+<g class="b" fill="#ff5c8a"><circle cx="100" cy="22" r="6"/><circle cx="100" cy="158" r="6"/><circle cx="32" cy="90" r="6"/><circle cx="168" cy="90" r="6"/></g>
+<g class="c" stroke="#35f0ff" stroke-width="4" stroke-linecap="round"><path d="M150 46V34M150 74v12M136 60h-12M164 60h12"/></g>
+<circle cx="100" cy="90" r="10" fill="#fff6c2"/><path d="M100 196v-90" stroke="#ffd76a" stroke-width="3" stroke-dasharray="4 8" opacity=".6"/></svg>

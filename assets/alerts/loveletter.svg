@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><style>.h{animation:h 1.1s ease-in-out infinite;transform-origin:100px 96px}.e{animation:e 2.4s ease-in-out infinite;transform-origin:100px 140px}@keyframes h{30%{transform:scale(1.18)}60%{transform:scale(.96)}}@keyframes e{50%{transform:rotate(-4deg) translateY(-4px)}}</style>
+<g class="e"><rect x="34" y="70" width="132" height="92" rx="10" fill="#fff4f7" stroke="#7a1a3e" stroke-width="5"/><path d="M38 76l62 46 62-46" fill="none" stroke="#7a1a3e" stroke-width="5" stroke-linejoin="round"/></g>
+<path class="h" d="M80 72c0-14 20-16 20-2 0-14 20-12 20 2 0 14-20 24-20 30 0-6-20-16-20-30z" fill="#ff5c8a" stroke="#7a1a3e" stroke-width="4" stroke-linejoin="round"/></svg>

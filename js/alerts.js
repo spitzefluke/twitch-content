@@ -145,6 +145,9 @@ export const ALERT_MEDIA = [
   { id: 'planet', name: 'Planet' }, { id: 'visor', name: 'Helm' }, { id: 'kitty', name: 'Kätzchen' },
   { id: 'skull', name: 'Totenkopf' }, { id: 'leaf', name: 'Blatt' }, { id: 'sword', name: 'Schwert' },
   { id: 'fish', name: 'Fisch' }, { id: 'pumpkin', name: 'Kürbis' }, { id: 'xmastree', name: 'Tannenbaum' },
+  { id: 'vinyl', name: 'Schallplatte' }, { id: 'sakura', name: 'Kirschblüte' }, { id: 'chip', name: 'Chip' },
+  { id: 'loveletter', name: 'Liebesbrief' }, { id: 'egg', name: 'Osterei' }, { id: 'sun', name: 'Sonne' },
+  { id: 'firework', name: 'Feuerwerk' },
 ];
 export const builtinMediaUrl = (id) => new URL(`../assets/alerts/${id}.svg`, import.meta.url).href;
 
@@ -190,6 +193,13 @@ export const ALERT_PRESETS = [
   { id: 'deepsea', name: 'Tiefsee', design: { look: 'glass', media: 'b:fish', layout: 'side', anim: 'wave', enter: 'slide', color: '#2fd3c6' } },
   { id: 'halloween', name: 'Halloween', design: { look: 'banner', media: 'b:pumpkin', layout: 'side', anim: 'rubber', enter: 'drop', color: '#ff8a1c' } },
   { id: 'xmas', name: 'Weihnachten', design: { look: 'classic', media: 'b:xmastree', layout: 'top', anim: 'bounce', enter: 'drop', color: '#e3283e' } },
+  { id: 'lofi', name: 'Lo-Fi', design: { look: 'glass', media: 'b:vinyl', layout: 'side', anim: 'wave', enter: 'fade', color: '#f2a65a' } },
+  { id: 'manga', name: 'Manga', design: { look: 'bubble', media: 'b:sakura', layout: 'top', anim: 'shake', enter: 'pop', color: '#ff4d6d' } },
+  { id: 'cyberpunk', name: 'Cyberpunk', design: { look: 'glitch', media: 'b:chip', layout: 'side', anim: 'type', enter: 'slide', color: '#fcee0a' } },
+  { id: 'valentine', name: 'Valentinstag', design: { look: 'classic', media: 'b:loveletter', layout: 'top', anim: 'bounce', enter: 'zoom', color: '#ff5c8a' } },
+  { id: 'easter', name: 'Ostern', design: { look: 'bubble', media: 'b:egg', layout: 'top', anim: 'bounce', enter: 'drop', color: '#9be38b' } },
+  { id: 'summer', name: 'Sommer', design: { look: 'banner', media: 'b:sun', layout: 'side', anim: 'wave', enter: 'slide', color: '#ffb02e' } },
+  { id: 'newyear', name: 'Silvester', design: { look: 'gold', media: 'b:firework', layout: 'top', anim: 'glow', enter: 'zoom', color: '#ffd76a' } },
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;
