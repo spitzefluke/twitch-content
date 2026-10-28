@@ -289,13 +289,23 @@ export async function installAlertPreset(id) {
 // Alert-Grafik eines Artists (Design-Bibliothek): als Bild für alle Alert-Arten einstellen.
 // save=false: nur in den Designer übernehmen (Seite „Alerts“ zeigt es, „Speichern“ macht es fest).
 // Liefert wie installAlertPreset 'ok' | 'dirty' | 'locked' | 'missing' | 'error'.
-export async function useAlertMedia(value, { save: store = false } = {}) {
+export async function useAlertMedia(value, opts = {}) {
   if (!/^a:/.test(value ?? '') || normalizeDesign({ media: value }).media !== value) return 'missing';
+  return patchAllAlerts({ media: value }, opts);
+}
+
+// Markenfarbe aus dem Look-Baukasten: Farbe für alle Alert-Arten (speichert gleich)
+export async function useAlertColor(hex, opts = { save: true }) {
+  if (normalizeDesign({ color: hex }).color !== hex) return 'missing';
+  return patchAllAlerts({ color: hex }, opts);
+}
+
+async function patchAllAlerts(patch, { save: store = false } = {}) {
   if (store && ad.dirty && ad.loaded) return 'dirty';
   await openAlertDesigner();
   if (!ad.loaded) return 'missing';
   if (!ad.canEdit()) return 'locked';
-  for (const k of ALERT_KINDS) (ad.cfg.kinds[k.kind] ??= normalizeDesign(null)).media = value;
+  for (const k of ALERT_KINDS) Object.assign((ad.cfg.kinds[k.kind] ??= normalizeDesign(null)), patch);
   ad.varId = null;
   changed();
   paint({ play: !store });

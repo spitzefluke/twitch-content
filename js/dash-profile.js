@@ -45,7 +45,7 @@ export async function renderProfile(slot, deps) {
 const takeSlots = () => { slots = (data.slots ?? []).map((s) => ({ ...s })); };
 function takeProfile() {
   links = (data.links ?? []).map((l) => ({ ...l }));
-  draft = { is_public: !!data.is_public, bio: data.bio ?? '', tz: data.tz, away_until: data.away_until ?? '', away_note: data.away_note ?? '' };
+  draft = { is_public: !!data.is_public, bio: data.bio ?? '', tz: data.tz, away_until: data.away_until ?? '', away_note: data.away_note ?? '', accent: data.accent ?? '' };
 }
 
 function paint(slot) {
@@ -121,6 +121,11 @@ function profileCard(slot) {
   awayUntil.addEventListener('change', () => { draft.away_until = awayUntil.value; });
   const awayNote = h('input', { type: 'text', maxlength: '120', value: draft.away_note, placeholder: 'z. B. Urlaub – ab Montag wieder live' });
   awayNote.addEventListener('input', () => { draft.away_note = awayNote.value; });
+  // Markenfarbe der Seite (auch aus dem Look-Baukasten); leer = StreamHelp-Lila
+  const ownColor = h('input', { type: 'checkbox', checked: !!draft.accent });
+  const color = h('input', { type: 'color', value: draft.accent || '#9146ff', disabled: !draft.accent, 'aria-label': 'Farbe deiner Seite' });
+  ownColor.addEventListener('change', () => { color.disabled = !ownColor.checked; draft.accent = ownColor.checked ? color.value : ''; });
+  color.addEventListener('input', () => { draft.accent = color.value; });
   const linkRows = h('div', { class: 'pf-links' }, ...links.map((l, i) => linkRow(l, i, slot)));
   const addLink = h('button', { type: 'button', class: 'btn btn--ghost btn--sm', disabled: links.length >= MAX_LINKS }, icon('ph-plus'), 'Link hinzufügen');
   addLink.addEventListener('click', () => {
@@ -132,11 +137,17 @@ function profileCard(slot) {
   save.addEventListener('click', () => {
     const bad = links.find((l) => l.url && l.url !== 'https://' && !/^https:\/\/\S{3,}$/.test(l.url.trim()));
     if (bad) { ctx.toast('Links müssen mit https:// anfangen.', 'error'); return; }
-    run(slot, () => ctx.api.profileSave({
-      bio: draft.bio, tz: draft.tz, away_until: draft.away_until || null, away_note: draft.away_note,
-      links: links.filter((l) => l.url && l.url !== 'https://').map((l) => ({ label: l.label.trim() || socialFor(l.url)?.name || '', url: l.url.trim() })),
-      is_public: data.can_publish ? draft.is_public : null,
-    }), 'Profil gespeichert.', takeProfile);
+    const accent = draft.accent;
+    run(slot, async () => {
+      const saved = await ctx.api.profileSave({
+        bio: draft.bio, tz: draft.tz, away_until: draft.away_until || null, away_note: draft.away_note,
+        links: links.filter((l) => l.url && l.url !== 'https://').map((l) => ({ label: l.label.trim() || socialFor(l.url)?.name || '', url: l.url.trim() })),
+        is_public: data.can_publish ? draft.is_public : null,
+      });
+      // Farbe nur, wenn sie sich geändert hat (eigene Funktion, Migration …_brand_color.sql)
+      if ((accent || null) !== (data.accent || null)) saved.accent = await ctx.api.profileAccentSave(accent || null);
+      return saved;
+    }, 'Profil gespeichert.', takeProfile);
   });
   const copy = h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, icon('ph-copy'), 'Link kopieren');
   copy.addEventListener('click', async () => {
@@ -155,7 +166,9 @@ function profileCard(slot) {
     h('div', { class: 'pf-grid' },
       h('label', { class: 'field' }, h('span', {}, 'Zeitzone deines Plans'), tz),
       h('label', { class: 'field' }, h('span', {}, 'Pause bis (Termine fallen bis dahin weg)'), awayUntil),
-      h('label', { class: 'field pf-wide' }, h('span', {}, 'Hinweis zur Pause'), awayNote)),
+      h('label', { class: 'field pf-wide' }, h('span', {}, 'Hinweis zur Pause'), awayNote),
+      h('div', { class: 'field pf-color' }, h('span', {}, 'Farbe deiner Seite'),
+        h('div', { class: 'pf-color-row' }, h('label', { class: 'toggle' }, ownColor, h('span', { class: 'toggle-ui', 'aria-hidden': 'true' }), 'Eigene Farbe'), color))),
     h('div', { class: 'dash-actions' }, save),
     h('p', { class: 'form-hint' }, 'Öffentlich sind nur: Name und Bild von Twitch, ob du live bist, dieser Text, die Links und dein Plan. Keine E-Mail, keine Zahlen.'));
 }

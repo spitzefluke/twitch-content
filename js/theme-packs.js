@@ -49,7 +49,7 @@ export const THEME_PACKS = [
   {
     id: 'inferno', name: 'Inferno', cat: 'gaming', color: '#ff5a2e', bg: 'bg-challenge',
     desc: 'Für Sweat-Runden: Gamer-Karten, glühender Rahmen und Feuer-Alerts, die von der Seite einfahren.',
-    overlay: { otheme: 'gamer', cfstyle: 'glow', alook: 'banner', tstyle: 'bar', chstyle: 'card', bstyle: 'classic' },
+    overlay: { otheme: 'gamer', cfstyle: 'glow', alook: 'banner', tstyle: 'bar', chstyle: 'card', bstyle: 'classic', scmove: 'sparks' },
     alert: 'fire',
   },
   {
@@ -85,13 +85,13 @@ export const THEME_PACKS = [
   {
     id: 'cozy', name: 'Gemütlicher Abend', cat: 'cozy', color: '#ffd23f', bg: 'bg-pet',
     desc: 'Tee, Decke, Chat: warme Standard-Karten, Sprechblasen-Chat und Sternchen-Alerts.',
-    overlay: { otheme: 'standard', cfstyle: 'clean', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'paper' },
+    overlay: { otheme: 'standard', cfstyle: 'clean', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'paper', scmove: 'lights' },
     alert: 'star',
   },
   {
     id: 'frost', name: 'Frostbite', cat: 'cozy', color: '#7fd6ff', bg: 'bg-ghost',
     desc: 'Kalt und klar: Glas-Karten, hellblauer Rahmen und Schneeflocken-Alerts, die sanft einblenden.',
-    overlay: { otheme: 'glass', cfstyle: 'glow', alook: 'minimal', tstyle: 'bar', chstyle: 'clean', bstyle: 'paper' },
+    overlay: { otheme: 'glass', cfstyle: 'glow', alook: 'minimal', tstyle: 'bar', chstyle: 'clean', bstyle: 'paper', scmove: 'aurora' },
     alert: 'ice',
   },
   {
@@ -121,7 +121,7 @@ export const THEME_PACKS = [
   {
     id: 'kosmos', name: 'Kosmos', cat: 'scifi', color: '#8ea2ff', bg: 'bg-space',
     desc: 'Unterwegs zwischen den Sternen: nachtblaue Karten mit Sternenstaub, Planeten-Alerts und eine Galaxie als Szene.',
-    overlay: { otheme: 'space', cfstyle: 'glow', alook: 'glass', tstyle: 'neon', chstyle: 'card', bstyle: 'neon' },
+    overlay: { otheme: 'space', cfstyle: 'glow', alook: 'glass', tstyle: 'neon', chstyle: 'card', bstyle: 'neon', scmove: 'stars' },
     alert: 'cosmos',
   },
   {
@@ -157,7 +157,7 @@ export const THEME_PACKS = [
   {
     id: 'deepsea', name: 'Tiefsee', cat: 'nature', color: '#2fd3c6', bg: 'bg-ocean',
     desc: 'Abtauchen: türkise Karten, Lichtstrahlen unter Wasser, Luftblasen und ein Fisch, der zu jedem Abo schwimmt.',
-    overlay: { otheme: 'ocean', cfstyle: 'glow', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic' },
+    overlay: { otheme: 'ocean', cfstyle: 'glow', alook: 'glass', tstyle: 'bar', chstyle: 'bubble', bstyle: 'classic', scmove: 'waves' },
     alert: 'deepsea',
   },
   {

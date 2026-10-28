@@ -242,6 +242,8 @@ async function createSupabaseApi() {
     },
     async scheduleSave(slots) { return unwrap(await sb.rpc('schedule_save', { p_slots: slots })); },
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
+    // Markenfarbe fürs öffentliche Profil (Migration …_brand_color.sql); null = Standard
+    async profileAccentSave(accent) { return unwrap(await sb.rpc('profile_accent_save', { p_accent: accent || null })); },
     // Artists: Bewerbung, Uploads, Design-Bibliothek (Migration …_artists.sql)
     async artistMe() { return unwrap(await sb.rpc('artist_me')); },
     async artistApply(p) { return unwrap(await sb.rpc('artist_apply', { p_name: p.name, p_slug: p.slug, p_bio: p.bio, p_links: p.links })); },
@@ -1071,7 +1073,7 @@ function createLocalApi() {
     return {
       login: 'streamhelp', display_name: 'StreamHelp', can_publish: true,
       is_public: !!p.is_public, bio: p.bio ?? '', links: p.links ?? [], tz: p.tz ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
-      away_until: awayUntil, away_note: p.away_note ?? '',
+      away_until: awayUntil, away_note: p.away_note ?? '', accent: p.accent ?? null,
       slots: [...slots].sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start)), upcoming: upcoming.slice(0, 8),
     };
   }
@@ -1378,6 +1380,13 @@ function createLocalApi() {
       });
       return demoProfile();
     },
+    async profileAccentSave(accent) {
+      await requireAdmin();
+      const v = accent ? String(accent).trim().toLowerCase() : null;
+      if (v && !/^#[0-9a-f]{6}$/.test(v)) throw new Error('Bitte eine Farbe wie #9146ff.');
+      store.set('profile', { ...store.get('profile', {}), accent: v });
+      return v;
+    },
     async scheduleSave(slots) {
       await requireAdmin();
       if (!Array.isArray(slots) || slots.length > 21) throw new Error('Höchstens 21 Termine pro Woche.');
@@ -1394,7 +1403,7 @@ function createLocalApi() {
       const p = demoProfile();
       if (!p.is_public) return null;
       const away = p.away_until && p.away_until >= new Date().toISOString().slice(0, 10);
-      return { login: p.login, display_name: p.display_name, avatar_url: '', live: false, category: '', bio: p.bio, links: p.links, tz: p.tz,
+      return { login: p.login, display_name: p.display_name, avatar_url: '', live: false, category: '', bio: p.bio, links: p.links, tz: p.tz, accent: p.accent,
         away_until: away ? p.away_until : null, away_note: away ? p.away_note : '', slots: p.slots, upcoming: p.upcoming };
     },
     // Demo: Artist-Bewerbung und Uploads in diesem Browser; freischalten im Admin-Bereich (admin.html, Passwort „demo“)

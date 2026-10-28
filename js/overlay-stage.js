@@ -8,6 +8,7 @@
 //   sctitle=… / scsub=…        eigene Überschrift und Zeile darunter
 //   sctime=20:15               Countdown bis zu dieser Uhrzeit (Start und Pause)
 //   scbg=<Artist-Datei>        eigener Hintergrund aus der Design-Bibliothek (Bucket artist-assets, js/artist-files.js)
+//   scmove=lights|stars|waves|sparks|aurora   bewegter Hintergrund (ruhig, nur transform/opacity – schont OBS)
 //   camframe=1                 Rahmen um die Kamera (Bereich aus cam=…)      cfstyle=glow|clean|corners|neon
 //   cflabel=0                  ohne Namensschild am Kamera-Rahmen
 //   labels=bl|…                Info-Leiste: letzter Follower, letztes Abo, letzte Bits, Zuschauer, Laufzeit
@@ -116,6 +117,40 @@ function demoData() {
   };
 }
 
+// ---------- Bewegte Szenen ----------
+// Ruhige Animationen hinter dem Text der Szenen-Bildschirme. Es bewegt sich nur transform und opacity
+// (Grafikkarte), keine Filter und kein Neuzeichnen pro Bild. Ohne Bewegung (Standard): wie bisher.
+export const SCENE_MOTIONS = [
+  { id: '', name: 'Ohne Bewegung' },
+  { id: 'lights', name: 'Lichter', desc: 'Weiche Lichtflecken ziehen langsam vorbei' },
+  { id: 'stars', name: 'Sterne', desc: 'Funkelnder Sternenhimmel, der ganz leicht treibt' },
+  { id: 'waves', name: 'Wellen', desc: 'Drei Wellen in der Akzentfarbe am unteren Rand' },
+  { id: 'sparks', name: 'Funken', desc: 'Kleine Funken steigen langsam auf' },
+  { id: 'aurora', name: 'Polarlicht', desc: 'Breite Farbbänder wogen am Himmel' },
+];
+export function sceneMotion(id) {
+  const motion = SCENE_MOTIONS.some((m) => m.id && m.id === id) ? id : '';
+  if (!motion) return null;
+  const el = document.createElement('div');
+  el.className = 'sc-motion';
+  el.dataset.motion = motion;
+  el.setAttribute('aria-hidden', 'true');
+  const count = { lights: 3, stars: 2, waves: 3, sparks: 26, aurora: 2 }[motion];
+  for (let i = 0; i < count; i++) {
+    const span = document.createElement('span');
+    span.style.setProperty('--i', String(i));
+    if (motion === 'sparks') {
+      span.style.setProperty('--x', `${(Math.random() * 100).toFixed(1)}%`);
+      span.style.setProperty('--s', `${(4 + Math.random() * 7).toFixed(1)}px`);
+      span.style.setProperty('--d', `${(9 + Math.random() * 10).toFixed(1)}s`);
+      span.style.setProperty('--w', `${(-Math.random() * 18).toFixed(1)}s`);
+      span.style.setProperty('--sway', `${Math.round(Math.random() * 80 - 40)}px`);
+    }
+    el.append(span);
+  }
+  return el;
+}
+
 // ---------- Szenen-Bildschirm ----------
 function setupScene(o, data, kind) {
   const s = SCENES[kind];
@@ -142,6 +177,8 @@ function setupScene(o, data, kind) {
     el.querySelector('.sc-bg').after(layer);
     el.classList.add('has-art');
   }
+  const motion = sceneMotion(o.params.get('scmove'));
+  if (motion) el.querySelector('.sc-center').before(motion);
   el.querySelector('.sc-tag').textContent = s.tag;
   el.querySelector('.sc-title').textContent = o.text('sctitle', s.title, 60);
   el.querySelector('.sc-sub').textContent = o.text('scsub', s.sub(o.streamer.name), 90);

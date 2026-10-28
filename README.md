@@ -338,6 +338,7 @@ Das Overlay ist durchsichtig, zu sehen sind nur die Karten. Das Glücksrad tauch
 | `subathon=tc` / … · `sasize=120` | Subathon-Timer |
 | `pause=1` | Pausen-Bildschirm (ganzes Bild, nur während einer Pause) |
 | `scbg=<Datei>` | Hintergrund der Szenen-Bildschirme aus einem Artist-Design (Design-Bibliothek → Von Artists) |
+| `scmove=lights` / `stars` / `waves` / `sparks` / `aurora` | Bewegter Hintergrund der Szenen-Bildschirme (Lichter, Sterne, Wellen, Funken, Polarlicht) – nur `transform`/`opacity`, schont OBS |
 | `quiz=bl` / … · `qzsize=120` | Quizfrage (nur solange eine läuft) |
 | `queue=tl` / … · `qusize=120` | Mitspielen: wer dran ist, wer wartet |
 | `tts=bc` / … · `ttsize=120` | Vorlesen – ohne diese Ebene liest das Overlay nichts vor |
@@ -707,6 +708,12 @@ Zwei Chat-Spiele ohne Kanalpunkte und ohne Geld (Kacheln „Zuschauer-Wette“ u
 - Gespeichert wird je Los nur Name, Gewinn und Uhrzeit (für alle lesbar, die letzten 200); wann wer zuletzt gerubbelt hat, steht getrennt und ist nicht öffentlich.
 
 **Mod-Rechte:** beides im Bereich „Spiele & Mitmachen“. Raid-Schutz und Starttermin der Kachel gelten wie bei den anderen Spielen.
+
+## Design-Upgrades: bewegte Szenen, Markenfarbe, Look-Baukasten
+
+- **Bewegte Szenen** (`scmove=`, `js/overlay-stage.js`): Lichter, Sterne, Wellen, Funken oder Polarlicht hinter „Gleich live“, „Pause“, „Ende“ und „Just Chatting“. Es bewegt sich nur `transform` und `opacity` (keine Filter, kein Neuzeichnen pro Bild). Einstellen im OBS-Fenster → Szenen-Bildschirm → **Bewegung**; einige Komplett-Looks bringen eine Bewegung mit (Kosmos, Gemütlicher Abend, Frostbite, Inferno, Tiefsee). Ein Hintergrund aus der Design-Bibliothek (`scbg=`) steht dort jetzt auch und lässt sich entfernen – er geht beim Speichern im OBS-Fenster nicht mehr verloren.
+- **Markenfarbe** (`js/brand-colors.js`): Logo wählen – die Farben liest der Browser selbst heraus, **das Logo wird nirgends hochgeladen**. Im OBS-Fenster → Design neben der Akzentfarbe („Farbe aus deinem Logo“) und im Look-Baukasten. Fürs **öffentliche Profil** gibt es unter „Profil & Zeitplan“ → „Farbe deiner Seite“ eine eigene Farbe (Migration **`supabase/migrations/20261205000000_brand_color.sql`**, Tests: `supabase/tests/brand_color_test.sql`).
+- **Look-Baukasten** (Design-Bibliothek → **＋ Eigener Look**, `js/look-builder.js`): Farbe (auch aus dem Logo), Karten-Design, Kamera-Rahmen, Alert-Design, Chat, Laufband, Bingo-Karte und Szenen-Bewegung wählen – mit Live-Vorschau (Gameplay, Gleich live, Pause). Optional „Alerts in dieser Farbe“ und „Auch für mein öffentliches Profil“. Gespeichert als Overlay-Vorlage mit `look=1` (keine eigene Tabelle); die Looks stehen in der Bibliothek unter **Eigene Looks** (Bearbeiten, Löschen, Installieren) und nicht in der Vorlagen-Liste des OBS-Fensters.
 
 ## Artists: Designs hochladen
 

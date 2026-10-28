@@ -33,6 +33,21 @@ async function load() {
   return profile;
 }
 
+// Markenfarbe des Streamers (aus dem Look-Baukasten): Akzent, helle Variante und Text-Ton für Links
+function brand(accent) {
+  const m = /^#([0-9a-f]{6})$/i.exec(accent ?? '');
+  if (!m) return;
+  const n = parseInt(m[1], 16);
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const root = document.documentElement.style;
+  root.setProperty('--acc', accent);
+  root.setProperty('--acc-rgb', rgb.join(', '));
+  root.setProperty('--acc-2', `color-mix(in srgb, ${accent} 75%, #fff)`);
+  // Link-Farbe: im Dunkeln heller, im Hellen dunkler – damit sie lesbar bleibt
+  const dark = !matchMedia('(prefers-color-scheme: light)').matches;
+  root.setProperty('--acc-ink', `color-mix(in srgb, ${accent} ${dark ? '55%, #fff' : '62%, #000'})`);
+}
+
 function missing() {
   $('#pp-loading').hidden = true;
   $('#pp-missing').hidden = false;
@@ -54,6 +69,7 @@ function paint() {
     ava.replaceChildren(h('img', { src: p.avatar_url, alt: '', referrerpolicy: 'no-referrer' }));
   } else ava.textContent = name.slice(0, 1).toUpperCase();
   $('#pp-name').textContent = name;
+  brand(p.accent);
   $('#pp-bio').textContent = p.bio || '';
   $('#pp-bio').hidden = !p.bio;
   $('#pp-live').hidden = !p.live;
