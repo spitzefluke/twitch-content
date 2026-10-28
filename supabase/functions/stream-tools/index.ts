@@ -10,6 +10,9 @@
 //   POST {action:"song_add", url}       → Song-Wunsch per YouTube-Link eintragen (Streamer, freigegebene Mods mit Bereich Chat)
 //   POST {action:"anniversary", start?} → Kanal-Jubiläum im Overlay starten (Streamer, Admins, freigegebene Mods);
 //                                          start = optionales Datum JJJJ-MM-TT statt „auf Twitch seit“
+//   POST {action:"discord_connect", url} → Discord-Webhook prüfen und speichern (Streamer, Admins, Mods mit Bereich Chat)
+//   POST {action:"discord_post", kind, tile?, auto?} → Discord: test | schedule | idea (auto: nach dem Speichern eines
+//                                          Termins, nur wenn eingeschaltet und je Termin einmal)
 import {
   audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, requestChannel, tooMany,
 } from "../_shared/twitch.ts";
@@ -20,11 +23,12 @@ import { refreshWatchDates, watchTick } from "../_shared/watchtime.ts";
 import { startAnniversary } from "../_shared/anniversary.ts";
 import { syncChatControlRewards } from "../_shared/chatcontrol.ts";
 import { addSongFromWeb } from "../_shared/bot.ts";
+import { discordAnnounce, inspectWebhook } from "../_shared/discord.ts";
 
 Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
-  const { action, key, start, url } = await req.json().catch(() => ({}));
+  const { action, key, start, url, kind, tile, auto } = await req.json().catch(() => ({}));
   // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt höchstens jede
   // Minute einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
   if (action === "watch_tick") {
@@ -108,6 +112,24 @@ Deno.serve(channelServe(async (req) => {
       } catch (e) {
         return json({ error: errorText(e, 300) }, 409);
       }
+    }
+    if (action === "discord_connect") {
+      if (!(await isAdminUser(user.id, "chat"))) return json({ error: "Nur der Streamer und freigegebene Mods." }, 403);
+      if (!(await rateLimit(`discord:${requestChannel() ?? "default"}`, 10))) return tooMany();
+      const hook = String(url ?? "").trim().slice(0, 300);
+      const check = await inspectWebhook(hook);
+      if (!check.ok) return json({ error: check.error }, 400);
+      const { error } = await db.rpc("discord_connect", { p_url: hook, p_name: check.name });
+      if (error) return json({ error: String(error.message ?? "").slice(0, 200) || "Speichern fehlgeschlagen" }, 400);
+      await audit(user.id, "discord_connect", { name: check.name });
+      return json({ connected: true, webhook_name: check.name });
+    }
+    if (action === "discord_post") {
+      if (!(await isAdminUser(user.id, "chat"))) return json({ error: "Nur der Streamer und freigegebene Mods." }, 403);
+      if (kind !== "test" && kind !== "schedule" && kind !== "idea") return json({ error: "Unbekannte Nachricht" }, 400);
+      if (!(await rateLimit(`discord:${requestChannel() ?? "default"}`, 10))) return tooMany();
+      const res = await discordAnnounce(kind, typeof tile === "string" ? tile.slice(0, 80) : undefined, auto === true);
+      return json(res, res.ok ? 200 : 409);
     }
     return json({ error: "Unbekannte Aktion" }, 400);
   } catch (e) {

@@ -240,4 +240,8 @@ export default [
   "Czy mogę pokazywać reklamy na streamie?",
   "Tak, jako tekst na pasku twojej nakładki OBS. Dopisz na początku „Reklama” lub „Ogłoszenie” – Twitch i prawo wymagają oznaczenia. W rozszerzeniu Twitcha (panel, komponent, nakładka) StreamHelp nie pokazuje reklam: Twitch nie pozwala tam na treści reklamowe ani sponsorowane.",
   "Warunki korzystania",
+  "Społeczność",
+  "Discord StreamHelp",
+  "Rozmawiaj z innymi streamerami, zadawaj pytania i jako pierwszy dowiaduj się o nowych funkcjach.",
+  "Dołącz do Discorda",
 ];

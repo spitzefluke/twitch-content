@@ -240,4 +240,8 @@ export default [
   "Posso mostrare pubblicità nello stream?",
   "Sì, come testo nella barra del tuo overlay OBS. Metti «Pubblicità» o «Annuncio» davanti – Twitch e la legge richiedono la dicitura. Nell’estensione Twitch (pannello, componente, overlay) StreamHelp non mostra pubblicità: Twitch lì non consente contenuti pubblicitari o sponsorizzati.",
   "Condizioni d’uso",
+  "Community",
+  "Il Discord di StreamHelp",
+  "Confrontati con altri streamer, fai domande e scopri per primo le nuove funzioni.",
+  "Entra su Discord",
 ];

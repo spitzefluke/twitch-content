@@ -240,4 +240,8 @@ export default [
   "Kan ik reclame in de stream laten zien?",
   "Ja, als tekst in de lichtkrant van je OBS-overlay. Zet „Advertentie” of „Reclame” ervoor – Twitch en de wet eisen die vermelding. In de Twitch-extensie (paneel, component, overlay) toont StreamHelp geen reclame: Twitch staat daar geen reclame- of sponsorcontent toe.",
   "Gebruiksvoorwaarden",
+  "Community",
+  "De StreamHelp-Discord",
+  "Praat met andere streamers, stel vragen en hoor als eerste over nieuwe functies.",
+  "Word lid van Discord",
 ];

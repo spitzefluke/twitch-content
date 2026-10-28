@@ -240,4 +240,8 @@ export default [
   "Yayında reklam gösterebilir miyim?",
   "Evet, OBS overlay’inin kayan yazısında metin olarak. Başına „Reklam“ veya „İlan“ yaz – Twitch ve yasa bu etiketi ister. Twitch eklentisinde (panel, bileşen, overlay) StreamHelp reklam göstermez: Twitch orada reklam veya sponsorluk içeriğine izin vermez.",
   "Kullanım koşulları",
+  "Topluluk",
+  "StreamHelp Discord’u",
+  "Diğer yayıncılarla sohbet et, soru sor ve yeni özellikleri ilk sen öğren.",
+  "Discord’a katıl",
 ];

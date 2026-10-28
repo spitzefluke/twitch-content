@@ -240,6 +240,8 @@ main.nc-wrap { flex: 1; }
 /* Schmal: Menüpunkte ausblenden, Anmelden bleibt */
 @media (max-width: 760px) {
   .nc-nav > a:not(.nc-nav-brand) { display: none; }
+  .nc-nav > a.nc-nav-discord { display: inline-flex; font-size: 0; }
+  .nc-nav > a.nc-nav-discord .ph { font-size: 22px; }
   .nct.nc-js .nc-preview.nc-rv.is-in { transform: none; }
   .nc-pv-chat { width: 48%; font-size: 10px; }
 }
@@ -407,6 +409,22 @@ main.nc-wrap { flex: 1; }
 .lang-pick option { color: #111; }
 .lang-pick--nav { margin-left: auto; }
 .lang-pick--auth { position: absolute; top: 18px; right: 18px; z-index: 3; }
+
+/* Kontakt: StreamHelp-Discord */
+.nc-nav > a.nc-nav-discord { display: inline-flex; align-items: center; gap: 6px; }
+.nc-nav-discord .ph { font-size: 18px; }
+.nc-discord {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px 22px; align-items: center; margin-top: 18px; padding: 22px;
+  border: 1px solid color-mix(in srgb, #5865f2 45%, var(--color-neutral-800)); border-radius: 16px;
+  background: linear-gradient(120deg, color-mix(in srgb, #5865f2 26%, transparent), color-mix(in srgb, var(--color-surface) 60%, transparent));
+}
+.nc-discord-ico { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: #5865f2; color: #fff; font-size: 30px; }
+.nc-discord .nc-group-title { margin: 6px 0 4px; }
+.nc-discord .nc-text { margin: 0 !important; }
+@media (max-width: 760px) {
+  .nc-discord { grid-template-columns: auto minmax(0, 1fr); }
+  .nc-discord > .nc-btn { grid-column: 1 / -1; justify-self: start; }
+}
 
 /* Kontakt: KI-Hilfe und Formular (js/help.js) */
 .nc-contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 18px; margin-top: 28px; align-items: start; }

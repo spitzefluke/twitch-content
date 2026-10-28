@@ -244,6 +244,17 @@ async function createSupabaseApi() {
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
     // Markenfarbe fürs öffentliche Profil (Migration …_brand_color.sql); null = Standard
     async profileAccentSave(accent) { return unwrap(await sb.rpc('profile_accent_save', { p_accent: accent || null })); },
+    // Discord: Webhook, Live-Meldung, Rückblick, Ankündigungen (Migration …_discord.sql). Die Webhook-Adresse
+    // geht nur an die Edge Function (prüft sie bei Discord) – zurück kommt nie mehr als ihr Name.
+    async discordGet() { return unwrap(await sb.rpc('discord_get')); },
+    async discordSave(p) {
+      return unwrap(await sb.rpc('discord_save', {
+        p_on_live: !!p.on_live, p_on_recap: !!p.on_recap, p_on_ideas: !!p.on_ideas, p_live_text: p.live_text ?? '', p_mention: p.mention ?? '',
+      }));
+    },
+    async discordConnect(url) { return invoke('stream-tools', { action: 'discord_connect', url }); },
+    async discordDisconnect() { return unwrap(await sb.rpc('discord_disconnect')); },
+    async discordPost(kind, tile, auto = false) { return invoke('stream-tools', { action: 'discord_post', kind, tile, auto }); },
     // Artists: Bewerbung, Uploads, Design-Bibliothek (Migration …_artists.sql)
     async artistMe() { return unwrap(await sb.rpc('artist_me')); },
     async artistApply(p) { return unwrap(await sb.rpc('artist_apply', { p_name: p.name, p_slug: p.slug, p_bio: p.bio, p_links: p.links })); },
@@ -1379,6 +1390,48 @@ function createLocalApi() {
         is_public: p.is_public ?? old.is_public ?? false,
       });
       return demoProfile();
+    },
+    // Discord im Demo-Modus: Einstellungen in localStorage, gepostet wird nichts
+    async discordGet() {
+      await requireAdmin();
+      const d = store.get('discord', {});
+      return {
+        connected: !!d.webhook_name, webhook_name: d.webhook_name ?? '', on_live: d.on_live ?? true, on_recap: d.on_recap ?? true,
+        on_ideas: d.on_ideas ?? false, live_text: d.live_text || '🔴 {streamer} ist jetzt live: {title}', mention: d.mention ?? '',
+        last_ok_at: d.last_ok_at ?? null, last_error: '',
+      };
+    },
+    async discordSave(p) {
+      await requireAdmin();
+      let mention = String(p.mention ?? '').trim().toLowerCase().replace(/^<@&(\d+)>$/, '$1').replace(/^@/, '');
+      if (!/^(|here|everyone|\d{5,25})$/.test(mention)) throw new Error('Erwähnung: leer, here, everyone oder eine Rollen-ID.');
+      store.set('discord', {
+        ...store.get('discord', {}), on_live: !!p.on_live, on_recap: !!p.on_recap, on_ideas: !!p.on_ideas,
+        live_text: String(p.live_text ?? '').trim().slice(0, 300), mention,
+      });
+      return this.discordGet();
+    },
+    async discordConnect(url) {
+      await requireAdmin();
+      if (!/^https:\/\/(ptb\.|canary\.)?discord(app)?\.com\/api\/webhooks\/[0-9]{5,25}\/[A-Za-z0-9_-]{20,100}$/.test(String(url ?? '').trim())) {
+        throw new Error('Das ist keine Discord-Webhook-Adresse (https://discord.com/api/webhooks/…).');
+      }
+      store.set('discord', { ...store.get('discord', {}), webhook_name: 'Demo-Webhook' });
+      return { connected: true, webhook_name: 'Demo-Webhook' };
+    },
+    async discordDisconnect() {
+      await requireAdmin();
+      store.set('discord', { ...store.get('discord', {}), webhook_name: '' });
+      return this.discordGet();
+    },
+    async discordPost(kind, _tile, auto = false) {
+      await requireAdmin();
+      const d = store.get('discord', {});
+      if (auto && (!d.webhook_name || !d.on_ideas)) return { ok: true, skipped: true };
+      if (!d.webhook_name) throw new Error('Discord ist noch nicht verbunden.');
+      if (!['test', 'schedule', 'idea'].includes(kind)) throw new Error('Unbekannte Nachricht');
+      store.set('discord', { ...store.get('discord', {}), last_ok_at: new Date().toISOString() });
+      return { ok: true, demo: true };
     },
     async profileAccentSave(accent) {
       await requireAdmin();
