@@ -28,7 +28,7 @@ import {
   channelFromUrl, channelParam, cleanChannel, rememberChannel, rememberedChannel, setChannel, withChannelParam,
 } from './channel.js';
 import { h } from './extras-core.js';
-import { startTour } from './tour.js';
+import { maybeOpenIntro, openIntro, setupIntro } from './intro.js';
 import { applyI18n, initI18n, langPicker, t as tr } from './i18n.js';
 import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
@@ -982,7 +982,7 @@ async function enterApp(user, { animate = false } = {}) {
   startPlatformNotices({ api: state.api, toast, page: 'index.html', entry: 'app.js', isTeam });
   loadUpdates();
   loadStreamer().then(channelNameFallback);
-  maybeAskAccountType().finally(() => setTimeout(maybeAskTour, 700));
+  maybeAskAccountType().finally(() => setTimeout(() => { if (!OBS_PAGE) maybeOpenIntro(); }, 700));
   let view = null;
   try { view = localStorage.getItem(VIEW_KEY); } catch { /* egal */ }
   applyView(view);
@@ -1694,60 +1694,32 @@ function buildWheelTile(tile, i) {
 }
 
 // ============================================================
-// Einführung (js/tour.js): einmal fragen, danach jederzeit links unter „Einführung“
+// Einführung (js/intro.js, js/tour.js): beim ersten Besuch von selbst, danach links unter „Einführung“
 // ============================================================
-const tourKey = () => `sh_tour_${state.user?.id ?? ''}`;
-
-function tourSteps() {
-  const team = isTeam();
-  return [
-    { title: 'Willkommen bei StreamHelp 👋', text: `In einer Minute zeigen wir dir das Wichtigste. Mit „Weiter“ geht es zum nächsten Schritt, mit Esc ist jederzeit Schluss.` },
-    { target: '#games-section', title: '🎮 Games', text: 'Wähle das Game – darunter stehen die passenden Content-Ideen. Ist der Stream live, ist das richtige Game schon ausgewählt.' },
-    { target: '#next-departure', title: '⏰ Als Nächstes', text: 'Hier steht, was als Nächstes im Stream passiert – mit Countdown.' },
-    { target: '#grid .tile', title: '🎬 Content-Ideen', text: 'Klick auf eine Kachel und mach mit: Glücksrad, Bingo, Verlosung, Hot Words und vieles mehr.' },
-    { target: '#acct-btn', title: '📺 Kanal & Konto', text: 'Hier wechselst du zwischen den Streamern auf StreamHelp, stellst Hell/Dunkel nebenan ein und meldest dich ab.' },
-    team && { target: '#sidebar', title: '🧰 Stream-Werkzeuge', text: 'In der Leiste links: Bot & Chat, Kanalpunkte, Alerts, Overlay, Design-Bibliothek, Raid-Schutz und Mods.' },
-    team && { target: '#games-edit', title: '⚙️ Games verwalten', text: 'Welche Games bei dir zur Auswahl stehen, stellst du hier ein – auf Wunsch automatisch nach der Twitch-Kategorie.' },
-    team && { target: '#obs-btn', title: '🎛️ OBS', text: 'Hier richtest du das Overlay für OBS ein: eine Browserquelle für alles, Änderungen sind nach Sekunden live.' },
-    { title: 'Fertig! 🎉', text: 'Die Einführung findest du jederzeit wieder links unter „❓ Einführung“. Viel Spaß im Stream!' },
-  ].filter(Boolean);
-}
-
-function runTour() {
-  // Handy: offene Leiste erst schließen, sonst liegt sie über der Seite
-  if (!$('#sb-scrim').hidden) $('#sb-scrim').click();
-  setPage('ideas');
-  try { localStorage.setItem(tourKey(), 'done'); } catch { /* egal */ }
-  setTimeout(() => startTour(tourSteps()), 250);
-}
-
-function maybeAskTour() {
-  if (OBS_PAGE || !state.user) return;
-  let asked = null;
-  try { asked = localStorage.getItem(tourKey()); } catch { return; }
-  if (asked) return;
-  const account = $('#account-dialog');
-  if (account.open) {
-    account.addEventListener('close', () => setTimeout(maybeAskTour, 400), { once: true });
-    return;
-  }
-  const dlg = $('#tour-ask');
-  if (!dlg.open) dlg.showModal();
-}
+const INTRO = {
+  userId: () => state.user?.id,
+  userName: () => state.profile?.username ?? '',
+  role: () => (START.isStreamer() ? 'streamer' : isTeam() ? 'team' : 'viewer'),
+  // Tour läuft auf den Content-Ideen: Handy-Leiste zu, Filter zurück, „Dein Start“ wieder da
+  prepare: () => {
+    if (!$('#sb-scrim').hidden) $('#sb-scrim').click();
+    setPage('ideas');
+    resetIdeaFilters();
+    showStartAgain(START);
+  },
+  goStart: () => {
+    setPage('ideas');
+    showStartAgain(START);
+    setTimeout(() => $('#start-slot')?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' }), 350);
+  },
+};
 
 function setupTour() {
-  const dlg = $('#tour-ask');
-  dlg.addEventListener('click', (e) => {
-    const pick = e.target.closest('[data-tour]');
-    if (!pick) return;
-    closeDialog(dlg);
-    if (pick.dataset.tour === 'yes') runTour();
+  setupIntro(INTRO);
+  $('#tour-btn').addEventListener('click', () => {
+    if (!$('#sb-scrim').hidden) $('#sb-scrim').click();
+    openIntro();
   });
-  // Wie auch immer geschlossen: gefragt ist gefragt
-  dlg.addEventListener('close', () => {
-    try { if (!localStorage.getItem(tourKey())) localStorage.setItem(tourKey(), 'no'); } catch { /* egal */ }
-  });
-  $('#tour-btn').addEventListener('click', () => { showStartAgain(START); runTour(); });
 }
 
 // ============================================================

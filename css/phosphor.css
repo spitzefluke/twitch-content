@@ -1,5 +1,6 @@
 /* Phosphor Icons (MIT, phosphoricons.com) – nur die Icons der Startseite, des Dashboards und des OBS-Editors, lokal statt vom CDN */
 @font-face { font-family: "Phosphor"; src: url("../assets/fonts/Phosphor.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: block; }
+@font-face { font-family: "Phosphor-Fill"; src: url("../assets/fonts/Phosphor-Fill.woff2") format("woff2"); font-weight: normal; font-style: normal; font-display: block; }
 .ph { font-family: "Phosphor" !important; speak: never; font-style: normal; font-weight: normal; font-variant: normal; text-transform: none; line-height: 1; letter-spacing: 0; font-feature-settings: "liga"; font-variant-ligatures: discretionary-ligatures; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 .ph.ph-twitch-logo:before { content: "\e5ce"; }
 .ph.ph-monitor-play:before { content: "\e58c"; }
@@ -32,7 +33,6 @@
 .ph.ph-heartbeat:before { content: "\e2ac"; }
 .ph.ph-arrow-right:before { content: "\e06c"; }
 .ph.ph-sign-in:before { content: "\e428"; }
-/* OBS-Editor */
 .ph.ph-arrow-u-up-left:before { content: "\e08a"; }
 .ph.ph-arrow-u-up-right:before { content: "\e08c"; }
 .ph.ph-upload-simple:before { content: "\e4c0"; }
@@ -53,7 +53,6 @@
 .ph.ph-arrow-counter-clockwise:before { content: "\e038"; }
 .ph.ph-arrow-square-out:before { content: "\e5de"; }
 .ph.ph-puzzle-piece:before { content: "\e596"; }
-/* Dashboard (Design „StreamHelp Dashboard“) */
 .ph.ph-books:before { content: "\e758"; }
 .ph.ph-chart-line-up:before { content: "\e156"; }
 .ph.ph-sparkle:before { content: "\e6a2"; }
@@ -101,3 +100,30 @@
 .ph.ph-film-strip:before { content: "\e792"; }
 .ph.ph-clipboard-text:before { content: "\e198"; }
 .ph.ph-hourglass:before { content: "\e2b2"; }
+.ph.ph-arrow-left:before { content: "\e058"; }
+.ph.ph-arrows-out:before { content: "\e0a2"; }
+.ph.ph-arrows-split:before { content: "\ed3c"; }
+.ph.ph-caret-left:before { content: "\e138"; }
+.ph.ph-chat-circle-text:before { content: "\e16e"; }
+.ph.ph-compass:before { content: "\e1c8"; }
+.ph.ph-confetti:before { content: "\e81a"; }
+.ph.ph-crown:before { content: "\e614"; }
+.ph.ph-cursor-click:before { content: "\e7c8"; }
+.ph.ph-download-simple:before { content: "\e20c"; }
+.ph.ph-frame-corners:before { content: "\e626"; }
+.ph.ph-game-controller:before { content: "\e26e"; }
+.ph.ph-joystick:before { content: "\ea5e"; }
+.ph.ph-medal:before { content: "\e320"; }
+.ph.ph-minus:before { content: "\e32a"; }
+.ph.ph-planet:before { content: "\e652"; }
+.ph.ph-plant:before { content: "\ebae"; }
+.ph.ph-skull:before { content: "\e916"; }
+.ph.ph-smiley:before { content: "\e436"; }
+.ph.ph-sneaker-move:before { content: "\ed60"; }
+.ph.ph-snowflake:before { content: "\e5aa"; }
+.ph.ph-text-align-left:before { content: "\e484"; }
+.ph.ph-tree:before { content: "\e6da"; }
+.ph.ph-trend-up:before { content: "\e4ae"; }
+.ph.ph-user-focus:before { content: "\e6fc"; }
+.ph.ph-webcam:before { content: "\e9b2"; }
+.ph.ph-youtube-logo:before { content: "\e4fc"; }
