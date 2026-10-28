@@ -134,9 +134,13 @@ async function loadShowcase(root) {
   if (!rows?.length) return;
   list.replaceChildren(...rows.map((c) => {
     const a = document.createElement('a');
-    a.href = `https://www.twitch.tv/${encodeURIComponent(c.login)}`;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
+    // Öffentliches Profil (…_profile_schedule.sql), sonst direkt zu Twitch
+    if (c.profile) a.href = `profil.html?c=${encodeURIComponent(c.login)}`;
+    else {
+      a.href = `https://www.twitch.tv/${encodeURIComponent(c.login)}`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+    }
     const ava = document.createElement('span');
     ava.className = 'nc-channel-ava';
     ava.setAttribute('aria-hidden', 'true');

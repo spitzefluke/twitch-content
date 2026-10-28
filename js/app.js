@@ -35,6 +35,7 @@ import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSe
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
+import { renderProfile } from './dash-profile.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
 import { renderBotStudio } from './bot-studio.js';
@@ -387,7 +388,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit', stats: 'Statistik',
+  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan',
 };
 
 function setupShell() {
@@ -702,6 +703,10 @@ const PAGE_ENTER = {
   twitch: () => { renderTwitchPanel(); loadShowcase(); renderYoutube($('#yt-card'), { api: state.api, toast, germanError }); },
   security: () => renderSecurityPage(),
   stats: () => renderStats($('#stats-slot'), state.api, STATS_OBS),
+  profile: () => renderProfile($('#profile-slot'), {
+    api: state.api, toast, germanError,
+    profileUrl: (login) => new URL(`profil.html?c=${encodeURIComponent(login ?? '')}`, location.href).href,
+  }),
   ideas: () => renderStart(START),
 };
 

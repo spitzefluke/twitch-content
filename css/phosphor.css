@@ -127,3 +127,9 @@
 .ph.ph-user-focus:before { content: "\e6fc"; }
 .ph.ph-webcam:before { content: "\e9b2"; }
 .ph.ph-youtube-logo:before { content: "\e4fc"; }
+.ph.ph-airplane-tilt:before { content: "\e5d6"; }
+.ph.ph-arrow-up-right:before { content: "\e092"; }
+.ph.ph-calendar-plus:before { content: "\e714"; }
+.ph.ph-floppy-disk:before { content: "\e248"; }
+.ph.ph-link:before { content: "\e2e2"; }
+.ph.ph-share-network:before { content: "\e408"; }

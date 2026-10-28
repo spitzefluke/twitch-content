@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-EkkYcSLRUi0FuYGMfknI+RNKx3fhcN1qdINXzbqWhrw=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZnVoCsWTwxVND7UgAEJQk/PJFC/5C+saCjpPgcZyQLw=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,8 +47,8 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=1987aaa823">
-  <link rel="stylesheet" href="css/phosphor.css?v=7865e3e1ee">
+  <link rel="stylesheet" href="css/style.css?v=92e15b945c">
+  <link rel="stylesheet" href="css/phosphor.css?v=478bbef136">
   <link rel="stylesheet" href="css/landing.css?v=666f93c533">
   <link rel="stylesheet" href="css/shell.css?v=fd06a12b9b">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
@@ -64,8 +64,8 @@
       "./js/affiliate.js": "./js/affiliate.js?v=6a2436ccda",
       "./js/alert-designer.js": "./js/alert-designer.js?v=ae43771fab",
       "./js/alerts.js": "./js/alerts.js?v=c3248e395a",
-      "./js/api.js": "./js/api.js?v=75ef654c5d",
-      "./js/app.js": "./js/app.js?v=18a6b6a9db",
+      "./js/api.js": "./js/api.js?v=038f9e36f5",
+      "./js/app.js": "./js/app.js?v=f45fa78b42",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
@@ -75,6 +75,7 @@
       "./js/config.js": "./js/config.js?v=e11c55eaa3",
       "./js/dash-bot.js": "./js/dash-bot.js?v=4f62b52221",
       "./js/dash-obsdata.js": "./js/dash-obsdata.js?v=800b31c135",
+      "./js/dash-profile.js": "./js/dash-profile.js?v=715814ade0",
       "./js/dash-start.js": "./js/dash-start.js?v=19702535f8",
       "./js/dash-stats.js": "./js/dash-stats.js?v=2d5450ae6c",
       "./js/defaults.js": "./js/defaults.js?v=e12c81d760",
@@ -96,7 +97,7 @@
       "./js/extras.js": "./js/extras.js?v=532671bb94",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=1dbc5571d9",
-      "./js/help.js": "./js/help.js?v=e8bfa8ed5c",
+      "./js/help.js": "./js/help.js?v=21aa55fa82",
       "./js/i18n-en.js": "./js/i18n-en.js?v=01331a62aa",
       "./js/i18n-es.js": "./js/i18n-es.js?v=bae1579759",
       "./js/i18n-fr.js": "./js/i18n-fr.js?v=9019e23515",
@@ -126,6 +127,7 @@
       "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
       "./js/platform-notices.js": "./js/platform-notices.js?v=2e1994fbf3",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
+      "./js/profile.js": "./js/profile.js?v=5af70463d3",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
       "./js/record.js": "./js/record.js?v=1cd418223e",
@@ -673,6 +675,7 @@
         </div>
         <div class="sb-sec">
           <p class="sb-group">Kanal &amp; Team</p>
+        <button class="sb-item" type="button" data-page="profile" data-for="team" title="Profil &amp; Zeitplan"><i class="sb-ico ph ph-calendar-blank" aria-hidden="true"></i><span class="sb-label">Profil &amp; Zeitplan</span><span class="sb-short" aria-hidden="true">Profil</span></button>
         <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
         <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span></button>
         <button class="sb-item" type="button" data-page="security" title="Sicherheit"><i class="sb-ico ph ph-lock-key" aria-hidden="true"></i><span class="sb-label">Sicherheit</span><span class="sb-short" aria-hidden="true">Sicherheit</span></button>
@@ -1220,6 +1223,11 @@
             <div class="dash-card dash-card--wide" id="guard-slot"></div>
             <div class="dash-card dash-card--wide" id="obswatch-slot"></div>
           </div>
+        </section>
+
+        <!-- Profil & Zeitplan (js/dash-profile.js), öffentliche Seite profil.html -->
+        <section class="page" data-page="profile" hidden>
+          <div class="dash-cards pf-cards" id="profile-slot"></div>
         </section>
 
         <!-- Mods -->
