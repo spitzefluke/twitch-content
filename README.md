@@ -426,11 +426,13 @@ Einmal nötig: Migration `20261005000000_stream_alerts.sql` ausführen und **der
 
 ### Design-Bibliothek
 
-Im Dashboard unter **📚 Design-Bibliothek** (Streamer, Admins, freigegebene Mods) stehen alle fertigen Designs nebeneinander – mit großer Vorschau:
+Im Dashboard unter **Design-Bibliothek** (Streamer, Admins, freigegebene Mods) stehen alle Looks an einem Ort (`js/library.js`):
 
-- **✨ Themes** (wie die Theme-Galerien bei StreamElements und Streamlabs – eigene Entwürfe, keine fremden Grafiken): 23 Komplett-Pakete, z. B. Neon Night, Pixel-Arcade, Royal Gold, Kosmos, Mission Control, Kawaii Café, Blutmond, Heldensaga, Waldlichtung, Tiefsee, Halloween-Nacht oder Winterwunder – mit Kategorien (Gaming, Gemütlich, Bunt, Sci-Fi, Natur, Fantasy & Horror, Retro, Edel, Minimal, Saisonal) und Suche. Die neueren Themes bringen eigene Szenen-Hintergründe mit (`assets/bg-<design>.svg`: Galaxie, HUD, Wolken, Blutmond, Wald, Burg, Unterwasser, Halloween, Winter). Ein Klick öffnet das Theme mit Vorschau jeder Szene: **Gameplay**, **Gleich live** (mit Countdown), **Pause**, **Just Chatting** (große Kamera, Chat daneben), **Stream-Ende** und **Alerts**. **Theme installieren** setzt Overlay-Design, Kamera-Rahmen, Laufband, Chat-Stil, Bingo-Karte und das Alert-Design (für alle Alert-Arten) in einem Schritt und speichert alles – welche Ebenen an sind und wo sie stehen, bleibt. Darunter stehen die OBS-Adressen je Szene zum Kopieren (`overlay.html?live=1&scene=start|brb|chat|end`). Pakete stehen in `js/theme-packs.js`.
-- **Overlay-Designs:** die 17 Designs fürs ganze Overlay. Die Vorschau zeigt die eigenen Ebenen (oder Beispielkarten, solange keine an sind). **Fürs Overlay übernehmen** speichert das Design in den zentralen Overlay-Einstellungen – OBS mit `live=1` zeigt es sofort. Das aktive Design ist markiert.
-- **Alert-Designs:** die 23 fertigen Alert-Designs, abspielbar für jede Alert-Art. **Für alle Alerts übernehmen** setzt Look, Bild, Farbe und Animationen bei allen Alert-Arten (Texte, Sounds und Varianten bleiben) und öffnet den Alert-Designer – dort prüfen und **Speichern**.
+- **Drei Arten** als Karten oben (Klick filtert): **Komplett-Looks** (23 Pakete aus `js/theme-packs.js` – Overlay, Kamera-Rahmen, Alerts, Chat, Laufband, Bingo und fünf Szenen), **Overlays** (die 17 Designs fürs ganze Overlay) und **Alerts** (die 23 fertigen Alert-Designs). Eigene Entwürfe, keine fremden Grafiken.
+- **Große Vorschau** (`overlay.html` im iframe) mit den Szenen **Gameplay**, **Gleich live**, **Pause**, **Just Chatting**, **Stream-Ende** und **Alerts** (Alert-Art wählbar, „Abspielen“). **Vorher / Nachher** legt deine aktuellen Einstellungen und das gewählte Design übereinander – mit dem Regler verschiebst du die Trennlinie. Der Knopf oben rechts zeigt die Vorschau im **Vollbild**; dort blättern die Pfeiltasten durch die Designs.
+- Daneben: Art, Stimmung, „Neu“/„Beliebt“, **Das ändert sich** (welche Teile das Design setzt) und der Knopf zum Übernehmen. Bei Komplett-Looks stehen darunter die OBS-Adressen je Szene zum Kopieren (`overlay.html?live=1&scene=start|brb|chat|end`).
+- **Galerie** darunter: Art (Alle, Komplett-Looks, Overlays, Alerts), **Stimmung** (Gaming, Gemütlich, Bunt & verspielt, Sci-Fi, Natur, Fantasy & Horror, Retro, Edel, Minimal, Saisonal), Suche, Sortierung (Beliebt, Neu, A – Z) und **Favoriten** (Herz an jeder Kachel; merkt sich dieser Browser). Was gerade gilt, trägt „✓ Aktiv“.
+- **Übernehmen:** *Look installieren* setzt Overlay-Design, Kamera-Rahmen, Laufband, Chat-Stil, Bingo-Karte und das Alert-Design (für alle Alert-Arten) in einem Schritt und speichert alles – welche Ebenen an sind und wo sie stehen, bleibt. *Fürs Overlay übernehmen* speichert nur das Overlay-Design (OBS mit `live=1` zeigt es sofort). *Für alle Alerts übernehmen* setzt Look, Bild, Farbe und Animationen bei allen Alert-Arten (Texte, Sounds und Varianten bleiben) und öffnet den Alert-Designer – dort prüfen und **Speichern**.
 
 ### Overlay-Design, Szenen, Kamera-Rahmen, Info-Leiste und Ziel-Balken
 
@@ -900,7 +902,7 @@ Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-j
 
 ## Dashboard: Einstieg, Kacheln, Statistik, Handy-App
 
-- **Dein Start:** Streamer sehen oben bei den Content-Ideen eine Checkliste – Twitch verbinden, Overlay in OBS, erste Idee ausprobieren, Mods freigeben, Zwei-Faktor einschalten. Erledigtes hakt sich von selbst ab; „Ausblenden“ blendet sie aus, „❓ Einführung“ holt sie zurück.
+- **Dein Start:** Streamer sehen oben bei den Content-Ideen eine Checkliste – Twitch verbinden, Overlay in OBS, erste Idee ausprobieren, Mods freigeben, Zwei-Faktor einschalten. Erledigtes hakt sich von selbst ab; „Ausblenden“ blendet sie aus, „Einführung“ holt sie zurück.
 - **Kacheln:** Suchfeld über den Content-Ideen und ein ☆ an jeder Kachel – Favoriten stehen vorne (in der Game-Ansicht als eigene Gruppe). Beides merkt sich dieser Browser. Die Countdown-Kachel „Subathon“ heißt jetzt „Countdown zum Subathon“, damit sie nicht mit dem Subathon-Timer verwechselt wird.
 - **📈 Statistik** (Streamer und freigegebene Mods): Sendezeit, Zuschauer (Spitze und Ø), Follows, Abos, Bits, aktive Chatter, Glücksrad, Streiche, Kanalpunkte – für 7, 30 oder 90 Tage, je Tag als Balken, dazu die treuesten Zuschauer. **Live:** Während des Streams steht oben eine Karte „Live seit …“ mit Zuschauern jetzt, Spitze, Durchschnitt, Follows, Abos, Bits, Chattern und Kanalpunkten seit Beginn; die Seite lädt bei jeder Zählung (jede Minute) von selbst neu. **Nach jedem Stream:** Unter „Letzte Streams“ steht jeder Stream mit Dauer, Zuschauern, Follows, Abos, Bits und Chattern – festgehalten, sobald Twitch `stream.offline` meldet (oder die nächste Zählung den Stream offline sieht). Gezählt wird ohne OBS-Overlay auch über Chat und Twitch-Panel (Migration `20261116000000_bot_stats.sql`).
   Einmal nötig: Migration **`supabase/migrations/20261102000000_dashboard.sql`**.
@@ -1014,7 +1016,12 @@ Für Abstimmen, Füttern, Mitmachen und Sounds gibt der Zuschauer einmal seine T
 
 ## Einführung
 
-Nach der ersten Anmeldung (und nach „Bist du Streamer?“) fragt die Seite einmal: **„Willst du eine kurze Einführung?“** Bei **Ja** führt eine kurze Tour durch die Seite (Games, Als Nächstes, Content-Ideen, Kanal – für Streamer und Mods zusätzlich Stream-Werkzeuge, Games verwalten und OBS). Bei **Nein** kommt die Frage nicht wieder. Starten lässt sich die Tour jederzeit links unter **❓ Einführung**; Esc beendet sie.
+Nach der ersten Anmeldung (und nach „Bist du Streamer?“) öffnet sich einmal die Einführung (`js/intro.js`); danach jederzeit links unter **Einführung**.
+
+- **Streamer:** Willkommen → drei kurze Fragen (Stream-Erfahrung, Ziel, Twitch und/oder YouTube) → **Dein Plan** mit den passenden Schritten (z. B. OBS einrichten, Look wählen, Twitch verbinden, YouTube dazuschalten, Affiliate-Ziele, Mods) → Tour. Die Antworten merkt sich der Browser.
+- **Mods** und **Zuschauer:** Willkommen → Tour (Mods: die Werkzeuge; Zuschauer: Games, Als Nächstes, Content-Ideen, Konto).
+- **Mitmach-Tour** (`js/tour.js`) durch das echte Dashboard: Schritte mit **Kurz erklärt** zum Ansehen und **Du bist dran** zum Selbstklicken (z. B. OBS-Overlay öffnen, Glücksrad öffnen) – weiter geht es erst nach dem Klick, der Rest der Seite ist solange gesperrt („Überspringen“ geht immer). Esc oder ✕ beendet die Tour; zum Schluss gibt es den Abschluss mit dem Weg zu **Dein Start**.
+- **Überspringen** oben springt direkt in die Tour, ✕ schließt die Einführung.
 
 ## Admin-Bereich
 

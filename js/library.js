@@ -1,293 +1,555 @@
-// Design-Bibliothek im Dashboard (Seite „Design-Bibliothek“): alle fertigen Overlay-Designs
-// (OVERLAY_THEMES) und Alert-Designs (ALERT_PRESETS) mit großer Vorschau.
-//   Overlay: „Übernehmen“ setzt otheme in den zentralen Overlay-Einstellungen (overlay_save) –
-//            OBS mit live=1 zeigt es sofort.
-//   Alerts:  „Übernehmen“ stellt das Design im Alert-Designer für alle Arten ein; gespeichert
-//            wird dort (so sieht man vorher, was sich ändert).
-// Die Vorschau ist overlay.html in einem iframe: fürs Overlay mit edit=1 (Beispielinhalte),
-// für Alerts mit apreview=1 (Design per postMessage, wie im Alert-Designer).
+// Design-Bibliothek im Dashboard (Design „Design-Bibliothek neu“): alle Looks an einem Ort –
+//   Komplett-Looks (THEME_PACKS, js/theme-packs.js): Overlay, Kamera-Rahmen, Alerts, Chat, Laufband, Bingo
+//                 und fünf Szenen. „Look installieren“ setzt die Overlay-Werte zentral (overlay_save) und
+//                 speichert das Alert-Design für alle Alert-Arten (alert_config).
+//   Overlays (OVERLAY_THEMES): nur das Aussehen der Karten – setzt otheme (OBS mit live=1 zeigt es sofort).
+//   Alerts (ALERT_PRESETS): stellt das Design im Alert-Designer für alle Arten ein; gespeichert wird dort.
+// Oben die große Vorschau (overlay.html im iframe, mit Szenen und Vorher/Nachher), darunter die Galerie
+// mit Art, Stimmung, Suche, Sortierung und Favoriten (Favoriten merkt sich dieser Browser).
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, builtinMediaUrl, normalizeAlertConfig, normalizeDesign } from './alerts.js';
+import { h } from './extras-core.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
-import { setupThemes, showThemes } from './theme-gallery.js';
+import { OVERLAY_DEFAULTS, THEME_CATEGORIES, THEME_PACKS, THEME_SCENES } from './theme-packs.js';
 
 const $ = (sel) => document.querySelector(sel);
-const STAGE_W = 1920;
-const STAGE_H = 1080;
-const ALERT_W = 820;
-const ALERT_H = 440;
-// Ohne eigene Einstellungen: ein paar Karten, damit man das Design sieht
-const SAMPLE = 'next=tl&wheel=br&alerts=tc&labels=bl&goal=tr&chat=cr';
-const OVERLAY_KEYS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid',
-  'subathon', 'quiz', 'queue', 'tts', 'cards', 'labels', 'goal'];
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FAV_KEY = 'sh_lib_favs_v1';
+
+// Vorschau der Szenen: immer dieselben Beispielkarten, damit man Designs vergleichen kann
+const SHOWCASE = {
+  game: 'next=tl&alerts=tc&goal=tr&labels=bl&camframe=1&cam=70,55,28,33&edit=1',
+  start: 'scene=start&labels=bl',
+  brb: 'scene=brb&labels=bl',
+  chat: 'scene=chat&alerts=tc&labels=bl',
+  end: 'scene=end',
+};
+const TYPES = {
+  look: { name: 'Komplett-Look', plural: 'Komplett-Looks', icon: 'ph-package', desc: 'Overlay, Kamera-Rahmen, Alerts, Chat und 5 Szenen – alles auf einmal.' },
+  overlay: { name: 'Overlay', plural: 'Overlays', icon: 'ph-frame-corners', desc: 'Nur das Aussehen der Karten im Overlay. Alerts bleiben, wie sie sind.' },
+  alert: { name: 'Alert', plural: 'Alerts', icon: 'ph-bell-ringing', desc: 'Nur Follow-, Abo- und Bits-Alerts. Texte und Sounds bleiben.' },
+};
+const MOOD_ICON = {
+  all: 'ph-squares-four', gaming: 'ph-game-controller', cozy: 'ph-coffee', fun: 'ph-confetti', scifi: 'ph-planet', nature: 'ph-tree',
+  fantasy: 'ph-skull', retro: 'ph-joystick', elegant: 'ph-crown', minimal: 'ph-minus', seasonal: 'ph-snowflake',
+};
+const OVERLAY_MOOD = {
+  standard: 'minimal', neon: 'gaming', glass: 'elegant', gamer: 'gaming', retro: 'retro', gold: 'elegant', candy: 'fun', minimal: 'minimal',
+  space: 'scifi', hud: 'scifi', kawaii: 'fun', horror: 'fantasy', forest: 'nature', fantasy: 'fantasy', ocean: 'nature', spooky: 'seasonal', xmas: 'seasonal',
+};
+const OVERLAY_COLOR = {
+  standard: '#9146ff', neon: '#ff4fd8', glass: '#cfb3ff', gamer: '#ff2e4d', retro: '#3ddc84', gold: '#e8c46a', candy: '#ff7ac8', minimal: '#ffb81c',
+  space: '#8ea2ff', hud: '#35f0ff', kawaii: '#ff8fc8', horror: '#d1162f', forest: '#79c95a', fantasy: '#d8a64a', ocean: '#2fd3c6', spooky: '#ff8a1c', xmas: '#e3283e',
+};
+const OVERLAY_BG = { space: 'bg-space', hud: 'bg-hud', kawaii: 'bg-kawaii', horror: 'bg-horror', forest: 'bg-forest', fantasy: 'bg-fantasy', ocean: 'bg-ocean', spooky: 'bg-spooky', xmas: 'bg-xmas' };
+const ALERT_MOOD = {
+  party: 'fun', star: 'cozy', neon: 'gaming', arcade: 'retro', comic: 'fun', royal: 'elegant', hype: 'gaming', glitch: 'gaming', fire: 'gaming',
+  diamond: 'elegant', gift: 'fun', ice: 'cozy', champ: 'gaming', clean: 'minimal', cosmos: 'scifi', mission: 'scifi', kawaii: 'fun',
+  bloodmoon: 'fantasy', forest: 'nature', quest: 'fantasy', deepsea: 'nature', halloween: 'seasonal', xmas: 'seasonal',
+};
+const HOT = new Set(['look:neon-night', 'look:pixel', 'look:cozy', 'look:party', 'look:halloween', 'overlay:neon', 'overlay:glass', 'alert:party', 'alert:hype', 'alert:neon']);
+const NEW = new Set(['look:kosmos', 'look:mission', 'look:kawaii', 'look:bloodmoon', 'look:heroes', 'overlay:space', 'overlay:hud', 'overlay:kawaii',
+  'alert:cosmos', 'alert:mission', 'alert:bloodmoon', 'alert:quest']);
+const NAMES = {
+  cfstyle: { glow: 'Leuchten', clean: 'Schlicht', corners: 'Ecken', neon: 'Neon' },
+  tstyle: { bar: 'Laufband', neon: 'Neon', board: 'LED-Anzeige' },
+  chstyle: { card: 'Karte', bubble: 'Sprechblasen', clean: 'Schlicht' },
+  bstyle: { classic: 'Bunt', neon: 'Neon', paper: 'Papier' },
+};
+
+const pack = (id) => THEME_PACKS.find((t) => t.id === id);
+const preset = (id) => ALERT_PRESETS.find((p) => p.id === id);
+const overlayTheme = (id) => OVERLAY_THEMES.find((t) => t.id === id);
+const lookName = (id) => ALERT_LOOKS.find((l) => l.id === id)?.name ?? id;
+const moodName = (id) => THEME_CATEGORIES.find((c) => c.id === id)?.name ?? '';
+const icon = (cls) => h('i', { class: `ph ${cls}`, 'aria-hidden': 'true' });
+
+const ITEMS = [
+  ...THEME_PACKS.map((t) => ({
+    key: `look:${t.id}`, type: 'look', id: t.id, name: t.name, mood: t.cat, color: t.color, bg: t.bg,
+    otheme: t.overlay.otheme, cf: t.overlay.cfstyle, media: preset(t.alert)?.design.media ?? '', desc: t.desc,
+  })),
+  ...OVERLAY_THEMES.map((o) => ({
+    key: `overlay:${o.id}`, type: 'overlay', id: o.id, name: o.name, mood: OVERLAY_MOOD[o.id] ?? 'minimal', color: OVERLAY_COLOR[o.id] ?? '#9146ff',
+    bg: OVERLAY_BG[o.id] ?? 'bg-storm', otheme: o.id, cf: 'glow', media: '', desc: `${o.desc}. Gilt für alle Karten im Overlay.`,
+  })),
+  ...ALERT_PRESETS.map((p) => ({
+    key: `alert:${p.id}`, type: 'alert', id: p.id, name: p.name, mood: ALERT_MOOD[p.id] ?? 'fun', color: p.design.color || '#9146ff',
+    bg: 'bg-city', otheme: 'standard', cf: 'glow', media: p.design.media,
+    desc: `Look „${lookName(p.design.look)}“${p.design.color ? ' mit eigener Farbe' : ''} und eigener Animation – für Follow, Abo, Bits und Raids.`,
+  })),
+].map((x, i) => ({ ...x, order: i, hot: HOT.has(x.key), isNew: NEW.has(x.key) }));
+const item = (key) => ITEMS.find((x) => x.key === key);
 
 const lib = {
-  api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, useAlertPreset: null,
-  localObsQuery: () => '',
-  tab: 'themes', pick: { overlay: 'standard', alerts: ALERT_PRESETS[0]?.id }, kind: 'sub',
-  params: '', current: 'standard', access: null, frameReady: false, busy: false,
+  api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, useAlertPreset: null, installAlertPreset: null,
+  liveUrl: () => '', localObsQuery: () => '',
+  type: 'all', mood: 'all', query: '', favOnly: false, favs: [], sort: 'hot',
+  sel: 'look:neon-night', scene: 'game', compare: false, split: 50, kind: 'follow',
+  params: '', access: null, alertCfg: null, busy: false, full: false,
 };
 
 export function setupLibrary(deps) {
   Object.assign(lib, deps);
-  setupThemes({
-    api: lib.api, toast: lib.toast, germanError: lib.germanError, canEdit: lib.canEdit,
-    installAlertPreset: deps.installAlertPreset, liveUrl: deps.liveUrl,
-    access: () => lib.access, params: () => lib.params, localParams: safeLocal,
-    setParams: (query) => {
-      lib.params = query;
-      lib.current = new URLSearchParams(query).get('otheme') || 'standard';
-      lib.pick.overlay = lib.current;
-    },
-  });
-  $('#lib-kind').replaceChildren(...ALERT_KINDS.map((k) => new Option(k.label, k.kind)));
-  $('#lib-kind').value = lib.kind;
+  try { lib.favs = JSON.parse(localStorage.getItem(FAV_KEY) || '[]').filter((k) => item(k)); } catch { lib.favs = []; }
+  $('#lb-kind').replaceChildren(...ALERT_KINDS.map((k) => new Option(k.label, k.kind)));
+  $('#lb-kind').value = lib.kind;
 
-  document.querySelectorAll('[data-lib-tab]').forEach((b) => b.addEventListener('click', () => {
-    if (lib.tab === b.dataset.libTab) return;
-    lib.tab = b.dataset.libTab;
-    paint();
-  }));
-  $('#lib-list').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-id]');
-    if (!b) return;
-    lib.pick[lib.tab] = b.dataset.id;
-    paint();
+  $('#lb-q').addEventListener('input', (e) => { lib.query = e.target.value.trim().toLowerCase(); paintGallery(); });
+  $('#lb-favonly').addEventListener('click', () => { lib.favOnly = !lib.favOnly; paintGallery(); });
+  $('#lb-sort').addEventListener('change', (e) => { lib.sort = e.target.value; paintGallery(); });
+  $('#lb-reset').addEventListener('click', () => {
+    Object.assign(lib, { type: 'all', mood: 'all', query: '', favOnly: false });
+    $('#lb-q').value = '';
+    paintGallery();
   });
-  $('#lib-kind').addEventListener('change', (e) => { lib.kind = e.target.value; sendAlert(true); });
-  $('#lib-replay').addEventListener('click', () => sendAlert(true));
-  $('#lib-apply').addEventListener('click', apply);
+  $('#lb-types').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-type]');
+    if (b) { lib.type = lib.type === b.dataset.type ? 'all' : b.dataset.type; paintGallery(); }
+  });
+  $('#lb-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-type]');
+    if (b) { lib.type = b.dataset.type; paintGallery(); }
+  });
+  $('#lb-moods').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mood]');
+    if (b) { lib.mood = b.dataset.mood; paintGallery(); }
+  });
+  $('#lb-grid').addEventListener('click', (e) => {
+    const fav = e.target.closest('[data-fav]');
+    if (fav) { toggleFav(fav.dataset.fav); return; }
+    const b = e.target.closest('[data-key]');
+    if (!b) return;
+    select(b.dataset.key);
+    // Auf dem Handy liegt die Vorschau weiter oben – hinscrollen
+    const hero = $('#lb-hero');
+    if (hero.getBoundingClientRect().top < 60) hero.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+  });
+  for (const box of ['#lb-scenes', '#lb-full-scenes']) {
+    $(box).addEventListener('click', (e) => {
+      const b = e.target.closest('[data-scene]');
+      if (b) { lib.scene = b.dataset.scene; paintHero(); }
+    });
+  }
+  $('#lb-compare').addEventListener('change', (e) => { lib.compare = e.target.checked; paintHero(); });
+  $('#lb-split').addEventListener('input', (e) => { lib.split = Number(e.target.value); paintSplit(); });
+  $('#lb-kind').addEventListener('change', (e) => { lib.kind = e.target.value; sendAlerts(); });
+  $('#lb-replay').addEventListener('click', sendAlerts);
+  $('#lb-fav').addEventListener('click', () => toggleFav(lib.sel));
+  for (const b of document.querySelectorAll('[data-lb-apply]')) b.addEventListener('click', apply);
+  $('#lb-links').addEventListener('click', copyLink);
+
+  // Vollbild: dieselbe Vorschau wandert in das Fenster und wieder zurück
+  const full = $('#lb-full');
+  $('#lb-open-full').addEventListener('click', () => {
+    lib.full = true;
+    $('#lb-full-stage').append($('#lb-screen'));
+    paintHero();
+    full.showModal();
+  });
+  full.addEventListener('close', () => {
+    lib.full = false;
+    $('#lb-stage-slot').append($('#lb-screen'));
+    paintHero();
+  });
+  $('#lb-prev').addEventListener('click', () => step(-1));
+  $('#lb-next').addEventListener('click', () => step(1));
+  full.addEventListener('keydown', (e) => {
+    if (e.target.closest('select, input')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+  });
 
   addEventListener('message', (e) => {
-    const frame = $('#lib-preview iframe');
-    if (e.origin !== location.origin || !frame || e.source !== frame.contentWindow) return;
-    if (e.data?.type !== 'sh-alert-preview-ready') return;
-    lib.frameReady = true;
-    sendAlert(true);
+    if (e.origin !== location.origin || e.data?.type !== 'sh-alert-preview-ready') return;
+    const frame = [...document.querySelectorAll('#lb-screen iframe')].find((f) => f.contentWindow === e.source);
+    if (!frame) return;
+    frame.dataset.ready = '1';
+    sendAlert(frame, true);
   });
-  new ResizeObserver(fit).observe($('#lib-preview'));
+  new ResizeObserver(fit).observe($('#lb-screen'));
+  paintGallery();
 }
 
-// Beim Öffnen der Seite: aktuelle Overlay-Einstellungen laden (für Vorschau und „aktiv“)
+// Beim Öffnen der Seite: aktuelle Overlay-Einstellungen und Alerts laden (für Vorschau, Vorher und „aktiv“)
 export async function openLibrary() {
-  const [config, access] = await Promise.all([
+  const [config, access, alerts] = await Promise.all([
     lib.api.getOverlayConfig().catch(() => null),
     lib.api.overlayAccess().catch(() => null),
+    lib.api.getAlertConfig().catch(() => null),
   ]);
   lib.access = access;
   lib.params = config?.params || safeLocal();
-  lib.current = new URLSearchParams(lib.params).get('otheme') || 'standard';
-  if (!OVERLAY_THEMES.some((t) => t.id === lib.pick.overlay)) lib.pick.overlay = lib.current;
-  paint();
+  lib.alertCfg = alerts ? normalizeAlertConfig(alerts) : null;
+  paintGallery();
 }
 
 function safeLocal() {
   try { return lib.localObsQuery() ?? ''; } catch { return ''; }
 }
 
-const theme = (id) => OVERLAY_THEMES.find((t) => t.id === id);
-const preset = (id) => ALERT_PRESETS.find((p) => p.id === id);
-const lookName = (id) => ALERT_LOOKS.find((l) => l.id === id)?.name ?? '';
+// ---------- Was gerade gilt ----------
+function current(k) {
+  return new URLSearchParams(lib.params).get(k) ?? OVERLAY_DEFAULTS[k];
+}
+const isInstalled = (t) => Object.entries(t.overlay).every(([k, v]) => current(k) === v);
+// Alert-Design aus der Bibliothek, das gerade für alle Alert-Arten gilt
+function alertInUse() {
+  const kinds = lib.alertCfg?.kinds;
+  if (!kinds) return null;
+  return ALERT_PRESETS.find((p) => ALERT_KINDS.every((k) => {
+    const d = kinds[k.kind];
+    return d && Object.entries(p.design).every(([f, v]) => (d[f] ?? '') === v);
+  }))?.id ?? null;
+}
+function isActive(x) {
+  if (x.type === 'look') return isInstalled(pack(x.id));
+  if (x.type === 'overlay') return current('otheme') === x.id;
+  return alertInUse() === x.id;
+}
+function activeName(type) {
+  if (type === 'look') return THEME_PACKS.find(isInstalled)?.name ?? 'Dein Overlay';
+  if (type === 'overlay') return overlayTheme(current('otheme'))?.name ?? 'Standard';
+  return preset(alertInUse())?.name ?? 'Deine Alerts';
+}
+const editable = (x) => lib.canEdit() && (x.type === 'alert' || lib.access?.can_edit !== false);
 
-function paint() {
-  const tab = lib.tab;
-  document.querySelectorAll('[data-lib-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.libTab === tab)));
-  // Themes haben eine eigene Galerie (js/theme-gallery.js)
-  const themes = tab === 'themes';
-  $('#lib-themes').hidden = !themes;
-  $('.lib .lib-grid').hidden = themes;
-  if (themes) {
-    $('#lib-preview').replaceChildren();
-    $('#lib-status').textContent = 'Komplette Looks mit Overlay, Alerts und fünf Szenen – mit einem Klick installiert';
-    showThemes();
-    return;
-  }
-  $('#th-preview').replaceChildren();
-  $('#lib-status').textContent = tab === 'overlay'
-    ? `${OVERLAY_THEMES.length} Designs für alle Karten im Overlay – aktiv: ${theme(lib.current)?.name ?? 'Standard'}`
-    : `${ALERT_PRESETS.length} fertige Alert-Designs – Bild, Look, Farbe und Animationen in einem Klick`;
-  paintList();
-  paintPick();
-  mountPreview();
+// ---------- Galerie ----------
+function filtered() {
+  const q = lib.query;
+  const list = ITEMS.filter((x) => (lib.type === 'all' || x.type === lib.type)
+    && (lib.mood === 'all' || x.mood === lib.mood)
+    && (!lib.favOnly || lib.favs.includes(x.key))
+    && (!q || `${x.name} ${x.desc} ${moodName(x.mood)} ${TYPES[x.type].name}`.toLowerCase().includes(q)));
+  const by = lib.sort === 'az' ? (a, b) => a.name.localeCompare(b.name, 'de')
+    : lib.sort === 'new' ? (a, b) => (b.isNew - a.isNew) || a.order - b.order
+      : (a, b) => (b.hot - a.hot) || a.order - b.order;
+  return list.sort(by);
 }
 
-function paintList() {
-  const list = $('#lib-list');
-  list.dataset.tab = lib.tab;
-  const picked = lib.pick[lib.tab];
-  if (lib.tab === 'overlay') {
-    list.replaceChildren(...OVERLAY_THEMES.map((t) => {
-      const b = card(t.id, t.name, t.id === lib.current ? 'aktiv' : '');
-      const thumb = document.createElement('span');
-      thumb.className = 'obs-theme-thumb';
-      thumb.dataset.theme = t.id;
-      thumb.innerHTML = '<i></i><b></b><s></s>';
-      b.prepend(thumb);
-      b.title = t.desc;
-      return b;
-    }));
-  } else {
-    list.replaceChildren(...ALERT_PRESETS.map((p) => {
-      const look = lookName(p.design.look);
-      const b = card(p.id, p.name, look === p.name ? '' : look);
-      b.style.setProperty('--pc', p.design.color || '#9146ff');
-      const thumb = document.createElement('span');
-      thumb.className = 'ad-preset-thumb';
-      if (p.design.media.startsWith('b:')) {
-        const img = new Image();
-        img.alt = '';
-        img.src = builtinMediaUrl(p.design.media.slice(2));
-        thumb.append(img);
-      } else thumb.textContent = 'Aa';
-      b.prepend(thumb);
-      return b;
-    }));
-  }
-  list.querySelectorAll('[data-id]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === picked)));
+function paintGallery() {
+  const counts = { all: ITEMS.length, look: 0, overlay: 0, alert: 0 };
+  for (const x of ITEMS) counts[x.type]++;
+  $('#lb-types').replaceChildren(...['look', 'overlay', 'alert'].map((t) => h('button', {
+    type: 'button', class: 'lb-type', 'data-type': t, 'aria-pressed': String(lib.type === t),
+  }, icon(TYPES[t].icon), h('b', {}, TYPES[t].plural, ' ', h('span', {}, String(counts[t]))), h('small', {}, TYPES[t].desc))));
+  $('#lb-tabs').replaceChildren(...[['all', 'Alle'], ['look', 'Komplett-Looks'], ['overlay', 'Overlays'], ['alert', 'Alerts']].map(([t, n]) => h('button', {
+    type: 'button', role: 'tab', 'data-type': t, 'aria-selected': String(lib.type === t),
+  }, n, ' ', h('span', {}, String(counts[t])))));
+  $('#lb-moods').replaceChildren(...THEME_CATEGORIES.map((c) => h('button', {
+    type: 'button', class: 'lb-mood', 'data-mood': c.id, 'aria-pressed': String(lib.mood === c.id),
+  }, icon(MOOD_ICON[c.id] ?? 'ph-squares-four'), c.name)));
+  const fav = $('#lb-favonly');
+  fav.setAttribute('aria-pressed', String(lib.favOnly));
+  fav.querySelector('span').textContent = String(lib.favs.length);
+  $('#lb-sort').value = lib.sort;
+
+  const list = filtered();
+  $('#lb-count').textContent = `${list.length} ${list.length === 1 ? 'Design' : 'Designs'}${lib.favOnly ? ' in deinen Favoriten' : ''}`;
+  $('#lb-grid').replaceChildren(...list.map(card));
+  $('#lb-empty').hidden = list.length > 0;
+  paintHero();
 }
 
-function card(id, name, tag) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'lib-card';
-  b.dataset.id = id;
-  b.setAttribute('role', 'option');
-  const label = document.createElement('span');
-  label.className = 'lib-card-name';
-  label.textContent = name;
-  b.append(label);
-  if (tag) {
-    const small = document.createElement('small');
-    small.textContent = tag;
-    small.classList.toggle('is-on', tag === 'aktiv');
-    b.append(small);
-  }
-  return b;
+function thumb(x) {
+  const el = h('span', { class: 'th-thumb', 'data-otheme': x.otheme, 'data-cf': x.cf },
+    h('span', { class: 'th-t-cam' }), h('span', { class: 'th-t-bar' }, h('i'), h('i')));
+  el.style.setProperty('--tc', x.color);
+  el.style.backgroundImage = `linear-gradient(160deg, color-mix(in srgb, ${x.color} 30%, transparent), rgba(7, 6, 13, .72)), url("assets/${x.bg}.svg")`;
+  if (x.media.startsWith('b:')) el.append(h('span', { class: 'th-t-alert' }, h('img', { src: builtinMediaUrl(x.media.slice(2)), alt: '' })));
+  return el;
 }
 
-function paintPick() {
-  const overlay = lib.tab === 'overlay';
-  const id = lib.pick[lib.tab];
-  const item = overlay ? theme(id) : preset(id);
-  $('#lib-name').textContent = item?.name ?? '';
-  $('#lib-desc').textContent = overlay
-    ? item?.desc ?? ''
-    : [lookName(item?.design.look), item?.design.color ? 'eigene Farbe' : ''].filter(Boolean).join(' · ');
-  $('#lib-kind-wrap').hidden = overlay;
-  $('#lib-replay').hidden = overlay;
-  const btn = $('#lib-apply');
-  const active = overlay && id === lib.current;
-  btn.textContent = active ? '✓ Aktiv' : overlay ? 'Fürs Overlay übernehmen' : 'Für alle Alerts übernehmen';
-  btn.disabled = active || lib.busy || !lib.canEdit() || (overlay && lib.access && !lib.access.can_edit);
-  $('#lib-note').textContent = !lib.canEdit()
+function card(x) {
+  const fav = lib.favs.includes(x.key);
+  const active = isActive(x);
+  const pick = h('button', {
+    type: 'button', class: 'lb-pick', 'data-key': x.key, 'aria-pressed': String(x.key === lib.sel),
+    'aria-label': `${x.name} – ${TYPES[x.type].name}, ${moodName(x.mood)}${active ? ', aktiv' : ''}`,
+  }, thumb(x), h('span', { class: 'lb-badges' },
+    x.isNew && h('span', { class: 'lb-badge is-new' }, 'Neu'),
+    x.hot && h('span', { class: 'lb-badge' }, 'Beliebt'),
+    active && h('span', { class: 'lb-badge is-on' }, '✓ Aktiv')));
+  return h('div', { class: 'lb-item' }, pick,
+    h('button', { type: 'button', class: 'lb-fav', 'data-fav': x.key, 'aria-pressed': String(fav), 'aria-label': `${x.name} als Favorit merken`, title: 'Favorit' }, icon('ph-heart')),
+    h('span', { class: 'lb-item-text' }, h('b', {}, x.name), h('small', {}, `${TYPES[x.type].name} · ${moodName(x.mood)}`)));
+}
+
+function toggleFav(key) {
+  lib.favs = lib.favs.includes(key) ? lib.favs.filter((k) => k !== key) : [...lib.favs, key];
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(lib.favs)); } catch { /* privater Modus: nur für diese Sitzung */ }
+  paintGallery();
+}
+
+function select(key) {
+  if (!item(key)) return;
+  lib.sel = key;
+  if (item(key).type === 'alert') lib.scene = 'alert';
+  else if (item(key).type === 'overlay' && lib.scene === 'alert') lib.scene = 'game';
+  document.querySelectorAll('#lb-grid [data-key]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.key === key)));
+  paintHero();
+}
+
+function step(d) {
+  const list = filtered();
+  if (!list.length) return;
+  const i = list.findIndex((x) => x.key === lib.sel);
+  select(list[(i + d + list.length) % list.length].key);
+}
+
+// ---------- Vorschau und Details ----------
+function scenesFor(x) {
+  if (x.type === 'alert') return THEME_SCENES.filter((s) => s.id === 'alert');
+  if (x.type === 'overlay') return THEME_SCENES.filter((s) => s.id !== 'alert');
+  return THEME_SCENES;
+}
+
+function parts(x) {
+  if (x.type === 'overlay') return [['ph-frame-corners', 'Overlay-Karten', x.name], ['ph-bell-ringing', 'Alerts', 'bleiben']];
+  if (x.type === 'alert') return [['ph-bell-ringing', 'Look, Bild, Farbe, Animation', x.name], ['ph-speaker-high', 'Texte & Sounds', 'bleiben']];
+  const t = pack(x.id);
+  return [
+    ['ph-frame-corners', 'Overlay-Karten', overlayTheme(t.overlay.otheme)?.name],
+    ['ph-webcam', 'Kamera-Rahmen', NAMES.cfstyle[t.overlay.cfstyle]],
+    ['ph-bell-ringing', 'Alerts (alle Arten)', preset(t.alert)?.name],
+    ['ph-chat-circle-text', 'Chat', NAMES.chstyle[t.overlay.chstyle]],
+    ['ph-text-align-left', 'Laufband', NAMES.tstyle[t.overlay.tstyle]],
+    ['ph-grid-nine', 'Bingo-Karte', NAMES.bstyle[t.overlay.bstyle]],
+    ['ph-monitor-play', 'Szenen', '5 Stück'],
+  ];
+}
+
+function paintHero() {
+  const x = item(lib.sel) ?? ITEMS[0];
+  const scenes = scenesFor(x);
+  if (!scenes.some((s) => s.id === lib.scene)) lib.scene = scenes[0].id;
+  const active = isActive(x);
+  const can = editable(x);
+  $('#lb-hero').style.setProperty('--tc', x.color);
+
+  $('#lb-tags').replaceChildren(...[
+    h('span', { class: 'lb-tag is-acc' }, TYPES[x.type].name),
+    h('span', { class: 'lb-tag' }, moodName(x.mood)),
+    x.isNew && h('span', { class: 'lb-tag is-line' }, 'Neu'),
+    x.hot && h('span', { class: 'lb-tag is-line' }, 'Beliebt'),
+    active && h('span', { class: 'lb-tag is-on' }, '✓ Aktiv'),
+  ].filter(Boolean));
+  $('#lb-name').textContent = x.name;
+  $('#lb-desc').textContent = x.desc;
+  const fav = lib.favs.includes(x.key);
+  $('#lb-fav').setAttribute('aria-pressed', String(fav));
+  $('#lb-fav').setAttribute('aria-label', fav ? `${x.name}: Favorit entfernen` : `${x.name} als Favorit merken`);
+  $('#lb-parts').replaceChildren(...parts(x).map(([ic, label, value]) => h('li', {}, icon(ic), h('span', {}, label), h('small', {}, value ?? ''))));
+
+  const label = lib.busy ? 'Wird übernommen …' : active ? 'Aktiv' : x.type === 'look' ? 'Look installieren' : x.type === 'overlay' ? 'Fürs Overlay übernehmen' : 'Für alle Alerts übernehmen';
+  for (const b of document.querySelectorAll('[data-lb-apply]')) {
+    b.replaceChildren(icon(active ? 'ph-check' : 'ph-download-simple'), label);
+    b.disabled = lib.busy || active || !can;
+  }
+  $('#lb-note').textContent = !lib.canEdit()
     ? '🔒 Übernehmen dürfen der Streamer, Admins und freigegebene Mods.'
-    : overlay && lib.access && !lib.access.can_edit
+    : !can
       ? '🔒 Das Overlay anpassen darf gerade nur der Streamer (Freigabe unter „Overlay & OBS“).'
-      : overlay
-        ? 'Gilt sofort für alle Karten im Overlay (OBS-Adresse mit live=1). Die Vorschau zeigt deine Ebenen – oder Beispielkarten, wenn noch keine an sind.'
-        : 'Setzt Look, Bild, Farbe und Animationen für jede Alert-Art. Texte, Sounds und Varianten bleiben. Danach im Alert-Designer prüfen und speichern.';
+      : x.type === 'look'
+        ? 'Installiert Overlay und Alerts zusammen – OBS übernimmt es nach wenigen Sekunden. Welche Ebenen an sind und wo sie stehen, bleibt.'
+        : x.type === 'overlay'
+          ? 'Gilt sofort für alle Karten im Overlay (OBS-Adresse mit live=1).'
+          : 'Setzt Look, Bild, Farbe und Animationen für jede Alert-Art. Danach im Alert-Designer prüfen und speichern.';
+
+  // OBS-Adressen je Szene (nur Komplett-Looks bringen Szenen mit)
+  $('#lb-links-wrap').hidden = x.type !== 'look';
+  if (x.type === 'look') {
+    const base = lib.liveUrl();
+    $('#lb-links').replaceChildren(...THEME_SCENES.filter((s) => s.id !== 'alert').map((s) => {
+      const url = s.id === 'game' ? base : `${base}&scene=${s.id}`;
+      return h('li', {}, h('span', {}, `${s.icon} ${s.name}`), h('input', { type: 'text', readonly: true, value: url, 'aria-label': `Adresse ${s.name}` }),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', 'data-copy': url }, icon('ph-copy'), 'Kopieren'));
+    }));
+  }
+
+  // Szenen (auch im Vollbild)
+  const sceneBtns = () => scenes.map((s) => h('button', {
+    type: 'button', class: 'lb-scene', role: 'tab', 'data-scene': s.id, 'aria-selected': String(s.id === lib.scene),
+  }, s.name));
+  $('#lb-scenes').replaceChildren(...sceneBtns());
+  $('#lb-full-scenes').replaceChildren(...sceneBtns());
+  $('#lb-scenes').hidden = scenes.length < 2;
+  $('#lb-full-scenes').hidden = scenes.length < 2;
+  const alert = lib.scene === 'alert';
+  $('#lb-kind-wrap').hidden = !alert;
+  $('#lb-replay').hidden = !alert;
+  $('#lb-compare').checked = lib.compare;
+  $('#lb-split').hidden = !lib.compare;
+  $('#lb-full-name').textContent = x.name;
+  $('#lb-full-sub').textContent = `${TYPES[x.type].name} · ${THEME_SCENES.find((s) => s.id === lib.scene)?.name ?? ''}`;
+  $('#lb-before-label').textContent = `Vorher · ${activeName(x.type)}`;
+  $('#lb-after-label').textContent = `Nachher · ${x.name}`;
+  mountPreview(x);
 }
 
-// ---------- Vorschau ----------
-function previewUrl() {
+// Overlay-Werte vorher (was gerade gilt) und nachher (mit diesem Design)
+function overlayValues(x, side) {
+  const vals = {};
+  for (const k of Object.keys(OVERLAY_DEFAULTS)) vals[k] = current(k);
+  if (side === 'before') return vals;
+  if (x.type === 'look') Object.assign(vals, pack(x.id).overlay);
+  if (x.type === 'overlay') vals.otheme = x.id;
+  return vals;
+}
+
+function previewUrl(x, side) {
   const url = new URL('overlay.html', location.href);
-  if (lib.tab === 'alerts') {
-    url.searchParams.set('apreview', '1');
-    url.searchParams.set('vol', '0');
+  const p = url.searchParams;
+  const vals = overlayValues(x, side);
+  if (lib.scene === 'alert') {
+    p.set('apreview', '1');
+    p.set('vol', '0');
+    if (vals.alook !== OVERLAY_DEFAULTS.alook) p.set('alook', vals.alook);
     return url.href;
   }
-  const p = new URLSearchParams(lib.params);
-  // Nur Ebenen, die etwas zeigen – sonst Beispielkarten
-  if (!OVERLAY_KEYS.some((k) => p.get(k) && p.get(k) !== '0')) {
-    for (const [k, v] of new URLSearchParams(SAMPLE)) p.set(k, v);
+  for (const [k, v] of new URLSearchParams(SHOWCASE[lib.scene])) p.set(k, v);
+  for (const [k, v] of Object.entries(vals)) if (v !== OVERLAY_DEFAULTS[k]) p.set(k, v);
+  if (lib.scene === 'start' || lib.scene === 'brb') {
+    const at = new Date(Date.now() + 12 * 60_000);
+    p.set('sctime', `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
   }
-  p.delete('scene');
-  p.set('otheme', lib.pick.overlay);
-  p.set('edit', '1');
   p.set('test', '1');
   p.set('vol', '0');
-  url.search = p.toString();
   return url.href;
 }
 
-function mountPreview() {
-  const box = $('#lib-preview');
-  box.classList.toggle('is-alert', lib.tab === 'alerts');
-  const src = previewUrl();
-  if (box.querySelector('iframe')?.dataset.src === src) { sendAlert(true); return; }
-  const frame = document.createElement('iframe');
-  frame.title = lib.tab === 'alerts' ? 'Vorschau des Alert-Designs' : 'Vorschau des Overlay-Designs';
+function mountLayer(layer, src, title) {
+  const old = layer.querySelector('iframe');
+  if (old?.dataset.src === src) return;
+  const alert = lib.scene === 'alert';
+  const frame = h('iframe', { title, tabindex: '-1', width: alert ? '820' : '1920', height: alert ? '440' : '1080' });
   frame.src = frame.dataset.src = src;
-  frame.width = lib.tab === 'alerts' ? ALERT_W : STAGE_W;
-  frame.height = lib.tab === 'alerts' ? ALERT_H : STAGE_H;
-  frame.setAttribute('tabindex', '-1');
-  lib.frameReady = false;
-  box.replaceChildren(frame);
+  layer.replaceChildren(frame);
+}
+
+function mountPreview(x) {
+  const screen = $('#lb-screen');
+  // Vorschau nur, solange die Seite offen ist
+  if ($('#lb').closest('.page')?.hidden && !lib.full) return;
+  screen.classList.toggle('is-alert', lib.scene === 'alert');
+  screen.classList.toggle('is-compare', lib.compare);
+  const scene = THEME_SCENES.find((s) => s.id === lib.scene)?.name ?? '';
+  mountLayer($('#lb-after'), previewUrl(x, 'after'), `Vorschau: ${x.name}, ${scene}`);
+  if (lib.compare) mountLayer($('#lb-before'), previewUrl(x, 'before'), `Vorschau vorher: ${scene}`);
+  else $('#lb-before').replaceChildren();
+  paintSplit();
   fit();
+  sendAlerts();
 }
 
-// Die Höhe kommt aus aspect-ratio – hier nur skalieren (nie die Höhe setzen, siehe Alert-Designer)
+function paintSplit() {
+  $('#lb-screen').style.setProperty('--split', `${lib.split}%`);
+  $('#lb-split').value = String(lib.split);
+}
+
+// Die Höhe kommt aus aspect-ratio – hier nur skalieren
 function fit() {
-  const box = $('#lib-preview');
-  const frame = box.querySelector('iframe');
-  if (!frame || !box.clientWidth) return;
-  frame.style.transform = `scale(${box.clientWidth / (lib.tab === 'alerts' ? ALERT_W : STAGE_W)})`;
+  const screen = $('#lb-screen');
+  if (!screen.clientWidth) return;
+  for (const frame of screen.querySelectorAll('iframe')) frame.style.transform = `scale(${screen.clientWidth / Number(frame.width)})`;
 }
 
-function sendAlert(play) {
-  const frame = $('#lib-preview iframe');
-  const p = preset(lib.pick.alerts);
-  if (lib.tab !== 'alerts' || !frame || !lib.frameReady || !p) return;
+// Alert-Vorschau: nachher das gewählte Design für alle Arten, vorher die gespeicherten Alerts
+function alertConfig(side) {
+  const x = item(lib.sel);
+  if (side === 'before') return lib.alertCfg ?? normalizeAlertConfig(null);
+  const id = x.type === 'look' ? pack(x.id).alert : x.type === 'alert' ? x.id : null;
+  const p = preset(id);
+  if (!p) return lib.alertCfg ?? normalizeAlertConfig(null);
   const kinds = {};
   for (const k of ALERT_KINDS) kinds[k.kind] = normalizeDesign(p.design);
-  frame.contentWindow.postMessage({
-    type: 'sh-alert-preview', config: normalizeAlertConfig({ kinds }), kind: lib.kind, play,
-  }, location.origin);
+  return normalizeAlertConfig({ kinds });
+}
+
+function sendAlert(frame, play) {
+  if (lib.scene !== 'alert' || frame.dataset.ready !== '1') return;
+  const side = frame.closest('#lb-before') ? 'before' : 'after';
+  frame.contentWindow.postMessage({ type: 'sh-alert-preview', config: alertConfig(side), kind: lib.kind, play }, location.origin);
+}
+function sendAlerts() {
+  for (const frame of document.querySelectorAll('#lb-screen iframe')) sendAlert(frame, true);
+}
+
+async function copyLink(e) {
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  try {
+    await navigator.clipboard.writeText(b.dataset.copy);
+    lib.toast('Adresse kopiert – in OBS als Browserquelle einfügen.', 'ok');
+  } catch {
+    b.previousElementSibling?.select?.();
+    lib.toast('Adresse ist markiert – mit Strg+C kopieren.');
+  }
 }
 
 // ---------- Übernehmen ----------
 async function apply() {
-  if (lib.busy || !lib.canEdit()) return;
+  const x = item(lib.sel);
+  if (!x || lib.busy || !editable(x) || isActive(x)) return;
+  if (x.type === 'look') {
+    const t = pack(x.id);
+    if (!confirm(`Look „${t.name}“ installieren?\n\nDas ändert das Overlay-Design, den Kamera-Rahmen, Laufband, Chat und Bingo-Karte und setzt das Alert-Design „${preset(t.alert)?.name}“ für alle Alert-Arten. Eigene Texte, Sounds und Varianten der Alerts bleiben.`)) return;
+  }
   lib.busy = true;
-  paintPick();
+  paintHero();
   try {
-    if (lib.tab === 'overlay') await applyOverlay(lib.pick.overlay);
-    else await applyAlerts(lib.pick.alerts);
+    if (x.type === 'look') await installLook(pack(x.id));
+    else if (x.type === 'overlay') await applyOverlay(x);
+    else await applyAlerts(x);
   } catch (err) {
     lib.toast(`Nicht übernommen: ${lib.germanError(err)}`, 'error');
   } finally {
     lib.busy = false;
-    paintPick();
+    paintGallery();
   }
 }
 
-async function applyOverlay(id) {
-  const t = theme(id);
-  if (!t) return;
-  // Frisch laden, damit nichts überschrieben wird, was gerade jemand anderes geändert hat.
-  // Noch nie zentral gespeichert: die Einstellungen aus diesem Browser mitnehmen.
+// Overlay-Werte frisch laden, damit nichts überschrieben wird, was gerade jemand anderes geändert hat.
+// Noch nie zentral gespeichert: die Einstellungen aus diesem Browser mitnehmen.
+async function saveOverlay(values) {
   const config = await lib.api.getOverlayConfig();
   const p = new URLSearchParams(config?.params || safeLocal());
-  if (id === 'standard') p.delete('otheme');
-  else p.set('otheme', id);
+  for (const [k, v] of Object.entries(values)) {
+    if (v === OVERLAY_DEFAULTS[k]) p.delete(k);
+    else p.set(k, v);
+  }
   const query = p.toString();
   await lib.api.saveOverlayConfig(query);
-  Object.assign(lib, { params: query, current: id });
-  // Das OBS-Fenster in diesem Browser merkt sich die Auswahl auch
+  lib.params = query;
+  // Das OBS-Fenster in diesem Browser merkt sich das Design auch
   const field = $('#obs-options')?.elements.otheme;
-  if (field) field.value = id;
-  lib.toast(`Overlay-Design „${t.name}“ ist aktiv – OBS zeigt es gleich.`, 'ok');
-  paintList();
-  paint();
+  if (field && values.otheme) field.value = values.otheme;
 }
 
-async function applyAlerts(id) {
-  const p = preset(id);
-  if (!p) return;
-  const ok = await lib.useAlertPreset(id);
+async function applyOverlay(x) {
+  await saveOverlay({ otheme: x.id });
+  lib.toast(`Overlay-Design „${x.name}“ ist aktiv – OBS zeigt es gleich.`, 'ok');
+}
+
+async function installLook(t) {
+  await saveOverlay(t.overlay);
+  const alerts = await lib.installAlertPreset(t.alert).catch(() => 'error');
+  if (alerts === 'ok') lib.alertCfg = await lib.api.getAlertConfig().then(normalizeAlertConfig).catch(() => lib.alertCfg);
+  const msg = {
+    ok: `Look „${t.name}“ ist installiert – Overlay und Alerts zeigen es sofort.`,
+    dirty: `Overlay-Design von „${t.name}“ ist aktiv. Die Alerts nicht: Im Alert-Designer gibt es ungespeicherte Änderungen – erst speichern oder verwerfen, dann noch einmal installieren.`,
+    locked: `Overlay-Design von „${t.name}“ ist aktiv. Die Alerts darfst du nicht ändern.`,
+    missing: `Overlay-Design von „${t.name}“ ist aktiv. Die Alerts fehlen noch in der Datenbank (Migration …_overlay_designs.sql).`,
+    error: `Overlay-Design von „${t.name}“ ist aktiv, die Alerts wurden nicht gespeichert.`,
+  }[alerts] ?? '';
+  lib.toast(msg, alerts === 'ok' ? 'ok' : 'error', alerts === 'ok' ? 6000 : 10000);
+}
+
+async function applyAlerts(x) {
+  const ok = await lib.useAlertPreset(x.id);
   if (!ok) {
     lib.toast('Der Alert-Designer ist nicht bereit – öffne „Alerts“ und versuch es dort.', 'error');
     return;
   }
   lib.setPage('alerts');
-  lib.toast(`„${p.name}“ ist für alle Alerts eingestellt. Prüfen und oben rechts „Speichern“ klicken.`, 'ok', 8000);
+  lib.toast(`„${x.name}“ ist für alle Alerts eingestellt. Prüfen und oben rechts „Speichern“ klicken.`, 'ok', 8000);
 }

@@ -1,7 +1,7 @@
 // Ruhiger Einstieg: Checkliste für Streamer oben auf der Dashboard-Startseite.
 // Fünf Schritte; was die Seite selbst erkennen kann, hakt sie von allein ab (Twitch verbunden,
 // Mods freigegeben, 2FA an). OBS und „erste Idee“ merkt sich dieser Browser.
-// Ausblenden geht jederzeit – danach steht die Liste unter „❓ Einführung“ nicht mehr im Weg.
+// Ausblenden geht jederzeit – danach steht die Liste unter „Einführung“ nicht mehr im Weg.
 import { h } from './extras-core.js';
 import { noAffiliate } from './affiliate.js';
 
@@ -62,7 +62,7 @@ export async function renderStart(ctx) {
   ));
 }
 
-// „❓ Einführung“ in der Leiste blendet die Liste wieder ein
+// „Einführung“ in der Leiste blendet die Liste wieder ein
 export function showStartAgain(ctx) {
   try { localStorage.removeItem(key(ctx, 'hidden')); } catch { /* egal */ }
   renderStart(ctx);
