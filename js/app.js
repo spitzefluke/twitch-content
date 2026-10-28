@@ -20,7 +20,8 @@ import {
 import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, obsStatus, openExtra, renderGuard, setupExtras } from './extras.js';
 import { autoOpenObsSetup, openObsSetup, setupObsSetup } from './obs-setup.js';
 import { guardFrame } from './frame-guard.js';
-import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertMedia, useAlertPreset } from './alert-designer.js';
+import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertColor, useAlertMedia, useAlertPreset } from './alert-designer.js';
+import { isLookPreset } from './look-builder.js';
 import { createExtrasApi } from './extras-api.js';
 import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
@@ -38,6 +39,7 @@ import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderProfile } from './dash-profile.js';
 import { renderArtist } from './dash-artist.js';
+import { extractColors, inkOn } from './brand-colors.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
 import { renderBotStudio } from './bot-studio.js';
@@ -2136,7 +2138,7 @@ function setupDialogs() {
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
   setupLibrary({
-    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset, useAlertMedia,
+    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset, useAlertMedia, useAlertColor,
     // Kartenbild eines Artists als neue Sammelkarte (Migration …_stream_extras.sql)
     addArtistCard: (c) => createExtrasApi(state.api).cards.save({ ...c, active: true }),
     liveUrl: () => obsLiveUrl(),
@@ -6387,14 +6389,50 @@ async function runObsSoundCheck() {
 }
 
 // ---------- Vorlagen (overlay_presets) ----------
+// Farbe aus dem Logo: Vorschläge als Knöpfe, Klick setzt die Akzentfarbe
+async function pickObsBrand(file) {
+  const box = $('#obs-brand-swatches');
+  try {
+    const colors = await extractColors(file);
+    box.replaceChildren(...colors.map((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'obs-brand-swatch';
+      b.style.background = c;
+      b.style.color = inkOn(c);
+      b.textContent = c;
+      b.title = `${c} als Akzentfarbe`;
+      b.disabled = obsLocked();
+      b.addEventListener('click', () => {
+        $('#obs-options').elements.accent.value = c;
+        updateObs({ now: true });
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        toast(`Akzentfarbe ${c} übernommen.`, 'ok');
+      });
+      b.setAttribute('aria-pressed', 'false');
+      return b;
+    }));
+  } catch (err) {
+    toast(germanError(err), 'error');
+  }
+}
+
 function setupObsPresets() {
+  $('#obs-brand-file').addEventListener('change', (e) => { if (e.target.files[0]) pickObsBrand(e.target.files[0]); e.target.value = ''; });
+  $('#obs-scbg-clear').addEventListener('click', () => {
+    $('#obs-options').elements.scbg.value = '';
+    updateObs({ now: true });
+  });
   $('#obs-preset-save').addEventListener('click', saveObsPreset);
   $('#obs-preset-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveObsPreset(); } });
 }
 
 async function loadObsPresets() {
   if (!state.api) return;
-  obs.presets = await state.api.getOverlayPresets().catch(() => null);
+  // Eigene Looks aus dem Look-Baukasten (look=1) stehen in der Design-Bibliothek, nicht hier
+  const all = await state.api.getOverlayPresets().catch(() => null);
+  obs.looks = all?.filter(isLookPreset) ?? [];
+  obs.presets = all?.filter((p) => !isLookPreset(p)) ?? null;
   paintObsPresets();
 }
 
@@ -6447,6 +6485,7 @@ async function saveObsPreset() {
   const name = input.value.trim();
   if (!name) { input.focus(); toast('Bitte einen Namen für die Vorlage eingeben.', 'info'); return; }
   const params = new URL(obsUrl()).search.replace(/^\?/, '');
+  if (obs.looks?.some((p) => p.name.toLowerCase() === name.toLowerCase())) { toast(`„${name}“ heißt schon einer deiner Looks – bitte einen anderen Namen.`, 'error'); return; }
   const exists = obs.presets?.some((p) => p.name.toLowerCase() === name.toLowerCase());
   if (exists && !confirm(`Es gibt schon eine Vorlage „${name}“. Überschreiben?`)) return;
   try {
@@ -7342,6 +7381,9 @@ function updateObs({ now = false, fromPreview = false } = {}) {
   paintObsLayers();
   filterObsLayers();
   paintObsScenes();
+  // Hintergrund aus der Design-Bibliothek (Artist-Design): anzeigen, damit man ihn wieder entfernen kann
+  $('#obs-scbg-row').hidden = !f.scbg.value;
+  $('#obs-scbg-clear').disabled = obsLocked();
   if (!obsLive.filling && !obsHist.applying) recordObsHistory();
   // Live: immer dieselbe Adresse, die Einstellungen liegen in der Datenbank
   $('#obs-url').value = obsLive.ready ? obsLiveUrl() : obsUrl();

@@ -4,6 +4,8 @@
 //                 speichert das Alert-Design für alle Alert-Arten (alert_config).
 //   Overlays (OVERLAY_THEMES): nur das Aussehen der Karten – setzt otheme (OBS mit live=1 zeigt es sofort).
 //   Alerts (ALERT_PRESETS): stellt das Design im Alert-Designer für alle Arten ein; gespeichert wird dort.
+//   Eigene Looks (js/look-builder.js): im Look-Baukasten zusammengestellt, gespeichert als Overlay-Vorlage
+//                 mit look=1 – übernehmen setzt Overlay-Werte, Alert-Design (+ Farbe) und ggf. die Profilfarbe.
 //   Von Artists (artist_gallery, Migration …_artists.sql): freigegebene Uploads mit Credit – Alert-Grafik
 //                 (Bild für alle Alerts), Szenen-Hintergrund (scbg), Look (Grund-Design, Farbe, Hintergrund,
 //                 optional Alert-Bild) und Sammelkarten-Bild. Übernehmen zählt artist_asset_use, Melden geht an den Admin.
@@ -12,7 +14,8 @@
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, builtinMediaUrl, normalizeAlertConfig, normalizeDesign } from './alerts.js';
 import { h } from './extras-core.js';
 import { artistFileUrl, isArtistVideo } from './artist-files.js';
-import { OVERLAY_THEMES } from './overlay-stage.js';
+import { LOOK_KEYS, openLookBuilder, parseLook } from './look-builder.js';
+import { OVERLAY_THEMES, SCENE_MOTIONS } from './overlay-stage.js';
 import { OVERLAY_DEFAULTS, THEME_CATEGORIES, THEME_PACKS, THEME_SCENES } from './theme-packs.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -31,6 +34,7 @@ const TYPES = {
   look: { name: 'Komplett-Look', plural: 'Komplett-Looks', icon: 'ph-package', desc: 'Overlay, Kamera-Rahmen, Alerts, Chat und 5 Szenen – alles auf einmal.' },
   overlay: { name: 'Overlay', plural: 'Overlays', icon: 'ph-frame-corners', desc: 'Nur das Aussehen der Karten im Overlay. Alerts bleiben, wie sie sind.' },
   alert: { name: 'Alert', plural: 'Alerts', icon: 'ph-bell-ringing', desc: 'Nur Follow-, Abo- und Bits-Alerts. Texte und Sounds bleiben.' },
+  mine: { name: 'Eigener Look', plural: 'Eigene Looks', icon: 'ph-sliders-horizontal', desc: 'Im Look-Baukasten selbst zusammengestellt – mit deiner Farbe.' },
   community: { name: 'Von Artists', plural: 'Von Artists', icon: 'ph-paint-brush', desc: 'Alerts, Hintergründe, Looks und Karten von Artists – kostenlos, mit Credit.' },
 };
 // Artist-Uploads: was genau es ist
@@ -78,6 +82,7 @@ const NAMES = {
   tstyle: { bar: 'Laufband', neon: 'Neon', board: 'LED-Anzeige' },
   chstyle: { card: 'Karte', bubble: 'Sprechblasen', clean: 'Schlicht' },
   bstyle: { classic: 'Bunt', neon: 'Neon', paper: 'Papier' },
+  scmove: Object.fromEntries(SCENE_MOTIONS.map((m) => [m.id, m.name])),
 };
 
 const pack = (id) => THEME_PACKS.find((t) => t.id === id);
@@ -106,6 +111,19 @@ const BASE_ITEMS = [
 let ITEMS = BASE_ITEMS;
 const item = (key) => ITEMS.find((x) => x.key === key);
 
+// Eigene Looks (Look-Baukasten) als Einträge der Bibliothek
+function mineItem(look, i) {
+  const o = look.overlay;
+  const p = preset(look.apreset);
+  return {
+    key: `mine:${look.id}`, type: 'mine', id: look.id, look, name: look.name, mood: OVERLAY_MOOD[o.otheme] ?? 'minimal',
+    color: o.accent ? `#${o.accent}` : OVERLAY_COLOR[o.otheme] ?? '#9146ff', bg: OVERLAY_BG[o.otheme] ?? 'bg-storm',
+    otheme: o.otheme || 'standard', cf: o.cfstyle || 'glow', media: p?.design.media ?? '',
+    desc: `Dein Look: ${overlayTheme(o.otheme)?.name ?? 'Standard'}${o.accent ? ` in #${o.accent}` : ''}${p ? `, Alerts „${p.name}“` : ''}${o.scmove ? `, Szenen mit ${NAMES.scmove[o.scmove]}` : ''}.`,
+    order: -1000 + i, hot: false, isNew: false,
+  };
+}
+
 // Artist-Uploads als Einträge der Bibliothek
 function communityItem({ asset: a, artist }, i) {
   const mood = a.tags.map((t) => TAG_MOOD[t]).find(Boolean) ?? (a.kind === 'background' ? 'cozy' : 'fun');
@@ -121,7 +139,7 @@ function communityItem({ asset: a, artist }, i) {
 
 const lib = {
   api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, useAlertPreset: null, installAlertPreset: null,
-  useAlertMedia: async () => 'missing', addArtistCard: async () => { throw new Error('Sammelkarten sind nicht bereit.'); },
+  useAlertMedia: async () => 'missing', useAlertColor: async () => 'missing', presets: null, gallery: [], addArtistCard: async () => { throw new Error('Sammelkarten sind nicht bereit.'); },
   liveUrl: () => '', localObsQuery: () => '',
   type: 'all', mood: 'all', query: '', favOnly: false, favs: [], sort: 'hot',
   sel: 'look:neon-night', scene: 'game', compare: false, split: 50, kind: 'follow',
@@ -177,7 +195,12 @@ export function setupLibrary(deps) {
   $('#lb-replay').addEventListener('click', sendAlerts);
   $('#lb-fav').addEventListener('click', () => toggleFav(lib.sel));
   for (const b of document.querySelectorAll('[data-lb-apply]')) b.addEventListener('click', apply);
-  $('#lb-credit').addEventListener('click', (e) => { if (e.target.closest('[data-report]')) report(); });
+  $('#lb-build').addEventListener('click', () => openLookBuilder(builderDeps()));
+  $('#lb-credit').addEventListener('click', (e) => {
+    if (e.target.closest('[data-report]')) report();
+    if (e.target.closest('[data-edit-look]')) openLookBuilder(builderDeps(), item(lib.sel)?.look);
+    if (e.target.closest('[data-del-look]')) deleteLook();
+  });
   $('#lb-links').addEventListener('click', copyLink);
 
   // Vollbild: dieselbe Vorschau wandert in das Fenster und wieder zurück
@@ -220,12 +243,52 @@ export async function openLibrary() {
     lib.api.getAlertConfig().catch(() => null),
     // Ohne Migration …_artists.sql: einfach keine Artist-Designs
     lib.api.artistGallery?.().catch(() => []) ?? [],
+    loadPresets(),
   ]);
-  ITEMS = [...BASE_ITEMS, ...(Array.isArray(gallery) ? gallery : []).map(communityItem)];
+  lib.gallery = Array.isArray(gallery) ? gallery : [];
+  rebuildItems();
   lib.access = access;
   lib.params = config?.params || safeLocal();
   lib.alertCfg = alerts ? normalizeAlertConfig(alerts) : null;
   paintGallery();
+}
+
+async function loadPresets() {
+  lib.presets = await lib.api.getOverlayPresets?.().catch(() => null) ?? null;
+}
+function rebuildItems() {
+  const mine = (lib.presets ?? []).map(parseLook).filter(Boolean);
+  ITEMS = [...mine.map(mineItem), ...BASE_ITEMS, ...lib.gallery.map(communityItem)];
+}
+
+function builderDeps() {
+  return {
+    api: lib.api, toast: lib.toast, germanError: lib.germanError, presets: () => lib.presets,
+    onSaved: async (name, applyNow) => {
+      await loadPresets();
+      rebuildItems();
+      const x = ITEMS.find((i) => i.type === 'mine' && i.name.toLowerCase() === name.toLowerCase());
+      lib.type = 'mine';
+      if (x) lib.sel = x.key;
+      paintGallery();
+      if (x && applyNow) await apply({ confirmed: true });
+      else lib.toast(`Look „${name}“ gespeichert – du findest ihn unter „Eigene Looks“.`, 'ok');
+    },
+  };
+}
+
+async function deleteLook() {
+  const x = item(lib.sel);
+  if (x?.type !== 'mine' || !confirm(`Look „${x.name}“ löschen? Dein Overlay bleibt, wie es gerade ist.`)) return;
+  try {
+    await lib.api.deleteOverlayPreset(x.id);
+    await loadPresets();
+    rebuildItems();
+    lib.sel = ITEMS[0].key;
+    paintGallery();
+  } catch (err) {
+    lib.toast(lib.germanError(err), 'error');
+  }
 }
 
 function safeLocal() {
@@ -250,6 +313,7 @@ function isActive(x) {
   if (x.type === 'look') return isInstalled(pack(x.id));
   if (x.type === 'overlay') return current('otheme') === x.id;
   if (x.type === 'community') return communityActive(x);
+  if (x.type === 'mine') return LOOK_KEYS.every((k) => (current(k) ?? '') === (x.look.overlay[k] ?? OVERLAY_DEFAULTS[k] ?? ''));
   return alertInUse() === x.id;
 }
 const alertsShow = (media) => !!lib.alertCfg?.kinds && ALERT_KINDS.every((k) => lib.alertCfg.kinds[k.kind]?.media === media);
@@ -263,7 +327,7 @@ function communityActive(x) {
 function activeName(type) {
   if (type === 'look') return THEME_PACKS.find(isInstalled)?.name ?? 'Dein Overlay';
   if (type === 'overlay') return overlayTheme(current('otheme'))?.name ?? 'Standard';
-  if (type === 'community') return 'Dein Overlay';
+  if (type === 'community' || type === 'mine') return 'Dein Overlay';
   return preset(alertInUse())?.name ?? 'Deine Alerts';
 }
 const editable = (x) => lib.canEdit() && (x.type === 'alert' || (x.type === 'community' && ['alert', 'card'].includes(x.art)) || lib.access?.can_edit !== false);
@@ -282,15 +346,16 @@ function filtered() {
 }
 
 function paintGallery() {
-  const counts = { all: ITEMS.length, look: 0, overlay: 0, alert: 0, community: 0 };
+  const counts = { all: ITEMS.length, look: 0, overlay: 0, alert: 0, community: 0, mine: 0 };
   for (const x of ITEMS) counts[x.type]++;
-  const types = counts.community ? ['look', 'overlay', 'alert', 'community'] : ['look', 'overlay', 'alert'];
-  if (lib.type === 'community' && !counts.community) lib.type = 'all';
+  const types = ['look', 'overlay', 'alert', 'community'].filter((t) => t !== 'community' || counts.community);
+  if ((lib.type === 'community' || lib.type === 'mine') && !counts[lib.type]) lib.type = 'all';
+  $('#lb-build').hidden = !lib.canEdit();
   $('#lb-types').replaceChildren(...types.map((t) => h('button', {
     type: 'button', class: 'lb-type', 'data-type': t, 'aria-pressed': String(lib.type === t),
   }, icon(TYPES[t].icon), h('b', {}, TYPES[t].plural, ' ', h('span', {}, String(counts[t]))), h('small', {}, TYPES[t].desc))));
-  $('#lb-tabs').replaceChildren(...[['all', 'Alle'], ['look', 'Komplett-Looks'], ['overlay', 'Overlays'], ['alert', 'Alerts'], ['community', 'Von Artists']]
-    .filter(([t]) => t !== 'community' || counts.community).map(([t, n]) => h('button', {
+  $('#lb-tabs').replaceChildren(...[['all', 'Alle'], ['mine', 'Eigene Looks'], ['look', 'Komplett-Looks'], ['overlay', 'Overlays'], ['alert', 'Alerts'], ['community', 'Von Artists']]
+    .filter(([t]) => !['community', 'mine'].includes(t) || counts[t]).map(([t, n]) => h('button', {
     type: 'button', role: 'tab', 'data-type': t, 'aria-selected': String(lib.type === t),
   }, n, ' ', h('span', {}, String(counts[t])))));
   $('#lb-moods').replaceChildren(...THEME_CATEGORIES.map((c) => h('button', {
@@ -347,7 +412,7 @@ function card(x) {
   return h('div', { class: 'lb-item' }, pick,
     h('button', { type: 'button', class: 'lb-fav', 'data-fav': x.key, 'aria-pressed': String(fav), 'aria-label': `${x.name} als Favorit merken`, title: 'Favorit' }, icon('ph-heart')),
     h('span', { class: 'lb-item-text' }, h('b', {}, x.name),
-      h('small', {}, x.type === 'community' ? `${ART_KIND[x.art]} · von ${x.artist.name}` : `${TYPES[x.type].name} · ${moodName(x.mood)}`)));
+      h('small', {}, x.type === 'community' ? `${ART_KIND[x.art]} · von ${x.artist.name}` : x.type === 'mine' ? 'Eigener Look' : `${TYPES[x.type].name} · ${moodName(x.mood)}`)));
 }
 
 function toggleFav(key) {
@@ -384,6 +449,7 @@ function scenesFor(x) {
   }
   if (x.type === 'alert') return THEME_SCENES.filter((s) => s.id === 'alert');
   if (x.type === 'overlay') return THEME_SCENES.filter((s) => s.id !== 'alert');
+  if (x.type === 'mine') return THEME_SCENES.filter((s) => s.id !== 'alert' || x.look.apreset);
   return THEME_SCENES;
 }
 
@@ -400,6 +466,20 @@ function parts(x) {
     ];
   }
   if (x.type === 'overlay') return [['ph-frame-corners', 'Overlay-Karten', x.name], ['ph-bell-ringing', 'Alerts', 'bleiben']];
+  if (x.type === 'mine') {
+    const o = x.look.overlay;
+    return [
+      ['ph-palette', 'Farbe', o.accent ? `#${o.accent}` : 'Design-Farbe'],
+      ['ph-frame-corners', 'Overlay-Karten', overlayTheme(o.otheme)?.name],
+      ['ph-webcam', 'Kamera-Rahmen', NAMES.cfstyle[o.cfstyle ?? 'glow']],
+      ['ph-bell-ringing', 'Alerts (alle Arten)', x.look.apreset ? `${preset(x.look.apreset)?.name}${x.look.acolor ? ' · deine Farbe' : ''}` : 'bleiben'],
+      ['ph-chat-circle-text', 'Chat', NAMES.chstyle[o.chstyle ?? 'card']],
+      ['ph-text-align-left', 'Laufband', NAMES.tstyle[o.tstyle ?? 'bar']],
+      ['ph-grid-nine', 'Bingo-Karte', NAMES.bstyle[o.bstyle ?? 'classic']],
+      ['ph-monitor-play', 'Szenen-Bewegung', o.scmove ? NAMES.scmove[o.scmove] : 'ohne'],
+      ...(x.look.pacc ? [['ph-identification-card', 'Öffentliches Profil', 'deine Farbe']] : []),
+    ];
+  }
   if (x.type === 'alert') return [['ph-bell-ringing', 'Look, Bild, Farbe, Animation', x.name], ['ph-speaker-high', 'Texte & Sounds', 'bleiben']];
   const t = pack(x.id);
   return [
@@ -409,7 +489,7 @@ function parts(x) {
     ['ph-chat-circle-text', 'Chat', NAMES.chstyle[t.overlay.chstyle]],
     ['ph-text-align-left', 'Laufband', NAMES.tstyle[t.overlay.tstyle]],
     ['ph-grid-nine', 'Bingo-Karte', NAMES.bstyle[t.overlay.bstyle]],
-    ['ph-monitor-play', 'Szenen', '5 Stück'],
+    ['ph-monitor-play', 'Szenen', t.overlay.scmove ? `5 Stück · ${NAMES.scmove[t.overlay.scmove]}` : '5 Stück'],
   ];
 }
 
@@ -423,6 +503,7 @@ function paintHero() {
 
   $('#lb-tags').replaceChildren(...[
     h('span', { class: 'lb-tag is-acc' }, x.type === 'community' ? ART_KIND[x.art] : TYPES[x.type].name),
+    x.type === 'mine' && h('span', { class: 'lb-tag is-line' }, 'Von dir'),
     h('span', { class: 'lb-tag' }, x.type === 'community' ? 'Von Artists' : moodName(x.mood)),
     x.isNew && h('span', { class: 'lb-tag is-line' }, 'Neu'),
     x.hot && h('span', { class: 'lb-tag is-line' }, 'Beliebt'),
@@ -432,7 +513,12 @@ function paintHero() {
   $('#lb-desc').textContent = x.desc;
   // Credit: Name und Links des Artists, dazu „Melden“
   const credit = $('#lb-credit');
-  credit.hidden = x.type !== 'community';
+  credit.hidden = x.type !== 'community' && x.type !== 'mine';
+  if (x.type === 'mine') {
+    credit.replaceChildren(icon('ph-sliders-horizontal'), h('span', {}, 'Im Look-Baukasten gebaut'),
+      lib.canEdit() ? h('button', { type: 'button', class: 'lb-report lb-edit', 'data-edit-look': '' }, icon('ph-pencil-simple'), 'Bearbeiten') : null,
+      lib.canEdit() ? h('button', { type: 'button', class: 'lb-report', 'data-del-look': '' }, icon('ph-trash'), 'Löschen') : null);
+  }
   if (x.type === 'community') {
     credit.replaceChildren(icon('ph-paint-brush'), h('span', {}, 'Von ', h('b', {}, x.artist.name)),
       ...x.artist.links.map((l) => h('a', { href: l, target: '_blank', rel: 'noopener noreferrer nofollow' }, linkLabel(l))),
@@ -444,7 +530,7 @@ function paintHero() {
   $('#lb-fav').setAttribute('aria-label', fav ? `${x.name}: Favorit entfernen` : `${x.name} als Favorit merken`);
   $('#lb-parts').replaceChildren(...parts(x).map(([ic, label, value]) => h('li', {}, icon(ic), h('span', {}, label), h('small', {}, value ?? ''))));
 
-  const label = lib.busy ? 'Wird übernommen …' : active ? 'Aktiv' : x.type === 'look' ? 'Look installieren' : x.type === 'overlay' ? 'Fürs Overlay übernehmen'
+  const label = lib.busy ? 'Wird übernommen …' : active ? 'Aktiv' : x.type === 'look' || x.type === 'mine' ? 'Look installieren' : x.type === 'overlay' ? 'Fürs Overlay übernehmen'
     : x.type === 'community' ? { alert: 'Als Bild für alle Alerts', background: 'Als Szenen-Hintergrund', look: 'Look übernehmen', card: 'Als Sammelkarte hinzufügen' }[x.art]
       : 'Für alle Alerts übernehmen';
   for (const b of document.querySelectorAll('[data-lb-apply]')) {
@@ -455,6 +541,8 @@ function paintHero() {
     ? '🔒 Übernehmen dürfen der Streamer, Admins und freigegebene Mods.'
     : !can
       ? '🔒 Das Overlay anpassen darf gerade nur der Streamer (Freigabe unter „Overlay & OBS“).'
+      : x.type === 'mine'
+        ? `Übernimmt deinen Look für Overlay${x.look.apreset ? ' und Alerts' : ''}${x.look.pacc ? ' und die Farbe deines Profils' : ''}. Welche Ebenen an sind und wo sie stehen, bleibt.`
       : x.type === 'community'
         ? {
           alert: 'Setzt das Bild für jede Alert-Art. Danach im Alert-Designer prüfen und speichern.',
@@ -505,11 +593,12 @@ function overlayValues(x, side) {
   const vals = {};
   for (const k of Object.keys(OVERLAY_DEFAULTS)) vals[k] = current(k);
   // Hintergrund und Farbe aus Artist-Designs stehen nicht in OVERLAY_DEFAULTS
-  for (const k of ['scbg', 'accent']) if (current(k)) vals[k] = current(k);
+  for (const k of ['scbg', 'accent', 'scmove']) if (current(k)) vals[k] = current(k);
   if (side === 'before') return vals;
   if (x.type === 'look') Object.assign(vals, pack(x.id).overlay);
   if (x.type === 'overlay') vals.otheme = x.id;
   if (x.type === 'community') Object.assign(vals, communityOverlay(x));
+  if (x.type === 'mine') for (const k of LOOK_KEYS) vals[k] = x.look.overlay[k] ?? OVERLAY_DEFAULTS[k];
   return vals;
 }
 
@@ -524,7 +613,7 @@ function previewUrl(x, side) {
     return url.href;
   }
   for (const [k, v] of new URLSearchParams(SHOWCASE[lib.scene])) p.set(k, v);
-  for (const [k, v] of Object.entries(vals)) if (v !== undefined && v !== OVERLAY_DEFAULTS[k]) p.set(k, v);
+  for (const [k, v] of Object.entries(vals)) if (v !== undefined && v !== '' && v !== OVERLAY_DEFAULTS[k]) p.set(k, v);
   if (lib.scene === 'start' || lib.scene === 'brb') {
     const at = new Date(Date.now() + 12 * 60_000);
     p.set('sctime', `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
@@ -597,11 +686,12 @@ function alertConfig(side) {
     for (const k of ALERT_KINDS) kinds[k.kind] = normalizeDesign({ ...(base.kinds?.[k.kind] ?? {}), media: x.media });
     return normalizeAlertConfig({ ...base, kinds });
   }
-  const id = x.type === 'look' ? pack(x.id).alert : x.type === 'alert' ? x.id : null;
+  const id = x.type === 'look' ? pack(x.id).alert : x.type === 'alert' ? x.id : x.type === 'mine' ? x.look.apreset : null;
   const p = preset(id);
   if (!p) return lib.alertCfg ?? normalizeAlertConfig(null);
   const kinds = {};
-  for (const k of ALERT_KINDS) kinds[k.kind] = normalizeDesign(p.design);
+  const color = x.type === 'mine' && x.look.acolor && x.look.overlay.accent ? `#${x.look.overlay.accent}` : null;
+  for (const k of ALERT_KINDS) kinds[k.kind] = normalizeDesign(color ? { ...p.design, color } : p.design);
   return normalizeAlertConfig({ kinds });
 }
 
@@ -627,9 +717,10 @@ async function copyLink(e) {
 }
 
 // ---------- Übernehmen ----------
-async function apply() {
+async function apply({ confirmed = false } = {}) {
   const x = item(lib.sel);
   if (!x || lib.busy || !editable(x) || isActive(x)) return;
+  if (x.type === 'mine' && !confirmed && !confirm(`Deinen Look „${x.name}“ übernehmen?\n\nDas ändert Design, Farbe, Kamera-Rahmen, Chat, Laufband, Bingo${x.look.apreset ? ' und Alerts' : ''}. Ebenen und Plätze bleiben.`)) return;
   if (x.type === 'community' && x.art === 'look'
       && !confirm(`Look „${x.name}“ von ${x.artist.name} übernehmen?\n\nDas ändert Grund-Design, Akzentfarbe und den Hintergrund der Szenen${x.media ? ' und setzt das Bild für alle Alert-Arten' : ''}. Ebenen, Plätze, Texte und Sounds bleiben.`)) return;
   if (x.type === 'look') {
@@ -641,6 +732,7 @@ async function apply() {
   try {
     if (x.type === 'look') await installLook(pack(x.id));
     else if (x.type === 'community') await applyCommunity(x);
+    else if (x.type === 'mine') await applyMine(x);
     else if (x.type === 'overlay') await applyOverlay(x);
     else await applyAlerts(x);
   } catch (err) {
@@ -657,7 +749,7 @@ async function saveOverlay(values) {
   const config = await lib.api.getOverlayConfig();
   const p = new URLSearchParams(config?.params || safeLocal());
   for (const [k, v] of Object.entries(values)) {
-    if (v === OVERLAY_DEFAULTS[k]) p.delete(k);
+    if (v === OVERLAY_DEFAULTS[k] || v === '' || v === undefined || v === null) p.delete(k);
     else p.set(k, v);
   }
   const query = p.toString();
@@ -685,6 +777,29 @@ async function installLook(t) {
     error: `Overlay-Design von „${t.name}“ ist aktiv, die Alerts wurden nicht gespeichert.`,
   }[alerts] ?? '';
   lib.toast(msg, alerts === 'ok' ? 'ok' : 'error', alerts === 'ok' ? 6000 : 10000);
+}
+
+// ---------- Eigene Looks ----------
+async function applyMine(x) {
+  const { look } = x;
+  const values = {};
+  for (const k of LOOK_KEYS) values[k] = look.overlay[k] ?? OVERLAY_DEFAULTS[k] ?? '';
+  await saveOverlay(values);
+  const problems = [];
+  if (look.apreset) {
+    const r = await lib.installAlertPreset(look.apreset).catch(() => 'error');
+    if (r === 'ok' && look.acolor && look.overlay.accent) {
+      const c = await lib.useAlertColor?.(`#${look.overlay.accent}`, { save: true }).catch(() => 'error');
+      if (c !== 'ok') problems.push('Alert-Farbe');
+    }
+    if (r !== 'ok') problems.push(r === 'dirty' ? 'Alerts (ungespeicherte Änderungen im Alert-Designer)' : 'Alerts');
+    lib.alertCfg = await lib.api.getAlertConfig().then(normalizeAlertConfig).catch(() => lib.alertCfg);
+  }
+  if (look.pacc && look.overlay.accent) {
+    await lib.api.profileAccentSave?.(`#${look.overlay.accent}`).catch(() => problems.push('Profilfarbe'));
+  }
+  lib.toast(problems.length ? `Look „${x.name}“ ist im Overlay aktiv – nicht übernommen: ${problems.join(', ')}.` : `Look „${x.name}“ ist installiert – OBS zeigt ihn gleich.`,
+    problems.length ? 'error' : 'ok', 8000);
 }
 
 // ---------- Von Artists ----------

@@ -262,6 +262,54 @@ html[data-theme="newyear"] { --accent: #ffd76a; }
 .sc-art { position: absolute; inset: 0; pointer-events: none; background-size: cover; background-position: center; }
 .sc-art::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, .15), rgba(0, 0, 0, .55)); }
 .ov-scene.has-art .sc-grid { display: none; }
+/* ---------- Bewegte Szenen (scmove=…): nur transform und opacity ---------- */
+.sc-motion { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.sc-motion span { position: absolute; will-change: transform, opacity; }
+/* Lichter: drei große, vorab weiche Flecken (kein Blur-Filter) */
+.sc-motion[data-motion="lights"] span {
+  width: 70vmax; height: 70vmax; left: -15vmax; top: -20vmax; border-radius: 50%; opacity: .55;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 55%, transparent), transparent);
+  animation: scm-drift calc(46s + var(--i) * 9s) ease-in-out infinite alternate; animation-delay: calc(var(--i) * -11s);
+}
+.sc-motion[data-motion="lights"] span:nth-child(2) { left: 45vw; top: 30vh; background: radial-gradient(closest-side, rgb(145 70 255 / .5), transparent); }
+.sc-motion[data-motion="lights"] span:nth-child(3) { left: 10vw; top: 55vh; width: 50vmax; height: 50vmax; background: radial-gradient(closest-side, rgb(53 199 255 / .35), transparent); }
+@keyframes scm-drift { 0% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(18vw, 8vh, 0) scale(1.15); } 100% { transform: translate3d(-6vw, 16vh, 0) scale(.95); } }
+/* Sterne: zwei Punkt-Raster, die funkeln und ganz leicht treiben */
+.sc-motion[data-motion="stars"] span {
+  inset: -10%; background-image: radial-gradient(1.6px 1.6px at 20% 30%, #fff, transparent), radial-gradient(1.2px 1.2px at 70% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 45% 60%, color-mix(in srgb, var(--accent) 70%, #fff), transparent), radial-gradient(1.4px 1.4px at 85% 15%, #fff, transparent);
+  background-size: 230px 230px; animation: scm-twinkle 5s ease-in-out infinite alternate, scm-float 90s linear infinite;
+}
+.sc-motion[data-motion="stars"] span:nth-child(2) { background-size: 370px 370px; animation-duration: 7s, 140s; animation-delay: -3s, -40s; }
+@keyframes scm-twinkle { from { opacity: .25; } to { opacity: .9; } }
+@keyframes scm-float { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-230px, -115px, 0); } }
+/* Wellen: Formen als Maske, Farbe aus der Akzentfarbe */
+.sc-motion[data-motion="waves"] span {
+  left: 0; bottom: 0; width: 200%; height: calc(16vh + var(--i) * 5vh); opacity: calc(.42 - var(--i) * .1);
+  background: color-mix(in srgb, var(--accent) 70%, #1a0f35);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 50 Q100 0 200 50 T400 50 T600 50 T800 50 V100 H0Z'/%3E%3C/svg%3E") 0 0 / 50% 100% repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 50 Q100 0 200 50 T400 50 T600 50 T800 50 V100 H0Z'/%3E%3C/svg%3E") 0 0 / 50% 100% repeat-x;
+  animation: scm-wave calc(18s + var(--i) * 8s) linear infinite; animation-direction: normal;
+}
+.sc-motion[data-motion="waves"] span:nth-child(2) { animation-direction: reverse; }
+@keyframes scm-wave { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+/* Funken: kleine Punkte steigen auf und verglühen */
+.sc-motion[data-motion="sparks"] span {
+  left: var(--x); bottom: -20px; width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, #fff, color-mix(in srgb, var(--accent) 80%, #fff) 45%, transparent 70%);
+  animation: scm-rise var(--d) linear infinite; animation-delay: var(--w);
+}
+@keyframes scm-rise { 0% { transform: translate3d(0, 0, 0); opacity: 0; } 10% { opacity: .9; } 80% { opacity: .5; } 100% { transform: translate3d(var(--sway), -110vh, 0); opacity: 0; } }
+/* Polarlicht: zwei breite, schräge Farbbänder */
+.sc-motion[data-motion="aurora"] span {
+  left: -20%; top: -10%; width: 140%; height: 55%; opacity: .45; transform-origin: 50% 0;
+  background: linear-gradient(100deg, transparent 10%, color-mix(in srgb, var(--accent) 60%, transparent) 35%, rgb(61 220 132 / .35) 55%, transparent 80%);
+  animation: scm-aurora calc(24s + var(--i) * 10s) ease-in-out infinite alternate; animation-delay: calc(var(--i) * -9s);
+  -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 60%, transparent); mask-image: linear-gradient(transparent, #000 35%, #000 60%, transparent);
+}
+.sc-motion[data-motion="aurora"] span:nth-child(2) { top: 5%; opacity: .3; background: linear-gradient(80deg, transparent 15%, rgb(145 70 255 / .45) 45%, rgb(53 199 255 / .3) 65%, transparent 85%); }
+@keyframes scm-aurora { 0% { transform: translate3d(-6%, 0, 0) skewX(-12deg) scaleY(.85); } 100% { transform: translate3d(6%, 4vh, 0) skewX(10deg) scaleY(1.15); } }
+@media (prefers-reduced-motion: reduce) { .sc-motion span { animation: none !important; } .sc-motion[data-motion="sparks"] span { opacity: .5; } }
 /* Das Gitter rückt per transform (Grafikkarte) eine Linie weiter statt per background-position (Neuzeichnen pro Bild) */
 @keyframes sc-grid { from { transform: perspective(600px) rotateX(62deg) translateY(0); } to { transform: perspective(600px) rotateX(62deg) translateY(80px); } }
 .sc-center { position: relative; display: grid; justify-items: center; gap: 20px; text-align: center; padding: 40px; max-width: 1500px; }

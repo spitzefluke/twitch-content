@@ -2645,3 +2645,45 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
 .lb-card-face small { color: #ffd36b; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
 .lb-card-face.is-epic { border-color: #b388ff; }
 .lb-card-face.is-legendary { border-color: #ffb81c; box-shadow: 0 0 30px rgba(255, 184, 28, .45); }
+
+/* ---------- Farbe aus dem Logo (OBS-Fenster → Design, js/brand-colors.js) ---------- */
+.obs-brand { display: grid; gap: 8px; align-content: start; }
+.obs-brand-pick { justify-self: start; cursor: pointer; }
+.obs-brand-pick:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
+.obs-brand-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.obs-brand-swatches:empty { display: none; }
+.obs-brand-swatch { min-width: 74px; padding: 6px 8px; border: 2px solid transparent; border-radius: 10px; font: 600 12px var(--font-mono, monospace); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.obs-brand-swatch[aria-pressed="true"] { border-color: var(--text); }
+.obs-brand-swatch:disabled { cursor: default; opacity: .6; }
+.pf-color-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 46px; }
+.pf-color-row input[type="color"] { width: 56px; height: 40px; padding: 3px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg-2); cursor: pointer; }
+.pf-color-row input[type="color"]:disabled { opacity: .4; cursor: default; }
+
+/* ---------- Look-Baukasten (js/look-builder.js) ---------- */
+.lb-build { white-space: nowrap; }
+.lb-builder { width: min(96vw, 1180px); }
+.lbb { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; padding: 18px 24px 26px; align-items: start; }
+.lbb-form { display: grid; gap: 14px; }
+.lbb-box { display: grid; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.lbb-box legend { padding: 0 6px; font-weight: 700; }
+.lbb-color { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.lbb-color input[type="color"] { width: 64px; height: 42px; padding: 3px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--bg-2); cursor: pointer; }
+.lbb-logo { cursor: pointer; }
+.lbb-logo:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
+.lbb-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.lbb-swatches:empty { display: none; }
+.lbb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.lbb-grid .field select { width: 100%; min-height: 42px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line-2); background: var(--bg-2); color: var(--text); font: inherit; }
+.lbb-wide { grid-column: 1 / -1; }
+.lbb-side { position: sticky; top: 0; display: grid; gap: 10px; }
+.lbb-scenes { display: flex; flex-wrap: wrap; gap: 6px; }
+.lbb-screen { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(7, 9, 15, .15), rgba(7, 9, 15, .55)), url("../assets/bg-storm.svg") center / cover; }
+.lbb-screen iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; pointer-events: none; background: transparent; color-scheme: normal; }
+.lb-edit { margin-left: auto; }
+.lb-edit + .lb-report { margin-left: 0; }
+@media (max-width: 860px) {
+  .lbb { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 22px; }
+  .lbb-side { position: static; order: -1; }
+  .lbb-grid { grid-template-columns: minmax(0, 1fr); }
+}
