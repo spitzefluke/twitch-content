@@ -186,6 +186,9 @@ Deno.serve(async (req) => {
     if (["platform_state", "platform_switch", "platform_maintenance", "platform_reload", "update_post", "update_delete"].includes(body.action)) {
       return await platform(body);
     }
+    if (body.action === "artists") return await artists();
+    if (body.action === "artist_review") return await artistReview(body.user_id, body.status, body.note);
+    if (body.action === "artist_asset_review") return await artistAssetReview(body.id, body.status, body.note);
     if (body.action === "bot_disconnect") {
       await removeBot(body.slot === 2 ? 2 : 1);
       return json({ ok: true });
@@ -423,6 +426,38 @@ async function setAdmin(userId: unknown, isAdmin: unknown) {
 }
 
 // ---------- Streamer-Kanäle (Plattform) ----------
+// ---------- Artists: Bewerbungen und Uploads prüfen (…_artists.sql) ----------
+const ARTISTS_MISSING = "Einmal nötig: supabase/migrations/20261203000000_artists.sql im SQL Editor ausführen.";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const noteOf = (v: unknown) => (typeof v === "string" ? v.slice(0, 300) : "");
+
+async function artists() {
+  const { data, error } = await db.rpc("artist_admin_list");
+  if (error) return /artist_admin_list/.test(error.message) ? json({ error: ARTISTS_MISSING, missing: true }, 400) : Promise.reject(error);
+  return json(data);
+}
+
+async function artistReview(userId: unknown, status: unknown, note: unknown) {
+  if (typeof userId !== "string" || !UUID_RE.test(userId)) return json({ error: "Ungültiger Artist" }, 400);
+  if (!["approved", "rejected", "blocked", "pending"].includes(status as string)) return json({ error: "Ungültiger Status" }, 400);
+  const { data, error } = await db.rpc("artist_admin_review", { p_user: userId, p_status: status, p_note: noteOf(note) });
+  if (error) return json({ error: error.message }, 400);
+  return json(data);
+}
+
+async function artistAssetReview(id: unknown, status: unknown, note: unknown) {
+  if (typeof id !== "string" || !UUID_RE.test(id)) return json({ error: "Ungültiger Upload" }, 400);
+  if (!["approved", "rejected", "removed"].includes(status as string)) return json({ error: "Ungültiger Status" }, 400);
+  const { data: files, error } = await db.rpc("artist_asset_review", { p_id: id, p_status: status, p_note: noteOf(note) });
+  if (error) return json({ error: error.message }, 400);
+  // Abgelehnt/entfernt: Dateien weg (sonst blieben sie unter ihrer Adresse erreichbar)
+  if (Array.isArray(files) && files.length) {
+    const { error: rmError } = await db.storage.from("artist-assets").remove(files as string[]);
+    if (rmError) console.warn("Artist-Dateien nicht gelöscht:", rmError.message);
+  }
+  return await artists();
+}
+
 const PLATFORM_MISSING = "Die Plattform ist noch nicht eingerichtet: In Supabase im SQL Editor die Datei supabase/migrations/20261028000000_platform.sql ausführen.";
 
 async function channels() {

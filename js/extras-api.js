@@ -7,6 +7,7 @@ import { CONFIG } from './config.js';
 import { rtSpec, storageFolder } from './channel.js';
 import { TTS_VOICES } from './tts-voice.js';
 import { pickRandom, randomFloat, randomInt, shuffled } from './random.js';
+import { artistFileUrl } from './artist-files.js';
 
 export const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 export { TTS_VOICES };
@@ -296,7 +297,7 @@ function liveExtras({ sb, unwrap, invoke }) {
       }),
       async remove(card) {
         const path = await rpc('card_delete', { p_id: card.id });
-        if (path) await sb.storage.from('cards').remove([path]).catch(() => {});
+        if (path && !path.startsWith('a:')) await sb.storage.from('cards').remove([path]).catch(() => {});
       },
       saveSettings: ({ size, daily, weights }) => rpc('cards_save_settings', { p_size: size, p_daily: daily, p_weights: weights }),
       async upload(blob) {
@@ -304,7 +305,9 @@ function liveExtras({ sb, unwrap, invoke }) {
         unwrap(await sb.storage.from('cards').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
         return path;
       },
-      imageUrl: (path) => (path ? `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}` : ''),
+      // a:<Pfad> = Kartenbild eines Artists aus der Design-Bibliothek
+      imageUrl: (path) => (!path ? '' : path.startsWith('a:') ? artistFileUrl(path.slice(2))
+        : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}`),
     },
 
     // ---------- Raid-Schutz ----------
@@ -1541,7 +1544,7 @@ function demoExtras({ store, me, name, isAdmin, requireAdmin }) {
           reader.readAsDataURL(blob);
         });
       },
-      imageUrl: (path) => path || '',
+      imageUrl: (path) => (path?.startsWith('a:') ? artistFileUrl(path.slice(2)) : path || ''),
       // Demo: ein Pack wie per Kanalpunkte
       async grant() {
         needUser();

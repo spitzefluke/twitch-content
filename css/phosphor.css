@@ -133,3 +133,7 @@
 .ph.ph-floppy-disk:before { content: "\e248"; }
 .ph.ph-link:before { content: "\e2e2"; }
 .ph.ph-share-network:before { content: "\e408"; }
+.ph.ph-flag:before { content: "\e244"; }
+.ph.ph-gift:before { content: "\e276"; }
+.ph.ph-image:before { content: "\e2ca"; }
+.ph.ph-paint-brush:before { content: "\e6f0"; }

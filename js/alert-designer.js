@@ -8,6 +8,7 @@ import {
   VARIANT_KINDS, alertLines, builtinMediaUrl, normalizeAlertConfig, normalizeDesign, playAlertSound, sampleAlert,
 } from './alerts.js';
 import { BOARD, Sfx } from './prank-fx.js';
+import { artistFileUrl, isArtistVideo } from './artist-files.js';
 
 const $ = (sel) => document.querySelector(sel);
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -285,6 +286,24 @@ export async function installAlertPreset(id) {
   return ad.dirty ? 'error' : 'ok';
 }
 
+// Alert-Grafik eines Artists (Design-Bibliothek): als Bild für alle Alert-Arten einstellen.
+// save=false: nur in den Designer übernehmen (Seite „Alerts“ zeigt es, „Speichern“ macht es fest).
+// Liefert wie installAlertPreset 'ok' | 'dirty' | 'locked' | 'missing' | 'error'.
+export async function useAlertMedia(value, { save: store = false } = {}) {
+  if (!/^a:/.test(value ?? '') || normalizeDesign({ media: value }).media !== value) return 'missing';
+  if (store && ad.dirty && ad.loaded) return 'dirty';
+  await openAlertDesigner();
+  if (!ad.loaded) return 'missing';
+  if (!ad.canEdit()) return 'locked';
+  for (const k of ALERT_KINDS) (ad.cfg.kinds[k.kind] ??= normalizeDesign(null)).media = value;
+  ad.varId = null;
+  changed();
+  paint({ play: !store });
+  if (!store) return 'ok';
+  await save({ quiet: true });
+  return ad.dirty ? 'error' : 'ok';
+}
+
 function design() {
   if (ad.varId) {
     const v = ad.cfg.vars.find((x) => x.id === ad.varId);
@@ -448,10 +467,14 @@ function paintMedia(d) {
   const img = (src) => Object.assign(new Image(), { src, alt: '', loading: 'lazy' });
   const vid = (src) => Object.assign(document.createElement('video'), { src, muted: true, preload: 'metadata', playsInline: true });
   const own = ad.media.map((m) => tile(`u:${m.path}`, m.name, m.kind === 'video' ? vid(m.url) : img(m.url), m.id));
+  // Gerade gewählte Artist-Grafik (aus der Design-Bibliothek) als eigene Kachel
+  const cur = d.media?.startsWith('a:') ? d.media.slice(2) : '';
+  const artist = cur && artistFileUrl(cur) ? [tile(d.media, 'Artist-Design', isArtistVideo(cur) ? vid(artistFileUrl(cur)) : img(artistFileUrl(cur)))] : [];
   $('#ad-media').replaceChildren(
     tile('', 'Symbol', text(alertLines(sampleAlert(ad.kind), d).icon)),
     tile('none', 'Nichts', text('⌀')),
     ...ALERT_MEDIA.map((m) => tile(`b:${m.id}`, m.name, img(builtinMediaUrl(m.id)))),
+    ...artist,
     ...own,
   );
 }

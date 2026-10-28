@@ -103,6 +103,7 @@ import { setupOverlayStage } from './overlay-stage.js';
 import { startHack } from './overlay-hack.js';
 import { readEmoteRain, setupEmoteRain } from './overlay-emoterain.js';
 import { startAnniversary } from './overlay-anniversary.js';
+import { artistFileUrl } from './artist-files.js';
 
 const POSITIONS = ['br', 'bl', 'bc', 'tr', 'tl', 'tc'];
 const TEST_EVERY_MS = 20000;
@@ -1573,7 +1574,8 @@ async function setupAlerts(source) {
     void row.offsetWidth;
     row.classList.add('is-new');
   };
-  const mediaUrl = (m) => (m.startsWith('b:') ? builtinMediaUrl(m.slice(2)) : m.startsWith('u:') ? source.alertMediaUrl?.(m.slice(2)) ?? '' : '');
+  const mediaUrl = (m) => (m.startsWith('b:') ? builtinMediaUrl(m.slice(2)) : m.startsWith('u:') ? source.alertMediaUrl?.(m.slice(2)) ?? ''
+    : m.startsWith('a:') ? artistFileUrl(m.slice(2)) : '');
   // Karte füllen; liefert das Design und ggf. das Video (für die Dauer)
   const fill = (a) => {
     const d = resolveDesign(designs, a);

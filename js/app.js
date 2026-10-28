@@ -20,7 +20,8 @@ import {
 import { EXTRA_KINDS, buildExtraTile, extraIcon, listRewards, loadExtras, obsStatus, openExtra, renderGuard, setupExtras } from './extras.js';
 import { autoOpenObsSetup, openObsSetup, setupObsSetup } from './obs-setup.js';
 import { guardFrame } from './frame-guard.js';
-import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertPreset } from './alert-designer.js';
+import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertMedia, useAlertPreset } from './alert-designer.js';
+import { createExtrasApi } from './extras-api.js';
 import { openLibrary, setupLibrary } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
 import { THEME_PACKS } from './theme-packs.js';
@@ -36,6 +37,7 @@ import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, s
 import { forgetSecret, loadSecret, saveSecret } from './secret-store.js';
 import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderProfile } from './dash-profile.js';
+import { renderArtist } from './dash-artist.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
 import { renderBotStudio } from './bot-studio.js';
@@ -388,7 +390,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan',
+  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich',
 };
 
 function setupShell() {
@@ -707,6 +709,7 @@ const PAGE_ENTER = {
     api: state.api, toast, germanError,
     profileUrl: (login) => new URL(`profil.html?c=${encodeURIComponent(login ?? '')}`, location.href).href,
   }),
+  artist: () => renderArtist($('#artist-slot'), { api: state.api, toast, germanError, openLibrary: () => setPage('library') }),
   ideas: () => renderStart(START),
 };
 
@@ -2133,7 +2136,9 @@ function setupDialogs() {
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
   setupLibrary({
-    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset,
+    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset, useAlertMedia,
+    // Kartenbild eines Artists als neue Sammelkarte (Migration …_stream_extras.sql)
+    addArtistCard: (c) => createExtrasApi(state.api).cards.save({ ...c, active: true }),
     liveUrl: () => obsLiveUrl(),
     // Overlay-Einstellungen aus diesem Browser (für alle, die noch nicht zentral gespeichert haben)
     localObsQuery: () => { loadObs(); return new URL(obsUrl()).search.slice(1); },

@@ -12,6 +12,23 @@ import { DEFAULT_STAGE } from './questions.js';
 import { DEFAULT_TICKER } from './ticker.js';
 import { DEFAULT_SHOP } from './shop.js';
 import { DEFAULT_CHALLENGE, applyResult, gotoStage, resetChallenge, saveChallenge, undoChallenge } from './challenge.js';
+import { DEMO_ARTIST_ID, demoSeedPath } from './artist-files.js';
+
+// Demo: Beispiel-Designs eines Artists in der Design-Bibliothek (Dateien aus assets/, js/artist-files.js)
+const DEMO_GALLERY = (() => {
+  const artist = { name: 'PixelPinsel', slug: 'pixel-pinsel', links: ['https://example.com/pixelpinsel'] };
+  const at = '2026-10-20T12:00:00.000Z';
+  const x = (n, kind, title, description, tags, extra = {}, uses = 0) => ({
+    asset: { id: `${DEMO_ARTIST_ID.slice(0, 24)}${String(n).padStart(12, '0')}`, kind, title, description, tags, file: demoSeedPath(n), extra, uses, created_at: at, approved_at: at },
+    artist,
+  });
+  return [
+    x(1, 'alert', 'Vinyl-Dreher', 'Schallplatte für entspannte Follows.', ['lofi', 'musik'], {}, 12),
+    x(2, 'background', 'Nachtcafé', 'Ruhiger Szenen-Hintergrund für Pausen.', ['lofi', 'chill'], {}, 8),
+    x(3, 'look', 'Neon-Gassen', 'Cyberpunk-Look mit Chip-Alert.', ['cyberpunk', 'neon'], { base: 'cyberpunk', accent: '#fcee0a', alert: demoSeedPath(4) }, 5),
+    x(5, 'card', 'Kirschblüte', 'Sammelkarte im Manga-Stil.', ['manga'], { rarity: 'epic', emoji: '🌸' }, 3),
+  ];
+})();
 
 export const isDemo = !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY;
 
@@ -225,6 +242,42 @@ async function createSupabaseApi() {
     },
     async scheduleSave(slots) { return unwrap(await sb.rpc('schedule_save', { p_slots: slots })); },
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
+    // Artists: Bewerbung, Uploads, Design-Bibliothek (Migration …_artists.sql)
+    async artistMe() { return unwrap(await sb.rpc('artist_me')); },
+    async artistApply(p) { return unwrap(await sb.rpc('artist_apply', { p_name: p.name, p_slug: p.slug, p_bio: p.bio, p_links: p.links })); },
+    // Datei in den eigenen Ordner laden; liefert den Pfad für artistSubmit
+    async artistUpload(file) {
+      const { data } = await sb.auth.getSession();
+      const uid = data.session?.user?.id;
+      if (!uid) throw new Error('Bitte anmelden.');
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? '').toLowerCase().replace('jpeg', 'jpg');
+      const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+      const up = await sb.storage.from('artist-assets').upload(path, file, { contentType: file.type, cacheControl: '31536000', upsert: false });
+      if (up.error && /bucket not found/i.test(up.error.message)) throw new Error('relation "core.artists" does not exist');
+      unwrap(up);
+      return path;
+    },
+    async artistSubmit(p) {
+      try {
+        return unwrap(await sb.rpc('artist_asset_submit', {
+          p_kind: p.kind, p_title: p.title, p_description: p.description, p_tags: p.tags, p_file: p.file, p_extra: p.extra ?? {}, p_rights: !!p.rights,
+        }));
+      } catch (err) {
+        // Nicht angenommen: hochgeladene Dateien wieder weg
+        await sb.storage.from('artist-assets').remove([p.file, p.extra?.alert].filter(Boolean)).catch(() => {});
+        throw err;
+      }
+    },
+    async artistDelete(id) {
+      const files = unwrap(await sb.rpc('artist_asset_delete', { p_id: id })) ?? [];
+      if (files.length) {
+        const { error } = await sb.storage.from('artist-assets').remove(files);
+        if (error) console.warn('Artist-Dateien nicht gelöscht:', error);
+      }
+    },
+    async artistGallery(kind = null) { return unwrap(await sb.rpc('artist_gallery', { p_kind: kind })); },
+    async artistUse(id) { return unwrap(await sb.rpc('artist_asset_use', { p_id: id })); },
+    async artistReport(id, reason) { return unwrap(await sb.rpc('artist_asset_report', { p_id: id, p_reason: reason })); },
     // Dashboard → Statistik (Migration …_dashboard.sql)
     async channelStats(days) { return unwrap(await sb.rpc('channel_stats', { p_days: days })); },
     // Statistik → OBS & Daten (Migration …_overlay_usage.sql)
@@ -1023,6 +1076,13 @@ function createLocalApi() {
     };
   }
 
+  // Ordner des Demo-Artists (wie <user-id> live): aus der E-Mail abgeleitet
+  function demoArtistFolder(email) {
+    let h = 0;
+    for (const ch of String(email)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return `dddddddd-0000-4000-8000-${h.toString(16).padStart(12, '0').slice(-12)}`;
+  }
+
   async function requireAdmin() {
     const u = store.get('users', {})[current?.email];
     if (!u?.is_admin) throw new Error('Nur Admins dürfen das.');
@@ -1336,6 +1396,108 @@ function createLocalApi() {
       const away = p.away_until && p.away_until >= new Date().toISOString().slice(0, 10);
       return { login: p.login, display_name: p.display_name, avatar_url: '', live: false, category: '', bio: p.bio, links: p.links, tz: p.tz,
         away_until: away ? p.away_until : null, away_note: away ? p.away_note : '', slots: p.slots, upcoming: p.upcoming };
+    },
+    // Demo: Artist-Bewerbung und Uploads in diesem Browser; freischalten im Admin-Bereich (admin.html, Passwort „demo“)
+    async artistMe() {
+      if (!current) throw new Error('Bitte anmelden.');
+      const a = store.get('artists', {})[current.email] ?? null;
+      const assets = store.get('artist_assets', []).filter((x) => x.artist === current.email && x.status !== 'removed')
+        .map(({ artist: _a, ...x }) => x).sort((x, y) => y.created_at.localeCompare(x.created_at));
+      return { artist: a && { name: a.name, slug: a.slug, bio: a.bio, links: a.links, status: a.status, note: a.note ?? '', applied_at: a.applied_at, reviewed_at: a.reviewed_at ?? null }, assets };
+    },
+    async artistApply(p) {
+      if (!current) throw new Error('Bitte anmelden.');
+      const name = String(p.name ?? '').replace(/\s+/g, ' ').trim();
+      const slug = String(p.slug ?? '').trim().toLowerCase();
+      const links = (p.links ?? []).map((l) => String(l).trim()).filter((l) => /^https:\/\/[^\s<>"]{3,195}$/.test(l)).slice(0, 4);
+      if (name.length < 2 || name.length > 40) throw new Error('Der Artist-Name braucht 2 bis 40 Zeichen.');
+      if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(slug)) throw new Error('Die Kennung braucht 3 bis 30 Zeichen: Kleinbuchstaben, Ziffern und Bindestrich.');
+      if (!links.length) throw new Error('Mindestens ein Link zu deinen Arbeiten (https://…), z. B. Portfolio oder Instagram.');
+      const all = store.get('artists', {});
+      if (Object.entries(all).some(([k, a]) => k !== current.email && a.slug === slug) || slug === 'pixel-pinsel') throw new Error('Diese Kennung ist schon vergeben.');
+      const old = all[current.email];
+      if (old?.status === 'blocked') throw new Error('Dein Artist-Konto ist gesperrt. Bei Fragen: Kontaktformular.');
+      const again = !old || old.status === 'rejected';
+      all[current.email] = {
+        ...old, name, slug, bio: String(p.bio ?? '').trim().slice(0, 300), links, folder: demoArtistFolder(current.email),
+        status: again ? 'pending' : old.status, applied_at: again ? new Date().toISOString() : old.applied_at,
+      };
+      store.set('artists', all);
+      return this.artistMe();
+    },
+    // Demo: Datei als data:-Adresse im Browser (höchstens 1,5 MB – der Speicher im Browser ist klein)
+    async artistUpload(file) {
+      const a = store.get('artists', {})[current?.email];
+      if (a?.status !== 'approved') throw new Error('Hochladen dürfen nur freigeschaltete Artists.');
+      if (file.size > 1.5 * 1024 * 1024) throw new Error('Im Demo-Modus höchstens 1,5 MB je Datei (live: 10 MB).');
+      const ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name)?.[1] ?? '').toLowerCase().replace('jpeg', 'jpg');
+      const path = `${a.folder}/${crypto.randomUUID()}.${ext}`;
+      const url = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('Datei nicht lesbar.'));
+        r.readAsDataURL(file);
+      });
+      const files = store.get('artist_files', {});
+      files[path] = url;
+      try {
+        localStorage.setItem('zd_artist_files', JSON.stringify(files));
+      } catch {
+        throw new Error('Der Speicher im Browser ist voll – lösch ein paar Demo-Uploads.');
+      }
+      return path;
+    },
+    async artistSubmit(p) {
+      const a = store.get('artists', {})[current?.email];
+      if (a?.status !== 'approved') throw new Error('Hochladen dürfen nur freigeschaltete Artists.');
+      if (!p.rights) throw new Error('Bitte bestätige, dass du die Rechte an dem Design hast.');
+      const title = String(p.title ?? '').replace(/\s+/g, ' ').trim();
+      if (title.length < 3 || title.length > 60) throw new Error('Der Titel braucht 3 bis 60 Zeichen.');
+      const list = store.get('artist_assets', []);
+      if (list.filter((x) => x.artist === current.email && x.status === 'pending').length >= 10) throw new Error('Du hast schon 10 Uploads in der Prüfung. Warte bitte, bis sie freigegeben sind.');
+      const tags = [...new Set((p.tags ?? []).map((t) => String(t).trim().toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '-').replace(/^-+|-+$/g, '')).filter((t) => t.length >= 2 && t.length <= 20))].slice(0, 6);
+      const extra = p.kind === 'look' ? { base: p.extra?.base || 'standard', ...(p.extra?.accent ? { accent: p.extra.accent.toLowerCase() } : {}), ...(p.extra?.alert ? { alert: p.extra.alert } : {}) }
+        : p.kind === 'card' ? { rarity: p.extra?.rarity || 'rare', ...(p.extra?.emoji ? { emoji: p.extra.emoji } : {}) } : {};
+      const row = { id: crypto.randomUUID(), artist: current.email, kind: p.kind, title, description: String(p.description ?? '').trim().slice(0, 300), tags,
+        file: p.file, extra, status: 'pending', note: '', uses: 0, created_at: new Date().toISOString() };
+      store.set('artist_assets', [...list, row]);
+      const { artist: _a, ...out } = row;
+      return out;
+    },
+    async artistDelete(id) {
+      const list = store.get('artist_assets', []);
+      const x = list.find((r) => r.id === id && r.artist === current?.email);
+      if (!x) throw new Error('Nicht gefunden.');
+      store.set('artist_assets', list.filter((r) => r !== x));
+      const files = store.get('artist_files', {});
+      delete files[x.file];
+      if (x.extra?.alert) delete files[x.extra.alert];
+      store.set('artist_files', files);
+    },
+    async artistGallery(kind = null) {
+      const artists = store.get('artists', {});
+      const own = store.get('artist_assets', []).filter((x) => x.status === 'approved' && artists[x.artist]?.status === 'approved')
+        .map(({ artist, note: _n, status: _s, ...asset }) => ({ asset: { ...asset, approved_at: asset.reviewed_at }, artist: { name: artists[artist].name, slug: artists[artist].slug, links: artists[artist].links } }));
+      const uses = store.get('artist_uses', []);
+      const seeds = DEMO_GALLERY.map((x) => ({ ...x, asset: { ...x.asset, uses: x.asset.uses + (uses.includes(x.asset.id) ? 1 : 0) } }));
+      return [...own, ...seeds].filter((x) => !kind || x.asset.kind === kind);
+    },
+    async artistUse(id) {
+      await requireAdmin();
+      const uses = store.get('artist_uses', []);
+      if (!uses.includes(id)) {
+        store.set('artist_uses', [...uses, id]);
+        const list = store.get('artist_assets', []);
+        const x = list.find((r) => r.id === id);
+        if (x) { x.uses += 1; store.set('artist_assets', list); }
+      }
+      return (await this.artistGallery()).find((x) => x.asset.id === id)?.asset ?? null;
+    },
+    async artistReport(id, reason) {
+      if (!current) throw new Error('Bitte anmelden.');
+      if (String(reason ?? '').trim().length < 3) throw new Error('Bitte kurz schreiben, was nicht stimmt.');
+      const all = store.get('artist_reports', []).filter((r) => !(r.asset_id === id && r.reporter === current.email));
+      store.set('artist_reports', [...all, { id: Date.now(), asset_id: id, reporter: current.email, reason: String(reason).trim().slice(0, 300), status: 'open', created_at: new Date().toISOString() }]);
     },
     // Demo: Beispielzahlen, die je Tag gleich bleiben (kein Zufall – sonst springt die Statistik)
     async channelStats(days = 7) {

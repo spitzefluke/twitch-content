@@ -258,6 +258,10 @@ html[data-theme="newyear"] { --accent: #ffd76a; }
   mask-image: linear-gradient(transparent 40%, #000 90%); -webkit-mask-image: linear-gradient(transparent 40%, #000 90%);
   animation: sc-grid 3s linear infinite; opacity: .5; will-change: transform;
 }
+/* Hintergrund eines Artists (scbg=…): Bild über die ganze Fläche, unten etwas abgedunkelt, damit der Text lesbar bleibt */
+.sc-art { position: absolute; inset: 0; pointer-events: none; background-size: cover; background-position: center; }
+.sc-art::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, .15), rgba(0, 0, 0, .55)); }
+.ov-scene.has-art .sc-grid { display: none; }
 /* Das Gitter rückt per transform (Grafikkarte) eine Linie weiter statt per background-position (Neuzeichnen pro Bild) */
 @keyframes sc-grid { from { transform: perspective(600px) rotateX(62deg) translateY(0); } to { transform: perspective(600px) rotateX(62deg) translateY(80px); } }
 .sc-center { position: relative; display: grid; justify-items: center; gap: 20px; text-align: center; padding: 40px; max-width: 1500px; }
