@@ -13,6 +13,7 @@ export const LAYERS = [
   ['subathon', 'Subathon-Timer'], ['quiz', 'Quiz'], ['queue', 'Mitspielen'], ['tts', 'Vorlesen'], ['cards', 'Sammelkarten'],
   ['giveaway', 'Verlosung'], ['hotwords', 'Hot Words'], ['poll', 'Umfrage'], ['counter', 'Zähler'], ['gamewheel', 'Spiel-Rad'],
   ['heart', 'Herzfrequenz'], ['chatcontrol', 'Chat-Kommandos'], ['songs', 'Song-Wünsche'], ['cup', 'Cup'], ['bet', 'Zuschauer-Wette'], ['scratch', 'Rubbellos'],
+  ['sponsor', 'Sponsor-Einblendung'],
   ['erain', 'Emote-Regen', 'flag'], ['pause', 'Pausen-Bildschirm', 'flag'], ['scene', 'Szenen-Bildschirm', 'scene'],
 ];
 export const LAYER_KEYS = LAYERS.map(([key]) => key);
@@ -20,7 +21,7 @@ export const layerName = (key) => LAYERS.find(([k]) => k === key)?.[1] ?? key;
 
 // Fertige Module (je eine Browserquelle in OBS). id ist kurz – sie steht in der Adresse (m=…) und in der Statistik.
 export const MODULES = [
-  { id: 'alerts', icon: '🔔', name: 'Alerts & Ziele', layers: ['alerts', 'recent', 'goal', 'labels', 'erain'], hint: 'In jede Szene – Follower, Abos, Bits, Ziel-Balken, Emote-Regen.' },
+  { id: 'alerts', icon: '🔔', name: 'Alerts & Ziele', layers: ['alerts', 'recent', 'goal', 'labels', 'erain', 'sponsor'], hint: 'In jede Szene – Follower, Abos, Bits, Ziel-Balken, Emote-Regen, Sponsoren.' },
   { id: 'chat', icon: '💬', name: 'Chat', layers: ['chat'], hint: 'Twitch- und YouTube-Chat.' },
   { id: 'ticker', icon: '📢', name: 'Laufband', layers: ['ticker'], hint: 'Die Laufschrift unten.' },
   { id: 'songs', icon: '🎵', name: 'Song-Wünsche', layers: ['songs'], hint: 'Was gerade läuft und die nächsten Wünsche (!sr).' },

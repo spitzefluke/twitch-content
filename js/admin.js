@@ -5,6 +5,7 @@ import { DEFAULT_VARIANTS } from './defaults.js';
 import { guardFrame } from './frame-guard.js';
 import { botHint } from './bot-reasons.js';
 import { artistFileUrl, isArtistVideo } from './artist-files.js';
+import { sponsorLogoUrl } from './sponsor-files.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const TOKEN_KEY = 'zd_admin_token';
@@ -77,6 +78,24 @@ function demoCall(action, extra) {
     const next = extra.delete ? list.filter((m) => m.id !== extra.id) : list.map((m) => (m.id === extra.id ? { ...m, status: extra.status } : m));
     localStorage.setItem('zd_contact_messages', JSON.stringify(next));
     return { ok: true };
+  }
+  // Sponsoring-Börse: dieselben Daten wie js/api.js (Demo)
+  if (['sponsoring', 'sponsoring_review', 'sponsoring_pay'].includes(action)) {
+    const offers = read('sponsor_offers', []);
+    const apps = read('sponsor_applications', []);
+    if (action === 'sponsoring_review') {
+      const o = offers.find((x) => x.id === extra.offer_id);
+      if (!o) throw new Error('Dieses Angebot gibt es nicht.');
+      Object.assign(o, { status: extra.status, admin_note: extra.note ?? '', reviewed_at: new Date().toISOString() });
+      localStorage.setItem('zd_sponsor_offers', JSON.stringify(offers));
+    }
+    if (action === 'sponsoring_pay') {
+      const a = apps.find((x) => x.id === extra.application_id);
+      if (a) a.pay_status = extra.pay_status;
+      localStorage.setItem('zd_sponsor_applications', JSON.stringify(apps));
+    }
+    return { offers: offers.map(({ token: _t, ...o }) => ({ ...o, taken: apps.filter((a) => a.offer_id === o.id && a.status === 'accepted').length,
+      applications: apps.filter((a) => a.offer_id === o.id).map((a) => ({ id: a.id, login: a.login, display_name: a.display_name, status: a.status, pay_status: a.pay_status ?? 'open', created_at: a.created_at })) })) };
   }
   // Artists: dieselben Daten wie js/api.js (Demo) – Bewerbungen je E-Mail, Uploads, Meldungen
   if (['artists', 'artist_review', 'artist_asset_review'].includes(action)) {
@@ -257,6 +276,7 @@ function init() {
   $('#security-check').addEventListener('click', checkSecurity);
   $('#inbox-done').addEventListener('change', renderInbox);
   $('#artists-all').addEventListener('change', renderArtists);
+  $('#spons-all').addEventListener('change', renderSponsoring);
   $('#inbox').addEventListener('click', inboxClick);
   $('#logout-btn').addEventListener('click', () => logout());
   $('#twitch-check').addEventListener('click', checkTwitch);
@@ -519,6 +539,101 @@ function showApp() {
   loadChannels();
   loadPlatform();
   loadArtists();
+  loadSponsoring();
+}
+
+// ============================================================
+// Sponsoring-Börse (Migration …_sponsoring.sql): Angebote freigeben, Abrechnungs-Stand von Hand
+// ============================================================
+const SPONS_STATUS = { pending: ['chip--warn', '⏳ Wartet'], active: ['chip--ok', '✓ Freigegeben'], rejected: ['chip--bad', '✖ Abgelehnt'], closed: ['', '⏹ Beendet'] };
+const PAY_STATUS = { open: 'offen', invoiced: 'Rechnung an Firma', paid_in: 'Firma hat bezahlt', paid_out: 'an Streamer ausgezahlt' };
+const APP_LABEL = { pending: 'beworben', accepted: 'läuft', declined: 'abgesagt', withdrawn: 'zurückgezogen', ended: 'beendet' };
+
+async function loadSponsoring() {
+  try {
+    state.spons = (await call('sponsoring')).offers ?? [];
+    $('#spons-note').textContent = '';
+  } catch (err) {
+    if (err.status === 401) return;
+    state.spons = [];
+    $('#spons-note').textContent = err.message;
+  }
+  renderSponsoring();
+}
+
+function renderSponsoring() {
+  const list = state.spons ?? [];
+  const pending = list.filter((o) => o.status === 'pending');
+  $('#spons-count').textContent = list.length ? `(${pending.length ? `${pending.length} warten · ` : ''}${list.length} insgesamt)` : '';
+  const shown = $('#spons-all').checked ? list : list.filter((o) => ['pending', 'active'].includes(o.status));
+  const ul = $('#spons-list');
+  if (!shown.length) { ul.replaceChildren(mkEl('li', 'muted', $('#spons-all').checked ? 'Noch keine Angebote.' : 'Keine offenen oder laufenden Angebote.')); return; }
+  ul.replaceChildren(...shown.map((o) => {
+    const li = mkEl('li', 'ar-adm-artist');
+    const [cls, label] = SPONS_STATUS[o.status] ?? ['', o.status];
+    const head = mkEl('div', 'inbox-head');
+    head.append(mkEl('span', `chip ${cls}`, label), mkEl('b', '', `${o.company} – ${o.title}`),
+      mkEl('small', 'muted', [o.contact_email, `eingereicht ${new Date(o.created_at).toLocaleDateString('de-DE')}`].join(' · ')));
+    li.append(head);
+    const logo = sponsorLogoUrl(o.logo_path);
+    if (logo) li.append(Object.assign(new Image(), { src: logo, alt: `Logo ${o.company}`, className: 'sp-adm-logo', loading: 'lazy' }));
+    li.append(mkEl('p', 'inbox-text', o.description));
+    const money = o.amount_cents != null ? ` · ${(o.amount_cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}` : '';
+    li.append(mkEl('p', 'muted', [
+      o.reward && `🎁 ${o.reward}`, `👥 Ø ${o.min_viewers}${o.max_viewers != null ? `–${o.max_viewers}` : '+'} Zuschauer`, `🎟️ ${o.taken}/${o.slots}`,
+      `${o.pay_mode === 'streamhelp' ? '💳 über StreamHelp' : '💳 direkt'}${money}`, o.ends_on && `📅 bis ${o.ends_on}`,
+      `📺 „${o.overlay_text || '–'}“${o.code ? ` · Code ${o.code}` : ''} · alle ${o.every_min} Min. für ${o.show_sec} s`,
+    ].filter(Boolean).join(' · ')));
+    for (const url of [o.website, o.link].filter(Boolean)) {
+      li.append(Object.assign(document.createElement('a'), { href: url, textContent: url, target: '_blank', rel: 'noopener noreferrer nofollow', className: 'ar-adm-links' }));
+    }
+    const apps = o.applications ?? [];
+    if (apps.length) {
+      const al = mkEl('ul', 'sp-adm-apps');
+      for (const a of apps) {
+        const row = mkEl('li', '', `${a.display_name || a.login} (twitch.tv/${a.login}) – ${APP_LABEL[a.status] ?? a.status}`);
+        if (o.pay_mode === 'streamhelp' && ['accepted', 'ended'].includes(a.status)) {
+          const sel = document.createElement('select');
+          sel.setAttribute('aria-label', `Abrechnung ${a.login}`);
+          for (const [v, l] of Object.entries(PAY_STATUS)) sel.append(new Option(l, v, false, v === a.pay_status));
+          sel.addEventListener('change', async () => {
+            sel.disabled = true;
+            try { state.spons = (await call('sponsoring_pay', { application_id: a.id, pay_status: sel.value })).offers; renderSponsoring(); }
+            catch (err) { $('#spons-note').textContent = err.message; sel.disabled = false; }
+          });
+          row.append(' · Abrechnung: ', sel);
+        }
+        al.append(row);
+      }
+      li.append(al);
+    }
+    const note = Object.assign(document.createElement('input'), { maxLength: 300, placeholder: 'Hinweis an die Firma (optional, sieht sie in ihrer Verwaltung)', className: 'ar-adm-note', value: o.admin_note ?? '' });
+    note.setAttribute('aria-label', `Hinweis an ${o.company}`);
+    const actions = mkEl('div', 'inbox-actions');
+    const btn = (label, status, cls = 'btn--ghost') => {
+      const b = mkEl('button', `btn ${cls} btn--sm`, label);
+      b.type = 'button';
+      b.addEventListener('click', () => reviewOffer(o, status, note.value, b));
+      return b;
+    };
+    if (o.status === 'pending') actions.append(btn('✓ Freigeben', 'active', 'btn--primary'), btn('✖ Ablehnen', 'rejected'));
+    if (o.status === 'active') actions.append(btn('⏹ Beenden', 'closed'));
+    if (o.status === 'rejected') actions.append(btn('✓ Doch freigeben', 'active'));
+    li.append(note, actions);
+    return li;
+  }));
+}
+
+async function reviewOffer(o, status, note, btn) {
+  if (status === 'closed' && !confirm(`Angebot von ${o.company} beenden? Laufende Einblendungen enden sofort.`)) return;
+  btn.disabled = true;
+  try {
+    state.spons = (await call('sponsoring_review', { offer_id: o.id, status, note })).offers;
+    renderSponsoring();
+  } catch (err) {
+    $('#spons-note').textContent = err.message;
+    btn.disabled = false;
+  }
 }
 
 // ============================================================

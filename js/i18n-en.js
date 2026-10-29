@@ -244,4 +244,5 @@ export default [
   "The StreamHelp Discord",
   "Chat with other streamers, ask questions and be the first to hear about new features.",
   "Join Discord",
+  "Sponsorship for brands",
 ];

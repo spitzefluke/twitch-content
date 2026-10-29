@@ -2639,6 +2639,20 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
   .mo-sponsor > .btn { grid-column: 2 / 3; justify-self: start; }
 }
 
+/* Sponsoring-Börse im Dashboard (js/dash-money.js) */
+.mo-logo { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; background: rgba(255, 255, 255, .06); vertical-align: middle; margin-right: 8px; }
+.mo-fixed { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.mo-offers { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.mo-offer { display: grid; gap: 10px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line-soft); background: rgba(var(--surf-rgb), .7); }
+.mo-offer-head { display: flex; align-items: center; gap: 10px; }
+.mo-offer-head .mo-logo { width: 42px; height: 42px; margin: 0; }
+.mo-offer-head > div { display: grid; gap: 1px; }
+.mo-offer-head span { color: var(--muted); font-size: 13.5px; }
+.mo-offer-text { margin: 0; color: var(--text-2); font-size: 14px; white-space: pre-line; overflow-wrap: anywhere; }
+.mo-offer-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-2); font-size: 13.5px; }
+.mo-offer-state { margin: 0; font-weight: 600; }
+.mo-offer textarea { width: 100%; }
+
 /* ---------- Artist-Bereich (js/dash-artist.js) ---------- */
 .ar-cards { align-items: start; }
 .ar-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }

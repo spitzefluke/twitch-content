@@ -18,6 +18,9 @@
 //   POST {action:"channels", token}         → alle Streamer-Kanäle mit Bewerbungen (Migration …_platform.sql)
 //   POST {action:"channel_status", token, channel_id, status, note?} → freischalten (active), sperren (blocked)
 //   POST {action:"pro_grant", token, channel_id, days, note?} → StreamHelp Pro für n Tage vergeben/verlängern, 0 = entziehen
+//   POST {action:"sponsoring", token}                          → Angebote der Sponsoring-Börse mit Bewerbungen
+//   POST {action:"sponsoring_review", token, offer_id, status, note?} → freigeben (active), ablehnen (rejected), beenden (closed)
+//   POST {action:"sponsoring_pay", token, application_id, pay_status}  → Abrechnung über StreamHelp: open|invoiced|paid_in|paid_out
 //                                              oder zurück auf „wartet“ (pending)
 //   Kanäle moderieren und Plattform steuern (Migration …_channel_moderation.sql):
 //   POST {action:"channel_moderate", token, channel_ids[], mod_action, minutes?, reason?}
@@ -184,6 +187,14 @@ Deno.serve(async (req) => {
     if (body.action === "channels") return await channels();
     if (body.action === "channel_status") return await channelStatus(body.channel_id, body.status, body.note);
     if (body.action === "pro_grant") return await proGrant(body.channel_id, body.days, body.note);
+    if (body.action === "sponsoring") return await sponsoringAdmin("sponsoring_admin_list", {});
+    if (body.action === "sponsoring_review") {
+      if (typeof body.offer_id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.offer_id)) return json({ error: "Ungültiges Angebot" }, 400);
+      return await sponsoringAdmin("sponsoring_review", { p_offer: body.offer_id, p_status: String(body.status ?? ""), p_note: String(body.note ?? "").slice(0, 300) });
+    }
+    if (body.action === "sponsoring_pay") {
+      return await sponsoringAdmin("sponsoring_pay", { p_app: Number(body.application_id) || 0, p_pay_status: String(body.pay_status ?? "") });
+    }
     if (body.action === "channel_moderate") return await channelModerate(body);
     if (["platform_state", "platform_switch", "platform_maintenance", "platform_reload", "update_post", "update_delete"].includes(body.action)) {
       return await platform(body);
@@ -484,6 +495,16 @@ async function channelStatus(channelId: unknown, status: unknown, note: unknown)
     return json({ error: error.message }, 400);
   }
   return json({ channels: data });
+}
+
+// ---------- Sponsoring-Börse (…_sponsoring.sql): Angebote freigeben, Abrechnungs-Stand von Hand ----------
+async function sponsoringAdmin(fn: string, args: Record<string, unknown>) {
+  const { data, error } = await db.rpc(fn, args);
+  if (error) {
+    if (new RegExp(fn).test(error.message)) return json({ error: "Einmal nötig: supabase/migrations/20261213000000_sponsoring.sql im SQL Editor ausführen.", missing: true }, 400);
+    return json({ error: error.message }, 400);
+  }
+  return json({ offers: data });
 }
 
 // ---------- Pro vergeben (…_tips_sponsors_pro.sql) – noch ohne Bezahlung ----------

@@ -244,6 +244,15 @@ async function createSupabaseApi() {
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
     // Markenfarbe fürs öffentliche Profil (Migration …_brand_color.sql); null = Standard
     async profileAccentSave(accent) { return unwrap(await sb.rpc('profile_accent_save', { p_accent: accent || null })); },
+    // Sponsoring-Börse (Migration …_sponsoring.sql): Firmen über die Edge Function (ohne Login, Verwaltungs-Link),
+    // Streamer über die Datenbank
+    async sponsoringSubmit(offer, logo, website2 = '') { return invoke('sponsoring', { action: 'submit', offer, logo: logo || undefined, website2 }); },
+    async sponsoringManage(token) { return invoke('sponsoring', { action: 'manage', token }); },
+    async sponsoringDecide(token, applicationId, decision, note = '') { return invoke('sponsoring', { action: 'decide', token, application_id: applicationId, decision, note }); },
+    async sponsoringClose(token) { return invoke('sponsoring', { action: 'close', token }); },
+    async sponsoringOffers() { return unwrap(await sb.rpc('sponsoring_offers')); },
+    async sponsoringApply(offerId, message, share) { return unwrap(await sb.rpc('sponsoring_apply', { p_offer: offerId, p_message: message ?? '', p_share: !!share })); },
+    async sponsoringWithdraw(offerId) { return unwrap(await sb.rpc('sponsoring_withdraw', { p_offer: offerId })); },
     // Trinkgeld, Sponsoren, Pro (Migration …_tips_sponsors_pro.sql). Der Ko-fi-Token geht nur hin, nie zurück.
     async tipGet() { return unwrap(await sb.rpc('tip_get')); },
     async tipSave(p) {
@@ -1414,6 +1423,111 @@ function createLocalApi() {
       });
       return demoProfile();
     },
+    // Sponsoring-Börse im Demo-Modus: Angebote, Bewerbungen und Logos in localStorage (wie live: Freigabe im
+    // Admin-Bereich mit Passwort „demo“). Der eigene Kanal hat hier Ø 12 Zuschauer.
+    async sponsoringSubmit(offer, logo, website2 = '') {
+      if (website2) return { id: 'x', token: '0'.repeat(64) };
+      const o = offer ?? {};
+      const email = String(o.contact_email ?? '').trim().toLowerCase();
+      if (String(o.company ?? '').trim().length < 2) throw new Error('Bitte den Firmennamen angeben (2–80 Zeichen).');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Bitte eine gültige E-Mail-Adresse angeben.');
+      if (String(o.title ?? '').trim().length < 3) throw new Error('Bitte einen Titel angeben (3–100 Zeichen).');
+      if (String(o.description ?? '').trim().length < 10) throw new Error('Bitte das Angebot beschreiben (mindestens 10 Zeichen).');
+      for (const u of [o.website, o.link]) if (u && !/^https:\/\/[^\s<>"'\\]{3,}$/.test(String(u).trim())) throw new Error('Links müssen mit https:// beginnen.');
+      const id = crypto.randomUUID();
+      const token = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+      let logo_path = null;
+      if (logo) {
+        const ext = /^data:image\/(png|jpeg|webp);/.exec(logo)?.[1];
+        if (!ext) throw new Error('Logo: bitte PNG, JPG oder WebP.');
+        logo_path = `${id}.${ext === 'jpeg' ? 'jpg' : ext}`;
+        store.set('sponsor_logos', { ...store.get('sponsor_logos', {}), [logo_path]: logo });
+      }
+      const num = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Math.round(Number(v)));
+      const offers = store.get('sponsor_offers', []);
+      offers.unshift({
+        id, token, company: String(o.company).trim().slice(0, 80), contact_email: email, website: String(o.website ?? '').trim(),
+        title: String(o.title).trim().slice(0, 100), description: String(o.description).trim().slice(0, 1500), reward: String(o.reward ?? '').trim().slice(0, 200),
+        pay_mode: o.pay_mode === 'streamhelp' ? 'streamhelp' : 'direct', amount_cents: num(o.amount_cents, null),
+        min_viewers: Math.max(0, num(o.min_viewers, 0)), max_viewers: num(o.max_viewers, null), slots: Math.min(100, Math.max(1, num(o.slots, 10))),
+        ends_on: /^\d{4}-\d{2}-\d{2}$/.test(o.ends_on ?? '') ? o.ends_on : null,
+        overlay_text: String(o.overlay_text ?? '').trim().slice(0, 100), code: String(o.code ?? '').trim().slice(0, 40), link: String(o.link ?? '').trim(),
+        logo_path, every_min: Math.min(120, Math.max(5, num(o.every_min, 15))), show_sec: Math.min(60, Math.max(5, num(o.show_sec, 12))),
+        status: 'pending', admin_note: '', created_at: new Date().toISOString(),
+      });
+      store.set('sponsor_offers', offers);
+      return { id, token };
+    },
+    async sponsoringManage(token) {
+      const o = store.get('sponsor_offers', []).find((x) => x.token === token);
+      if (!o) throw new Error('Unbekannter Verwaltungs-Link.');
+      const taken = store.get('sponsor_applications', []).filter((a) => a.offer_id === o.id && a.status === 'accepted').length;
+      const { token: _t, ...offer } = o;
+      return { offer: { ...offer, taken }, applications: store.get('sponsor_applications', []).filter((a) => a.offer_id === o.id && a.status !== 'withdrawn') };
+    },
+    async sponsoringDecide(token, applicationId, decision, note = '') {
+      const o = store.get('sponsor_offers', []).find((x) => x.token === token);
+      if (!o) throw new Error('Unbekannter Verwaltungs-Link.');
+      const apps = store.get('sponsor_applications', []);
+      const a = apps.find((x) => x.id === applicationId && x.offer_id === o.id);
+      if (!a) throw new Error('Diese Bewerbung gibt es nicht.');
+      let sponsors = store.get('sponsors', []);
+      if (decision === 'accept') {
+        if (o.status !== 'active') throw new Error('Das Angebot ist nicht (mehr) freigegeben.');
+        if (apps.filter((x) => x.offer_id === o.id && x.status === 'accepted').length >= o.slots) throw new Error('Alle Plätze sind vergeben.');
+        Object.assign(a, { status: 'accepted', company_note: note, decided_at: new Date().toISOString() });
+        sponsors = sponsors.filter((x) => x.offer_id !== o.id);
+        sponsors.push({ id: Date.now(), name: o.company, text: o.overlay_text, code: o.code, url: o.link, active: true,
+          offer_id: o.id, logo_path: o.logo_path, every_min: o.every_min, show_sec: o.show_sec });
+      } else if (decision === 'decline') Object.assign(a, { status: 'declined', company_note: note, decided_at: new Date().toISOString() });
+      else if (decision === 'end') { a.status = 'ended'; sponsors = sponsors.filter((x) => x.offer_id !== o.id); }
+      store.set('sponsor_applications', apps);
+      store.set('sponsors', sponsors);
+      return this.sponsoringManage(token);
+    },
+    async sponsoringClose(token) {
+      const offers = store.get('sponsor_offers', []);
+      const o = offers.find((x) => x.token === token);
+      if (!o) throw new Error('Unbekannter Verwaltungs-Link.');
+      o.status = 'closed';
+      store.set('sponsor_offers', offers);
+      store.set('sponsor_applications', store.get('sponsor_applications', []).map((a) => (a.offer_id === o.id && ['pending', 'accepted'].includes(a.status)
+        ? { ...a, status: a.status === 'accepted' ? 'ended' : 'declined' } : a)));
+      store.set('sponsors', store.get('sponsors', []).filter((x) => x.offer_id !== o.id));
+      return this.sponsoringManage(token);
+    },
+    async sponsoringOffers() {
+      await requireAdmin();
+      const size = { avg: 12, peak: 25, streams: 6 };
+      const apps = store.get('sponsor_applications', []);
+      const pub = (o) => { const { token: _t, contact_email: _e, ...rest } = o; return { ...rest, taken: apps.filter((a) => a.offer_id === o.id && a.status === 'accepted').length }; };
+      const offers = store.get('sponsor_offers', []);
+      const mine = apps.filter((a) => a.mine && a.status !== 'withdrawn');
+      return {
+        size,
+        offers: offers.filter((o) => o.status === 'active' && size.avg >= o.min_viewers && (o.max_viewers == null || size.avg <= o.max_viewers)
+          && !mine.some((a) => a.offer_id === o.id) && pub(o).taken < o.slots).map(pub),
+        mine: mine.map((a) => ({ offer: pub(offers.find((o) => o.id === a.offer_id) ?? {}), status: a.status, message: a.message, company_note: a.company_note ?? '', created_at: a.created_at })),
+      };
+    },
+    async sponsoringApply(offerId, message, share) {
+      await requireAdmin();
+      const apps = store.get('sponsor_applications', []);
+      if (apps.some((a) => a.mine && a.offer_id === offerId && a.status !== 'withdrawn')) throw new Error('Du hast dich schon beworben.');
+      const ch = demoChannels().find((c) => c.owner === current?.email) ?? { login: 'streamer', display_name: 'Streamer' };
+      apps.push({ id: Date.now(), offer_id: offerId, mine: true, login: ch.login, display_name: ch.display_name, avatar_url: '',
+        message: String(message ?? '').trim().slice(0, 500), stats: share ? { avg: 12, peak: 25, streams: 6, login: ch.login } : null,
+        status: 'pending', company_note: '', pay_status: 'open', created_at: new Date().toISOString() });
+      store.set('sponsor_applications', apps);
+      return this.sponsoringOffers();
+    },
+    async sponsoringWithdraw(offerId) {
+      await requireAdmin();
+      store.set('sponsor_applications', store.get('sponsor_applications', []).map((a) => (a.mine && a.offer_id === offerId && ['pending', 'accepted'].includes(a.status)
+        ? { ...a, status: a.status === 'accepted' ? 'ended' : 'withdrawn' } : a)));
+      store.set('sponsors', store.get('sponsors', []).filter((x) => x.offer_id !== offerId));
+      return this.sponsoringOffers();
+    },
     // Trinkgeld und Sponsoren im Demo-Modus: in localStorage; Ko-fi gibt es hier nicht, der Test-Alert geht
     async tipGet() {
       await requireAdmin();
@@ -1448,6 +1562,11 @@ function createLocalApi() {
     async sponsorAdminList() { await requireAdmin(); return store.get('sponsors', []); },
     async sponsorSave(x) {
       await requireAdmin();
+      const fixed = x.id && store.get('sponsors', []).find((s) => s.id === x.id && s.offer_id);
+      if (fixed) { // aus der Sponsoring-Börse: legt die Firma fest, nur zeigen/pausieren
+        store.set('sponsors', store.get('sponsors', []).map((s) => (s.id === x.id ? { ...s, active: x.active !== false } : s)));
+        return store.get('sponsors', []);
+      }
       const name = String(x.name ?? '').trim().slice(0, 60);
       const url = String(x.url ?? '').trim();
       if (!name) throw new Error('Bitte einen Namen eingeben.');
@@ -1467,6 +1586,10 @@ function createLocalApi() {
     },
     async sponsorDelete(id) {
       await requireAdmin();
+      const offer = store.get('sponsors', []).find((s) => s.id === id)?.offer_id;
+      if (offer) {
+        store.set('sponsor_applications', store.get('sponsor_applications', []).map((a) => (a.mine && a.offer_id === offer && a.status === 'accepted' ? { ...a, status: 'ended' } : a)));
+      }
       const list = store.get('sponsors', []).filter((s) => s.id !== id);
       store.set('sponsors', list);
       return list;
