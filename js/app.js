@@ -5985,6 +5985,18 @@ function setupObs() {
       $('#obs-connect').scrollIntoView({ block: 'center', behavior: 'smooth' });
       $('#obs-ws-form').password.focus({ preventScroll: true });
     },
+    // Letzter Schritt: einen Follower-Alert in alle OBS-Quellen schicken
+    testAlert: async (btn) => {
+      btn.disabled = true;
+      try {
+        await state.api.testAlert('follow');
+        toast('✓ Test-Alert geschickt – er erscheint gleich in der OBS-Vorschau.', 'ok');
+      } catch (err) {
+        toast(`Test-Alert ging nicht: ${germanError(err)}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    },
   });
   $('#obs-setup-open').addEventListener('click', () => openObsSetup(0));
   setupObsModules();
