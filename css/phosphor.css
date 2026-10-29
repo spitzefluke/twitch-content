@@ -145,3 +145,10 @@
 .ph.ph-handshake:before { content: "\e582"; }
 .ph.ph-hand-coins:before { content: "\ea8c"; }
 .ph.ph-stop-circle:before { content: "\e46e"; }
+.ph.ph-browser:before { content: "\e0f4"; }
+.ph.ph-circle-notch:before { content: "\eb44"; }
+.ph.ph-hand-pointing:before { content: "\e29a"; }
+.ph.ph-magnifying-glass-plus:before { content: "\e310"; }
+.ph.ph-paint-brush-broad:before { content: "\e590"; }
+.ph.ph-plugs-connected:before { content: "\eb5a"; }
+.ph.ph-push-pin:before { content: "\e3e2"; }
