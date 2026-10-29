@@ -28,3 +28,7 @@ verify_jwt = false
 # YouTube verbinden: Google leitet ohne Supabase-Login zurück
 [functions.youtube]
 verify_jwt = false
+
+# Trinkgeld: Ko-fi schickt den Webhook ohne Supabase-Login (geprüft wird der Ko-fi-Token des Kanals)
+[functions.tips]
+verify_jwt = false

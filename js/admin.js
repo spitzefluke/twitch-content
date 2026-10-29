@@ -148,6 +148,16 @@ function demoCall(action, extra) {
     }
     return { channels: list.map((c) => ({ note: '', admin_note: '', owner: c.owner ?? '', connected: false, created_at: c.created_at ?? new Date().toISOString(), ...c })) };
   }
+  if (action === 'pro_grant') {
+    const list = read('channels', null) ?? demoCall('channels', {}).channels;
+    const c = list.find((x) => x.id === extra.channel_id);
+    if (c) {
+      const base = Math.max(Date.now(), Date.parse(c.pro_until ?? '') || 0);
+      c.pro_until = extra.days > 0 ? new Date(base + extra.days * 864e5).toISOString() : null;
+    }
+    localStorage.setItem('zd_channels', JSON.stringify(list));
+    return demoCall('channels', {});
+  }
   if (action === 'channel_moderate') {
     const list = read('channels', null) ?? demoCall('channels', {}).channels;
     const now = Date.now();
@@ -670,9 +680,11 @@ function renderChannels() {
     if (c.status !== 'active') actions.push(`<button class="btn btn--primary btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="active">Freischalten</button>`);
     if (c.status !== 'blocked' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="blocked">Sperren</button>`);
     if (c.status === 'active' && !c.is_default) actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-channel="${escapeAttr(c.id)}" data-status="pending">Zurückstellen</button>`);
+    actions.push(`<button class="btn btn--ghost btn--sm" type="button" data-pro="${escapeAttr(c.id)}" title="StreamHelp Pro vergeben, verlängern oder entziehen">⭐ Pro</button>`);
     const mods = [];
     if (c.blocked_until) mods.push(`<span class="chip chip--bad ch-mod">⏱️ Timeout bis ${escapeHtml(fmtUntil(c.blocked_until))}</span>`);
     if (c.overlay_off_until) mods.push(`<span class="chip chip--warn ch-mod">📺 Overlay aus ${c.overlay_off_until.startsWith('9999') ? 'bis zum Aufheben' : `bis ${escapeHtml(fmtUntil(c.overlay_off_until))}`}</span>`);
+    if (c.pro_until) mods.push(`<span class="chip chip--ok ch-mod">⭐ Pro bis ${escapeHtml(fmtDate(c.pro_until))}</span>`);
     if (c.warning) mods.push(`<span class="chip chip--warn ch-mod" title="${escapeAttr(c.warning)}">⚠️ Verwarnt${c.warning_seen_at && c.warning_seen_at >= c.warning_at ? ' · gelesen' : ' · ungelesen'}</span>`);
     return `
     <tr>
@@ -688,6 +700,7 @@ function renderChannels() {
     </tr>`;
   }).join('');
   tbody.querySelectorAll('button[data-status]').forEach((btn) => btn.addEventListener('click', () => setChannelStatus(btn)));
+  tbody.querySelectorAll('button[data-pro]').forEach((btn) => btn.addEventListener('click', () => grantPro(btn)));
   tbody.querySelectorAll('input[data-pick]').forEach((box) => box.addEventListener('change', () => {
     state.picked ??= new Set();
     if (box.checked) state.picked.add(box.dataset.pick); else state.picked.delete(box.dataset.pick);
@@ -848,6 +861,28 @@ async function setChannelStatus(btn) {
     state.channels = data.channels ?? state.channels;
     renderChannels();
     toast({ active: 'Kanal freigeschaltet – der Streamer kann jetzt loslegen.', blocked: 'Kanal gesperrt.', pending: 'Kanal zurückgestellt.' }[status], 'ok');
+  } catch (err) {
+    toast(`Ändern fehlgeschlagen: ${err.message}`, 'error');
+    btn.disabled = false;
+  }
+}
+
+// StreamHelp Pro (Migration …_tips_sponsors_pro.sql) – noch ohne Bezahlung: der Admin vergibt es von Hand
+async function grantPro(btn) {
+  const c = (state.channels ?? []).find((x) => x.id === btn.dataset.pro);
+  const name = c?.display_name || c?.login || 'Kanal';
+  const raw = prompt(`StreamHelp Pro für „${name}“${c?.pro_until ? ` (aktiv bis ${fmtDate(c.pro_until)})` : ''}:\nWie viele Tage dazu? 0 = Pro entziehen.`, c?.pro_until ? '0' : '30');
+  if (raw === null) return;
+  const days = Number.parseInt(raw, 10);
+  if (!Number.isFinite(days) || days < 0 || days > 3660) { toast('Bitte eine Zahl zwischen 0 und 3660.', 'error'); return; }
+  const note = days > 0 ? prompt('Notiz (optional, z. B. „Tester“ oder „3 Streamer geworben“):', '') : '';
+  if (note === null) return;
+  btn.disabled = true;
+  try {
+    const data = await call('pro_grant', { channel_id: btn.dataset.pro, days, note });
+    state.channels = data.channels ?? state.channels;
+    renderChannels();
+    toast(days > 0 ? `Pro für ${name} um ${days} Tage verlängert.` : `Pro für ${name} entzogen.`, 'ok');
   } catch (err) {
     toast(`Ändern fehlgeschlagen: ${err.message}`, 'error');
     btn.disabled = false;

@@ -244,6 +244,18 @@ async function createSupabaseApi() {
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
     // Markenfarbe fürs öffentliche Profil (Migration …_brand_color.sql); null = Standard
     async profileAccentSave(accent) { return unwrap(await sb.rpc('profile_accent_save', { p_accent: accent || null })); },
+    // Trinkgeld, Sponsoren, Pro (Migration …_tips_sponsors_pro.sql). Der Ko-fi-Token geht nur hin, nie zurück.
+    async tipGet() { return unwrap(await sb.rpc('tip_get')); },
+    async tipSave(p) {
+      return unwrap(await sb.rpc('tip_save', { p_links: p.links ?? [], p_alert: !!p.alert, p_thank: !!p.thank, p_thank_text: p.thank_text ?? '', p_min_cents: p.min_cents | 0 }));
+    },
+    async tipKofiToken(token) { return unwrap(await sb.rpc('tip_kofi_token', { p_token: token ?? '' })); },
+    async sponsorAdminList() { return unwrap(await sb.rpc('sponsor_admin_list')); },
+    async sponsorSave(x) {
+      return unwrap(await sb.rpc('sponsor_save', { p_id: x.id ?? null, p_name: x.name ?? '', p_text: x.text ?? '', p_code: x.code ?? '', p_url: x.url ?? '', p_active: x.active !== false }));
+    },
+    async sponsorDelete(id) { return unwrap(await sb.rpc('sponsor_delete', { p_id: id })); },
+    async proStatus() { return unwrap(await sb.rpc('pro_status')); },
     // Raid-Netzwerk und Freunde werben (Migration …_raid_network.sql); geraidet wird über die Edge Function
     async raidNetworkGet() { return unwrap(await sb.rpc('raid_network_get')); },
     async raidNetworkSave(p) {
@@ -1402,6 +1414,64 @@ function createLocalApi() {
       });
       return demoProfile();
     },
+    // Trinkgeld und Sponsoren im Demo-Modus: in localStorage; Ko-fi gibt es hier nicht, der Test-Alert geht
+    async tipGet() {
+      await requireAdmin();
+      const t = store.get('tips', {});
+      return {
+        channel_id: 'demo', kofi: !!t.kofi, links: t.links ?? [], alert: t.alert ?? true, thank: t.thank ?? true,
+        thank_text: t.thank_text || '💶 Danke {name} für {amount} Trinkgeld! {message}', min_cents: t.min_cents ?? 0, last_at: null,
+        recent: store.get('stream_alerts', []).filter((a) => a.kind === 'tip').slice(0, 15)
+          .map((a) => ({ name: a.user_name, cents: a.amount, currency: a.tier, message: a.message, at: a.created_at })),
+      };
+    },
+    async tipSave(p) {
+      await requireAdmin();
+      const links = [];
+      for (const l of Array.isArray(p.links) ? p.links : []) {
+        const url = String(l?.url ?? '').trim();
+        if (!url) continue;
+        if (!/^https:\/\/[^\s<>"'\\]{3,}$/.test(url) || url.length > 300) throw new Error('Bitte nur https-Links (z. B. https://paypal.me/…).');
+        links.push({ label: String(l.label ?? '').trim().slice(0, 30), url });
+        if (links.length >= 4) break;
+      }
+      store.set('tips', { ...store.get('tips', {}), links, alert: !!p.alert, thank: !!p.thank, thank_text: String(p.thank_text ?? '').trim().slice(0, 300), min_cents: Math.max(0, p.min_cents | 0) });
+      return this.tipGet();
+    },
+    async tipKofiToken(token) {
+      await requireAdmin();
+      const v = String(token ?? '').trim();
+      if (v && !/^[A-Za-z0-9-]{8,100}$/.test(v)) throw new Error('Das sieht nicht wie ein Ko-fi-Token aus.');
+      store.set('tips', { ...store.get('tips', {}), kofi: !!v });
+      return this.tipGet();
+    },
+    async sponsorAdminList() { await requireAdmin(); return store.get('sponsors', []); },
+    async sponsorSave(x) {
+      await requireAdmin();
+      const name = String(x.name ?? '').trim().slice(0, 60);
+      const url = String(x.url ?? '').trim();
+      if (!name) throw new Error('Bitte einen Namen eingeben.');
+      if (url && !/^https:\/\/[^\s<>"'\\]{3,}$/.test(url)) throw new Error('Der Link muss mit https:// beginnen.');
+      const list = store.get('sponsors', []);
+      const row = { name, text: String(x.text ?? '').trim().slice(0, 140), code: String(x.code ?? '').trim().slice(0, 40), url, active: x.active !== false };
+      if (x.id) {
+        const i = list.findIndex((s) => s.id === x.id);
+        if (i < 0) throw new Error('Diesen Sponsor gibt es nicht.');
+        list[i] = { ...list[i], ...row };
+      } else {
+        if (list.length >= 20) throw new Error('Höchstens 20 Sponsoren.');
+        list.push({ id: Date.now(), ...row });
+      }
+      store.set('sponsors', list);
+      return list;
+    },
+    async sponsorDelete(id) {
+      await requireAdmin();
+      const list = store.get('sponsors', []).filter((s) => s.id !== id);
+      store.set('sponsors', list);
+      return list;
+    },
+    async proStatus() { return { pro: false, until: null }; },
     // Raid-Netzwerk im Demo-Modus: drei erfundene Mitglieder sind live, geraidet wird nicht
     async raidNetworkGet() {
       await requireAdmin();
@@ -1514,7 +1584,8 @@ function createLocalApi() {
       if (!p.is_public) return null;
       const away = p.away_until && p.away_until >= new Date().toISOString().slice(0, 10);
       return { login: p.login, display_name: p.display_name, avatar_url: '', live: false, category: '', bio: p.bio, links: p.links, tz: p.tz, accent: p.accent,
-        away_until: away ? p.away_until : null, away_note: away ? p.away_note : '', slots: p.slots, upcoming: p.upcoming };
+        away_until: away ? p.away_until : null, away_note: away ? p.away_note : '', slots: p.slots, upcoming: p.upcoming,
+        tips: store.get('tips', {}).links ?? [], sponsors: store.get('sponsors', []).filter((x) => x.active !== false) };
     },
     // Demo: Artist-Bewerbung und Uploads in diesem Browser; freischalten im Admin-Bereich (admin.html, Passwort „demo“)
     async artistMe() {
@@ -2389,13 +2460,13 @@ function createLocalApi() {
     onAlerts(cb) { (demoListeners.stream_alerts ??= []).push(cb); },
     async testAlert(kind) {
       await requireAdmin();
-      if (!['follow', 'sub', 'resub', 'gift', 'bits', 'redeem'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
+      if (!['follow', 'sub', 'resub', 'gift', 'bits', 'redeem', 'tip'].includes(kind)) throw new Error('Diese Alert-Art gibt es nicht.');
       const names = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia'];
       const row = {
-        id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: '1000',
+        id: nextId++, created_at: new Date().toISOString(), kind, user_name: names[randomInt(names.length)], tier: kind === 'tip' ? 'EUR' : '1000',
         months: kind === 'resub' ? 3 + randomInt(20) : 0,
-        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : kind === 'redeem' ? [500, 1000][randomInt(2)] : 0,
-        message: kind === 'resub' ? 'Test-Nachricht: Weiter so!' : kind === 'bits' ? "Test-Cheer: Let's go!" : kind === 'redeem' ? '🎡 Glücksrad' : '', test: true,
+        amount: kind === 'gift' ? [1, 5, 10][randomInt(3)] : kind === 'bits' ? [100, 500, 1000][randomInt(3)] : kind === 'redeem' ? [500, 1000][randomInt(2)] : kind === 'tip' ? [300, 500, 1000][randomInt(3)] : 0,
+        message: kind === 'resub' ? 'Test-Nachricht: Weiter so!' : kind === 'bits' ? "Test-Cheer: Let's go!" : kind === 'redeem' ? '🎡 Glücksrad' : kind === 'tip' ? 'Test-Trinkgeld: Danke für den Stream!' : '', test: true,
       };
       store.set('stream_alerts', [row, ...store.get('stream_alerts', [])].slice(0, 30));
       emitDemo('stream_alerts', row);

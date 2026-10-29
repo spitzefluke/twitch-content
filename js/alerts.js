@@ -1,4 +1,5 @@
-// Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos, Bits und Kanalpunkte.
+// Alerts im OBS-Overlay: neue Follower, Abos, Resubs, verschenkte Abos, Bits, Kanalpunkte und Trinkgeld
+// (Ko-fi, Migration …_tips_sponsors_pro.sql: Betrag in Cent in amount, Währung in tier).
 // Die Zeilen kommen aus stream_alerts (twitch-eventsub schreibt sie, alert_test für Proben).
 import { BOARD } from './prank-fx.js';
 
@@ -10,6 +11,7 @@ export const ALERT_KINDS = [
   { kind: 'gift', param: 'sgift', label: '🎁 Verschenkte Abos' },
   { kind: 'bits', param: 'sbits', label: '💎 Bits' },
   { kind: 'redeem', param: 'sredeem', label: '🎟️ Kanalpunkte' },
+  { kind: 'tip', param: 'stip', label: '💶 Trinkgeld' },
 ];
 
 // Design-Bibliothek der Alerts (Overlay-Parameter alook). Neue Designs: hier eintragen und in
@@ -33,6 +35,16 @@ export const ALERT_SOUND_SECONDS = 20;
 export const ALERT_SOUND_BYTES = 4 * 1024 * 1024;
 
 const TIERS = { 2000: 'Stufe 2', 3000: 'Stufe 3' };
+
+// Trinkgeld: Betrag in Cent, Währung (EUR, USD …) in tier
+export function money(a) {
+  const cur = /^[A-Z]{3}$/.test(a.tier ?? '') ? a.tier : 'EUR';
+  try {
+    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: cur }).format(Math.max(0, a.amount | 0) / 100);
+  } catch {
+    return `${(Math.max(0, a.amount | 0) / 100).toFixed(2).replace('.', ',')} ${cur}`;
+  }
+}
 
 // Was die Karte bei einem Alert zeigt
 export function alertText(a) {
@@ -60,6 +72,8 @@ export function alertText(a) {
       const n = Math.max(0, a.amount | 0);
       return { icon: '🎟️', title: a.message?.trim() || 'Kanalpunkte eingelöst', sub: n ? `für ${n.toLocaleString('de-DE')} Kanalpunkte` : 'Kanalpunkte eingelöst' };
     }
+    case 'tip':
+      return { icon: '💶', title: `${money(a)} Trinkgeld`, sub: a.message?.trim() || 'Danke für die Unterstützung!' };
     default:
       return { icon: '🔔', title: 'Alert', sub: '' };
   }
@@ -77,6 +91,12 @@ export function alertSound(sfx, kind) {
     // Kurzer „Plopp“ nach oben
     sfx.tone(660, { type: 'triangle', release: 0.25, peak: 0.18 });
     sfx.tone(990, { at: 0.09, type: 'triangle', release: 0.45, peak: 0.16 });
+    return;
+  }
+  if (kind === 'tip') {
+    // Kasse: zwei Münzen und ein heller Glanz
+    [988, 1319].forEach((f, i) => sfx.tone(f, { at: i * 0.09, type: 'square', release: 0.2, peak: 0.05, filter: { type: 'lowpass', freq: 4200 } }));
+    sfx.tone(1760, { at: 0.2, type: 'sine', release: 1, peak: 0.12 });
     return;
   }
   if (kind === 'bits') {
@@ -119,11 +139,11 @@ export function playAlertSound(sfx, kind, choice = 'default', urlFor = null) {
 const NAMES = ['NightOwl_Mia', 'PixelPaul', 'GG_Gina', 'LootLukas', 'CrispyCarl', 'StreamSofia'];
 export function sampleAlert(kind, n = 0) {
   return {
-    id: `test-${Date.now()}-${n}`, created_at: new Date().toISOString(), kind, test: true, tier: '1000',
+    id: `test-${Date.now()}-${n}`, created_at: new Date().toISOString(), kind, test: true, tier: kind === 'tip' ? 'EUR' : '1000',
     user_name: NAMES[n % NAMES.length],
     months: kind === 'resub' ? 7 : 0,
-    amount: kind === 'gift' ? 5 : kind === 'bits' ? 500 : kind === 'redeem' ? 1000 : 0,
-    message: kind === 'resub' ? 'Weiter so!' : kind === 'redeem' ? '🎡 Glücksrad' : '',
+    amount: kind === 'gift' ? 5 : kind === 'bits' ? 500 : kind === 'redeem' ? 1000 : kind === 'tip' ? 500 : 0,
+    message: kind === 'resub' ? 'Weiter so!' : kind === 'redeem' ? '🎡 Glücksrad' : kind === 'tip' ? 'Danke für den Stream!' : '',
   };
 }
 
@@ -166,7 +186,7 @@ export const ALERT_LAYOUTS = [
 ];
 export const PLACEHOLDERS = ['{name}', '{amount}', '{months}', '{tier}', '{message}', '{reward}'];
 // Varianten gibt es nur, wo es eine Menge gibt
-export const VARIANT_KINDS = { bits: 'Bits', gift: 'Abos', resub: 'Monate', redeem: 'Kanalpunkte' };
+export const VARIANT_KINDS = { bits: 'Bits', gift: 'Abos', resub: 'Monate', redeem: 'Kanalpunkte', tip: 'Euro' };
 
 // Fertige Designs – ein Klick setzt Look, Bild, Animationen und Farbe
 export const ALERT_PRESETS = [
@@ -248,7 +268,7 @@ export function normalizeAlertConfig(cfg) {
 }
 
 // Menge, nach der Varianten gewählt werden
-export const alertMeasure = (a) => (a.kind === 'resub' ? a.months | 0 : a.amount | 0);
+export const alertMeasure = (a) => (a.kind === 'resub' ? a.months | 0 : a.kind === 'tip' ? Math.floor((a.amount | 0) / 100) : a.amount | 0);
 
 // Design für einen Alert: Variante mit der größten passenden Mindestmenge, sonst das der Art
 export function resolveDesign(cfg, a) {
@@ -261,7 +281,7 @@ export function alertVars(a) {
   const n = Math.max(0, a.amount | 0);
   return {
     name: a.user_name || 'Jemand',
-    amount: n.toLocaleString('de-DE'),
+    amount: a.kind === 'tip' ? money(a) : n.toLocaleString('de-DE'),
     months: String(Math.max(0, a.months | 0)),
     tier: TIERS[a.tier] ?? 'Stufe 1',
     message: (a.message ?? '').trim(),

@@ -115,3 +115,12 @@ a { color: var(--acc-ink); }
   .pp-up span { grid-column: 1 / -1; grid-row: 2; }
 }
 @media (prefers-reduced-motion: reduce) { .pp-hero, .pp-dot, .pp-btn, .pp-links a { animation: none; transition: none; } }
+
+/* Trinkgeld und Partner (Migration …_tips_sponsors_pro.sql) */
+.pp-note { margin: -4px 0 10px; color: var(--muted, #a59cbf); font-size: 13px; }
+.pp-ad { margin-left: 6px; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; opacity: .75; }
+.pp-sponsors { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pp-sponsors li { display: grid; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .03); }
+.pp-sponsors a, .pp-sponsors b { font-weight: 700; color: inherit; }
+.pp-sponsors span { font-size: 14px; opacity: .85; overflow-wrap: anywhere; }
+.pp-code { font-family: ui-monospace, monospace; }

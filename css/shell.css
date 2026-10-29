@@ -417,6 +417,7 @@
   background: linear-gradient(135deg, var(--acc), var(--acc-3)); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 16px;
 }
 .role-badge { font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: rgba(var(--acc-rgb), .18); color: var(--sh-purple-3); }
+.role-badge--pro { background: rgba(255, 184, 28, .18); color: var(--gold-ink, #ffd36b); }
 
 /* Twitch-Status-Knopf in der Kopfzeile */
 .health-btn {

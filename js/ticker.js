@@ -46,15 +46,33 @@ export function tickerText(line, site = siteAddress()) {
 
 // Füllt die Laufschrift und lässt sie mit gleichmäßigem Tempo (px/s) laufen.
 // Der Inhalt steht doppelt drin, damit das Band ohne Lücke weiterläuft.
-export function fillTicker(track, items, { speed = 70, site } = {}) {
-  const lines = (items?.length ? items : DEFAULT_TICKER).map((l) => tickerLine(l, site)).filter((l) => l.text);
+// Sponsoren (Migration …_tips_sponsors_pro.sql) laufen mit, immer mit „Anzeige“ davor (Kennzeichnungspflicht)
+export function sponsorText(s) {
+  const name = String(s?.name ?? '').trim();
+  if (!name) return '';
+  const text = String(s.text ?? '').trim();
+  const code = String(s.code ?? '').trim();
+  return `${name}${text ? `: ${text}` : ''}${code ? ` · Code ${code}` : ''}`;
+}
+
+export function fillTicker(track, items, { speed = 70, site, ads = [] } = {}) {
+  const lines = [
+    ...(items?.length ? items : DEFAULT_TICKER).map((l) => tickerLine(l, site)),
+    ...(ads ?? []).slice(0, 20).map((s) => ({ text: sponsorText(s), ad: true })),
+  ].filter((l) => l.text);
   const group = () => {
     const g = document.createElement('span');
     g.className = 'ticker-group';
     for (const line of lines) {
       const item = document.createElement('span');
-      item.className = 'ticker-item';
+      item.className = line.ad ? 'ticker-item ticker-ad' : 'ticker-item';
       if (line.social) item.append(socialBadge(line.social));
+      if (line.ad) {
+        const badge = document.createElement('span');
+        badge.className = 'ticker-ad-badge';
+        badge.textContent = 'Anzeige';
+        item.append(badge);
+      }
       item.append(line.text);
       const dot = document.createElement('span');
       dot.className = 'ticker-sep';

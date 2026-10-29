@@ -41,6 +41,7 @@ import { renderProfile } from './dash-profile.js';
 import { renderArtist } from './dash-artist.js';
 import { renderDiscord } from './dash-discord.js';
 import { renderRaids, renderReferrals } from './dash-network.js';
+import { renderMoney } from './dash-money.js';
 import { extractColors, inkOn } from './brand-colors.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
@@ -395,7 +396,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord', raids: 'Raid-Netzwerk', referrals: 'Freunde werben',
+  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord', raids: 'Raid-Netzwerk', referrals: 'Freunde werben', money: 'Trinkgeld & Sponsoren',
 };
 
 function setupShell() {
@@ -720,6 +721,10 @@ const PAGE_ENTER = {
   }),
   raids: () => renderRaids($('#raids-slot'), { api: state.api, toast, germanError, confirm: (text) => Promise.resolve(confirm(text)) }),
   referrals: () => renderReferrals($('#referrals-slot'), { api: state.api, toast, germanError }),
+  money: () => renderMoney($('#money-slot'), {
+    api: state.api, toast, germanError, testAlert,
+    webhookUrl: (id) => (state.api.demo ? 'https://…/functions/v1/tips?c=demo' : `${CONFIG.SUPABASE_URL}/functions/v1/tips?c=${encodeURIComponent(id ?? '')}`),
+  }),
   ideas: () => renderStart(START),
 };
 
@@ -1092,6 +1097,22 @@ function renderAcctHead(level = state.health?.level) {
   $('#acct-tw-dot').dataset.state = lvl;
   $('#acct-dot').hidden = !team;
   $('#acct-dot').dataset.state = lvl;
+  if (team) loadProStatus();
+}
+
+// StreamHelp Pro (Migration …_tips_sponsors_pro.sql): Plakette im Kontomenü, einmal je Kanal gefragt
+let proFor = null;
+function loadProStatus() {
+  const id = state.channel?.id ?? 'default';
+  if (proFor === id || !state.api?.proStatus) return;
+  proFor = id;
+  state.api.proStatus().then((p) => {
+    $('#acct-pro').hidden = !p?.pro;
+    if (p?.until) $('#acct-pro').title = `StreamHelp Pro bis ${new Date(p.until).toLocaleDateString('de-DE')}`;
+  }).catch((err) => {
+    $('#acct-pro').hidden = true;
+    if (!/pro_status/.test(err?.message ?? '')) console.warn('Pro-Status:', err?.message ?? err); // Migration fehlt: still
+  });
 }
 
 // ---------- Als Nächstes & Glücksrad ----------
