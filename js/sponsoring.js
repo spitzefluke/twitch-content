@@ -6,7 +6,7 @@
 // Der Schlüssel steht im #-Teil der Adresse – der geht beim Laden nie an einen Server.
 import { createApi, germanError } from './api.js';
 import { h } from './extras-core.js';
-import { readLogo, sponsorLogoUrl } from './sponsor-files.js';
+import { SPONSORING_OPEN, SPONSORING_SOON, readLogo, sponsorLogoUrl } from './sponsor-files.js';
 
 const $ = (sel) => document.querySelector(sel);
 const api = createApi();
@@ -103,6 +103,7 @@ async function loadManage() {
   const box = $('#sp-manage');
   $('#sp-intro').hidden = true;
   $('#sp-form').hidden = true;
+  $('#sp-soon').hidden = true;
   $('#sp-done').hidden = true;
   box.hidden = false;
   box.replaceChildren(h('p', { class: 'pp-loading' }, 'Lädt …'));
@@ -189,6 +190,10 @@ function appRow(a) {
 }
 
 // ---------- Start ----------
+// Solange die Börse geschlossen ist (Gewerbe in Anmeldung), gibt es statt des Formulars einen Hinweis
+$('#sp-soon-text').textContent = SPONSORING_SOON;
+$('#sp-soon').hidden = SPONSORING_OPEN;
+$('#sp-form').hidden = !SPONSORING_OPEN;
 setupForm();
 if (keyOf()) loadManage();
 addEventListener('hashchange', () => { if (keyOf()) loadManage(); });

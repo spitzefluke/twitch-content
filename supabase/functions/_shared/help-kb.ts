@@ -27,7 +27,7 @@ Freunde werben: Dashboard → „Freunde werben“ → Link kopieren und an Stre
 
 Trinkgeld und Sponsoren: Dashboard → „Trinkgeld & Sponsoren“. Ko-fi per Webhook verbinden (Trinkgeld-Alert im Overlay, Dank vom Bot) und eigene Links (PayPal.me, Tipeee …) für !trinkgeld und das Profil hinterlegen. StreamHelp nimmt kein Geld an – es geht direkt an den Streamer. Sponsoren laufen mit „Anzeige“ im Laufband, !sponsor im Chat.
 
-Sponsoring-Börse: Firmen bieten auf sponsoring.html Sponsorings an (Zielgruppe nach Kanalgröße, Einblendung im Stream mit „Anzeige“); nach Prüfung durch StreamHelp sehen passende Streamer sie im Dashboard unter „Trinkgeld & Sponsoren“ und bewerben sich. Sagt die Firma zu, läuft die Einblendung automatisch (OBS-Ebene „Sponsor-Einblendung“ einschalten).
+Sponsoring-Börse (noch nicht geöffnet – StreamHelp meldet dafür gerade ein Gewerbe an; eigene Sponsoren gehen schon): Firmen bieten auf sponsoring.html Sponsorings an (Zielgruppe nach Kanalgröße, Einblendung im Stream mit „Anzeige“); nach Prüfung durch StreamHelp sehen passende Streamer sie im Dashboard unter „Trinkgeld & Sponsoren“ und bewerben sich. Sagt die Firma zu, läuft die Einblendung automatisch (OBS-Ebene „Sponsor-Einblendung“ einschalten).
 
 StreamHelp-Community: Der StreamHelp-Discord ist https://discord.gg/XkVG2ZEDG – für Fragen, Ideen und Neuigkeiten.
 

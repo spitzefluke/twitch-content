@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-/YE3quxvhPfWhSVcDZoU0+yuuXK4RRuBTzDK2Lm7JgE=' 'sha256-8FjZLqwdJWb1KSmufxTVPL8BCSt7U4nywIceX2gXsfM='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-tH5QBONG/Uc78W6esTuIb/2ieehL8iONGsUfXnKE4Ro=' 'sha256-8FjZLqwdJWb1KSmufxTVPL8BCSt7U4nywIceX2gXsfM='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sponsoring für Firmen · StreamHelp</title>
@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
   <link rel="stylesheet" href="css/phosphor.css?v=762cbb3272">
   <link rel="stylesheet" href="css/profile.css?v=33b9a73d7d">
-  <link rel="stylesheet" href="css/sponsoring.css?v=f070a856d1">
+  <link rel="stylesheet" href="css/sponsoring.css?v=a3a3a40994">
   <!-- Sponsoring-Börse für Firmen (js/sponsoring.js): Angebot einreichen; sponsoring.html#k=<schlüssel> = Verwaltung -->
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
@@ -43,7 +43,7 @@
       "./js/dash-artist.js": "./js/dash-artist.js?v=28e15868ab",
       "./js/dash-bot.js": "./js/dash-bot.js?v=4f62b52221",
       "./js/dash-discord.js": "./js/dash-discord.js?v=9526da96a9",
-      "./js/dash-money.js": "./js/dash-money.js?v=cf21397d35",
+      "./js/dash-money.js": "./js/dash-money.js?v=8b2b3a1706",
       "./js/dash-network.js": "./js/dash-network.js?v=522652f4ce",
       "./js/dash-obsdata.js": "./js/dash-obsdata.js?v=800b31c135",
       "./js/dash-profile.js": "./js/dash-profile.js?v=d64a161e18",
@@ -113,8 +113,8 @@
       "./js/security.js": "./js/security.js?v=f63e349e70",
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
-      "./js/sponsor-files.js": "./js/sponsor-files.js?v=aa3943a782",
-      "./js/sponsoring.js": "./js/sponsoring.js?v=ea3f89b783",
+      "./js/sponsor-files.js": "./js/sponsor-files.js?v=10d77a4c8f",
+      "./js/sponsoring.js": "./js/sponsoring.js?v=84b8f8668c",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
       "./js/theme-packs.js": "./js/theme-packs.js?v=90faabe1ce",
       "./js/ticker.js": "./js/ticker.js?v=f42d43ff2c",
@@ -151,7 +151,15 @@
       </ol>
     </section>
 
-    <form class="sp-form" id="sp-form" novalidate>
+    <!-- Noch geschlossen (Gewerbe in Anmeldung, SPONSORING_OPEN in js/sponsor-files.js) -->
+    <section class="sp-card sp-soon" id="sp-soon" hidden>
+      <span class="sp-status" data-s="pending">🛠️ In Arbeit</span>
+      <h2>Die Sponsoring-Börse startet bald</h2>
+      <p id="sp-soon-text"></p>
+      <p>Ihr habt schon Interesse? Schreibt uns über das <a href="./#kontakt">Kontaktformular</a> – wir melden uns, sobald es losgeht.</p>
+    </section>
+
+    <form class="sp-form" id="sp-form" novalidate hidden>
       <fieldset class="sp-card">
         <legend>Eure Firma</legend>
         <div class="sp-grid">

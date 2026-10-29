@@ -5,7 +5,7 @@
 //     !sponsor im Chat, auf dem öffentlichen Profil.
 import { h } from './extras-core.js';
 import { money } from './alerts.js';
-import { sponsorLogoUrl } from './sponsor-files.js';
+import { SPONSORING_OPEN, SPONSORING_SOON, sponsorLogoUrl } from './sponsor-files.js';
 
 const DEFAULT_THANK = '💶 Danke {name} für {amount} Trinkgeld! {message}';
 const URL_RE = /^https:\/\/[^\s<>"'\\]{3,}$/;
@@ -33,7 +33,7 @@ export async function renderMoney(slot, deps) {
   slot.replaceChildren(h('p', { class: 'form-hint' }, 'Lädt …'));
   try {
     [tip, sponsors] = await Promise.all([ctx.api.tipGet(), ctx.api.sponsorAdminList()]);
-    market = await ctx.api.sponsoringOffers?.().catch((err) => { if (!/sponsoring_offers/.test(err?.message ?? '')) console.warn('Sponsoring-Börse:', err?.message ?? err); return null; }) ?? null;
+    market = !SPONSORING_OPEN ? null : await ctx.api.sponsoringOffers?.().catch((err) => { if (!/sponsoring_offers/.test(err?.message ?? '')) console.warn('Sponsoring-Börse:', err?.message ?? err); return null; }) ?? null;
   } catch (err) {
     slot.replaceChildren(card('💶', 'Trinkgeld & Sponsoren', '', h('p', { class: 'form-hint' },
       missing(err) ? 'Trinkgeld und Sponsoren sind noch nicht eingerichtet (Migration …_tips_sponsors_pro.sql).' : ctx.germanError(err))));
@@ -51,7 +51,9 @@ function takeTip() {
 }
 
 function paint(slot) {
-  slot.replaceChildren(kofiCard(slot), tipCard(slot), ...(market ? [marketCard(slot)] : []), sponsorCard(slot));
+  const soon = !SPONSORING_OPEN && card('🏷️', 'Sponsoring-Börse', '🛠️ In Arbeit – noch nicht verfügbar',
+    h('p', { class: 'form-hint' }, `Hier bieten dir bald Firmen Sponsorings an, passend zu deiner Kanalgröße. ${SPONSORING_SOON} Eigene Sponsoren kannst du unten schon eintragen.`));
+  slot.replaceChildren(kofiCard(slot), tipCard(slot), ...(market ? [marketCard(slot)] : soon ? [soon] : []), sponsorCard(slot));
 }
 
 async function run(slot, fn, done) {

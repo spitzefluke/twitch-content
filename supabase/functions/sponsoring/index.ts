@@ -5,6 +5,7 @@
 //   POST {action:"decide", token, application_id, decision: accept|decline|end, note?}
 //   POST {action:"close", token}                    → Angebot beenden (laufende Einblendungen enden)
 // Spam-Schutz: verstecktes Feld website2, höchstens 3 Angebote pro Stunde je IP und 50 am Tag insgesamt.
+// Noch geschlossen (Gewerbe in Anmeldung): Angebote nimmt die Funktion erst an, wenn das Secret SPONSORING_OPEN=1 gesetzt ist.
 import { corsHeaders, db, json, rateLimit, tooMany } from "../_shared/twitch.ts";
 import { friendly, hashToken, submitOffer, TOKEN_RE } from "../_shared/sponsoring.ts";
 
@@ -18,6 +19,9 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   try {
     if (body.action === "submit") {
+      if (Deno.env.get("SPONSORING_OPEN") !== "1") {
+        return json({ error: "Die Sponsoring-Börse ist noch nicht geöffnet – wir melden dafür gerade ein Gewerbe an." }, 403);
+      }
       if (body.website2) return json({ id: crypto.randomUUID(), token: "0".repeat(64) }); // Honigtopf: still „ok“
       const ip = clientIp(req) || "unbekannt";
       if (!(await rateLimit(`sponsoring:ip:${ip}`, 3, 3600)) || !(await rateLimit("sponsoring:all", 50, 86400))) return tooMany();

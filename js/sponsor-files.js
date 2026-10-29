@@ -1,7 +1,12 @@
-// Logos der Sponsoring-Börse (Migration …_sponsoring.sql): Bucket sponsor-assets, Pfad <angebot-id>.<endung>.
-// Genutzt von sponsoring.html, Dashboard, Admin-Bereich und Overlay. Im Demo-Modus liegen die Logos als
-// data:-Adresse im Browser (zd_sponsor_logos).
+// Sponsoring-Börse: Schalter, ob sie offen ist, und die Logos (Migration …_sponsoring.sql): Bucket sponsor-assets,
+// Pfad <angebot-id>.<endung>. Genutzt von sponsoring.html, Dashboard, Admin-Bereich und Overlay. Im Demo-Modus
+// liegen die Logos als data:-Adresse im Browser (zd_sponsor_logos).
 import { CONFIG } from './config.js';
+
+// Noch geschlossen: Die Börse braucht ein angemeldetes Gewerbe. Zum Öffnen hier true setzen und in Supabase das
+// Secret SPONSORING_OPEN=1 für die Edge Function sponsoring hinterlegen (sie lehnt Angebote sonst ab).
+export const SPONSORING_OPEN = false;
+export const SPONSORING_SOON = 'Wir sind gerade dabei, dafür ein Gewerbe anzumelden. Sobald das erledigt ist, öffnen wir die Sponsoring-Börse.';
 
 export const SPONSOR_LOGO_RE = /^[0-9a-f-]{36}\.(png|jpg|webp)$/;
 const live = () => !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
