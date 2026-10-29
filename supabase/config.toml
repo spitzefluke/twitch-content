@@ -32,3 +32,7 @@ verify_jwt = false
 # Trinkgeld: Ko-fi schickt den Webhook ohne Supabase-Login (geprüft wird der Ko-fi-Token des Kanals)
 [functions.tips]
 verify_jwt = false
+
+# Sponsoring-Börse: Firmen haben kein Konto (Verwaltungs-Link mit geheimem Schlüssel, Spam-Schutz in der Function)
+[functions.sponsoring]
+verify_jwt = false

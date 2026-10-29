@@ -247,4 +247,5 @@ export default [
   "Der StreamHelp-Discord",
   "Tausch dich mit anderen Streamern aus, stell Fragen und erfahre als Erstes von neuen Funktionen.",
   "Discord beitreten",
+  "Sponsoring für Firmen",
 ];

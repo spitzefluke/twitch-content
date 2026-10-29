@@ -287,3 +287,8 @@
 .ar-adm-links a { overflow-wrap: anywhere; }
 .ar-adm-note { width: 100%; min-height: 36px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line, rgba(255, 255, 255, .15)); background: transparent; color: inherit; font: inherit; }
 @media (max-width: 640px) { .ar-adm-asset { grid-template-columns: minmax(0, 1fr); } }
+
+/* Sponsoring-Börse (js/admin.js) */
+.sp-adm-logo { display: block; max-width: 140px; max-height: 70px; margin: 6px 0; object-fit: contain; border-radius: 8px; background: rgba(255, 255, 255, .05); }
+.sp-adm-apps { margin: 6px 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; }
+.sp-adm-apps select { margin-left: 4px; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2, #120c1f); color: inherit; font: inherit; }

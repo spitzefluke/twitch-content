@@ -68,7 +68,7 @@
 //   tstyle=bar|neon|board      Design des Laufbands: Laufband (Standard), Neon, LED-Anzeige
 //   tsize=100                  Größe des Laufbands in Prozent (50 – 200)
 //   tspeed=70                  Tempo in Pixeln pro Sekunde (20 – 300)
-//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart, chatcontrol, songs, cup, bet, scratch (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize, hwsize, plsize, ctsize, sgsize, hrsize, cmsize, sosize, cpsize, cptop, cprules, btsize, scsize)
+//   forbid, subathon, pause, quiz, queue, tts, cards, giveaway, hotwords, poll, counter, gamewheel, heart, chatcontrol, songs, cup, bet, scratch, sponsor (+ fwsize, sasize, qzsize, qusize, ttsize, cdsize, gwsize, hwsize, plsize, ctsize, sgsize, hrsize, cmsize, sosize, cpsize, cptop, cprules, btsize, scsize, spsize)
 //                              die neueren Content-Ideen – siehe js/overlay-extras.js
 //   otheme, scene, camframe, labels, goal (+ sctitle, scsub, sctime, cfstyle, cflabel, lbitems, lbsize,
 //   gtype, gtarget, gtitle, gsince, gsize)
@@ -287,7 +287,7 @@ const LAYER_LOOK = {
   chat: ['#ov-chat', '.ov-chat'], ticker: ['#ov-ticker', null], forbid: ['#ov-x-forbid', '.ov-x-forbid'], subathon: ['#ov-x-subathon', '.ov-x-subathon'],
   quiz: ['#ov-x-quiz', '.ov-x-quiz'], queue: ['#ov-x-queue', '.ov-x-queue'], tts: ['#ov-x-tts', '.ov-x-tts'], cards: ['#ov-x-cards', '.ov-x-cards'],
   giveaway: ['#ov-x-giveaway', '.ov-x-giveaway'], hotwords: ['#ov-x-hotwords', '.ov-x-hotwords'], poll: ['#ov-x-poll', '.ov-x-poll'], counter: ['#ov-x-counter', '.ov-x-counter'], gamewheel: ['#ov-x-gamewheel', '.ov-x-gamewheel'], heart: ['#ov-x-heart', '.ov-x-heart'], chatcontrol: ['#ov-x-chatcontrol', '.ov-x-chatcontrol'], labels: ['.ov-labels', '.ov-labels'], goal: ['.ov-goal', '.ov-goal'], songs: ['#ov-x-songs', '.ov-x-songs'], cup: ['#ov-x-cup', '.ov-x-cup'],
-  bet: ['#ov-x-bet', '.ov-x-bet'], scratch: ['#ov-x-scratch', '.ov-x-scratch'],
+  bet: ['#ov-x-bet', '.ov-x-bet'], scratch: ['#ov-x-scratch', '.ov-x-scratch'], sponsor: ['#ov-x-sponsor', '.ov-x-sponsor'],
 };
 const LOOK_FONTS = {
   display: '"Barlow Condensed", "Arial Narrow", sans-serif', barlow: '"Barlow", system-ui, sans-serif', inter: '"Inter", system-ui, sans-serif',

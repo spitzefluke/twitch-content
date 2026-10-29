@@ -244,4 +244,5 @@ export default [
   "O Discord do StreamHelp",
   "Converse com outros streamers, tire dúvidas e saiba antes de todo mundo das novidades.",
   "Entrar no Discord",
+  "Patrocínio para empresas",
 ];

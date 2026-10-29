@@ -5,6 +5,7 @@
 //     !sponsor im Chat, auf dem öffentlichen Profil.
 import { h } from './extras-core.js';
 import { money } from './alerts.js';
+import { sponsorLogoUrl } from './sponsor-files.js';
 
 const DEFAULT_THANK = '💶 Danke {name} für {amount} Trinkgeld! {message}';
 const URL_RE = /^https:\/\/[^\s<>"'\\]{3,}$/;
@@ -16,6 +17,8 @@ let tipDraft = {};
 let sponsors = [];
 let editing = null; // Sponsor, der gerade bearbeitet wird
 let fresh = null;   // neuer Sponsor im Formular (bleibt beim Neuzeichnen erhalten)
+let market = null;  // sponsoring_offers(): Angebote aus der Sponsoring-Börse (null = Migration fehlt)
+const applyDraft = {}; // Angebot-ID → { message, share }
 let busy = false;
 
 const icon = (cls) => h('i', { class: `ph ${cls}`, 'aria-hidden': 'true' });
@@ -30,6 +33,7 @@ export async function renderMoney(slot, deps) {
   slot.replaceChildren(h('p', { class: 'form-hint' }, 'Lädt …'));
   try {
     [tip, sponsors] = await Promise.all([ctx.api.tipGet(), ctx.api.sponsorAdminList()]);
+    market = await ctx.api.sponsoringOffers?.().catch((err) => { if (!/sponsoring_offers/.test(err?.message ?? '')) console.warn('Sponsoring-Börse:', err?.message ?? err); return null; }) ?? null;
   } catch (err) {
     slot.replaceChildren(card('💶', 'Trinkgeld & Sponsoren', '', h('p', { class: 'form-hint' },
       missing(err) ? 'Trinkgeld und Sponsoren sind noch nicht eingerichtet (Migration …_tips_sponsors_pro.sql).' : ctx.germanError(err))));
@@ -47,7 +51,7 @@ function takeTip() {
 }
 
 function paint(slot) {
-  slot.replaceChildren(kofiCard(slot), tipCard(slot), sponsorCard(slot));
+  slot.replaceChildren(kofiCard(slot), tipCard(slot), ...(market ? [marketCard(slot)] : []), sponsorCard(slot));
 }
 
 async function run(slot, fn, done) {
@@ -167,18 +171,20 @@ function sponsorCard(slot) {
   const cancel = f.id ? h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, 'Abbrechen') : null;
   cancel?.addEventListener('click', () => { editing = null; paint(slot); });
   const list = sponsors.length ? h('ul', { class: 'mo-sponsors' }, ...sponsors.map((s) => {
-    const edit = h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, icon('ph-pencil-simple'), 'Bearbeiten');
-    edit.addEventListener('click', () => { editing = { ...s }; paint(slot); });
+    // aus der Sponsoring-Börse: Inhalt legt die Firma fest – nur zeigen/pausieren und beenden
+    const edit = s.offer_id ? h('span', { class: 'mo-fixed', title: 'Legt die Firma fest' }, icon('ph-handshake'), 'Börse')
+      : h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, icon('ph-pencil-simple'), 'Bearbeiten');
+    if (!s.offer_id) edit.addEventListener('click', () => { editing = { ...s }; paint(slot); });
     const onoff = h('input', { type: 'checkbox', checked: s.active, 'aria-label': `${s.name} zeigen` });
     onoff.addEventListener('change', () => run(slot, async () => { sponsors = await ctx.api.sponsorSave({ ...s, active: onoff.checked }); }, onoff.checked ? 'Sponsor wird gezeigt.' : 'Sponsor pausiert.'));
     const del = h('button', { type: 'button', class: 'pf-del', title: 'Sponsor löschen', 'aria-label': `${s.name} löschen` }, icon('ph-trash'));
     del.addEventListener('click', () => {
-      if (!confirm(`„${s.name}“ löschen?`)) return;
+      if (!confirm(s.offer_id ? `Sponsoring mit „${s.name}“ beenden? Die Firma sieht das.` : `„${s.name}“ löschen?`)) return;
       run(slot, async () => { sponsors = await ctx.api.sponsorDelete(s.id); }, 'Sponsor gelöscht.');
     });
     return h('li', { class: `mo-sponsor${s.active ? '' : ' is-off'}` },
       h('label', { class: 'toggle' }, onoff, h('span', { class: 'toggle-ui', 'aria-hidden': 'true' })),
-      h('div', { class: 'mo-sponsor-text' }, h('b', {}, s.name),
+      h('div', { class: 'mo-sponsor-text' }, h('b', {}, s.logo_path ? h('img', { class: 'mo-logo', src: sponsorLogoUrl(s.logo_path), alt: '' }) : null, s.name),
         h('span', {}, [s.text, s.code && `Code ${s.code}`].filter(Boolean).join(' · ') || '–'),
         s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener noreferrer' }, s.url.replace(/^https:\/\//, '')) : null),
       edit, del);
@@ -192,4 +198,59 @@ function sponsorCard(slot) {
       field('url', 'Link (optional)', { maxlength: '300', placeholder: 'https://…', type: 'url' })),
     h('div', { class: 'dash-actions' }, save, cancel),
     h('p', { class: 'form-hint' }, '⚖️ Werbung muss erkennbar sein: Im Overlay steht „Anzeige“, im Chat „Werbung“. Sag es im Stream auch selbst, wenn du über einen Sponsor sprichst. Twitch erlaubt keine Werbung in der Twitch-Erweiterung – dort erscheinen Sponsoren deshalb nicht.'));
+}
+
+// ---------- Sponsoring-Börse (Migration …_sponsoring.sql): Angebote von Firmen für deine Kanalgröße ----------
+const MINE = { pending: '⏳ beworben – die Firma entscheidet', accepted: '✅ läuft', declined: '✖ abgesagt', ended: '⏹ beendet' };
+const euro = (c) => (c == null ? '' : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(c / 100));
+
+function offerInfo(o) {
+  const logo = sponsorLogoUrl(o.logo_path);
+  return [
+    h('div', { class: 'mo-offer-head' }, logo ? h('img', { class: 'mo-logo', src: logo, alt: '' }) : null,
+      h('div', {}, h('b', {}, o.title), h('span', {}, o.website ? h('a', { href: o.website, target: '_blank', rel: 'noopener noreferrer' }, o.company) : o.company))),
+    h('p', { class: 'mo-offer-text' }, o.description),
+    h('ul', { class: 'mo-offer-facts' },
+      o.reward ? h('li', {}, `🎁 ${o.reward}`) : null,
+      o.amount_cents != null ? h('li', {}, `💶 ${euro(o.amount_cents)}`) : null,
+      h('li', {}, o.pay_mode === 'streamhelp' ? '💳 über StreamHelp' : '💳 direkt von der Firma'),
+      h('li', {}, `👥 Ø ${o.min_viewers}${o.max_viewers != null ? `–${o.max_viewers}` : '+'} Zuschauer`),
+      h('li', {}, `🎟️ ${Math.max(0, o.slots - (o.taken ?? 0))} von ${o.slots} Plätzen frei`),
+      h('li', {}, `📺 Einblendung alle ${o.every_min} Min. für ${o.show_sec} s`),
+      o.ends_on ? h('li', {}, `📅 bis ${new Date(o.ends_on).toLocaleDateString('de-DE')}`) : null),
+  ];
+}
+
+function marketCard(slot) {
+  const offers = market.offers ?? [];
+  const mine = market.mine ?? [];
+  return card('🏷️', 'Sponsoring-Börse', `Angebote von Firmen für deine Kanalgröße (Ø ${market.size?.avg ?? 0} Zuschauer in den letzten 30 Tagen). Sagt die Firma zu, läuft ihre Einblendung automatisch – mit „Anzeige“.`,
+    mine.length ? h('div', { class: 'field' }, h('span', {}, 'Deine Bewerbungen'),
+      h('ul', { class: 'mo-offers' }, ...mine.map((m) => {
+        const stop = ['pending', 'accepted'].includes(m.status)
+          ? h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, m.status === 'accepted' ? 'Beenden' : 'Zurückziehen') : null;
+        stop?.addEventListener('click', () => {
+          if (!confirm(m.status === 'accepted' ? 'Sponsoring beenden? Die Einblendung verschwindet sofort.' : 'Bewerbung zurückziehen?')) return;
+          run(slot, async () => { market = await ctx.api.sponsoringWithdraw(m.offer.id); sponsors = await ctx.api.sponsorAdminList(); }, 'Erledigt.');
+        });
+        return h('li', { class: 'mo-offer' }, ...offerInfo(m.offer),
+          h('p', { class: 'mo-offer-state' }, MINE[m.status] ?? m.status, m.company_note ? ` · „${m.company_note}“` : ''),
+          m.status === 'accepted' ? h('p', { class: 'form-hint' }, '📺 Damit die Einblendung im Stream erscheint: OBS-Fenster → Ebene „Sponsor-Einblendung“ einschalten. Im Laufband und bei !sponsor läuft sie automatisch.') : null,
+          stop ? h('div', { class: 'dash-actions' }, stop) : null);
+      }))) : null,
+    offers.length ? h('ul', { class: 'mo-offers' }, ...offers.map((o) => {
+      const d = (applyDraft[o.id] ??= { message: '', share: true });
+      const text = h('textarea', { rows: '2', maxlength: '500', placeholder: 'Kurz zu dir und deinem Stream (optional)', 'aria-label': `Nachricht an ${o.company}` });
+      text.value = d.message;
+      text.addEventListener('input', () => { d.message = text.value; });
+      const share = h('input', { type: 'checkbox', checked: d.share });
+      share.addEventListener('change', () => { d.share = share.checked; });
+      const go = h('button', { type: 'button', class: 'btn btn--primary btn--sm' }, icon('ph-paper-plane-tilt'), 'Bewerben');
+      go.addEventListener('click', () => run(slot, async () => { market = await ctx.api.sponsoringApply(o.id, d.message, d.share); delete applyDraft[o.id]; }, 'Beworben – die Firma entscheidet.'));
+      return h('li', { class: 'mo-offer' }, ...offerInfo(o),
+        h('label', { class: 'field' }, h('span', {}, 'Nachricht an die Firma'), text),
+        h('label', { class: 'toggle' }, share, h('span', { class: 'toggle-ui', 'aria-hidden': 'true' }), 'Meine Zahlen mitschicken (Ø und Spitze der Zuschauer, Anzahl Streams)'),
+        h('div', { class: 'dash-actions' }, go));
+    })) : h('p', { class: 'form-hint' }, 'Gerade gibt es kein passendes Angebot. Neue Angebote erscheinen hier, sobald StreamHelp sie freigegeben hat.'),
+    h('p', { class: 'form-hint' }, '⚖️ Vertrag und Bezahlung regelst du mit der Firma (bei „über StreamHelp“ melden wir uns). Werbung ist im Stream immer als „Anzeige“ gekennzeichnet.'));
 }

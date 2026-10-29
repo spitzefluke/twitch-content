@@ -18,12 +18,14 @@
 //                    cptop=5 Plätze (3–10) · cprules=1 dazu die Regeln (nur solange es Spieler gibt oder die Anmeldung offen ist)
 //   bet=tr|…         Zuschauer-Wette: Frage, Antworten mit Balken und Quote, Restzeit; nach der Auflösung Ergebnis und Top 3   btsize=100
 //   scratch=bc|…     Rubbellos: bei jedem !rubbeln erscheint ein Los und wird live freigerubbelt                          scsize=100
+//   sponsor=tr|…     Sponsor-Einblendung (Sponsoring-Börse): Logo, Text, Code mit „Anzeige“ – Takt legt die Firma fest   spsize=100
 // Live liest das Overlay ohne Anmeldung (freigegeben in …_stream_extras.sql), im Demo-Modus localStorage.
 import { CONFIG } from './config.js';
 import { channelHeaders, rtSpec } from './channel.js';
 import { speak, stopSpeaking } from './tts-voice.js';
 import { Wheel } from './wheel.js';
 import { artistFileUrl } from './artist-files.js';
+import { sponsorLogoUrl } from './sponsor-files.js';
 
 const RARITY = { common: 'Gewöhnlich', uncommon: 'Ungewöhnlich', rare: 'Selten', epic: 'Episch', legendary: 'Legendär' };
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -49,8 +51,9 @@ export function setupOverlayExtras(o) {
     cup: o.position(o.params.get('cup'), null),
     bet: o.position(o.params.get('bet'), null),
     scratch: o.position(o.params.get('scratch'), null),
+    sponsor: o.position(o.params.get('sponsor'), null),
   };
-  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos', cpsize: '--cps', btsize: '--bts', scsize: '--scs' };
+  const sizes = { fwsize: '--fws', sasize: '--sas', qzsize: '--qzs', qusize: '--qus', ttsize: '--tts', cdsize: '--cds', gwsize: '--gws', hwsize: '--hws', plsize: '--pls', ctsize: '--cts', sgsize: '--sgs', hrsize: '--hrs', cmsize: '--cms', sosize: '--sos', cpsize: '--cps', btsize: '--bts', scsize: '--scs', spsize: '--sps' };
   for (const [param, cssVar] of Object.entries(sizes)) document.documentElement.style.setProperty(cssVar, o.number(param, 100, 50, 200) / 100);
   const src = o.client ? liveData(o.client) : demoData();
   const ctx = { ...o, src };
@@ -72,6 +75,7 @@ export function setupOverlayExtras(o) {
   if (cfg.cup) setupCup(ctx, card('ov-x-cup', 'cup', cfg.cup, o));
   if (cfg.bet) setupBet(ctx, card('ov-x-bet', 'bet', cfg.bet, o));
   if (cfg.scratch) setupScratch(ctx, card('ov-x-scratch', 'scratch', cfg.scratch, o));
+  if (cfg.sponsor) setupSponsor(ctx, card('ov-x-sponsor', 'sponsor', cfg.sponsor, o));
 }
 
 function card(id, key, pos, o) {
@@ -169,6 +173,8 @@ function liveData(sb) {
     // Rubbellos: neue Lose seit id (für alle lesbar, ohne Twitch-ID)
     scratchAfter: (id) => rows(sb.from('scratch_draws').select('id, name, label, emoji, win, source, created_at').gt('id', id).order('id').limit(5)),
     scratchLast: async () => (await rows(sb.from('scratch_draws').select('id').order('id', { ascending: false }).limit(1)))?.[0]?.id ?? 0,
+    // Sponsoren mit Einblendung (sponsor_list, ohne Login lesbar – Werbung ist ohnehin öffentlich)
+    sponsors: () => rows(sb.rpc('sponsor_list')),
     songs: () => rows(sb.from('bot_songs').select('id, title, seconds, who, status, position, played_at').in('status', ['queued', 'playing']).order('position').order('id').limit(20)),
     cardUrl: (path) => (!path ? '' : path.startsWith('a:') ? artistFileUrl(path.slice(2))
       : `${CONFIG.SUPABASE_URL}/storage/v1/object/public/cards/${path.split('/').map(encodeURIComponent).join('/')}`),
@@ -194,6 +200,7 @@ function demoData() {
       .sort((a, b) => b.points - a.points || b.wins - a.wins || a.name.localeCompare(b.name)).slice(0, n),
     scratchAfter: async (id) => read('scratch_draws', []).filter((d) => d.id > id).slice(0, 5),
     scratchLast: async () => read('scratch_draws', []).at(-1)?.id ?? 0,
+    sponsors: async () => read('sponsors', []).filter((x) => x.active !== false),
     // wie cupBoard in js/extras-api.js (Demo)
     cupBoard: async () => {
       const c = { title: 'Community-Cup', rules: '', prizes: [], open: false, round: 1, code_sent_at: null, ...read('cup', {}) };
@@ -1441,4 +1448,67 @@ async function setupScratch({ src, opt, editTests }, el) {
   let timer = 0;
   src.on('scratch_draws', () => { clearTimeout(timer); timer = setTimeout(pull, 80); });
   setInterval(pull, 20000);
+}
+
+// ============================================================
+// Sponsor-Einblendung (Sponsoring-Börse, …_sponsoring.sql): Logo, Name, Text und Code mit „Anzeige“.
+// Wie oft und wie lange, legt die Firma fest (alle every_min Minuten für show_sec Sekunden); mehrere Sponsoren
+// wechseln sich ab, nie zwei gleichzeitig. Ohne Sponsor aus der Börse bleibt die Ebene leer.
+// ============================================================
+const SPONSOR_TEST = { name: 'GamerFuel', text: 'Energy ohne Zucker', code: 'STREAM10', logo_path: null, every_min: 15, show_sec: 12 };
+async function setupSponsor({ src, opt, editTests }, el) {
+  el.innerHTML = `
+    <span class="spo-tag">Anzeige</span>
+    <span class="spo-logo" data-logo aria-hidden="true"></span>
+    <span class="spo-text"><b data-name></b><span data-line></span><span class="spo-code" data-code></span></span>`;
+  const $ = (sel) => el.querySelector(sel);
+  const fill = (s) => {
+    const logo = sponsorLogoUrl(s.logo_path);
+    $('[data-logo]').replaceChildren(...(logo ? [Object.assign(new Image(), { src: logo, alt: '' })] : []));
+    $('[data-logo]').hidden = !logo;
+    $('[data-name]').textContent = s.name;
+    $('[data-line]').textContent = s.text || '';
+    $('[data-line]').hidden = !s.text;
+    $('[data-code]').textContent = s.code ? `Code: ${s.code}` : '';
+    $('[data-code]').hidden = !s.code;
+  };
+  let showing = false;
+  const show = async (s) => {
+    showing = true;
+    fill(s);
+    el.hidden = false;
+    restart(el, 'is-in');
+    await new Promise((r) => setTimeout(r, Math.max(5, Math.min(60, s.show_sec || 12)) * 1000));
+    el.classList.add('is-out');
+    await new Promise((r) => setTimeout(r, 450));
+    el.classList.remove('is-in', 'is-out');
+    el.hidden = true;
+    showing = false;
+  };
+  if (opt.edit) { // Einrichten: Probe stehen lassen
+    fill(SPONSOR_TEST);
+    el.hidden = false;
+    if (editTests) editTests.sponsor = () => restart(el, 'is-in');
+    return;
+  }
+  let list = [];
+  const due = new Map(); // Sponsor → nächster Auftritt (ms)
+  const key = (s) => `${s.name}|${s.logo_path ?? ''}`;
+  const load = async () => {
+    const all = await src.sponsors?.().catch((err) => { console.warn('Overlay: Sponsoren nicht verfügbar', err); return null; });
+    if (!all) return;
+    list = all.filter((s) => s.every_min > 0);
+    // Neue Sponsoren zeitversetzt einplanen (der erste nach 1 Minute, dann je 2 Minuten später)
+    list.forEach((s, i) => { if (!due.has(key(s))) due.set(key(s), Date.now() + 60_000 + i * 120_000); });
+  };
+  await load();
+  setInterval(load, 5 * 60_000);
+  setInterval(() => {
+    if (showing || !list.length) return;
+    const now = Date.now();
+    const next = list.filter((s) => (due.get(key(s)) ?? 0) <= now).sort((a, b) => due.get(key(a)) - due.get(key(b)))[0];
+    if (!next) return;
+    due.set(key(next), now + Math.max(5, Math.min(120, next.every_min)) * 60_000);
+    show(next);
+  }, 5000);
 }
