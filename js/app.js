@@ -40,6 +40,7 @@ import { markStart, renderStart, showStartAgain } from './dash-start.js';
 import { renderProfile } from './dash-profile.js';
 import { renderArtist } from './dash-artist.js';
 import { renderDiscord } from './dash-discord.js';
+import { renderRaids, renderReferrals } from './dash-network.js';
 import { extractColors, inkOn } from './brand-colors.js';
 import { renderStats } from './dash-stats.js';
 import { renderBotPlus } from './bot-plus.js';
@@ -162,6 +163,7 @@ async function boot() {
   const params = new URLSearchParams(location.search);
   // Sprache für Startseite und Anmeldung (js/i18n.js) – vor allem anderen, die Startseite liest ihre Texte beim Aufbau
   await initI18n();
+  rememberReferral(params.get('ref')); // erst nach dem ersten await: REF_KEY steht weiter unten im Modul
   applyI18n($('#landing'));
   applyI18n($('#auth'));
   document.title = tr(document.title);
@@ -393,7 +395,7 @@ const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
   ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
-  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord',
+  security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord', raids: 'Raid-Netzwerk', referrals: 'Freunde werben',
 };
 
 function setupShell() {
@@ -716,6 +718,8 @@ const PAGE_ENTER = {
   discord: () => renderDiscord($('#discord-slot'), {
     api: state.api, toast, germanError, streamer: () => state.streamer.name, tiles: () => state.tiles ?? [],
   }),
+  raids: () => renderRaids($('#raids-slot'), { api: state.api, toast, germanError, confirm: (text) => Promise.resolve(confirm(text)) }),
+  referrals: () => renderReferrals($('#referrals-slot'), { api: state.api, toast, germanError }),
   ideas: () => renderStart(START),
 };
 
@@ -1139,6 +1143,25 @@ const onceStore = {
 };
 const channelLabel = (c) => c?.display_name || c?.login || 'Streamer';
 
+// Freunde werben (Migration …_raid_network.sql): ?ref=<login> merken (30 Tage, nur in diesem Browser) und nach
+// „Kanal anmelden“ dem neuen Kanal zuordnen. Fehlt die Migration oder passt der Link nicht, passiert nichts.
+const REF_KEY = 'sh_ref';
+function rememberReferral(ref) {
+  if (!/^[a-z0-9_]{1,25}$/i.test(ref ?? '')) return;
+  try { localStorage.setItem(REF_KEY, JSON.stringify({ login: ref.toLowerCase(), at: Date.now() })); } catch { /* privater Modus */ }
+}
+async function claimReferral(api) {
+  let ref = null;
+  try { ref = JSON.parse(localStorage.getItem(REF_KEY) ?? 'null'); } catch { return; }
+  if (!ref?.login || Date.now() - (ref.at ?? 0) > 30 * 864e5 || !api.referralClaim) return;
+  try {
+    await api.referralClaim(ref.login);
+    localStorage.removeItem(REF_KEY);
+  } catch (err) {
+    console.warn('Freunde werben:', err?.message ?? err);
+  }
+}
+
 function channelAvatar(el, c) {
   el.replaceChildren();
   if (c?.avatar_url && /^https:\/\//.test(c.avatar_url)) {
@@ -1331,6 +1354,7 @@ async function becomeStreamer() {
   openAccountDialog('connecting', 'Dein Kanal wird angemeldet …');
   try {
     if (!state.myChannel) state.myChannel = await api.channelApply('');
+    await claimReferral(api);
     renderChannelBar();
     if (state.myChannel?.status === 'active' && state.myChannel.twitch_connected !== false) {
       closeDialog($('#account-dialog'));

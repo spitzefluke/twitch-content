@@ -244,6 +244,17 @@ async function createSupabaseApi() {
     async publicProfile(login) { return unwrap(await sb.rpc('public_profile', { p_login: login })); },
     // Markenfarbe fürs öffentliche Profil (Migration …_brand_color.sql); null = Standard
     async profileAccentSave(accent) { return unwrap(await sb.rpc('profile_accent_save', { p_accent: accent || null })); },
+    // Raid-Netzwerk und Freunde werben (Migration …_raid_network.sql); geraidet wird über die Edge Function
+    async raidNetworkGet() { return unwrap(await sb.rpc('raid_network_get')); },
+    async raidNetworkSave(p) {
+      return unwrap(await sb.rpc('raid_network_save', {
+        p_enabled: !!p.enabled, p_language: p.language ?? 'de', p_note: p.note ?? '', p_announce: !!p.announce, p_welcome: !!p.welcome, p_raid_text: p.raid_text ?? '',
+      }));
+    },
+    async raidStart(login) { return invoke('stream-tools', { action: 'raid_start', login }); },
+    async raidCancel() { return invoke('stream-tools', { action: 'raid_cancel' }); },
+    async referralGet() { return unwrap(await sb.rpc('referral_get')); },
+    async referralClaim(ref) { return unwrap(await sb.rpc('referral_claim', { p_ref: ref })); },
     // Discord: Webhook, Live-Meldung, Rückblick, Ankündigungen (Migration …_discord.sql). Die Webhook-Adresse
     // geht nur an die Edge Function (prüft sie bei Discord) – zurück kommt nie mehr als ihr Name.
     async discordGet() { return unwrap(await sb.rpc('discord_get')); },
@@ -1391,6 +1402,52 @@ function createLocalApi() {
       });
       return demoProfile();
     },
+    // Raid-Netzwerk im Demo-Modus: drei erfundene Mitglieder sind live, geraidet wird nicht
+    async raidNetworkGet() {
+      await requireAdmin();
+      const r = store.get('raid_network', {});
+      const enabled = !!r.enabled;
+      const raided = store.get('raid_log', {});
+      const members = [
+        { login: 'pixelpaula', display_name: 'PixelPaula', category: 'Fortnite', viewers: 14, language: 'de', note: 'Zero Build mit Chat-Challenges' },
+        { login: 'nachteule_nils', display_name: 'NachteuleNils', category: 'Just Chatting', viewers: 6, language: 'de', note: 'Gemütlich quatschen, Musikwünsche' },
+        { login: 'gg_gina', display_name: 'GG_Gina', category: 'Minecraft', viewers: 31, language: 'en', note: 'Hardcore survival day 40' },
+      ].map((m) => ({ ...m, avatar_url: '', same_game: m.category === 'Fortnite', same_lang: m.language === (r.language ?? 'de'),
+        raided_recently: Date.now() - (raided[m.login] ?? 0) < 7 * 864e5 }))
+        .sort((a, b) => (b.same_game - a.same_game) || (b.same_lang - a.same_lang) || (a.viewers - b.viewers));
+      return {
+        enabled, language: r.language ?? 'de', note: r.note ?? '', announce: r.announce ?? true, welcome: r.welcome ?? true,
+        raid_text: r.raid_text || '🚀 Gleich geht\'s rüber zu {target}! Bleibt dabei und sagt Hallo 💜',
+        live: true, category: 'Fortnite', members: 4, suggestions: enabled ? members : [],
+      };
+    },
+    async raidNetworkSave(p) {
+      await requireAdmin();
+      const lang = ['de', 'en', 'es', 'fr', 'it', 'nl', 'pl', 'pt', 'tr', 'ru', 'other'].includes(p.language) ? p.language : 'other';
+      store.set('raid_network', {
+        enabled: !!p.enabled, language: lang, note: String(p.note ?? '').trim().slice(0, 120), announce: !!p.announce, welcome: !!p.welcome,
+        raid_text: String(p.raid_text ?? '').trim().slice(0, 300),
+      });
+      return this.raidNetworkGet();
+    },
+    async raidStart(login) {
+      await requireAdmin();
+      const d = await this.raidNetworkGet();
+      const t = d.suggestions.find((m) => m.login === login);
+      if (!t) throw new Error(d.enabled ? 'Dieser Kanal ist gerade nicht live.' : 'Schalte zuerst „Im Raid-Netzwerk sichtbar“ ein.');
+      store.set('raid_log', { ...store.get('raid_log', {}), [login]: Date.now() });
+      return { ok: true, target: t.display_name, demo: true };
+    },
+    async raidCancel() { await requireAdmin(); return { ok: true, target: '', demo: true }; },
+    async referralGet() {
+      await requireAdmin();
+      const mine = demoChannels().find((c) => c.owner === current?.email);
+      return { login: mine?.login ?? 'streamer', active: 1, badge: 'werber', pending: 1, channels: [
+        { login: 'kekskruemel', display_name: 'KeksKrümel', avatar_url: '', status: 'active', since: new Date(Date.now() - 9 * 864e5).toISOString() },
+        { login: 'luna_live', display_name: 'LunaLive', avatar_url: '', status: 'pending', since: new Date(Date.now() - 864e5).toISOString() },
+      ] };
+    },
+    async referralClaim() { return false; },
     // Discord im Demo-Modus: Einstellungen in localStorage, gepostet wird nichts
     async discordGet() {
       await requireAdmin();

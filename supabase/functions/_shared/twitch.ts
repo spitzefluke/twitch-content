@@ -311,6 +311,8 @@ export const BROADCASTER_SCOPES = [
   "moderator:manage:chat_messages", "moderator:manage:banned_users", "moderator:manage:shoutouts",
   // Chat-Bot (…_bot_more.sql): !clip, Werbepausen-Ansage, Hype-Train und Ziele
   "clips:edit", "channel:read:ads", "channel:read:hype_train", "channel:read:goals",
+  // Raid-Netzwerk (…_raid_network.sql): Raid mit einem Klick aus dem Dashboard
+  "channel:manage:raids",
 ];
 // Bot-Account: darf als Bot in Chats schreiben (gesendet wird mit dem App-Token)
 // und den Chat des Streamers lesen – für Befehle wie !füttern.

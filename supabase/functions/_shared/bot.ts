@@ -11,6 +11,7 @@
 // zu Werbepausen, Hype-Train und erreichten Zielen (botNotice, adWarnTick).
 import { botsOff, chatConnection, db, getAppToken, getConnection, helix, HelixError, sendChat, type Connection } from "./twitch.ts";
 import { lookupVideo, parseVideoId } from "./songs.ts";
+import { networkWelcome } from "./raids.ts";
 
 type Fragment = { type: string; text: string };
 export type BotChatEvent = {
@@ -305,8 +306,10 @@ export async function thankEvent(type: string, event: TwitchEvent, messageId: st
     const { error } = await db.from("chat_cooldowns").insert({ slot: `ev:${messageId}`.slice(0, 80) });
     if (error) return;
   }
+  // Raid aus dem StreamHelp-Raid-Netzwerk (…_raid_network.sql): nach dem Danke eine eigene Begrüßung
+  const welcome = () => kind === "raid" ? networkWelcome(event.from_broadcaster_user_id).catch(warn("Raid-Netzwerk")) : undefined;
   const { data, error } = await db.rpc("bot_event", { p_kind: kind, p_name: name.slice(0, 60), p_amount: amount, p_months: months });
-  if (error || !data) return;
+  if (error || !data) return await welcome();
   const conn = await getConnection().catch(() => null);
   if (!conn) return;
   if (data.text) await sendChat(conn, String(data.text)).catch(warn("Chat"));
@@ -314,6 +317,7 @@ export async function thankEvent(type: string, event: TwitchEvent, messageId: st
     const { data: s } = await db.from("bot_settings").select("so_text").eq("id", 1).maybeSingle();
     await shoutout(conn, "", s?.so_text ?? "", event.from_broadcaster_user_id).catch(warn("Raid-Shoutout"));
   }
+  await welcome();
 }
 
 // ---------- Werbepausen, Hype-Train, Ziele (…_bot_more.sql) ----------

@@ -32,6 +32,7 @@ const SCOPE_FEATURE: Record<string, string> = {
   "channel:read:ads": "Werbepausen-Ansage",
   "channel:read:hype_train": "Hype-Train im Chat",
   "channel:read:goals": "Ziele im Chat",
+  "channel:manage:raids": "Raid-Netzwerk (Raid mit einem Klick)",
 };
 
 const eventsubCallback = () => `${env("SUPABASE_URL")}/functions/v1/twitch-eventsub`;

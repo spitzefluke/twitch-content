@@ -2582,6 +2582,38 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
 .dc-community h2 { margin: 0 0 4px; font-size: 17px; }
 @media (max-width: 760px) { .dc-grid { grid-template-columns: 1fr; } }
 
+/* ---------- Raid-Netzwerk und Freunde werben (js/dash-network.js) ---------- */
+.rn-cards { align-items: start; }
+.rn-card .dash-actions .btn, .rn-item .btn { display: inline-flex; align-items: center; gap: 6px; }
+.rn-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-2); font-size: 14px; }
+.rn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.rn-card .field select { min-height: 42px; }
+.rn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rn-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: rgba(var(--surf-rgb), .7); }
+.rn-ava { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: rgba(var(--acc-rgb), .25); color: var(--text); font-weight: 700; }
+.rn-who { display: grid; gap: 2px; min-width: 0; }
+.rn-who a, .rn-who b { color: var(--text); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.rn-who a:hover, .rn-who a:focus-visible { text-decoration: underline; }
+.rn-meta { color: var(--muted); font-size: 13px; }
+.rn-note { color: var(--text-2); font-size: 13.5px; overflow-wrap: anywhere; }
+.rn-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.rn-tags:empty { display: none; }
+.rn-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--text-2); font-size: 12px; font-weight: 600; }
+.rn-tag--ok { border-color: rgba(61, 220, 132, .45); background: rgba(61, 220, 132, .12); color: var(--ok-ink); }
+.rf-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; color: var(--text-2); }
+.rf-perks li { display: flex; gap: 10px; align-items: baseline; }
+.rf-perks .ph { color: var(--amber); }
+.rf-ladder { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rf-ladder li { display: grid; justify-items: center; gap: 2px; padding: 12px 8px; border-radius: 14px; border: 1px dashed var(--line); text-align: center; opacity: .6; }
+.rf-ladder li.is-done { opacity: 1; border-style: solid; border-color: rgba(var(--acc-rgb), .6); background: rgba(var(--acc-rgb), .12); }
+.rf-ladder li.is-next { opacity: .9; }
+.rf-badge { font-size: 26px; line-height: 1.2; }
+.rf-ladder small { color: var(--muted); }
+@media (max-width: 560px) {
+  .rn-item { grid-template-columns: auto minmax(0, 1fr); }
+  .rn-item > .btn, .rn-item > .rn-tag { grid-column: 1 / -1; justify-self: start; }
+}
+
 /* ---------- Artist-Bereich (js/dash-artist.js) ---------- */
 .ar-cards { align-items: start; }
 .ar-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
