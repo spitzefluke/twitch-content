@@ -245,4 +245,5 @@ export default [
   "Chat with other streamers, ask questions and be the first to hear about new features.",
   "Join Discord",
   "Sponsorship for brands",
+  "Free and Pro",
 ];

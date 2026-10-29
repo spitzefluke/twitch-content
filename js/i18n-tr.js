@@ -245,4 +245,5 @@ export default [
   "Diğer yayıncılarla sohbet et, soru sor ve yeni özellikleri ilk sen öğren.",
   "Discord’a katıl",
   "Markalar için sponsorluk",
+  "Free ve Pro",
 ];

@@ -747,6 +747,13 @@ Einmal nötig: Migration **`supabase/migrations/20261211000000_tips_sponsors_pro
 - **Sponsoren:** eigene Partner (Name, Kurztext, Rabattcode, Link; höchstens 20, einzeln pausierbar). Sie laufen im **Laufband des Overlays** mit „Anzeige“ davor (`sponsor_list`, ohne Login lesbar, alle 5 Minuten neu), **!sponsor** / !partner / !code im Chat antwortet mit „Werbung: …“, das öffentliche Profil zeigt sie unter „Partner · Anzeige“. In der Twitch-Erweiterung erscheinen sie nicht (Twitch erlaubt dort keine Werbung).
 - **Pro (vorbereitet, ohne Bezahlung):** `core.channel_plans` mit „Pro bis …“. Vergeben, verlängern oder entziehen nur im Admin-Bereich (Kanäle → **⭐ Pro**, Edge Function `admin` → `pro_grant`). Im Dashboard erscheint dann „⭐ Pro“ im Kontomenü; `channel_is_pro(kanal)` steht für künftige Pro-Funktionen bereit. Bezahlung (z. B. Stripe) kommt erst, wenn Zahlungsanbieter, AGB/Widerruf und Steuerfragen geklärt sind.
 
+## Free und Pro
+
+**Vergleichsseite** `pro.html` (`js/pro-page.js`, verlinkt im Footer der Startseite und im Kontomenü): Free für 0 €, Pro für **2,99 € im Monat**. Fast alles bleibt kostenlos; nur mit Pro gibt es die Content-Ideen **Stream-Dino, Cup, Herzfrequenz und Vorlesen lassen**. Die Liste der Pro-Ideen, Preis und Hinweistext stehen zentral in `js/pro.js` (`PRO_KINDS`, `PRO_PRICE`); die Tabelle der kostenlosen Ideen baut sich aus `js/defaults.js`.
+
+- **Abfrage:** `public.channel_has_pro()` (für alle lesbar, aktueller Kanal per `x-channel`) und `public.channel_is_pro(kanal)` (nur Service-Rolle, für Edge Functions) – Migration **`supabase/migrations/20261217000000_pro_features.sql`** (nach `…_tips_sponsors_pro.sql`), Tests `supabase/tests/pro_features_test.sql`. Pro vergibt bis zum Start nur der Admin (Admin-Bereich → Kanäle → ⭐ Pro).
+- **Dashboard:** Pro-Ideen tragen das Abzeichen „Pro“. **Noch nicht scharf** (`PRO_ENFORCED = false` in `js/pro.js`), weil Pro erst mit angemeldetem Gewerbe buchbar ist: Bis dahin sind die Pro-Ideen für alle nutzbar. Mit `true` sind sie ohne Pro gedämpft mit 🔒, ein Klick führt zum Vergleich. Zum Start zusätzlich die Edge Functions (Vorlesen, Bot-Befehle für Dino und Cup) per `channel_is_pro` absichern.
+
 ## Sponsoring-Börse
 
 > **Noch geschlossen – Gewerbe in Anmeldung.** Bis dahin zeigen `sponsoring.html` und das Dashboard nur einen Hinweis „In Arbeit“, und die Edge Function `sponsoring` lehnt neue Angebote mit 403 ab. Zum Öffnen: `SPONSORING_OPEN` in `js/sponsor-files.js` auf `true` setzen und in Supabase das Secret `SPONSORING_OPEN=1` hinterlegen. Ebenso gibt es **StreamHelp Pro** nur kostenlos vom Admin, bezahlte Pläne erst mit Gewerbe. Trinkgeld und eigene Sponsoren der Streamer laufen über deren eigene Konten und sind nicht betroffen.

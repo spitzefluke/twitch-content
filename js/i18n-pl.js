@@ -245,4 +245,5 @@ export default [
   "Rozmawiaj z innymi streamerami, zadawaj pytania i jako pierwszy dowiaduj się o nowych funkcjach.",
   "Dołącz do Discorda",
   "Sponsoring dla firm",
+  "Free i Pro",
 ];
