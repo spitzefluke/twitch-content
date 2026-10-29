@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NWtN/4hLjjzwWKvoHMGxUJjfryyLKx4KGPZKIulYd7k=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-z6aKgJC0GBK6hJfS+VD8dRJ3ryTfgYHFWeO9BFkidUo=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,10 +47,10 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=352bc5ae82">
+  <link rel="stylesheet" href="css/style.css?v=bb02882b28">
   <link rel="stylesheet" href="css/phosphor.css?v=762cbb3272">
   <link rel="stylesheet" href="css/landing.css?v=276e2c5a37">
-  <link rel="stylesheet" href="css/shell.css?v=21a8b69b8c">
+  <link rel="stylesheet" href="css/shell.css?v=2acc018678">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=51e329f61b">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -62,10 +62,10 @@
     "imports": {
       "./js/admin.js": "./js/admin.js?v=b8f063aa7e",
       "./js/affiliate.js": "./js/affiliate.js?v=6a2436ccda",
-      "./js/alert-designer.js": "./js/alert-designer.js?v=b05a585bc0",
+      "./js/alert-designer.js": "./js/alert-designer.js?v=f11d4c5837",
       "./js/alerts.js": "./js/alerts.js?v=657d11f509",
       "./js/api.js": "./js/api.js?v=62117f189f",
-      "./js/app.js": "./js/app.js?v=7c70153b1b",
+      "./js/app.js": "./js/app.js?v=f166c865b2",
       "./js/artist-files.js": "./js/artist-files.js?v=5ca31ade50",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
@@ -121,7 +121,7 @@
       "./js/intro.js": "./js/intro.js?v=91b52e9132",
       "./js/landing-journey.js": "./js/landing-journey.js?v=970f04d442",
       "./js/landing.js": "./js/landing.js?v=46a4e712ab",
-      "./js/library.js": "./js/library.js?v=fc42f12b81",
+      "./js/library.js": "./js/library.js?v=18de8e88ef",
       "./js/look-builder.js": "./js/look-builder.js?v=7fb22ef480",
       "./js/obs-setup.js": "./js/obs-setup.js?v=1798b5f1f9",
       "./js/obs-ws.js": "./js/obs-ws.js?v=d1b1d7463c",
@@ -683,8 +683,6 @@
           <p class="sb-group">Live-Steuerung</p>
         <button class="sb-item" type="button" data-page="bot" data-for="team" title="Bot &amp; Chat"><i class="sb-ico ph ph-robot" aria-hidden="true"></i><span class="sb-label">Bot &amp; Chat</span><span class="sb-short" aria-hidden="true">Bot</span></button>
         <button class="sb-item" type="button" data-page="points" data-for="team" title="Kanalpunkte"><i class="sb-ico ph ph-ticket" aria-hidden="true"></i><span class="sb-label">Kanalpunkte</span><span class="sb-short" aria-hidden="true">Punkte</span></button>
-        <button class="sb-item" type="button" data-page="alerts" data-for="team" title="Alerts"><i class="sb-ico ph ph-bell-ringing" aria-hidden="true"></i><span class="sb-label">Alerts</span><span class="sb-short" aria-hidden="true">Alerts</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
-        <button class="sb-item" type="button" data-page="raids" data-for="team" title="Raid-Netzwerk"><i class="sb-ico ph ph-rocket-launch" aria-hidden="true"></i><span class="sb-label">Raid-Netzwerk</span><span class="sb-short" aria-hidden="true">Raids</span></button>
         <button class="sb-item" type="button" data-page="guard" data-for="team" title="Raid-Schutz und Soundkäufe pausieren"><i class="sb-ico ph ph-shield-check" aria-hidden="true"></i><span class="sb-label">Raid-Schutz</span><span class="sb-short" aria-hidden="true">Schutz</span></button>
         </div>
         <div class="sb-sec" data-for="team">
@@ -694,17 +692,21 @@
         <button class="sb-item" type="button" data-page="record" data-for="streamer" title="Video aufnehmen"><i class="sb-ico ph ph-video-camera" aria-hidden="true"></i><span class="sb-label">Video aufnehmen</span><span class="sb-short" aria-hidden="true">Video</span></button>
         </div>
         <div class="sb-sec" data-for="team">
-          <p class="sb-group">Auswertung</p>
-        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><i class="sb-ico ph ph-chart-line-up" aria-hidden="true"></i><span class="sb-label">Statistik</span><span class="sb-short" aria-hidden="true">Statistik</span></button>
-        </div>
-        <div class="sb-sec">
-          <p class="sb-group">Kanal &amp; Team</p>
+          <p class="sb-group">Reichweite</p>
         <button class="sb-item" type="button" data-page="profile" data-for="team" title="Profil &amp; Zeitplan"><i class="sb-ico ph ph-calendar-blank" aria-hidden="true"></i><span class="sb-label">Profil &amp; Zeitplan</span><span class="sb-short" aria-hidden="true">Profil</span></button>
-        <button class="sb-item" type="button" data-page="money" data-for="team" title="Trinkgeld &amp; Sponsoren"><i class="sb-ico ph ph-hand-coins" aria-hidden="true"></i><span class="sb-label">Trinkgeld &amp; Sponsoren</span><span class="sb-short" aria-hidden="true">Geld</span></button>
-        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
-        <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span></button>
+        <button class="sb-item" type="button" data-page="raids" data-for="team" title="Raid-Netzwerk"><i class="sb-ico ph ph-rocket-launch" aria-hidden="true"></i><span class="sb-label">Raid-Netzwerk</span><span class="sb-short" aria-hidden="true">Raids</span></button>
         <button class="sb-item" type="button" data-page="discord" data-for="team" title="Discord"><i class="sb-ico ph ph-discord-logo" aria-hidden="true"></i><span class="sb-label">Discord</span><span class="sb-short" aria-hidden="true">Discord</span></button>
         <button class="sb-item" type="button" data-page="referrals" data-for="team" title="Freunde werben"><i class="sb-ico ph ph-handshake" aria-hidden="true"></i><span class="sb-label">Freunde werben</span><span class="sb-short" aria-hidden="true">Werben</span></button>
+        </div>
+        <div class="sb-sec" data-for="team">
+          <p class="sb-group">Auswertung &amp; Geld</p>
+        <button class="sb-item" type="button" data-page="stats" data-for="team" title="Statistik"><i class="sb-ico ph ph-chart-line-up" aria-hidden="true"></i><span class="sb-label">Statistik</span><span class="sb-short" aria-hidden="true">Statistik</span></button>
+        <button class="sb-item" type="button" data-page="money" data-for="team" title="Trinkgeld &amp; Sponsoren"><i class="sb-ico ph ph-hand-coins" aria-hidden="true"></i><span class="sb-label">Trinkgeld &amp; Sponsoren</span><span class="sb-short" aria-hidden="true">Geld</span></button>
+        </div>
+        <div class="sb-sec">
+          <p class="sb-group">Kanal &amp; Konto</p>
+        <button class="sb-item" type="button" data-page="twitch" data-for="team" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span><span class="sb-badge" id="sb-alert-badge" hidden>!</span></button>
+        <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
         <button class="sb-item" type="button" data-page="artist" title="Artist-Bereich"><i class="sb-ico ph ph-paint-brush" aria-hidden="true"></i><span class="sb-label">Artist-Bereich</span><span class="sb-short" aria-hidden="true">Artist</span></button>
         <button class="sb-item" type="button" data-page="security" title="Sicherheit"><i class="sb-ico ph ph-lock-key" aria-hidden="true"></i><span class="sb-label">Sicherheit</span><span class="sb-short" aria-hidden="true">Sicherheit</span></button>
         </div>
@@ -785,7 +787,7 @@
         <span class="health-banner-ico" aria-hidden="true">⚠️</span>
         <span class="health-banner-text"><b id="health-banner-title">Twitch-Problem</b><small id="health-banner-detail"></small></span>
         <button class="btn btn--sm btn--primary" type="button" data-twitch-reconnect hidden>🔄 Twitch neu verbinden</button>
-        <button class="btn btn--sm btn--ghost" type="button" data-goto="alerts">Details</button>
+        <button class="btn btn--sm btn--ghost" type="button" data-goto="twitch">Details</button>
       </div>
 
       <div class="channel-banner" id="channel-banner" role="status" hidden>
@@ -801,14 +803,13 @@
         <section class="page" data-page="ideas" aria-labelledby="page-title">
           <!-- Ruhiger Einstieg für Streamer (js/dash-start.js) -->
           <div id="start-slot" hidden></div>
-          <!-- Begrüßung mit Countdown zum nächsten Termin -->
+          <!-- Begrüßung -->
           <article class="hello-hero" id="next-departure">
             <span class="nd-bg" aria-hidden="true"></span>
             <div class="hh-text">
               <h2 id="hello-title">Hallo!</h2>
               <p id="next-desc">Schön, dass du da bist.</p>
             </div>
-            <div class="countdown countdown--hero" id="next-countdown" hidden></div>
           </article>
 
           <div class="section ideas-section">
@@ -1006,121 +1007,6 @@
           <div class="dash-cards" id="points-list"></div>
         </section>
 
-        <!-- Alerts -->
-        <section class="page" data-page="alerts" hidden>
-          <div class="dash-cards">
-            <article class="dash-card dash-card--wide health-card" id="health-card" data-state="unknown" data-affiliate-soft="Abo-, Bits- und Kanalpunkte-Alerts">
-              <header class="dash-card-head">
-                <span class="health-light" aria-hidden="true"></span>
-                <div><h2 id="health-title">Twitch-Verbindung wird geprüft …</h2><p class="dash-status" id="health-meta"></p></div>
-                <button class="btn btn--outline btn--sm" type="button" id="health-check">🔄 Jetzt prüfen &amp; reparieren</button>
-              </header>
-              <ul class="health-problems" id="health-problems"></ul>
-              <ul class="health-subs" id="health-subs"></ul>
-            </article>
-            <!-- Alert-Designer (js/alert-designer.js): wie bei StreamElements, Designs liegen in alert_config -->
-            <section class="dash-card dash-card--wide ad" id="ad" aria-labelledby="ad-title">
-              <header class="dash-card-head">
-                <span class="dash-ico" aria-hidden="true">🎨</span>
-                <div><h2 id="ad-title">Alert-Designer</h2><p class="dash-status" id="ad-status">Design, Bild oder Video, Texte und Animationen – für jede Alert-Art einzeln.</p></div>
-                <button class="btn btn--primary btn--sm" type="button" id="ad-save" disabled>Speichern</button>
-              </header>
-              <div class="ad-kinds" id="ad-kinds" role="tablist" aria-label="Alert-Art"></div>
-              <div class="ad-vars" id="ad-vars" aria-label="Varianten nach Menge"></div>
-              <div class="ad-grid">
-                <div class="ad-stage">
-                  <div class="ad-preview" id="ad-preview"><p class="ad-preview-note">Vorschau lädt …</p></div>
-                  <div class="ad-stage-bar">
-                    <button class="btn btn--primary btn--sm" type="button" id="ad-play">▶ Abspielen</button>
-                    <button class="btn btn--outline btn--sm ad-dice" type="button" id="ad-dice" title="Zufälliges Design für diese Alert-Art würfeln">🎲 Würfeln</button>
-                    <label class="ad-amount" id="ad-amount-wrap" hidden><span id="ad-amount-label">Menge</span><input type="number" id="ad-amount" min="1" max="1000000" value="100"></label>
-                    <span class="ad-hint">Vergrößerte Vorschau – im Stream ist der Alert so groß wie im OBS-Fenster eingestellt.</span>
-                  </div>
-                  <div class="ad-var-edit" id="ad-var-edit" hidden>
-                    <label>Gilt ab <input type="number" id="ad-var-min" min="1" max="10000000" value="100"> <span id="ad-var-unit">Bits</span></label>
-                    <button class="btn btn--ghost btn--sm" type="button" id="ad-var-del">🗑️ Variante löschen</button>
-                  </div>
-                </div>
-                <form class="ad-form" id="ad-form" autocomplete="off">
-                  <fieldset class="ad-sec">
-                    <legend>✨ Fertige Designs <small class="ad-legend-hint">Maus drauf = Vorschau, Klick = übernehmen</small></legend>
-                    <div class="ad-presets" id="ad-presets" role="list"></div>
-                    <label class="toggle ad-all"><input type="checkbox" id="ad-preset-all"><span class="toggle-ui" aria-hidden="true"></span>Beim Klick für alle Alert-Arten übernehmen</label>
-                  </fieldset>
-                  <fieldset class="ad-sec">
-                    <legend>🖼️ Bild, GIF oder Video</legend>
-                    <div class="ad-media" id="ad-media" role="radiogroup" aria-label="Bild oder Video"></div>
-                    <div class="ad-upload" id="ad-upload">
-                      <input type="file" id="ad-file" accept="image/png,image/jpeg,image/gif,image/webp,video/webm,video/mp4" aria-label="Datei">
-                      <input type="text" id="ad-file-name" maxlength="40" placeholder="Name, z. B. Katzen-GIF" aria-label="Name der Datei">
-                      <button class="btn btn--outline btn--sm" type="button" id="ad-upload-btn">⬆️ Hochladen</button>
-                      <p class="form-hint">PNG, JPG, GIF, WebP oder ein kurzes Video (WebM/MP4), höchstens 10 MB.</p>
-                      <p class="form-msg" id="ad-upload-msg" role="alert"></p>
-                    </div>
-                    <label class="toggle"><input type="checkbox" name="vsound" checked><span class="toggle-ui" aria-hidden="true"></span>Ton von Videos abspielen</label>
-                  </fieldset>
-                  <fieldset class="ad-sec">
-                    <legend>✏️ Texte</legend>
-                    <label class="ad-row"><span>Kleine Zeile</span><input type="text" name="label" maxlength="120"></label>
-                    <label class="ad-row"><span>Große Zeile</span><input type="text" name="title" maxlength="120"></label>
-                    <label class="ad-row"><span>Darunter</span><input type="text" name="text" maxlength="120"></label>
-                    <p class="ad-chips" id="ad-chips"><span>Einfügen:</span></p>
-                    <label class="ad-row"><span>Textanimation</span><select name="anim"></select></label>
-                    <div class="ad-row"><span>Farbe</span><span class="ad-color"><input type="color" name="color" value="#9146ff" aria-label="Farbe"><label class="toggle"><input type="checkbox" name="color_on"><span class="toggle-ui" aria-hidden="true"></span>eigene Farbe</label></span></div>
-                  </fieldset>
-                  <fieldset class="ad-sec">
-                    <legend>📐 Layout &amp; Dauer</legend>
-                    <label class="ad-row"><span>Grund-Design</span><select name="look"></select></label>
-                    <label class="ad-row"><span>Layout</span><select name="layout"></select></label>
-                    <label class="ad-row"><span>Einblenden</span><select name="enter"></select></label>
-                    <div class="ad-row ad-row--timeline"><span>Ablauf</span>
-                      <div class="ad-timeline" id="ad-timeline" title="Ziehen ändert die Dauer (3–30 Sekunden)">
-                        <div class="ad-tl-track" aria-hidden="true">
-                          <span class="ad-tl-block" id="ad-tl-block">
-                            <span class="ad-tl-seg is-in"><b>Ein</b><small id="ad-tl-in"></small></span>
-                            <span class="ad-tl-seg is-hold"><b>Halten</b><small id="ad-tl-hold"></small></span>
-                            <span class="ad-tl-seg is-out"><b>Aus</b><small>0,36 s</small></span>
-                            <i class="ad-tl-grip"></i>
-                          </span>
-                          <i class="ad-tl-head" id="ad-tl-head"></i>
-                        </div>
-                        <div class="ad-tl-scale" aria-hidden="true"><span>0 s</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30 s</span></div>
-                      </div>
-                    </div>
-                    <label class="ad-row"><span>Dauer</span><input type="range" name="duration" min="3" max="30" step="1" value="7"><output id="ad-duration-out">7 s</output></label>
-                    <label class="ad-row"><span>Bildgröße</span><input type="range" name="msize" min="50" max="200" step="10" value="100"><output id="ad-msize-out">100 %</output></label>
-                    <label class="toggle"><input type="checkbox" name="confetti" checked><span class="toggle-ui" aria-hidden="true"></span>Konfetti</label>
-                  </fieldset>
-                  <fieldset class="ad-sec">
-                    <legend>🔊 Sound</legend>
-                    <label class="ad-row"><span>Sound</span><select name="sound"></select></label>
-                    <div class="ad-wave-box">
-                      <canvas class="ad-wave" id="ad-wave" width="560" height="64" aria-hidden="true"></canvas>
-                      <span class="ad-wave-info" id="ad-wave-info"></span>
-                    </div>
-                    <button class="btn btn--ghost btn--sm" type="button" id="ad-sound-test">▶ Anhören</button>
-                    <p class="form-hint">„Wie im OBS-Fenster“ nimmt den Sound, der dort für diese Alert-Art eingestellt ist. Eigene Sounds lädst du im OBS-Fenster unter „Aussehen &amp; Ton“ hoch.</p>
-                  </fieldset>
-                </form>
-              </div>
-            </section>
-            <section class="dash-card obs-alerts" id="obs-alerts">
-              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🧪</span><div><h2>Probe-Alerts</h2><p class="dash-status" id="obs-alerts-status">Erscheinen sofort im Overlay – echte kommen von Twitch.</p></div></header>
-              <div class="obs-alerts-btns">
-                <button class="btn btn--outline btn--sm" type="button" data-alert="follow">💜 Follower</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="sub">⭐ Abo</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="resub">🔁 Resub</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="bits">💎 Bits</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="redeem">🎟️ Kanalpunkte</button>
-                <button class="btn btn--outline btn--sm" type="button" data-alert="tip">💶 Trinkgeld</button>
-              </div>
-              <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
-              <p class="form-hint">Das Aussehen gestaltest du oben im Alert-Designer, Position und Größe im OBS-Fenster unter „Alerts“.</p>
-            </section>
-          </div>
-        </section>
-
         <!-- Overlay & OBS -->
         <section class="page" data-page="overlay" hidden>
           <div class="dash-cards">
@@ -1135,6 +1021,21 @@
               </div>
               <p class="form-hint">In OBS: Quellen → + → Browser → Adresse einfügen, 1920 × 1080. Ebenen, Größen, Farben, Laufband und Alerts stellst du im OBS-Fenster ein.</p>
             </article>
+            <!-- Probe-Alerts: schicken einen Alert an alle OBS-Quellen (früher auf der Seite „Alerts“) -->
+            <section class="dash-card obs-alerts" id="obs-alerts">
+              <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🧪</span><div><h2>Probe-Alerts</h2><p class="dash-status" id="obs-alerts-status">Erscheinen sofort im Overlay – echte kommen von Twitch.</p></div></header>
+              <div class="obs-alerts-btns">
+                <button class="btn btn--outline btn--sm" type="button" data-alert="follow">💜 Follower</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="sub">⭐ Abo</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="resub">🔁 Resub</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="bits">💎 Bits</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="redeem">🎟️ Kanalpunkte</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="tip">💶 Trinkgeld</button>
+              </div>
+              <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
+              <p class="form-hint">Das Aussehen gestaltest du in der Design-Bibliothek im Alert-Designer, Position und Größe im OBS-Fenster unter „Alerts“.</p>
+            </section>
           </div>
         </section>
 
@@ -1157,14 +1058,15 @@
           </div>
         </section>
 
-        <!-- Design-Bibliothek (js/library.js): Komplett-Looks, Overlays und Alerts ansehen, vergleichen, übernehmen -->
+        <!-- Design-Bibliothek (js/library.js): Komplett-Looks, Overlays und Alerts ansehen, vergleichen, übernehmen;
+             zweiter Reiter: der Alert-Designer (js/alert-designer.js) -->
         <section class="page" data-page="library" hidden>
           <div class="lb" id="lb">
             <header class="lb-head">
               <div class="lb-intro">
                 <p class="lb-eyebrow">Stream-Setup</p>
                 <h2 id="lib-title">Design-Bibliothek</h2>
-                <p>Alle Looks an einem Ort: komplette Themes, einzelne Overlay-Designs und Alerts. Ansehen, vergleichen, mit einem Klick übernehmen. Feinheiten gibt es danach unter „Overlay &amp; OBS“ und „Alerts“.</p>
+                <p>Alle Looks an einem Ort: komplette Themes, einzelne Overlay-Designs und Alerts. Ansehen, vergleichen, mit einem Klick übernehmen – und im Alert-Designer jede Alert-Art selbst gestalten. Position und Größe stellst du unter „Overlay &amp; OBS“ ein.</p>
               </div>
               <div class="lb-tools">
                 <label class="lb-search"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><input id="lb-q" type="search" placeholder="Design suchen …" aria-label="Design suchen" maxlength="40" autocomplete="off"></label>
@@ -1172,64 +1074,160 @@
               </div>
             </header>
 
-            <div class="lb-types" id="lb-types" aria-label="Art der Designs"></div>
+            <div class="lb-views" id="lb-views" role="tablist" aria-label="Bereich">
+              <button type="button" role="tab" data-lb-view="gallery" aria-selected="true"><i class="ph ph-squares-four" aria-hidden="true"></i><span><b>Designs entdecken</b><small>Fertige Looks, Overlays und Alerts mit einem Klick</small></span></button>
+              <button type="button" role="tab" data-lb-view="designer" aria-selected="false"><i class="ph ph-paint-brush-broad" aria-hidden="true"></i><span><b>Alert-Designer</b><small>Bild, Texte, Animation und Ton je Alert-Art</small></span></button>
+            </div>
 
-            <section class="lb-hero" id="lb-hero" aria-label="Vorschau">
-              <div class="lb-stage">
-                <div class="lb-stage-slot" id="lb-stage-slot">
-                  <div class="lb-screen" id="lb-screen">
-                    <div class="lb-layer" id="lb-before"></div>
-                    <div class="lb-layer lb-layer--after" id="lb-after"></div>
-                    <span class="lb-split-line" aria-hidden="true"></span>
-                    <span class="lb-cmp-label is-before" id="lb-before-label"></span>
-                    <span class="lb-cmp-label is-after" id="lb-after-label"></span>
+            <div class="lb-view" id="lb-gallery-view" role="tabpanel">
+              <div class="lb-types" id="lb-types" aria-label="Art der Designs"></div>
+
+              <section class="lb-hero" id="lb-hero" aria-label="Vorschau">
+                <div class="lb-stage">
+                  <div class="lb-stage-slot" id="lb-stage-slot">
+                    <div class="lb-screen" id="lb-screen">
+                      <div class="lb-layer" id="lb-before"></div>
+                      <div class="lb-layer lb-layer--after" id="lb-after"></div>
+                      <span class="lb-split-line" aria-hidden="true"></span>
+                      <span class="lb-cmp-label is-before" id="lb-before-label"></span>
+                      <span class="lb-cmp-label is-after" id="lb-after-label"></span>
+                    </div>
+                  </div>
+                  <button class="lb-fullbtn" type="button" id="lb-open-full" title="Vollbild" aria-label="Vorschau im Vollbild"><i class="ph ph-arrows-out" aria-hidden="true"></i></button>
+                  <div class="lb-stagebar">
+                    <div class="lb-scenes" id="lb-scenes" role="tablist" aria-label="Szene"></div>
+                    <label class="lb-kind" id="lb-kind-wrap" hidden>Alert-Art <select id="lb-kind"></select></label>
+                    <button class="btn btn--ghost btn--sm" type="button" id="lb-replay" hidden><i class="ph ph-play" aria-hidden="true"></i>Abspielen</button>
+                    <label class="lb-compare"><input type="checkbox" id="lb-compare">Vorher / Nachher
+                      <input type="range" id="lb-split" min="5" max="95" value="50" aria-label="Trennlinie verschieben" hidden></label>
                   </div>
                 </div>
-                <button class="lb-fullbtn" type="button" id="lb-open-full" title="Vollbild" aria-label="Vorschau im Vollbild"><i class="ph ph-arrows-out" aria-hidden="true"></i></button>
-                <div class="lb-stagebar">
-                  <div class="lb-scenes" id="lb-scenes" role="tablist" aria-label="Szene"></div>
-                  <label class="lb-kind" id="lb-kind-wrap" hidden>Alert-Art <select id="lb-kind"></select></label>
-                  <button class="btn btn--ghost btn--sm" type="button" id="lb-replay" hidden><i class="ph ph-play" aria-hidden="true"></i>Abspielen</button>
-                  <label class="lb-compare"><input type="checkbox" id="lb-compare">Vorher / Nachher
-                    <input type="range" id="lb-split" min="5" max="95" value="50" aria-label="Trennlinie verschieben" hidden></label>
+                <div class="lb-side">
+                  <div class="lb-tags" id="lb-tags"></div>
+                  <div class="lb-namerow">
+                    <h3 id="lb-name"></h3>
+                    <button class="lb-favbig" type="button" id="lb-fav" aria-pressed="false" title="Favorit"><i class="ph ph-heart" aria-hidden="true"></i></button>
+                  </div>
+                  <p class="lb-desc" id="lb-desc"></p>
+                  <p class="lb-credit" id="lb-credit" hidden></p>
+                  <p class="lb-sub">Das ändert sich</p>
+                  <ul class="lb-parts" id="lb-parts"></ul>
+                  <button class="btn btn--primary lb-apply" type="button" data-lb-apply></button>
+                  <p class="form-hint" id="lb-note"></p>
+                  <details class="lb-links" id="lb-links-wrap">
+                    <summary>OBS-Adressen je Szene</summary>
+                    <p class="form-hint">Je Szene eine Browserquelle (1920 × 1080) mit dieser Adresse. Alle folgen den Einstellungen aus „Overlay &amp; OBS“.</p>
+                    <ul class="th-links" id="lb-links"></ul>
+                  </details>
                 </div>
-              </div>
-              <div class="lb-side">
-                <div class="lb-tags" id="lb-tags"></div>
-                <div class="lb-namerow">
-                  <h3 id="lb-name"></h3>
-                  <button class="lb-favbig" type="button" id="lb-fav" aria-pressed="false" title="Favorit"><i class="ph ph-heart" aria-hidden="true"></i></button>
-                </div>
-                <p class="lb-desc" id="lb-desc"></p>
-                <p class="lb-credit" id="lb-credit" hidden></p>
-                <p class="lb-sub">Das ändert sich</p>
-                <ul class="lb-parts" id="lb-parts"></ul>
-                <button class="btn btn--primary lb-apply" type="button" data-lb-apply></button>
-                <p class="form-hint" id="lb-note"></p>
-                <details class="lb-links" id="lb-links-wrap">
-                  <summary>OBS-Adressen je Szene</summary>
-                  <p class="form-hint">Je Szene eine Browserquelle (1920 × 1080) mit dieser Adresse. Alle folgen den Einstellungen aus „Overlay &amp; OBS“.</p>
-                  <ul class="th-links" id="lb-links"></ul>
-                </details>
-              </div>
-            </section>
+              </section>
 
-            <section class="lb-browse" aria-label="Alle Designs">
-              <div class="lb-bar">
-                <div class="lb-tabs" id="lb-tabs" role="tablist" aria-label="Art"></div>
-                <button class="btn btn--primary btn--sm lb-build" type="button" id="lb-build" hidden><i class="ph ph-plus" aria-hidden="true"></i>Eigener Look</button>
-                <label class="lb-sort">Sortieren
-                  <select id="lb-sort"><option value="hot">Beliebt</option><option value="new">Neu</option><option value="az">A – Z</option></select>
-                </label>
-              </div>
-              <div class="lb-moods" id="lb-moods" aria-label="Stimmung"></div>
-              <p class="lb-count" id="lb-count" aria-live="polite"></p>
-              <div class="lb-grid" id="lb-grid"></div>
-              <div class="lb-empty" id="lb-empty" hidden>
-                <span>Nichts gefunden. Probier eine andere Stimmung oder lösch die Suche.</span>
-                <button class="btn btn--ghost btn--sm" type="button" id="lb-reset">Filter zurücksetzen</button>
-              </div>
-            </section>
+              <section class="lb-browse" aria-label="Alle Designs">
+                <div class="lb-bar">
+                  <div class="lb-tabs" id="lb-tabs" role="tablist" aria-label="Art"></div>
+                  <button class="btn btn--primary btn--sm lb-build" type="button" id="lb-build" hidden><i class="ph ph-plus" aria-hidden="true"></i>Eigener Look</button>
+                  <label class="lb-sort">Sortieren
+                    <select id="lb-sort"><option value="hot">Beliebt</option><option value="new">Neu</option><option value="az">A – Z</option></select>
+                  </label>
+                </div>
+                <div class="lb-moods" id="lb-moods" aria-label="Stimmung"></div>
+                <p class="lb-count" id="lb-count" aria-live="polite"></p>
+                <div class="lb-grid" id="lb-grid"></div>
+                <div class="lb-empty" id="lb-empty" hidden>
+                  <span>Nichts gefunden. Probier eine andere Stimmung oder lösch die Suche.</span>
+                  <button class="btn btn--ghost btn--sm" type="button" id="lb-reset">Filter zurücksetzen</button>
+                </div>
+              </section>
+            </div>
+
+            <div class="lb-view" id="lb-designer-view" role="tabpanel" hidden>
+              <!-- Alert-Designer (js/alert-designer.js): wie bei StreamElements, Designs liegen in alert_config -->
+              <section class="dash-card dash-card--wide ad" id="ad" aria-labelledby="ad-title">
+                <header class="dash-card-head">
+                  <span class="dash-ico" aria-hidden="true">🎨</span>
+                  <div><h2 id="ad-title">Alert-Designer</h2><p class="dash-status" id="ad-status">Design, Bild oder Video, Texte und Animationen – für jede Alert-Art einzeln.</p></div>
+                  <button class="btn btn--primary btn--sm" type="button" id="ad-save" disabled>Speichern</button>
+                </header>
+                <div class="ad-kinds" id="ad-kinds" role="tablist" aria-label="Alert-Art"></div>
+                <div class="ad-vars" id="ad-vars" aria-label="Varianten nach Menge"></div>
+                <div class="ad-grid">
+                  <div class="ad-stage">
+                    <div class="ad-preview" id="ad-preview"><p class="ad-preview-note">Vorschau lädt …</p></div>
+                    <div class="ad-stage-bar">
+                      <button class="btn btn--primary btn--sm" type="button" id="ad-play">▶ Abspielen</button>
+                      <button class="btn btn--outline btn--sm ad-dice" type="button" id="ad-dice" title="Zufälliges Design für diese Alert-Art würfeln">🎲 Würfeln</button>
+                      <label class="ad-amount" id="ad-amount-wrap" hidden><span id="ad-amount-label">Menge</span><input type="number" id="ad-amount" min="1" max="1000000" value="100"></label>
+                      <span class="ad-hint">Vergrößerte Vorschau – im Stream ist der Alert so groß wie im OBS-Fenster eingestellt.</span>
+                    </div>
+                    <div class="ad-var-edit" id="ad-var-edit" hidden>
+                      <label>Gilt ab <input type="number" id="ad-var-min" min="1" max="10000000" value="100"> <span id="ad-var-unit">Bits</span></label>
+                      <button class="btn btn--ghost btn--sm" type="button" id="ad-var-del">🗑️ Variante löschen</button>
+                    </div>
+                  </div>
+                  <form class="ad-form" id="ad-form" autocomplete="off">
+                    <fieldset class="ad-sec">
+                      <legend>✨ Fertige Designs <small class="ad-legend-hint">Maus drauf = Vorschau, Klick = übernehmen</small></legend>
+                      <div class="ad-presets" id="ad-presets" role="list"></div>
+                      <label class="toggle ad-all"><input type="checkbox" id="ad-preset-all"><span class="toggle-ui" aria-hidden="true"></span>Beim Klick für alle Alert-Arten übernehmen</label>
+                    </fieldset>
+                    <fieldset class="ad-sec">
+                      <legend>🖼️ Bild, GIF oder Video</legend>
+                      <div class="ad-media" id="ad-media" role="radiogroup" aria-label="Bild oder Video"></div>
+                      <div class="ad-upload" id="ad-upload">
+                        <input type="file" id="ad-file" accept="image/png,image/jpeg,image/gif,image/webp,video/webm,video/mp4" aria-label="Datei">
+                        <input type="text" id="ad-file-name" maxlength="40" placeholder="Name, z. B. Katzen-GIF" aria-label="Name der Datei">
+                        <button class="btn btn--outline btn--sm" type="button" id="ad-upload-btn">⬆️ Hochladen</button>
+                        <p class="form-hint">PNG, JPG, GIF, WebP oder ein kurzes Video (WebM/MP4), höchstens 10 MB.</p>
+                        <p class="form-msg" id="ad-upload-msg" role="alert"></p>
+                      </div>
+                      <label class="toggle"><input type="checkbox" name="vsound" checked><span class="toggle-ui" aria-hidden="true"></span>Ton von Videos abspielen</label>
+                    </fieldset>
+                    <fieldset class="ad-sec">
+                      <legend>✏️ Texte</legend>
+                      <label class="ad-row"><span>Kleine Zeile</span><input type="text" name="label" maxlength="120"></label>
+                      <label class="ad-row"><span>Große Zeile</span><input type="text" name="title" maxlength="120"></label>
+                      <label class="ad-row"><span>Darunter</span><input type="text" name="text" maxlength="120"></label>
+                      <p class="ad-chips" id="ad-chips"><span>Einfügen:</span></p>
+                      <label class="ad-row"><span>Textanimation</span><select name="anim"></select></label>
+                      <div class="ad-row"><span>Farbe</span><span class="ad-color"><input type="color" name="color" value="#9146ff" aria-label="Farbe"><label class="toggle"><input type="checkbox" name="color_on"><span class="toggle-ui" aria-hidden="true"></span>eigene Farbe</label></span></div>
+                    </fieldset>
+                    <fieldset class="ad-sec">
+                      <legend>📐 Layout &amp; Dauer</legend>
+                      <label class="ad-row"><span>Grund-Design</span><select name="look"></select></label>
+                      <label class="ad-row"><span>Layout</span><select name="layout"></select></label>
+                      <label class="ad-row"><span>Einblenden</span><select name="enter"></select></label>
+                      <div class="ad-row ad-row--timeline"><span>Ablauf</span>
+                        <div class="ad-timeline" id="ad-timeline" title="Ziehen ändert die Dauer (3–30 Sekunden)">
+                          <div class="ad-tl-track" aria-hidden="true">
+                            <span class="ad-tl-block" id="ad-tl-block">
+                              <span class="ad-tl-seg is-in"><b>Ein</b><small id="ad-tl-in"></small></span>
+                              <span class="ad-tl-seg is-hold"><b>Halten</b><small id="ad-tl-hold"></small></span>
+                              <span class="ad-tl-seg is-out"><b>Aus</b><small>0,36 s</small></span>
+                              <i class="ad-tl-grip"></i>
+                            </span>
+                            <i class="ad-tl-head" id="ad-tl-head"></i>
+                          </div>
+                          <div class="ad-tl-scale" aria-hidden="true"><span>0 s</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30 s</span></div>
+                        </div>
+                      </div>
+                      <label class="ad-row"><span>Dauer</span><input type="range" name="duration" min="3" max="30" step="1" value="7"><output id="ad-duration-out">7 s</output></label>
+                      <label class="ad-row"><span>Bildgröße</span><input type="range" name="msize" min="50" max="200" step="10" value="100"><output id="ad-msize-out">100 %</output></label>
+                      <label class="toggle"><input type="checkbox" name="confetti" checked><span class="toggle-ui" aria-hidden="true"></span>Konfetti</label>
+                    </fieldset>
+                    <fieldset class="ad-sec">
+                      <legend>🔊 Sound</legend>
+                      <label class="ad-row"><span>Sound</span><select name="sound"></select></label>
+                      <div class="ad-wave-box">
+                        <canvas class="ad-wave" id="ad-wave" width="560" height="64" aria-hidden="true"></canvas>
+                        <span class="ad-wave-info" id="ad-wave-info"></span>
+                      </div>
+                      <button class="btn btn--ghost btn--sm" type="button" id="ad-sound-test">▶ Anhören</button>
+                      <p class="form-hint">„Wie im OBS-Fenster“ nimmt den Sound, der dort für diese Alert-Art eingestellt ist. Eigene Sounds lädst du im OBS-Fenster unter „Aussehen &amp; Ton“ hoch.</p>
+                    </fieldset>
+                  </form>
+                </div>
+              </section>
+            </div>
           </div>
 
           <dialog class="lb-full" id="lb-full" aria-labelledby="lb-full-name">
@@ -1321,17 +1319,27 @@
         <!-- Twitch-Verbindung (nur Streameransicht) -->
         <section class="page" data-page="twitch" hidden>
           <div class="dash-cards">
-            <article class="dash-card dash-card--wide">
+            <!-- Twitch-Gesundheitscheck: kommen Alerts, Kanalpunkte und Chat an? (Team; neu verbinden nur der Streamer) -->
+            <article class="dash-card dash-card--wide health-card" id="health-card" data-state="unknown" data-affiliate-soft="Abo-, Bits- und Kanalpunkte-Alerts">
+              <header class="dash-card-head">
+                <span class="health-light" aria-hidden="true"></span>
+                <div><h2 id="health-title">Twitch-Verbindung wird geprüft …</h2><p class="dash-status" id="health-meta"></p></div>
+                <button class="btn btn--outline btn--sm" type="button" id="health-check">🔄 Jetzt prüfen &amp; reparieren</button>
+              </header>
+              <ul class="health-problems" id="health-problems"></ul>
+              <ul class="health-subs" id="health-subs"></ul>
+            </article>
+            <article class="dash-card dash-card--wide" data-for="streamer">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🟣</span><div><h2>Twitch-Kanal</h2><p class="dash-status" id="twitch-state">…</p></div></header>
               <div id="twitch-dialog-body" class="twitch-dialog-body"></div>
             </article>
             <!-- YouTube mit Twitch live schalten (js/youtube-connect.js, Migration …_live_sync.sql) -->
-            <article class="dash-card dash-card--wide yt-card" id="yt-card" hidden>
+            <article class="dash-card dash-card--wide yt-card" id="yt-card" data-for="streamer" hidden>
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">▶️</span><div><h2>YouTube</h2><p class="dash-status" data-yt-status>…</p></div></header>
               <div data-yt-body></div>
             </article>
             <!-- Showcase auf der Startseite (Migration …_contact_showcase.sql) -->
-            <article class="dash-card dash-card--wide" id="showcase-card">
+            <article class="dash-card dash-card--wide" id="showcase-card" data-for="streamer">
               <header class="dash-card-head"><span class="dash-ico" aria-hidden="true">🌟</span><div><h2>Auf der Startseite zeigen</h2><p class="dash-status" id="showcase-status">Dein Kanal erscheint auf der StreamHelp-Startseite unter „Diese Streamer nutzen StreamHelp“ – mit Live-Anzeige, wenn du streamst.</p></div></header>
               <label class="toggle"><input type="checkbox" id="showcase-toggle"><span class="toggle-ui" aria-hidden="true"></span>Kanal auf der Startseite zeigen</label>
             </article>
@@ -2610,7 +2618,7 @@
                     <div class="al-gallery" id="al-gallery" role="radiogroup" aria-label="Alert-Design"></div>
                     <input type="text" name="alook" value="classic" hidden aria-hidden="true" tabindex="-1">
                   </div>
-                  <p class="obs-row-hint">Das ist das Grund-Design. Bild oder Video, Texte, Animationen und Varianten nach Menge gestaltest du im Dashboard unter „🔔 Alerts“ im Alert-Designer. Sounds und Lautstärke unter „Aussehen &amp; Ton“.</p>
+                  <p class="obs-row-hint">Das ist das Grund-Design. Bild oder Video, Texte, Animationen und Varianten nach Menge gestaltest du im Dashboard in der Design-Bibliothek unter „Alert-Designer“. Sounds und Lautstärke unter „Aussehen &amp; Ton“.</p>
                 </div>
               </div>
               <div class="obs-layer" data-layer="erain" style="--lc: #ff7ac8">

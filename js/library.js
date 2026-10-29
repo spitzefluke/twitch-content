@@ -4,6 +4,7 @@
 //                 speichert das Alert-Design für alle Alert-Arten (alert_config).
 //   Overlays (OVERLAY_THEMES): nur das Aussehen der Karten – setzt otheme (OBS mit live=1 zeigt es sofort).
 //   Alerts (ALERT_PRESETS): stellt das Design im Alert-Designer für alle Arten ein; gespeichert wird dort.
+//   Zweiter Reiter „Alert-Designer“ (js/alert-designer.js, früher eigene Seite „Alerts“): jede Alert-Art selbst gestalten.
 //   Eigene Looks (js/look-builder.js): im Look-Baukasten zusammengestellt, gespeichert als Overlay-Vorlage
 //                 mit look=1 – übernehmen setzt Overlay-Werte, Alert-Design (+ Farbe) und ggf. die Profilfarbe.
 //   Von Artists (artist_gallery, Migration …_artists.sql): freigegebene Uploads mit Credit – Alert-Grafik
@@ -138,16 +139,20 @@ function communityItem({ asset: a, artist }, i) {
 }
 
 const lib = {
-  api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, useAlertPreset: null, installAlertPreset: null,
+  api: null, toast: null, germanError: String, canEdit: () => false, setPage: () => {}, openDesigner: async () => {}, useAlertPreset: null, installAlertPreset: null,
   useAlertMedia: async () => 'missing', useAlertColor: async () => 'missing', presets: null, gallery: [], addArtistCard: async () => { throw new Error('Sammelkarten sind nicht bereit.'); },
   liveUrl: () => '', localObsQuery: () => '',
   type: 'all', mood: 'all', query: '', favOnly: false, favs: [], sort: 'hot',
   sel: 'look:neon-night', scene: 'game', compare: false, split: 50, kind: 'follow',
-  params: '', access: null, alertCfg: null, busy: false, full: false,
+  params: '', access: null, alertCfg: null, busy: false, full: false, view: 'gallery',
 };
 
 export function setupLibrary(deps) {
   Object.assign(lib, deps);
+  $('#lb-views').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lb-view]');
+    if (b) showLibraryView(b.dataset.lbView);
+  });
   // Favoriten aus der Community kommen erst mit der Galerie – deshalb hier nicht ausfiltern
   try { lib.favs = JSON.parse(localStorage.getItem(FAV_KEY) || '[]').filter((k) => typeof k === 'string').slice(0, 200); } catch { lib.favs = []; }
   $('#lb-kind').replaceChildren(...ALERT_KINDS.map((k) => new Option(k.label, k.kind)));
@@ -237,6 +242,7 @@ export function setupLibrary(deps) {
 
 // Beim Öffnen der Seite: aktuelle Overlay-Einstellungen und Alerts laden (für Vorschau, Vorher und „aktiv“)
 export async function openLibrary() {
+  showLibraryView(lib.view);
   const [config, access, alerts, gallery] = await Promise.all([
     lib.api.getOverlayConfig().catch(() => null),
     lib.api.overlayAccess().catch(() => null),
@@ -251,6 +257,23 @@ export async function openLibrary() {
   lib.params = config?.params || safeLocal();
   lib.alertCfg = alerts ? normalizeAlertConfig(alerts) : null;
   paintGallery();
+}
+
+// Reiter „Designs entdecken“ ↔ „Alert-Designer“. open=false: nur umschalten (die Seite lädt den Designer beim Öffnen)
+export function showLibraryView(view, { open = true } = {}) {
+  lib.view = view === 'designer' ? 'designer' : 'gallery';
+  const designer = lib.view === 'designer';
+  $('#lb-gallery-view').hidden = designer;
+  $('#lb-designer-view').hidden = !designer;
+  $('#lb').querySelector('.lb-tools').hidden = designer;
+  document.querySelectorAll('#lb-views [data-lb-view]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.lbView === lib.view)));
+  if (designer && open) lib.openDesigner();
+}
+
+// Nach „Übernehmen“ eines Alert-Designs: Reiter Alert-Designer zeigen, dort wird gespeichert
+function goDesigner() {
+  showLibraryView('designer', { open: false });
+  scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
 }
 
 async function loadPresets() {
@@ -814,8 +837,8 @@ async function applyCommunity(x) {
   let ok = true;
   if (x.art === 'alert') {
     const r = await lib.useAlertMedia(x.media);
-    if (r !== 'ok') { lib.toast(r === 'locked' ? 'Die Alerts darfst du nicht ändern.' : 'Der Alert-Designer ist nicht bereit – öffne „Alerts“ und versuch es dort.', 'error'); return; }
-    lib.setPage('alerts');
+    if (r !== 'ok') { lib.toast(r === 'locked' ? 'Die Alerts darfst du nicht ändern.' : 'Der Alert-Designer ist nicht bereit – öffne den Reiter „Alert-Designer“ und versuch es dort.', 'error'); return; }
+    goDesigner();
     msg = `„${x.name}“ von ${x.artist.name} ist das Bild für alle Alerts. Prüfen und oben rechts „Speichern“ klicken.`;
   } else if (x.art === 'card') {
     await lib.addArtistCard({ name: x.name.slice(0, 40), image: `a:${x.file}`, rarity: x.extra.rarity ?? 'rare', emoji: x.extra.emoji ?? '🃏', description: `Design: ${x.artist.name}`.slice(0, 120) });
@@ -856,9 +879,9 @@ function linkLabel(url) {
 async function applyAlerts(x) {
   const ok = await lib.useAlertPreset(x.id);
   if (!ok) {
-    lib.toast('Der Alert-Designer ist nicht bereit – öffne „Alerts“ und versuch es dort.', 'error');
+    lib.toast('Der Alert-Designer ist nicht bereit – öffne den Reiter „Alert-Designer“ und versuch es dort.', 'error');
     return;
   }
-  lib.setPage('alerts');
+  goDesigner();
   lib.toast(`„${x.name}“ ist für alle Alerts eingestellt. Prüfen und oben rechts „Speichern“ klicken.`, 'ok', 8000);
 }

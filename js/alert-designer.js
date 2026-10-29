@@ -1,4 +1,4 @@
-// Alert-Designer im Dashboard (Seite „Alerts“): Aussehen je Alert-Art wie bei StreamElements.
+// Alert-Designer im Dashboard (Design-Bibliothek, Reiter „Alert-Designer“): Aussehen je Alert-Art wie bei StreamElements.
 // Fertige Designs, eigenes Bild/GIF/Video, drei Textzeilen mit Platzhaltern, Textanimation,
 // Einblenden, Dauer, Sound und Varianten nach Menge. Gespeichert wird in alert_config
 // (Migration …_overlay_designs.sql); das Overlay übernimmt Änderungen ohne Neuladen.
@@ -257,7 +257,7 @@ export async function openAlertDesigner() {
 }
 
 // Aus der Design-Bibliothek: fertiges Design für alle Alert-Arten einstellen (noch nicht gespeichert –
-// die Seite „Alerts“ zeigt es, „Speichern“ macht es fest). Liefert false, wenn es nicht geht.
+// der Reiter „Alert-Designer“ zeigt es, „Speichern“ macht es fest). Liefert false, wenn es nicht geht.
 export async function useAlertPreset(id) {
   const preset = ALERT_PRESETS.find((p) => p.id === id);
   if (!preset) return false;
@@ -287,7 +287,7 @@ export async function installAlertPreset(id) {
 }
 
 // Alert-Grafik eines Artists (Design-Bibliothek): als Bild für alle Alert-Arten einstellen.
-// save=false: nur in den Designer übernehmen (Seite „Alerts“ zeigt es, „Speichern“ macht es fest).
+// save=false: nur in den Designer übernehmen (Reiter „Alert-Designer“ zeigt es, „Speichern“ macht es fest).
 // Liefert wie installAlertPreset 'ok' | 'dirty' | 'locked' | 'missing' | 'error'.
 export async function useAlertMedia(value, opts = {}) {
   if (!/^a:/.test(value ?? '') || normalizeDesign({ media: value }).media !== value) return 'missing';

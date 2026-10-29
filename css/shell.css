@@ -487,6 +487,8 @@
 
 /* Gesundheitscheck */
 .health-card { border-width: 1px; }
+.health-card .dash-card-head { flex-wrap: wrap; }
+.health-card .dash-card-head > div { flex: 1 1 200px; }
 .health-light { flex: none; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); box-shadow: 0 0 0 5px rgba(255, 255, 255, .04); }
 .health-card[data-state="ok"] { border-color: rgba(61, 220, 132, .45); }
 .health-card[data-state="ok"] .health-light { background: var(--green); box-shadow: 0 0 0 5px rgba(61, 220, 132, .12), 0 0 16px var(--green); }
