@@ -66,6 +66,16 @@
 .sp-status[data-s="active"] { color: #3ddc97; border-color: rgba(61, 220, 151, .5); }
 .sp-status[data-s="pending"] { color: #ffd36b; border-color: rgba(255, 211, 107, .5); }
 .sp-status[data-s="rejected"], .sp-status[data-s="closed"] { color: var(--muted); }
+@media (prefers-color-scheme: light) {
+  .sp-status[data-s="active"] { color: #0f7a4a; }
+  .sp-status[data-s="pending"] { color: #8a5a00; border-color: rgba(176, 120, 0, .45); background: rgba(255, 211, 107, .2); }
+}
+
+/* Noch geschlossen (Gewerbe in Anmeldung) */
+.sp-soon { gap: 10px; }
+.sp-soon h2, .sp-soon p { margin: 0; }
+.sp-soon h2 { font-size: 22px; color: var(--text-strong); }
+.sp-soon p { color: var(--text-2); line-height: 1.55; max-width: 64ch; }
 .sp-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; color: var(--text-2); font-size: 14px; }
 .sp-apps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .sp-app { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); }
