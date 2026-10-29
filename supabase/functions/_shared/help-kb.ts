@@ -11,7 +11,7 @@ Streamer werden: Mit Twitch anmelden, „Kanal anmelden“ wählen, kurze Nachri
 
 OBS-Overlay: Dashboard → „Overlay & OBS“ → Adresse kopieren → in OBS eine Browserquelle mit 1920×1080 anlegen und die Adresse einfügen. Eine einzige Browserquelle zeigt alles: Alerts, Chat, Glücksrad, Bingo, Laufband, Haustier, Subathon-Timer, Verlosung usw. Ebenen, Designs und Szenen stellt man im OBS-Fenster von StreamHelp ein. Funktioniert auch mit Streamlabs Desktop und anderen Programmen mit Browserquelle.
 
-Alerts: Follower, Abos, Resubs, verschenkte Abos, Bits und Kanalpunkte. Eigene Designs im Alert-Designer, fertige Designs in der Design-Bibliothek. Kommen keine Alerts: Dashboard → „Alerts“ → Twitch-Gesundheitscheck, ggf. Twitch neu verbinden.
+Alerts: Follower, Abos, Resubs, verschenkte Abos, Bits und Kanalpunkte. Fertige Designs und den Alert-Designer (eigene Designs je Alert-Art) gibt es in der Design-Bibliothek, Probe-Alerts unter „Overlay & OBS“. Kommen keine Alerts: Dashboard → „Twitch-Verbindung“ → Twitch-Gesundheitscheck, ggf. Twitch neu verbinden.
 
 Chat-Bot: Der StreamHelp-Bot schreibt Ergebnisse in den Chat, nie im Namen des Streamers. Eigene Befehle unter „Bot & Chat“. !watchtime zeigt die Zuschauzeit, !befehle die Befehle.
 

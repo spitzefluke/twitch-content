@@ -23,7 +23,7 @@ import { guardFrame } from './frame-guard.js';
 import { installAlertPreset, openAlertDesigner, setupAlertDesigner, useAlertColor, useAlertMedia, useAlertPreset } from './alert-designer.js';
 import { isLookPreset } from './look-builder.js';
 import { createExtrasApi } from './extras-api.js';
-import { openLibrary, setupLibrary } from './library.js';
+import { openLibrary, setupLibrary, showLibraryView } from './library.js';
 import { OVERLAY_THEMES } from './overlay-stage.js';
 import { THEME_PACKS } from './theme-packs.js';
 import {
@@ -270,7 +270,7 @@ async function boot() {
   // und ohne Anmeldung geht es direkt zur Anmeldung statt zur Startseite.
   const appStart = params.has('app');
   const appPage = location.hash.slice(1);
-  if (appStart && Object.hasOwn(PAGE_TITLES, appPage)) state.pendingPage = appPage;
+  if (appStart && (Object.hasOwn(PAGE_TITLES, appPage) || appPage === 'alerts')) state.pendingPage = appPage;
   const user = await state.api.getUser();
   if (user) { if (!state.user) await enterApp(user); }
   else if (appStart && !OBS_PAGE) showAuth();
@@ -320,7 +320,7 @@ function showTwitchReturn(status, reason, detail, bot) {
   if (status === 'connected') {
     // Wer Twitch verbindet, ist der Streamer: gleich prüfen, ob alles läuft. Wartet der eigene Kanal noch
     // auf die Freischaltung (Anmelden und Verbinden in einem Schritt), sagt das stattdessen der Konto-Dialog.
-    state.pendingPage = 'alerts';
+    state.pendingPage = 'twitch';
     state.twitchJustConnected = true;
     return;
   }
@@ -394,7 +394,7 @@ function showLanding() {
 const SB_KEY = 'sh_sidebar';
 const VIEW_KEY = 'sh_view';
 const PAGE_TITLES = {
-  ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte', alerts: 'Alerts',
+  ideas: 'Content-Ideen', community: 'Vorschläge & Archiv', bot: 'Bot & Chat', points: 'Kanalpunkte',
   overlay: 'Overlay & OBS', record: 'Video aufnehmen', library: 'Design-Bibliothek', guard: 'Raid-Schutz', mods: 'Mods', twitch: 'Twitch-Verbindung',
   security: 'Sicherheit', stats: 'Statistik', profile: 'Profil & Zeitplan', artist: 'Artist-Bereich', discord: 'Discord', raids: 'Raid-Netzwerk', referrals: 'Freunde werben', money: 'Trinkgeld & Sponsoren',
 };
@@ -531,7 +531,7 @@ function setupShell() {
     applyView(btn.dataset.view);
   });
 
-  $('#health-btn').addEventListener('click', () => setPage('alerts'));
+  $('#health-btn').addEventListener('click', () => setPage('twitch'));
   setupLook();
   setupPops();
   $('#health-check').addEventListener('click', () => runHealth({ force: true, loud: true }));
@@ -633,11 +633,14 @@ function setupPops() {
 // Zähler für den Tooltip der eingeklappten Seitenleiste
 function sbCount(page) {
   const n = (x, one, many) => (x ? `${x} ${x === 1 ? one : many}` : '');
-  if (page === 'ideas') return n(state.tiles.filter((t) => t.kind !== 'countdown' || isPlanned(t)).length, 'Kachel', 'Kacheln');
+  if (page === 'ideas') return n(state.tiles.filter((t) => t.kind !== 'countdown').length, 'Kachel', 'Kacheln');
   if (page === 'community') return n(state.ideas.length, 'Vorschlag', 'Vorschläge');
-  if (page === 'alerts') { const b = $('#sb-alert-badge'); return b.hidden ? '' : `${b.textContent} Twitch-${b.textContent === '1' ? 'Problem' : 'Probleme'}`; }
   if (page === 'mods') return n(state.mods.length, 'Mod', 'Mods');
-  if (page === 'twitch') return state.twitch?.connected ? 'verbunden' : 'nicht verbunden';
+  if (page === 'twitch') {
+    const b = $('#sb-alert-badge');
+    if (!b.hidden) return `${b.textContent} Twitch-${b.textContent === '1' ? 'Problem' : 'Probleme'}`;
+    return state.twitch?.connected ? 'verbunden' : 'nicht verbunden';
+  }
   return '';
 }
 
@@ -683,6 +686,8 @@ const START = {
 };
 
 function setPage(name) {
+  // Die frühere Seite „Alerts“ (alte Links, #alerts): der Alert-Designer steckt jetzt in der Design-Bibliothek
+  if (name === 'alerts') { showLibraryView('designer', { open: false }); name = 'library'; }
   // Nur bekannte Seiten (der Name kann aus der Adresse kommen, z. B. #stats)
   if (!Object.hasOwn(PAGE_TITLES, name)) name = 'ideas';
   const item = $(`.sb-item[data-page="${name}"]`);
@@ -695,7 +700,7 @@ function setPage(name) {
   $('#page-title').textContent = PAGE_TITLES[name] ?? 'StreamHelp';
   state.page = name;
   if (Object.hasOwn(PAGE_ENTER, name)) PAGE_ENTER[name]();
-  if (name !== 'alerts' && state.health.data) renderHealth();
+  if (name !== 'twitch' && state.health.data) renderHealth();
   if (!$('#app').hidden) scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
 }
 
@@ -703,12 +708,20 @@ function setPage(name) {
 const PAGE_ENTER = {
   bot: () => renderBotPanel(),
   points: () => renderPoints(),
-  alerts: () => { renderHealth(); if (!state.health.data) runHealth(); $('#health-banner').hidden = true; openAlertDesigner(); },
   overlay: () => { $('#dash-obs-url').value = obsLiveUrl(); },
   library: () => openLibrary(),
   guard: () => renderGuard(),
   mods: () => { loadMods(); renderModSecurity(); },
-  twitch: () => { renderTwitchPanel(); loadShowcase(); renderYoutube($('#yt-card'), { api: state.api, toast, germanError }); },
+  twitch: () => {
+    renderHealth();
+    if (!state.health.data) runHealth();
+    $('#health-banner').hidden = true;
+    // Twitch-Kanal, YouTube und Startseite gehören dem Streamer; Mods sehen nur den Gesundheitscheck
+    if (!canStreamerView()) return;
+    renderTwitchPanel();
+    loadShowcase();
+    renderYoutube($('#yt-card'), { api: state.api, toast, germanError });
+  },
   security: () => renderSecurityPage(),
   stats: () => renderStats($('#stats-slot'), state.api, STATS_OBS),
   profile: () => renderProfile($('#profile-slot'), {
@@ -996,7 +1009,7 @@ async function enterApp(user, { animate = false } = {}) {
       state.pendingPage = null;
       openAccountDialog('done');
     } else {
-      toast(`Twitch ist verbunden. StreamHelp prüft jetzt Alerts, Chat${noAffiliate() ? '' : ' und Kanalpunkte'} – das Ergebnis steht unter „Alerts“.`, 'ok', 9000);
+      toast(`Twitch ist verbunden. StreamHelp prüft jetzt Alerts, Chat${noAffiliate() ? '' : ' und Kanalpunkte'} – das Ergebnis steht unter „Twitch-Verbindung“.`, 'ok', 9000);
     }
   }
   renderHeader();
@@ -1093,7 +1106,7 @@ function renderAcctHead(level = state.health?.level) {
   $('#acct-tw').textContent = !team ? `Angemeldet als ${state.profile?.username ?? ''}`
     : !connected ? 'Twitch nicht verbunden' : lvl === 'error' ? 'Twitch: Problem' : lvl === 'warn' ? 'Twitch: Hinweise' : 'Twitch verbunden';
   $('#acct-tw-sub').textContent = !team ? (state.channel ? `Kanal: ${channelLabel(state.channel)}` : '')
-    : !connected ? 'Ohne Verbindung keine Alerts und Kanalpunkte' : lvl === 'error' ? 'Details unter Alerts' : 'Alerts und Kanalpunkte laufen';
+    : !connected ? 'Ohne Verbindung keine Alerts und Kanalpunkte' : lvl === 'error' ? 'Details unter Twitch-Verbindung' : 'Alerts und Kanalpunkte laufen';
   $('#acct-tw-dot').dataset.state = lvl;
   $('#acct-dot').hidden = !team;
   $('#acct-dot').dataset.state = lvl;
@@ -1120,7 +1133,6 @@ function loadProStatus() {
 // zurückliegt – solange bleibt sie mit "jetzt live" bei den Content-Ideen stehen.
 const LIVE_WINDOW = 6 * 60 * 60 * 1000;
 const isArchived = (t) => t.kind === 'countdown' && t.target_at && Date.now() - Date.parse(t.target_at) > LIVE_WINDOW;
-const isPlanned = (t) => t.kind === 'countdown' && !isArchived(t);
 // "Ärgere den Streamer", Bingo, Fragen, Dino, Kisten-Shop und Win-Challenge haben ein Startdatum für Zuschauer (target_at).
 // Admins können vorher schon alles benutzen und testen.
 const isLocked = (t) => ['prank', 'bingo', 'questions', 'pet', 'shop', 'challenge', ...EXTRA_KINDS].includes(t.kind)
@@ -1478,37 +1490,9 @@ function startNote(tile) {
 }
 
 // Der nächste Termin, der noch bevorsteht – sonst der, der gerade läuft.
-function nextDeparture() {
-  const dated = state.tiles.filter((t) => isPlanned(t) && t.target_at)
-    .sort((a, b) => Date.parse(a.target_at) - Date.parse(b.target_at));
-  return dated.find((t) => Date.parse(t.target_at) >= Date.now()) ?? dated[0] ?? null;
-}
-
+// Begrüßung oben auf den Content-Ideen (ohne Countdown – Termine stehen unter „Profil & Zeitplan“)
 function renderHero() {
-  const next = nextDeparture();
-  const desc = $('#next-desc');
-  if (next) {
-    const d = new Date(next.target_at);
-    const when = `${d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })} um ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
-    desc.replaceChildren('Schön, dass du da bist. Als Nächstes steht ', h('b', {}, next.title), ` an – ${when}.`);
-  } else {
-    desc.textContent = 'Schön, dass du da bist. Noch steht kein Termin an – sobald eine Idee einen Termin bekommt, läuft hier der Countdown.';
-  }
-  $('.nd-bg').style.backgroundImage = `url(${JSON.stringify(heroImage(next))})`;
-
-  const cd = $('#next-countdown');
-  cd.replaceChildren();
-  cd.hidden = !next;
-  if (next) {
-    cd.dataset.target = next.target_at ?? '';
-    renderCountdown(cd, next.target_at);
-  } else {
-    delete cd.dataset.target;
-  }
-}
-
-function heroImage(tile) {
-  return safeUrl(tile?.background) ?? THEME_BG[tile?.theme] ?? THEME_BG.tracks;
+  $('#next-desc').textContent = 'Schön, dass du da bist. Such dir eine Idee für deinen nächsten Stream aus.';
 }
 
 // ---------- Archiv ----------
@@ -1520,7 +1504,7 @@ function renderArchive() {
   if (!rows.length) {
     const li = document.createElement('li');
     li.className = 'empty';
-    li.textContent = 'Noch keine vergangenen Streams – der erste Countdown läuft oben.';
+    li.textContent = 'Noch keine vergangenen Streams.';
     list.replaceChildren(li);
     return;
   }
@@ -1640,14 +1624,13 @@ async function submitIdea(e) {
 // Arten für die Filter-Chips über dem Raster (Farbe = Punkt auf Chip und Kachel)
 const IDEA_CATS = [
   { id: 'all', label: 'Alle' },
-  { id: 'dated', label: 'Mit Termin', dot: '#ffb81c' },
   { id: 'join', label: 'Mitmachen', dot: 'var(--acc-3)' },
   { id: 'chat', label: 'Chat-Spiele', dot: '#4fd6ff' },
   { id: 'overlay', label: 'Overlay', dot: '#3ddc84' },
 ];
 const CHAT_KINDS = new Set(['forbidden', 'quiz', 'queue', 'giveaway', 'hotwords', 'poll', 'counter', 'chatcontrol', 'cup', 'bet', 'scratch']);
 const OVERLAY_KINDS = new Set(['wheel', 'subathon', 'pause', 'gamewheel', 'heart', 'emoterain']);
-const ideaCat = (t) => (t.kind === 'countdown' ? 'dated' : CHAT_KINDS.has(t.kind) ? 'chat' : OVERLAY_KINDS.has(t.kind) ? 'overlay' : 'join');
+const ideaCat = (t) => (CHAT_KINDS.has(t.kind) ? 'chat' : OVERLAY_KINDS.has(t.kind) ? 'overlay' : 'join');
 const IDEAS_VIEW_KEY = 'sh_ideas_view';
 function ideasView() {
   try { return localStorage.getItem(IDEAS_VIEW_KEY) === 'list' ? 'list' : 'grid'; } catch { return 'grid'; }
@@ -1661,12 +1644,12 @@ function renderGrid() {
     wheel: buildWheelTile, prank: buildPrankTile, bingo: buildBingoTile, questions: buildQuestionsTile, pet: buildPetTile, shop: buildShopTile, challenge: buildChallengeTile,
     ...Object.fromEntries(EXTRA_KINDS.map((k) => [k, buildExtraTile])),
   };
-  const all = state.tiles.filter((t) => isPlanned(t) || build[t.kind]);
+  // Termin-Kacheln (countdown) stehen nicht mehr bei den Ideen – sie bleiben nur für Archiv und Overlay „Nächster Stream“
+  const all = state.tiles.filter((t) => build[t.kind]);
   // Games: je Game erst die passenden Ideen, dann was zu jedem Game passt
   const game = gameById(selectedGame());
-  const planned = all.filter(isPlanned);
-  const { mine, general } = game ? splitTiles(all.filter((t) => !isPlanned(t)), game.id) : { mine: [], general: all.filter((t) => !isPlanned(t)) };
-  const pool = [...planned, ...mine, ...general];
+  const { mine, general } = game ? splitTiles(all, game.id) : { mine: [], general: all };
+  const pool = [...mine, ...general];
   // Suche (Titel + Beschreibung), Art und Favoriten zuerst – Favoriten und Ansicht nur in diesem Browser
   const query = ($('#grid-search')?.value ?? '').trim().toLowerCase();
   const found = pool.filter((t) => !query || `${t.title} ${t.description ?? ''}`.toLowerCase().includes(query));
@@ -1690,16 +1673,13 @@ function renderGrid() {
     grid.replaceChildren(...shown.map(make));
   } else {
     const isFav = (t) => favs.has(t.id);
-    const { mine: mineShown, general: generalShown } = splitTiles(shown.filter((t) => !isPlanned(t)), game.id);
-    const plannedShown = shown.filter(isPlanned);
+    const { mine: mineShown, general: generalShown } = splitTiles(shown, game.id);
     // Favoriten (die zu diesem Game passen) als eigene Gruppe ganz oben
     const starred = shown.filter(isFav);
     const rest = (list) => list.filter((t) => !isFav(t));
     let i = 0;
     grid.replaceChildren(
       ...(starred.length ? [gridHead('★ Deine Favoriten'), ...starred.map((t) => make(t, i++))] : []),
-      ...(starred.length && plannedShown.some((t) => !isFav(t)) ? [gridHead('⏰ Geplant')] : []),
-      ...rest(plannedShown).map((t) => make(t, i++)),
       gridHead(`${game.icon} Passt zu ${game.name}`),
       ...(mineShown.length ? rest(mineShown).map((t) => make(t, i++)) : [buildGamePlaceholder(game)]),
       ...(rest(generalShown).length ? [gridHead('🎮 Passt zu jedem Game'), ...rest(generalShown).map((t) => make(t, i++))] : []),
@@ -2187,7 +2167,7 @@ function setupDialogs() {
   setupObs();
   setupAlertDesigner({ api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin });
   setupLibrary({
-    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, useAlertPreset, installAlertPreset, useAlertMedia, useAlertColor,
+    api: state.api, toast, germanError, canEdit: () => !!state.profile?.is_admin, setPage, openDesigner: openAlertDesigner, useAlertPreset, installAlertPreset, useAlertMedia, useAlertColor,
     // Kartenbild eines Artists als neue Sammelkarte (Migration …_stream_extras.sql)
     addArtistCard: (c) => createExtrasApi(state.api).cards.save({ ...c, active: true }),
     liveUrl: () => obsLiveUrl(),
@@ -7780,7 +7760,7 @@ function renderTwitchPanel() {
   if (twitch.connected) {
     body.innerHTML = `
       <p>Verbunden mit <b data-fill="channel"></b>. ${noAffiliate() ? 'Kanalpunkte, Abos und Bits gibt es auf Twitch erst ab Affiliate – Chat-Bot, Follower-Alerts und Overlay laufen trotzdem.' : `Die Kanalpunkte-Belohnungen sind ${twitch.subscription_active ? 'aktiv' : '<b>nicht aktiv</b> (bitte neu verbinden)'}.`}</p>
-      <p class="form-hint">Neue StreamHelp-Funktionen brauchen manchmal neue Twitch-Rechte. Meldet die Seite unter „Alerts“ fehlende Rechte: einmal „Neu verbinden“ und alles erlauben.</p>
+      <p class="form-hint">Neue StreamHelp-Funktionen brauchen manchmal neue Twitch-Rechte. Meldet der Gesundheitscheck oben fehlende Rechte: einmal „Neu verbinden“ und alles erlauben.</p>
       <p class="form-msg" role="alert"></p>
       <div class="dialog-actions">
         <button class="btn btn--twitch" type="button" data-action="reconnect">Neu verbinden</button>
@@ -8229,13 +8209,13 @@ function renderHealth() {
   btn.hidden = !isTeam() || !d;
   btn.dataset.state = level;
   btn.textContent = level === 'ok' ? 'Twitch OK' : level === 'warn' ? 'Twitch: Hinweise' : `Twitch: ${errors.length} ${errors.length === 1 ? 'Problem' : 'Probleme'}`;
-  btn.title = 'Twitch-Verbindung – Details unter „Alerts“';
+  btn.title = 'Twitch-Verbindung – Details unter „Twitch-Verbindung“';
   $('#sb-alert-badge').hidden = !errors.length || !isTeam();
   h.level = level;
   renderAcctHead(level);
   $('#sb-alert-badge').textContent = String(errors.length);
   const banner = $('#health-banner');
-  banner.hidden = !errors.length || !isTeam() || state.page === 'alerts';
+  banner.hidden = !errors.length || !isTeam() || state.page === 'twitch';
   // Lösung „neu verbinden“: Knopf dafür (nur wer Twitch verbinden darf – der Streamer bzw. Seiten-Admin)
   const reconnect = canStreamerView() && errors.some((p) => RECONNECT_CODES.includes(p.code));
   banner.querySelector('[data-twitch-reconnect]').hidden = !reconnect;

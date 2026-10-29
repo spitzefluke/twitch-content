@@ -283,16 +283,6 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .hh-text h2 { margin: 0; font-size: clamp(28px, 3vw, 34px); line-height: 1; text-wrap: balance; }
 .hh-text p { margin: 8px 0 0; font-size: 15px; color: var(--text-2); text-wrap: pretty; }
 .hh-text b { color: var(--text-strong); font-weight: 600; }
-.countdown--hero { position: relative; margin: 0; gap: 6px; }
-.countdown--hero[hidden] { display: none; }
-.countdown--hero .cd-unit {
-  flex: none; width: 56px; max-width: none; padding: 7px 4px 5px; border-color: var(--line-2);
-  background: linear-gradient(rgba(var(--surf-rgb), .9) 50%, rgba(var(--surf-rgb), .95) 50%);
-}
-.countdown--hero .cd-num { font-family: var(--font-display); font-size: 26px; line-height: 1; color: var(--text-strong); }
-.countdown--hero .cd-lbl { margin-top: 3px; font-family: var(--font-mono); font-size: 9px; font-weight: 400; color: var(--muted); }
-.countdown--hero.countdown--soon .cd-num { color: var(--warn); }
-.countdown--hero.countdown--done { font-size: 20px; }
 
 /* Glücksrad-Kachel: die Scheibe dreht sich hinter dem Text */
 .tile--wheel { background: radial-gradient(90% 90% at 80% 20%, #2a1a52 0%, #141026 55%, #0d0b18 100%); }
@@ -1918,6 +1908,22 @@ body.obs-page .demo-banner { font-size: 12px; padding: 4px 12px; }
 .lb-favonly, .lb-apply, .lb-empty .btn { display: inline-flex; align-items: center; gap: 8px; }
 .lb-favonly[aria-pressed="true"] { border-color: var(--acc); color: var(--acc-ink); }
 .lb-favonly[aria-pressed="true"] .ph::before { content: "\e2a8"; font-family: "Phosphor-Fill"; }
+
+/* Reiter: Designs entdecken ↔ Alert-Designer */
+.lb-views { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 6px; padding: 6px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); }
+.lb-views [role="tab"] {
+  display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 13px; border: 1px solid transparent; text-align: left;
+  background: transparent; color: var(--text-2); font: inherit; cursor: pointer; transition: background-color .2s, border-color .2s, color .2s;
+}
+.lb-views [role="tab"] .ph { font-size: 24px; color: var(--dim); transition: color .2s; }
+.lb-views [role="tab"] span { display: grid; gap: 2px; min-width: 0; }
+.lb-views [role="tab"] b { font-size: 15px; font-weight: 600; color: var(--text); }
+.lb-views [role="tab"] small { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.lb-views [role="tab"]:hover, .lb-views [role="tab"]:focus-visible { border-color: rgba(var(--acc-rgb), .45); outline: none; }
+.lb-views [role="tab"][aria-selected="true"] { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); border-color: var(--acc); }
+.lb-views [role="tab"][aria-selected="true"] .ph { color: var(--acc-ink); }
+.lb-view { display: grid; gap: 28px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .lb-views [role="tab"], .lb-views .ph { transition: none; } }
 
 .lb-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px; }
 .lb-type {
