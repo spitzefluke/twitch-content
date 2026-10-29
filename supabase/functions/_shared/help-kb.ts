@@ -21,6 +21,10 @@ Mods: Der Streamer holt seine Mods von Twitch und gibt sie frei („Für Mods fr
 
 Discord für Streamer: Dashboard → „Discord“ → in Discord am Kanal Integrationen → Webhooks → Neuer Webhook → Adresse kopieren und einfügen. Dann postet StreamHelp automatisch die Live-Benachrichtigung (Text und @here/@everyone/Rolle wählbar), einen Rückblick nach dem Stream und auf Wunsch neue Termine von Content-Ideen; Wochenplan und Ideen gehen auch per Knopfdruck. Kein Bot nötig.
 
+Raid-Netzwerk: Dashboard → „Raid-Netzwerk“ → „Im Raid-Netzwerk sichtbar“ einschalten. Dann siehst du andere teilnehmende Streamer, die gerade live sind (gleiches Spiel zuerst, kleine Kanäle vor großen), und raidest mit einem Klick; der Bot sagt den Raid an und begrüßt Raids aus dem Netzwerk. Dafür Twitch einmal neu verbinden (Recht für Raids).
+
+Freunde werben: Dashboard → „Freunde werben“ → Link kopieren und an Streamer schicken. Wer darüber kommt, wird bevorzugt freigeschaltet; du bekommst ein Abzeichen (ab 1, 3 und 10 Kanälen). Kein Geld.
+
 StreamHelp-Community: Der StreamHelp-Discord ist https://discord.gg/XkVG2ZEDG – für Fragen, Ideen und Neuigkeiten.
 
 Raid-Schutz: Ein Klick pausiert alle Zuschauer-Aktionen; Kanalpunkte gehen automatisch zurück.

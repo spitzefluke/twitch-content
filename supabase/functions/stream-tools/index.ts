@@ -13,6 +13,9 @@
 //   POST {action:"discord_connect", url} → Discord-Webhook prüfen und speichern (Streamer, Admins, Mods mit Bereich Chat)
 //   POST {action:"discord_post", kind, tile?, auto?} → Discord: test | schedule | idea (auto: nach dem Speichern eines
 //                                          Termins, nur wenn eingeschaltet und je Termin einmal)
+//   POST {action:"raid_start", login}   → Raid zu einem Mitglied des Raid-Netzwerks, das gerade live ist (Streamer,
+//                                          Admins, Mods mit Bereich Chat); der Bot sagt ihn an, wenn eingeschaltet
+//   POST {action:"raid_cancel"}         → laufenden Raid abbrechen
 import {
   audit, channelServe, corsHeaders, db, env, getConnection, getUserFromRequest, isAdminUser, json, rateLimit, requestChannel, tooMany,
 } from "../_shared/twitch.ts";
@@ -24,11 +27,12 @@ import { startAnniversary } from "../_shared/anniversary.ts";
 import { syncChatControlRewards } from "../_shared/chatcontrol.ts";
 import { addSongFromWeb } from "../_shared/bot.ts";
 import { discordAnnounce, inspectWebhook } from "../_shared/discord.ts";
+import { cancelRaid, startRaid } from "../_shared/raids.ts";
 
 Deno.serve(channelServe(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Methode nicht erlaubt" }, 405);
-  const { action, key, start, url, kind, tile, auto } = await req.json().catch(() => ({}));
+  const { action, key, start, url, kind, tile, auto, login } = await req.json().catch(() => ({}));
   // Watchtime: ruft das OBS-Overlay ohne Anmeldung auf. Die Datenbank lässt höchstens jede
   // Minute einen Durchgang zu, gezählt wird nur, wenn Twitch den Stream als live meldet.
   if (action === "watch_tick") {
@@ -129,6 +133,15 @@ Deno.serve(channelServe(async (req) => {
       if (kind !== "test" && kind !== "schedule" && kind !== "idea") return json({ error: "Unbekannte Nachricht" }, 400);
       if (!(await rateLimit(`discord:${requestChannel() ?? "default"}`, 10))) return tooMany();
       const res = await discordAnnounce(kind, typeof tile === "string" ? tile.slice(0, 80) : undefined, auto === true);
+      return json(res, res.ok ? 200 : 409);
+    }
+    if (action === "raid_start" || action === "raid_cancel") {
+      if (!(await isAdminUser(user.id, "chat"))) return json({ error: "Raiden dürfen der Streamer und freigegebene Mods." }, 403);
+      if (!(await rateLimit(`raid:${requestChannel() ?? "default"}`, 6))) return tooMany();
+      const target = String(login ?? "").trim().toLowerCase().slice(0, 25);
+      if (action === "raid_start" && !/^[a-z0-9_]{1,25}$/.test(target)) return json({ error: "Unbekannter Kanal" }, 400);
+      await audit(user.id, action, action === "raid_start" ? { to: target } : {});
+      const res = action === "raid_start" ? await startRaid(target) : await cancelRaid();
       return json(res, res.ok ? 200 : 409);
     }
     return json({ error: "Unbekannte Aktion" }, 400);

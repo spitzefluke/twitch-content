@@ -727,6 +727,16 @@ Einmal nötig: Migration **`supabase/migrations/20261207000000_discord.sql`** (n
 - **Mod-Rechte:** Bereich „Bot & Chat“. **Demo-Modus:** Einstellungen im Browser, es wird nichts gepostet.
 - **Startseite:** Link zum StreamHelp-Discord (https://discord.gg/XkVG2ZEDG) im Menü, im Kontaktbereich und in der Fußzeile; auch die KI-Hilfe kennt ihn.
 
+## Raid-Netzwerk und Freunde werben
+
+Einmal nötig: Migration **`supabase/migrations/20261209000000_raid_network.sql`** (nach `…_discord.sql`). Tests: `supabase/tests/raid_network_test.sql` (SQL) und `supabase/functions/_shared/raids_test.ts` (Deno). **Neues Twitch-Recht `channel:manage:raids`:** Nach dem Deploy meldet der Twitch-Gesundheitscheck bei bestehenden Kanälen „Recht fehlt“ – Streamer verbinden Twitch einmal neu (Knopf „Twitch neu verbinden“). Bis dahin geht alles außer „Raiden“.
+
+- **Raid-Netzwerk** (Dashboard → **Raid-Netzwerk**, `js/dash-network.js`): Mitmachen ist freiwillig („Im Raid-Netzwerk sichtbar“). Wer mitmacht, sieht die anderen Mitglieder, die gerade live sind (`core.stream_games.live_at`, höchstens 12 Minuten alt): gleiches Spiel zuerst, dann gleiche Sprache, dann kleinere Kanäle (Ø Zuschauer des laufenden Streams). Sichtbar sind nur Name, Bild, Spiel, Zuschauerzahl, Sprache und der Kurztext – nur für andere Mitglieder.
+- **Raid mit einem Klick** (`stream-tools` → `raid_start`, `_shared/raids.ts`): Die Datenbank prüft Mitgliedschaft beider Kanäle, ob das Ziel live ist und höchstens einen Raid je 2 Minuten (`raid_target`), dann startet Twitch den Raid (Helix `POST /raids`). **Raid abbrechen** (`raid_cancel`). Rechte: Streamer, Admins, Mods mit Bereich „Bot & Chat“; jeder Raid steht im Mod-Protokoll.
+- **Bot-Ansage:** Sobald Twitch den Raid angenommen hat, schreibt der Bot die Ansage (`{target}`, `{link}`; abschaltbar). Kommt ein Raid aus dem Netzwerk, begrüßt der Bot ihn nach dem normalen Danke mit dem Kurztext des Kanals (`raid_welcome`, abschaltbar).
+- **Freunde werben** (Dashboard → **Freunde werben**): eigener Link `index.html?ref=<login>`. Der Browser merkt sich den Link 30 Tage (`localStorage` `sh_ref`); nach „Kanal anmelden“ ordnet `referral_claim` den neuen Kanal dem Werber zu (nur einmal, nur solange der Kanal auf Freischaltung wartet). Im Admin-Bereich stehen geworbene Bewerbungen oben mit „geworben von …“. Abzeichen ab 1 / 3 / 10 freigeschalteten Kanälen (Werber, Netzwerker, Botschafter) – im Dashboard und auf dem öffentlichen Profil. Kein Geld.
+- **Demo-Modus:** drei erfundene Mitglieder sind live, geraidet wird nicht; Beispiel-Werbungen.
+
 ## Artists: Designs hochladen
 
 Artists stellen Streamern eigene Designs zur Verfügung – **kostenlos, mit Credit**. Einmal nötig: Migration **`supabase/migrations/20261203000000_artists.sql`** (nach `…_bet_scratch.sql`). Tests dazu: `supabase/tests/artists_test.sql`. Die Admin-Aktionen laufen über die Edge Function `admin` (wird mit den anderen Functions deployt).

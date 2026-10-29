@@ -55,6 +55,8 @@ function missing() {
   return null;
 }
 
+const BADGES = { werber: '🤝 Hat einen Streamer zu StreamHelp gebracht', netzwerker: '🌐 Netzwerker – 3 Streamer geworben', botschafter: '🏆 StreamHelp-Botschafter – 10 Streamer geworben' };
+
 function paint() {
   const p = profile;
   const name = p.display_name || p.login;
@@ -69,6 +71,10 @@ function paint() {
     ava.replaceChildren(h('img', { src: p.avatar_url, alt: '', referrerpolicy: 'no-referrer' }));
   } else ava.textContent = name.slice(0, 1).toUpperCase();
   $('#pp-name').textContent = name;
+  // Abzeichen fürs Werben anderer Streamer (Migration …_raid_network.sql)
+  const badge = BADGES[p.badge];
+  $('#pp-badge').hidden = !badge;
+  if (badge) $('#pp-badge').textContent = badge;
   brand(p.accent);
   $('#pp-bio').textContent = p.bio || '';
   $('#pp-bio').hidden = !p.bio;

@@ -681,7 +681,7 @@ function renderChannels() {
         <span>${escapeHtml(c.display_name || c.login || '–')}${c.is_default ? ' <span class="chip">Standard</span>' : ''}<br>
         <small class="muted">${c.login ? `twitch.tv/${escapeHtml(c.login)}` : ''}${c.owner ? ` · Konto: ${escapeHtml(c.owner)}` : ''}</small></span></span></td>
       <td><span class="chip ${cls}">${label}</span>${mods.join('')}${c.admin_note ? `<br><small class="muted">${escapeHtml(c.admin_note)}</small>` : ''}</td>
-      <td class="muted">${escapeHtml(c.note || '–')}</td>
+      <td class="muted">${escapeHtml(c.note || '–')}${c.referred_by ? `<br><span class="chip chip--ok ch-mod">👥 geworben von ${escapeHtml(c.referred_by)}</span>` : ''}${c.referrals ? `<br><small>hat ${nf.format(c.referrals)} ${c.referrals === 1 ? 'Kanal' : 'Kanäle'} geworben</small>` : ''}</td>
       <td class="mono">${fmtDate(c.created_at)}</td>
       <td>${c.connected ? '<span class="chip chip--ok">verbunden</span>' : '<span class="muted">–</span>'}</td>
       <td><span class="channel-actions">${actions.join('') || '–'}</span></td>
