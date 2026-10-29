@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-EWQQTwjSE765uBpTokW1mJj3vWU2uCRk9QiHsi1bMMM=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-bv4lySEQ4qI2tFFvd0n2kM1kCAwcjipYWJVR90UN0m8=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -47,10 +47,10 @@
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
-  <link rel="stylesheet" href="css/style.css?v=a9f34ff589">
-  <link rel="stylesheet" href="css/phosphor.css?v=250c803969">
+  <link rel="stylesheet" href="css/style.css?v=96a20c23a6">
+  <link rel="stylesheet" href="css/phosphor.css?v=c7b4d09ad5">
   <link rel="stylesheet" href="css/landing.css?v=276e2c5a37">
-  <link rel="stylesheet" href="css/shell.css?v=fd06a12b9b">
+  <link rel="stylesheet" href="css/shell.css?v=21a8b69b8c">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=51e329f61b">
   <link rel="stylesheet" href="css/pet.css?v=810a0995fc">
@@ -60,12 +60,12 @@
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
     "imports": {
-      "./js/admin.js": "./js/admin.js?v=fb6eb2d5ae",
+      "./js/admin.js": "./js/admin.js?v=159ad230a2",
       "./js/affiliate.js": "./js/affiliate.js?v=6a2436ccda",
       "./js/alert-designer.js": "./js/alert-designer.js?v=b05a585bc0",
-      "./js/alerts.js": "./js/alerts.js?v=643820d4dd",
-      "./js/api.js": "./js/api.js?v=93702735c5",
-      "./js/app.js": "./js/app.js?v=36bed33a7c",
+      "./js/alerts.js": "./js/alerts.js?v=657d11f509",
+      "./js/api.js": "./js/api.js?v=ca042341e7",
+      "./js/app.js": "./js/app.js?v=d240dc7c8c",
       "./js/artist-files.js": "./js/artist-files.js?v=5ca31ade50",
       "./js/bingo.js": "./js/bingo.js?v=adc47163c6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=67d9c301fc",
@@ -78,6 +78,7 @@
       "./js/dash-artist.js": "./js/dash-artist.js?v=28e15868ab",
       "./js/dash-bot.js": "./js/dash-bot.js?v=4f62b52221",
       "./js/dash-discord.js": "./js/dash-discord.js?v=9526da96a9",
+      "./js/dash-money.js": "./js/dash-money.js?v=7bba57d925",
       "./js/dash-network.js": "./js/dash-network.js?v=522652f4ce",
       "./js/dash-obsdata.js": "./js/dash-obsdata.js?v=800b31c135",
       "./js/dash-profile.js": "./js/dash-profile.js?v=d64a161e18",
@@ -131,13 +132,13 @@
       "./js/overlay-modules.js": "./js/overlay-modules.js?v=5ebde12772",
       "./js/overlay-stage.js": "./js/overlay-stage.js?v=1709d9784b",
       "./js/overlay-usage.js": "./js/overlay-usage.js?v=c51b368be2",
-      "./js/overlay.js": "./js/overlay.js?v=ddf6902fdb",
+      "./js/overlay.js": "./js/overlay.js?v=bc187b2ebc",
       "./js/pet-species.js": "./js/pet-species.js?v=ccc5a9c9c9",
       "./js/pet.js": "./js/pet.js?v=d40129fa2c",
       "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
       "./js/platform-notices.js": "./js/platform-notices.js?v=2e1994fbf3",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
-      "./js/profile.js": "./js/profile.js?v=2f00061cf9",
+      "./js/profile.js": "./js/profile.js?v=457497660f",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
       "./js/record.js": "./js/record.js?v=1cd418223e",
@@ -149,7 +150,7 @@
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
       "./js/theme-packs.js": "./js/theme-packs.js?v=90faabe1ce",
-      "./js/ticker.js": "./js/ticker.js?v=0081fff3be",
+      "./js/ticker.js": "./js/ticker.js?v=f42d43ff2c",
       "./js/tour.js": "./js/tour.js?v=c499758325",
       "./js/tts-voice.js": "./js/tts-voice.js?v=3a37b18618",
       "./js/twitch-chat.js": "./js/twitch-chat.js?v=1b6eb8553c",
@@ -697,6 +698,7 @@
         <div class="sb-sec">
           <p class="sb-group">Kanal &amp; Team</p>
         <button class="sb-item" type="button" data-page="profile" data-for="team" title="Profil &amp; Zeitplan"><i class="sb-ico ph ph-calendar-blank" aria-hidden="true"></i><span class="sb-label">Profil &amp; Zeitplan</span><span class="sb-short" aria-hidden="true">Profil</span></button>
+        <button class="sb-item" type="button" data-page="money" data-for="team" title="Trinkgeld &amp; Sponsoren"><i class="sb-ico ph ph-hand-coins" aria-hidden="true"></i><span class="sb-label">Trinkgeld &amp; Sponsoren</span><span class="sb-short" aria-hidden="true">Geld</span></button>
         <button class="sb-item" type="button" data-page="mods" data-for="team" title="Mods"><i class="sb-ico ph ph-users-three" aria-hidden="true"></i><span class="sb-label">Mods</span><span class="sb-short" aria-hidden="true">Mods</span></button>
         <button class="sb-item" type="button" data-page="twitch" data-for="streamer" title="Twitch-Verbindung"><i class="sb-ico ph ph-twitch-logo" aria-hidden="true"></i><span class="sb-label">Twitch-Verbindung</span><span class="sb-short" aria-hidden="true">Twitch</span></button>
         <button class="sb-item" type="button" data-page="discord" data-for="team" title="Discord"><i class="sb-ico ph ph-discord-logo" aria-hidden="true"></i><span class="sb-label">Discord</span><span class="sb-short" aria-hidden="true">Discord</span></button>
@@ -764,6 +766,7 @@
                 <span class="acct-head-dot" id="acct-tw-dot"></span>
                 <span class="acct-head-text"><b id="acct-tw">Angemeldet</b><small id="acct-tw-sub"></small></span>
                 <span id="user-role" class="role-badge" hidden>Admin</span>
+                <span id="acct-pro" class="role-badge role-badge--pro" hidden>⭐ Pro</span>
               </div>
               <button id="channel-btn" class="pop-item" type="button" hidden title="Kanal wechseln">
                 <i class="ph ph-swap" aria-hidden="true"></i><span class="pop-item-text">Kanal wechseln<small id="channel-name"></small></span>
@@ -1108,6 +1111,7 @@
                 <button class="btn btn--outline btn--sm" type="button" data-alert="gift">🎁 Verschenkte Abos</button>
                 <button class="btn btn--outline btn--sm" type="button" data-alert="bits">💎 Bits</button>
                 <button class="btn btn--outline btn--sm" type="button" data-alert="redeem">🎟️ Kanalpunkte</button>
+                <button class="btn btn--outline btn--sm" type="button" data-alert="tip">💶 Trinkgeld</button>
               </div>
               <p class="form-msg" id="obs-alerts-msg" role="alert"></p>
               <p class="form-hint">Das Aussehen gestaltest du oben im Alert-Designer, Position und Größe im OBS-Fenster unter „Alerts“.</p>
@@ -1254,6 +1258,11 @@
         <!-- Profil & Zeitplan (js/dash-profile.js), öffentliche Seite profil.html -->
         <section class="page" data-page="profile" hidden>
           <div class="dash-cards pf-cards" id="profile-slot"></div>
+        </section>
+
+        <!-- Trinkgeld & Sponsoren (js/dash-money.js) -->
+        <section class="page" data-page="money" hidden>
+          <div class="dash-cards mo-cards" id="money-slot"></div>
         </section>
 
         <!-- Raid-Netzwerk und Freunde werben (js/dash-network.js) -->
@@ -3183,6 +3192,8 @@
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="bits" aria-label="Bits-Sound anhören">▶</button>
             <label class="field"><span>🎟️ Kanalpunkte</span><select name="sredeem"><option value="" selected>Standard</option></select></label>
             <button class="btn btn--ghost btn--sm" type="button" data-sound-test="redeem" aria-label="Kanalpunkte-Sound anhören">▶</button>
+            <label class="field"><span>💶 Trinkgeld</span><select name="stip"><option value="" selected>Standard</option></select></label>
+            <button class="btn btn--ghost btn--sm" type="button" data-sound-test="tip" aria-label="Trinkgeld-Sound anhören">▶</button>
           </div>
           <!-- Eigene Alert-Sounds hochladen (nur Admins). Absichtlich ohne name-Attribute:
                die Felder gehören nicht zu den OBS-Einstellungen. -->

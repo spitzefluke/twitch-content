@@ -737,6 +737,17 @@ Einmal nötig: Migration **`supabase/migrations/20261209000000_raid_network.sql`
 - **Freunde werben** (Dashboard → **Freunde werben**): eigener Link `index.html?ref=<login>`. Der Browser merkt sich den Link 30 Tage (`localStorage` `sh_ref`); nach „Kanal anmelden“ ordnet `referral_claim` den neuen Kanal dem Werber zu (nur einmal, nur solange der Kanal auf Freischaltung wartet). Im Admin-Bereich stehen geworbene Bewerbungen oben mit „geworben von …“. Abzeichen ab 1 / 3 / 10 freigeschalteten Kanälen (Werber, Netzwerker, Botschafter) – im Dashboard und auf dem öffentlichen Profil. Kein Geld.
 - **Demo-Modus:** drei erfundene Mitglieder sind live, geraidet wird nicht; Beispiel-Werbungen.
 
+## Trinkgeld, Sponsoren, Pro (vorbereitet)
+
+Einmal nötig: Migration **`supabase/migrations/20261211000000_tips_sponsors_pro.sql`** (nach `…_raid_network.sql`). Tests: `supabase/tests/tips_sponsors_pro_test.sql` (SQL) und `supabase/functions/_shared/tips_test.ts` (Deno). Neue Edge Function **`tips`** (Ko-fi-Webhook, ohne Supabase-Login – steht in `supabase/config.toml`, wird mit den anderen deployt). **StreamHelp nimmt dabei kein Geld an.**
+
+- **Trinkgeld** (Dashboard → **Trinkgeld & Sponsoren**, `js/dash-money.js`):
+  - **Ko-fi:** In Ko-fi → Settings → More → API die Webhook-Adresse `…/functions/v1/tips?c=<Kanal-ID>` eintragen (steht zum Kopieren im Dashboard) und den *Verification Token* bei uns hinterlegen. Der Token liegt nur in `core.tip_settings` (nie zurück an die Webseite); `tip_kofi_check` vergleicht ihn je Kanal. Spenden und Abos von Ko-fi werden zum Alert **💶 Trinkgeld** (`stream_alerts.kind = 'tip'`, Betrag in Cent in `amount`, Währung in `tier`), Shop-Käufe nicht. Anonyme Trinkgelder ohne Name und Nachricht, E-Mail wird nie gespeichert, doppelte Zustellungen zählen einmal, Mindestbetrag einstellbar. Der Bot bedankt sich (`{name}`, `{amount}`, `{message}`, abschaltbar).
+  - **Links** (PayPal.me, Tipeee, Streamlabs …, höchstens 4, nur https): auf dem öffentlichen Profil und bei **!trinkgeld** / !spende / !donate / !kofi im Chat (höchstens alle 30 Sekunden).
+  - Der Alert hat Sound-Auswahl (`stip=`), Test-Knopf und Varianten ab Euro-Betrag im Alert-Designer wie die anderen Alerts.
+- **Sponsoren:** eigene Partner (Name, Kurztext, Rabattcode, Link; höchstens 20, einzeln pausierbar). Sie laufen im **Laufband des Overlays** mit „Anzeige“ davor (`sponsor_list`, ohne Login lesbar, alle 5 Minuten neu), **!sponsor** / !partner / !code im Chat antwortet mit „Werbung: …“, das öffentliche Profil zeigt sie unter „Partner · Anzeige“. In der Twitch-Erweiterung erscheinen sie nicht (Twitch erlaubt dort keine Werbung).
+- **Pro (vorbereitet, ohne Bezahlung):** `core.channel_plans` mit „Pro bis …“. Vergeben, verlängern oder entziehen nur im Admin-Bereich (Kanäle → **⭐ Pro**, Edge Function `admin` → `pro_grant`). Im Dashboard erscheint dann „⭐ Pro“ im Kontomenü; `channel_is_pro(kanal)` steht für künftige Pro-Funktionen bereit. Bezahlung (z. B. Stripe) kommt erst, wenn Zahlungsanbieter, AGB/Widerruf und Steuerfragen geklärt sind.
+
 ## Artists: Designs hochladen
 
 Artists stellen Streamern eigene Designs zur Verfügung – **kostenlos, mit Credit**. Einmal nötig: Migration **`supabase/migrations/20261203000000_artists.sql`** (nach `…_bet_scratch.sql`). Tests dazu: `supabase/tests/artists_test.sql`. Die Admin-Aktionen laufen über die Edge Function `admin` (wird mit den anderen Functions deployt).

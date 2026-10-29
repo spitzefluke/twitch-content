@@ -17,6 +17,7 @@
 //   POST {action:"bot_log", token, problems?} → Bot-Protokoll aller Kanäle (Migration …_bot_stats.sql)
 //   POST {action:"channels", token}         → alle Streamer-Kanäle mit Bewerbungen (Migration …_platform.sql)
 //   POST {action:"channel_status", token, channel_id, status, note?} → freischalten (active), sperren (blocked)
+//   POST {action:"pro_grant", token, channel_id, days, note?} → StreamHelp Pro für n Tage vergeben/verlängern, 0 = entziehen
 //                                              oder zurück auf „wartet“ (pending)
 //   Kanäle moderieren und Plattform steuern (Migration …_channel_moderation.sql):
 //   POST {action:"channel_moderate", token, channel_ids[], mod_action, minutes?, reason?}
@@ -182,6 +183,7 @@ Deno.serve(async (req) => {
     }
     if (body.action === "channels") return await channels();
     if (body.action === "channel_status") return await channelStatus(body.channel_id, body.status, body.note);
+    if (body.action === "pro_grant") return await proGrant(body.channel_id, body.days, body.note);
     if (body.action === "channel_moderate") return await channelModerate(body);
     if (["platform_state", "platform_switch", "platform_maintenance", "platform_reload", "update_post", "update_delete"].includes(body.action)) {
       return await platform(body);
@@ -479,6 +481,19 @@ async function channelStatus(channelId: unknown, status: unknown, note: unknown)
   });
   if (error) {
     if (/channel_set_status/.test(error.message)) return json({ error: PLATFORM_MISSING, missing: true }, 400);
+    return json({ error: error.message }, 400);
+  }
+  return json({ channels: data });
+}
+
+// ---------- Pro vergeben (…_tips_sponsors_pro.sql) – noch ohne Bezahlung ----------
+async function proGrant(channelId: unknown, days: unknown, note: unknown) {
+  if (typeof channelId !== "string" || !/^[0-9a-f-]{36}$/i.test(channelId)) return json({ error: "Ungültiger Kanal" }, 400);
+  const n = Math.round(Number(days));
+  if (!Number.isFinite(n) || n < 0 || n > 3660) return json({ error: "Ungültige Dauer (0–3660 Tage)" }, 400);
+  const { data, error } = await db.rpc("pro_grant", { p_channel: channelId, p_days: n, p_note: typeof note === "string" ? note.slice(0, 200) : "" });
+  if (error) {
+    if (/pro_grant/.test(error.message)) return json({ error: "Einmal nötig: supabase/migrations/20261211000000_tips_sponsors_pro.sql im SQL Editor ausführen.", missing: true }, 400);
     return json({ error: error.message }, 400);
   }
   return json({ channels: data });

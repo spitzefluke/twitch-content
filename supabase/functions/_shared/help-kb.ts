@@ -25,6 +25,8 @@ Raid-Netzwerk: Dashboard → „Raid-Netzwerk“ → „Im Raid-Netzwerk sichtba
 
 Freunde werben: Dashboard → „Freunde werben“ → Link kopieren und an Streamer schicken. Wer darüber kommt, wird bevorzugt freigeschaltet; du bekommst ein Abzeichen (ab 1, 3 und 10 Kanälen). Kein Geld.
 
+Trinkgeld und Sponsoren: Dashboard → „Trinkgeld & Sponsoren“. Ko-fi per Webhook verbinden (Trinkgeld-Alert im Overlay, Dank vom Bot) und eigene Links (PayPal.me, Tipeee …) für !trinkgeld und das Profil hinterlegen. StreamHelp nimmt kein Geld an – es geht direkt an den Streamer. Sponsoren laufen mit „Anzeige“ im Laufband, !sponsor im Chat.
+
 StreamHelp-Community: Der StreamHelp-Discord ist https://discord.gg/XkVG2ZEDG – für Fragen, Ideen und Neuigkeiten.
 
 Raid-Schutz: Ein Klick pausiert alle Zuschauer-Aktionen; Kanalpunkte gehen automatisch zurück.

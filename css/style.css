@@ -2614,6 +2614,31 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
   .rn-item > .btn, .rn-item > .rn-tag { grid-column: 1 / -1; justify-self: start; }
 }
 
+/* ---------- Trinkgeld & Sponsoren (js/dash-money.js) ---------- */
+.mo-cards { align-items: start; }
+.mo-card .dash-actions .btn, .mo-sponsor .btn { display: inline-flex; align-items: center; gap: 6px; }
+.mo-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--text-2); font-size: 14px; }
+.mo-steps-url { list-style: none; margin-left: -20px; }
+.mo-kofi { display: grid; gap: 10px; }
+.mo-kofi input { font-family: var(--font-mono); font-size: 13px; }
+.mo-danger:hover, .mo-danger:focus-visible { border-color: var(--danger); color: var(--danger); }
+.mo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.mo-recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mo-recent li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; align-items: baseline; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line-soft); background: rgba(var(--surf-rgb), .7); font-size: 14px; }
+.mo-recent small { grid-column: 2 / 3; color: var(--muted); overflow-wrap: anywhere; }
+.mo-recent time { color: var(--muted); font-size: 12px; }
+.mo-sponsors { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mo-sponsor { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: rgba(var(--surf-rgb), .7); }
+.mo-sponsor.is-off { opacity: .6; }
+.mo-sponsor .toggle { gap: 0; }
+.mo-sponsor-text { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
+.mo-sponsor-text span { color: var(--text-2); overflow-wrap: anywhere; }
+.mo-sponsor-text a { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .mo-sponsor { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .mo-sponsor > .btn { grid-column: 2 / 3; justify-self: start; }
+}
+
 /* ---------- Artist-Bereich (js/dash-artist.js) ---------- */
 .ar-cards { align-items: start; }
 .ar-steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }

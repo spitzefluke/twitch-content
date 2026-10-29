@@ -649,6 +649,11 @@ async function connect() {
         .subscribe();
     },
     ticker: async () => (await rows(sb.from('ticker').select('items').eq('id', 1).maybeSingle()))?.items ?? null,
+    // Sponsoren des Kanals (Migration …_tips_sponsors_pro.sql) – fehlt die Funktion, laufen keine mit
+    async sponsors() {
+      const { data, error } = await sb.rpc('sponsor_list');
+      return error ? [] : data ?? [];
+    },
     onTicker(cb) {
       sb.channel('overlay-ticker')
         .on('postgres_changes', rtSpec('ticker', 'UPDATE'), (p) => cb(p.new.items))
@@ -742,6 +747,10 @@ function demoSource() {
       addEventListener('storage', (e) => { if (e.key === 'zd_overlay_config') cb(read('overlay_config', null)?.params ?? ''); });
     },
     ticker: async () => read('ticker', null)?.items ?? null,
+    sponsors: async () => (read('sponsors', []) ?? []).filter((x) => x.active !== false),
+    onSponsors(cb) {
+      addEventListener('storage', (e) => { if (e.key === 'zd_sponsors') cb((read('sponsors', []) ?? []).filter((x) => x.active !== false)); });
+    },
     onTicker(cb) {
       addEventListener('storage', (e) => { if (e.key === 'zd_ticker') cb(read('ticker', null)?.items ?? null); });
     },
@@ -1565,7 +1574,7 @@ async function setupAlerts(source) {
   source.onAlertConfig?.((cfg) => { designs = normalizeAlertConfig(cfg); if (card?.classList.contains('is-still')) showSample(); });
 
   const setLast = (a) => {
-    if (a.test || !$('ov-recent')) return;
+    if (a.test || a.kind === 'tip' || !$('ov-recent')) return; // Trinkgeld hat kein Feld in „Zuletzt“
     const el = a.kind === 'follow' ? $('ov-al-follow') : a.kind === 'bits' ? $('ov-al-bits') : $('ov-al-sub');
     el.textContent = a.kind === 'gift' && a.amount > 1 ? `${a.user_name} (${a.amount}×)`
       : a.kind === 'bits' ? `${a.user_name} (${Number(a.amount).toLocaleString('de-DE')})` : a.user_name;
@@ -1874,8 +1883,18 @@ async function setupTicker(source) {
   const track = $('ov-ticker-track');
   // Fehlt die Tabelle noch, läuft das Band mit den Standardtexten
   let items = await source.ticker().catch((err) => { console.warn('Overlay: Laufband-Texte nicht verfügbar', err); return null; });
+  // Sponsoren laufen mit „Anzeige“ mit; alle 5 Minuten neu gelesen (Änderungen im Dashboard)
+  const loadAds = () => source.sponsors?.().catch((err) => { console.warn('Overlay: Sponsoren nicht verfügbar', err); return []; }) ?? Promise.resolve([]);
+  let ads = await loadAds();
   let timer = 0;
-  const draw = () => fillTicker(track, items, { speed: opt.tspeed * opt.tsize });
+  const draw = () => fillTicker(track, items, { speed: opt.tspeed * opt.tsize, ads });
+  if (source.sponsors && !opt.edit) {
+    setInterval(async () => {
+      const next = await loadAds();
+      if (JSON.stringify(next) !== JSON.stringify(ads)) { ads = next; draw(); } // nur bei Änderung neu (sonst springt das Band)
+    }, 5 * 60_000);
+  }
+  source.onSponsors?.((next) => { ads = next; draw(); });
   draw();
   document.fonts?.ready.then(draw);
   addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(draw, 200); });

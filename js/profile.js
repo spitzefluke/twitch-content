@@ -83,6 +83,18 @@ function paint() {
   $('#pp-twitch').href = `https://www.twitch.tv/${encodeURIComponent(p.login)}`;
   $('#pp-ics').hidden = !(p.slots ?? []).length;
 
+  // Trinkgeld-Links und Sponsoren (Migration …_tips_sponsors_pro.sql)
+  const tips = (p.tips ?? []).filter((l) => /^https:\/\//.test(l.url ?? ''));
+  $('#pp-tips-card').hidden = !tips.length;
+  $('#pp-tips').replaceChildren(...tips.map((l) => h('li', {}, h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer nofollow' },
+    icon('ph-hand-coins'), h('span', {}, l.label || new URL(l.url).hostname), icon('ph-arrow-up-right')))));
+  const sponsors = p.sponsors ?? [];
+  $('#pp-sponsors-card').hidden = !sponsors.length;
+  $('#pp-sponsors').replaceChildren(...sponsors.map((x) => h('li', {},
+    /^https:\/\//.test(x.url ?? '') ? h('a', { href: x.url, target: '_blank', rel: 'sponsored noopener noreferrer' }, x.name) : h('b', {}, x.name),
+    x.text ? h('span', {}, x.text) : null,
+    x.code ? h('span', { class: 'pp-code' }, `Code: ${x.code}`) : null)));
+
   // Links mit Logo der Plattform
   const links = (p.links ?? []).filter((l) => /^https:\/\//.test(l.url ?? ''));
   $('#pp-links-card').hidden = !links.length;
