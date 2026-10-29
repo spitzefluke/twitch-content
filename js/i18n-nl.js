@@ -245,4 +245,5 @@ export default [
   "Praat met andere streamers, stel vragen en hoor als eerste over nieuwe functies.",
   "Word lid van Discord",
   "Sponsoring voor bedrijven",
+  "Free en Pro",
 ];

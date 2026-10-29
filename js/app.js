@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 import { createApi, germanError, missingFunction } from './api.js';
 import { Wheel } from './wheel.js';
 import { DEFAULT_TILES, RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
+import { PRO_PRICE, isProKind, proLocked } from './pro.js';
 import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
 import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
 import { MAX_AMOUNT, RARITIES, amountFromFile, bingoState, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
@@ -60,6 +61,7 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 const state = {
+  pro: { for: null, has: false }, // StreamHelp Pro des Kanals (channelPro)
   api: null,
   user: null,
   profile: null,
@@ -1665,7 +1667,8 @@ function renderGrid() {
   grid.classList.toggle('is-list', view === 'list');
   $('#view-toggle').querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
 
-  const make = (tile, i) => withFav(tile, withCat(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)), favs);
+  const hasPro = channelPro();
+  const make = (tile, i) => withFav(tile, withPro(tile, withCat(tile, (build[tile.kind] && !isLocked(tile) ? build[tile.kind] : buildTile)(tile, i)), hasPro), favs);
   if (!shown.length) {
     grid.replaceChildren(h('div', { class: 'grid-empty' }, query ? `Keine Idee passt zu „${query}“. ` : 'Keine Idee passt zu diesem Filter. ',
       h('button', { type: 'button', class: 'link-btn', onclick: resetIdeaFilters }, 'Filter zurücksetzen')));
@@ -1834,6 +1837,40 @@ const favKey = () => `sh_favs_${state.user?.id ?? ''}_${state.channel?.id ?? 'de
 function favTiles() {
   try { return new Set(JSON.parse(localStorage.getItem(favKey())) ?? []); } catch { return new Set(); }
 }
+// StreamHelp Pro (js/pro.js): hat der Kanal Pro? (channel_has_pro, …_pro_features.sql – fehlt die Migration: nein)
+function channelPro() {
+  const id = state.channel?.id ?? 'default';
+  if (state.pro.for !== id && state.api?.channelHasPro) {
+    state.pro.for = id;
+    state.api.channelHasPro().then((v) => {
+      if (!!v === state.pro.has) return;
+      state.pro.has = !!v;
+      if (state.page === 'ideas') renderGrid();
+    }).catch((err) => {
+      state.pro.has = false;
+      if (!/channel_has_pro/.test(err?.message ?? '')) console.warn('Pro-Abfrage:', err?.message ?? err);
+    });
+  }
+  return state.pro.has;
+}
+
+// Pro-Ideen: Abzeichen „Pro“; gilt Pro schon (PRO_ENFORCED) und hat der Kanal keins, führt der Klick zum Vergleich
+function withPro(tile, el, hasPro) {
+  if (!el.classList.contains('tile') || !isProKind(tile.kind)) return el;
+  el.dataset.pro = '';
+  el.querySelector('.tile-cat')?.append(h('span', { class: 'tile-pro', title: `Gehört zu StreamHelp Pro (${PRO_PRICE.label})` }, 'Pro'));
+  if (!proLocked(tile.kind, hasPro)) return el;
+  el.classList.add('is-pro-locked');
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('.tile-fav')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const who = canStreamerView() ? 'dein Kanal' : 'dieser Kanal';
+    if (confirm(`„${tile.title}“ gehört zu StreamHelp Pro (${PRO_PRICE.label}) – ${who} hat noch kein Pro.\n\nVergleich Free und Pro ansehen?`)) window.open('pro.html', '_blank', 'noopener');
+  }, true);
+  return el;
+}
+
 function withFav(tile, el, favs) {
   if (!el.classList.contains('tile') || el.classList.contains('tile--placeholder')) return el;
   const on = favs.has(tile.id);

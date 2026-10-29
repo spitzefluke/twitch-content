@@ -248,4 +248,5 @@ export default [
   "Tausch dich mit anderen Streamern aus, stell Fragen und erfahre als Erstes von neuen Funktionen.",
   "Discord beitreten",
   "Sponsoring für Firmen",
+  "Free und Pro",
 ];

@@ -417,6 +417,11 @@ code { font-family: var(--font-mono); font-size: .9em; }
   font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text);
 }
 .tile-cat .cat-dot { width: 6px; height: 6px; box-shadow: 0 0 8px var(--dot); }
+/* StreamHelp Pro (js/pro.js): Abzeichen neben der Art; ohne Pro (sobald es gilt) gedämpft mit Schloss */
+.tile-pro { margin-left: 2px; padding: 1px 7px; border-radius: 999px; background: linear-gradient(135deg, #9184d9, #c9b8ff); color: #160f2e; font-weight: 700; letter-spacing: .08em; }
+.tile.is-pro-locked { cursor: pointer; }
+.tile.is-pro-locked > :not(.tile-cat) { opacity: .55; filter: saturate(.6); }
+.tile.is-pro-locked .tile-pro::before { content: "🔒 "; }
 /* Wann: „Jederzeit“ oder Datum mit kurzem Countdown – steht unten */
 .tile-tag {
   order: 9; display: flex; align-items: center; gap: 6px; margin-top: 4px;

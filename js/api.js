@@ -265,6 +265,8 @@ async function createSupabaseApi() {
     },
     async sponsorDelete(id) { return unwrap(await sb.rpc('sponsor_delete', { p_id: id })); },
     async proStatus() { return unwrap(await sb.rpc('pro_status')); },
+    // Hat der Kanal Pro? (Migration …_pro_features.sql, für alle lesbar)
+    async channelHasPro() { return unwrap(await sb.rpc('channel_has_pro')); },
     // Raid-Netzwerk und Freunde werben (Migration …_raid_network.sql); geraidet wird über die Edge Function
     async raidNetworkGet() { return unwrap(await sb.rpc('raid_network_get')); },
     async raidNetworkSave(p) {
@@ -1595,6 +1597,7 @@ function createLocalApi() {
       return list;
     },
     async proStatus() { return { pro: false, until: null }; },
+    async channelHasPro() { return false; },
     // Raid-Netzwerk im Demo-Modus: drei erfundene Mitglieder sind live, geraidet wird nicht
     async raidNetworkGet() {
       await requireAdmin();

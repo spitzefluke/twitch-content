@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js', 'profil.html': 'profile.js', 'sponsoring.html': 'sponsoring.js' };
+const PAGES = { 'index.html': 'app.js', 'overlay.html': 'overlay.js', 'admin.html': 'admin.js', 'record.html': 'record.js', 'profil.html': 'profile.js', 'sponsoring.html': 'sponsoring.js', 'pro.html': 'pro-page.js' };
 const check = process.argv.includes('--check');
 
 // Song-Wünsche (js/bot-plus.js): eingebetteter YouTube-Player (ohne Cookies) im Dashboard
