@@ -347,26 +347,6 @@ export const DEFAULT_TILES = [
     target_at: null,
     background: null,
   },
-  {
-    id: 'idea-1',
-    position: 26,
-    kind: 'countdown',
-    title: 'Late-Night-Marathon',
-    description: 'Ein langer Stream bis tief in die Nacht – ohne Pause bis zum Finale.',
-    theme: 'tracks',
-    target_at: '2026-10-03T20:00:00+02:00',
-    background: null,
-  },
-  {
-    id: 'idea-4',
-    position: 27,
-    kind: 'countdown',
-    title: 'Countdown zum Subathon',
-    description: 'Der nächste Subathon kommt! Jeder Sub verlängert den Stream – wie lange geht es diesmal?',
-    theme: 'city',
-    target_at: '2026-11-21T12:00:00+01:00',
-    background: null,
-  },
 ];
 
 // Vorschläge aus der Community (nur Demo-Modus – live kommen sie aus Supabase)
