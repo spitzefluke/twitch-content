@@ -246,4 +246,9 @@ export default [
   "Entra su Discord",
   "Sponsorizzazioni per aziende",
   "Free e Pro",
+  "Prodotto",
+  "Aiuto",
+  "Azienda",
+  "Scopri gli streamer",
+  "Tutti i diritti riservati.",
 ];

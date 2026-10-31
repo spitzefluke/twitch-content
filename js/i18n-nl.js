@@ -246,4 +246,9 @@ export default [
   "Word lid van Discord",
   "Sponsoring voor bedrijven",
   "Free en Pro",
+  "Product",
+  "Hulp",
+  "Bedrijf",
+  "Ontdek streamers",
+  "Alle rechten voorbehouden.",
 ];

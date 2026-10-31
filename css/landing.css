@@ -227,10 +227,26 @@ main.nc-wrap { flex: 1; }
 .nc-cta-text h2 { margin: 0; font-size: clamp(30px, 3.8vw, 52px); font-weight: 600; letter-spacing: -.03em; line-height: 1.02; }
 .nc-cta-text p { margin-top: 14px; font-size: 16px; line-height: 1.65; color: var(--color-neutral-200); max-width: 52ch; }
 .nc-cta .nc-actions { margin-top: 0; }
-.nc-foot { border-top: 1px solid var(--color-neutral-800); }
-.nc-foot-inner { padding-top: 24px; padding-bottom: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--color-neutral-400); }
-.nc-foot-brand { display: flex; align-items: center; gap: 8px; }
-.nc-foot-links { display: flex; gap: 20px; }
+/* Fußzeile: Spalten mit Überschrift, darunter eine Leiste mit © und Rechtstexten */
+.nc-foot { border-top: 1px solid var(--color-neutral-800); padding: 56px 0 28px; }
+.nc-foot-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 24px; }
+.nc-foot-h { margin: 0 0 22px; font-size: 15px; font-weight: 600; letter-spacing: 0; line-height: 1.3; color: var(--color-text); }
+.nc-foot-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.nc-foot-col li[hidden] { display: none; }
+.nc-foot a { color: var(--color-neutral-400); font-size: 15px; font-weight: 500; text-decoration: none; transition: color .15s; }
+.nc-foot a:hover, .nc-foot a:focus-visible { color: var(--color-text); }
+.nc-foot-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 56px; font-size: 14px; color: var(--color-neutral-400); }
+.nc-foot-copy { display: flex; align-items: center; gap: 8px; color: var(--color-neutral-300); }
+.nc-foot-rights { margin-left: -16px; }
+.nc-foot-legal { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.nc-foot-legal a { font-size: 14px; }
+@media (max-width: 760px) {
+  .nc-foot { padding-top: 40px; }
+  .nc-foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nc-foot-bar { margin-top: 40px; }
+  .nc-foot-rights { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .nc-foot a { transition: none; } }
 
 @keyframes nc-pulse { 50% { opacity: .35; } }
 @keyframes nc-spin { to { transform: rotate(360deg); } }
