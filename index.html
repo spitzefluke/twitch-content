@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-EmrfTQJ4L9znsFSITulYjVUF3zCPMoDTzg223lLvy80=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3u8Dne/cyBdhWSE1Y2OVnR7yocKT/gXwrhiswKJjDdg=' 'sha256-PKQ0cxaYvEwlryd+qcMFuNSkqilDmsngZp02uZBhv2s=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StreamHelp – OBS-Overlay, Chat-Bot &amp; Content-Ideen für Twitch</title>
@@ -49,7 +49,7 @@
   <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
   <link rel="stylesheet" href="css/style.css?v=b81e9597ad">
   <link rel="stylesheet" href="css/phosphor.css?v=ed3a2b3b44">
-  <link rel="stylesheet" href="css/landing.css?v=276e2c5a37">
+  <link rel="stylesheet" href="css/landing.css?v=44e7400789">
   <link rel="stylesheet" href="css/shell.css?v=873d6d8fbb">
   <link rel="stylesheet" href="css/prank-fx.css?v=82d09df5b9">
   <link rel="stylesheet" href="css/bingo.css?v=51e329f61b">
@@ -107,16 +107,16 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=1dbc5571d9",
       "./js/help.js": "./js/help.js?v=21aa55fa82",
-      "./js/i18n-en.js": "./js/i18n-en.js?v=c76405340e",
-      "./js/i18n-es.js": "./js/i18n-es.js?v=e2392ce476",
-      "./js/i18n-fr.js": "./js/i18n-fr.js?v=76f326b7e8",
-      "./js/i18n-it.js": "./js/i18n-it.js?v=b54970d38b",
-      "./js/i18n-keys.js": "./js/i18n-keys.js?v=c5e225be97",
-      "./js/i18n-nl.js": "./js/i18n-nl.js?v=362d10b270",
-      "./js/i18n-pl.js": "./js/i18n-pl.js?v=d2ef7f7de4",
-      "./js/i18n-pt.js": "./js/i18n-pt.js?v=85bade890c",
-      "./js/i18n-ru.js": "./js/i18n-ru.js?v=6b0f0d6091",
-      "./js/i18n-tr.js": "./js/i18n-tr.js?v=ce00c0c9fb",
+      "./js/i18n-en.js": "./js/i18n-en.js?v=80bffa6fa2",
+      "./js/i18n-es.js": "./js/i18n-es.js?v=242e011fe3",
+      "./js/i18n-fr.js": "./js/i18n-fr.js?v=054e7567b0",
+      "./js/i18n-it.js": "./js/i18n-it.js?v=1f3f348b49",
+      "./js/i18n-keys.js": "./js/i18n-keys.js?v=d3f153d488",
+      "./js/i18n-nl.js": "./js/i18n-nl.js?v=dd76e19b8b",
+      "./js/i18n-pl.js": "./js/i18n-pl.js?v=6aafec94c6",
+      "./js/i18n-pt.js": "./js/i18n-pt.js?v=a7f4095e02",
+      "./js/i18n-ru.js": "./js/i18n-ru.js?v=9cc88cb458",
+      "./js/i18n-tr.js": "./js/i18n-tr.js?v=b7b6e25ed7",
       "./js/i18n.js": "./js/i18n.js?v=268ccfe713",
       "./js/intro.js": "./js/intro.js?v=91b52e9132",
       "./js/landing-journey.js": "./js/landing-journey.js?v=970f04d442",
@@ -564,10 +564,50 @@
       </div>
     </section>
 
+    <!-- Fußzeile: vier Spalten mit Überschrift, darunter © und die Rechtstexte -->
     <footer class="nc-foot">
-      <div class="nc-wrap nc-foot-inner">
-        <span class="nc-foot-brand"><img class="nc-logo" src="assets/favicon.svg" width="18" height="18" alt="">StreamHelp</span>
-        <div class="nc-foot-links"><a href="#sicherheit">Sicherheit</a><a href="#faq">FAQ</a><a href="#kontakt">Kontakt</a><a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">Discord</a><a href="pro.html">Free und Pro</a><a href="sponsoring.html">Sponsoring für Firmen</a><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a><a href="nutzungsbedingungen.html">Nutzungsbedingungen</a><a href="admin.html">Admin-Zugang</a></div>
+      <div class="nc-wrap">
+        <div class="nc-foot-cols">
+          <nav class="nc-foot-col" aria-labelledby="foot-produkt">
+            <h2 class="nc-foot-h" id="foot-produkt">Produkt</h2>
+            <ul>
+              <li><a href="#funktionen">Funktionen</a></li>
+              <li><a href="#start">So startest du</a></li>
+              <li><a href="pro.html">Free und Pro</a></li>
+              <li><a href="#sicherheit">Sicherheit</a></li>
+            </ul>
+          </nav>
+          <nav class="nc-foot-col" aria-labelledby="foot-hilfe">
+            <h2 class="nc-foot-h" id="foot-hilfe">Hilfe</h2>
+            <ul>
+              <li><a href="#faq">Häufige Fragen</a></li>
+              <li><a href="#kontakt">Kontakt</a></li>
+            </ul>
+          </nav>
+          <nav class="nc-foot-col" aria-labelledby="foot-firma">
+            <h2 class="nc-foot-h" id="foot-firma">Unternehmen</h2>
+            <ul>
+              <li><a href="sponsoring.html">Sponsoring für Firmen</a></li>
+              <li><a href="admin.html">Admin-Zugang</a></li>
+            </ul>
+          </nav>
+          <nav class="nc-foot-col" aria-labelledby="foot-community">
+            <h2 class="nc-foot-h" id="foot-community">Community</h2>
+            <ul>
+              <li><a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">Discord</a></li>
+              <li data-for-channels hidden><a href="#streamer">Streamer entdecken</a></li>
+            </ul>
+          </nav>
+        </div>
+        <div class="nc-foot-bar">
+          <span class="nc-foot-copy"><img class="nc-logo" src="assets/favicon.svg" width="18" height="18" alt="">© 2026 StreamHelp</span>
+          <span class="nc-foot-rights">Alle Rechte vorbehalten.</span>
+          <nav class="nc-foot-legal" aria-label="Rechtliches">
+            <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a>
+            <a href="impressum.html">Impressum</a>
+            <a href="datenschutz.html">Datenschutz</a>
+          </nav>
+        </div>
       </div>
     </footer>
   </div>

@@ -249,4 +249,9 @@ export default [
   "Discord beitreten",
   "Sponsoring für Firmen",
   "Free und Pro",
+  "Produkt",
+  "Hilfe",
+  "Unternehmen",
+  "Streamer entdecken",
+  "Alle Rechte vorbehalten.",
 ];

@@ -246,4 +246,9 @@ export default [
   "Join Discord",
   "Sponsorship for brands",
   "Free and Pro",
+  "Product",
+  "Help",
+  "Company",
+  "Discover streamers",
+  "All rights reserved.",
 ];

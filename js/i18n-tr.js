@@ -246,4 +246,9 @@ export default [
   "Discord’a katıl",
   "Markalar için sponsorluk",
   "Free ve Pro",
+  "Ürün",
+  "Yardım",
+  "Şirket",
+  "Yayıncıları keşfet",
+  "Tüm hakları saklıdır.",
 ];
