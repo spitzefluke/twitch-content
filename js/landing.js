@@ -37,10 +37,96 @@ export function setupLanding(root, opts = {}) {
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const visible = () => !root.hidden && document.visibilityState === 'visible';
 
+  navMenu(root);
+  channelSearch(root);
+  mailOpener(root);
   statsBand(root, still, visible, opts);
   revealOnScroll(root, still);
   if (still) progressBar(root);
   else startJourney(root, visible);
+}
+
+// Schmale Fenster: Menü-Knopf in der Kopfzeile klappt die Links auf (Klick auf einen Link, Esc
+// oder breiteres Fenster schließt es wieder)
+function navMenu(root) {
+  const btn = root.querySelector('[data-menu]');
+  const menu = root.querySelector('#nc-menu');
+  if (!btn || !menu) return;
+  const icon = btn.querySelector('.ph');
+  const set = (open) => {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    icon.className = `ph ${open ? 'ph-x' : 'ph-list'}`;
+  };
+  btn.addEventListener('click', () => set(menu.hidden));
+  menu.addEventListener('click', (e) => { if (e.target.closest('a')) set(false); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { set(false); btn.focus(); } });
+  matchMedia('(min-width: 900px)').addEventListener('change', (e) => { if (e.matches) set(false); });
+}
+
+// „Stream finden“: Showcase (mit Zustimmung, weiß ob live) und Kanal-Liste (alle freigeschalteten) zu einer
+// Liste zusammenführen – steht ein Kanal in beiden, bekommt seine Karte LIVE und das Spiel, live zuerst.
+function mergeChannels(root) {
+  const list = root.querySelector('#lp-channels');
+  const show = root.querySelector('#lp-showcase-list');
+  if (!list || !show) return;
+  const byLogin = new Map([...show.querySelectorAll('a[data-login]')].map((a) => [a.dataset.login.toLowerCase(), a]));
+  for (const btn of list.querySelectorAll('button[data-channel]')) {
+    const a = byLogin.get(btn.dataset.channel.toLowerCase());
+    if (!a) continue;
+    a.closest('li').classList.add('is-dup');
+    if (!('live' in a.dataset) || btn.querySelector('.nc-showcase-live')) continue;
+    btn.dataset.live = '';
+    btn.append(a.querySelector('.nc-showcase-live').cloneNode(true));
+    const game = a.querySelector('small')?.textContent;
+    if (game) btn.querySelector('small').textContent = game;
+  }
+  const items = [...list.children];
+  const sorted = [...items].sort((x, y) => (y.querySelector('[data-live]') ? 1 : 0) - (x.querySelector('[data-live]') ? 1 : 0));
+  if (sorted.some((li, i) => li !== items[i])) list.append(...sorted);
+}
+
+// „Stream finden“: Suche filtert Showcase und Kanal-Liste nach Name, Spiel oder Twitch-Adresse
+function channelSearch(root) {
+  const input = root.querySelector('#lp-channel-q');
+  const none = root.querySelector('#lp-channels-none');
+  const box = root.querySelector('#lp-showcase');
+  if (!input || !none) return;
+  const lists = ['#lp-showcase-list', '#lp-channels'].map((s) => root.querySelector(s)).filter(Boolean);
+  const visible = (li) => !li.hidden && !li.classList.contains('is-dup');
+  const apply = () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    for (const list of lists) {
+      for (const li of list.children) {
+        li.hidden = !!q && !li.textContent.toLowerCase().includes(q);
+        if (visible(li)) shown++;
+      }
+    }
+    box?.classList.toggle('is-empty', ![...(root.querySelector('#lp-showcase-list')?.children ?? [])].some(visible));
+    none.hidden = !q || shown > 0;
+  };
+  input.addEventListener('input', apply);
+  // Listen kommen erst später (Supabase) – dann zusammenführen und die Suche erneut anwenden
+  const update = () => { mergeChannels(root); apply(); };
+  lists.forEach((l) => new MutationObserver(update).observe(l, { childList: true }));
+}
+
+// Kontakt: Formular klappt auf, wenn ein Link dorthin führt (Fußzeile, #nachricht in der Adresse);
+// dazu der Sprung zum Abschnitt aus der Adresse
+function mailOpener(root) {
+  const box = root.querySelector('#nachricht');
+  if (!box) return;
+  const open = () => { box.open = true; };
+  if (location.hash === '#nachricht' || location.hash === '#contact-form') open();
+  // Mit Sprungziel geöffnet (z. B. von „Über uns“): Die Startseite war beim Laden noch versteckt,
+  // der Browser konnte nicht hinspringen – das jetzt nachholen
+  let id = '';
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch { /* kaputte Adresse: kein Sprung */ }
+  const target = id && document.getElementById(id);
+  if (target && root.contains(target)) requestAnimationFrame(() => target.scrollIntoView());
+  addEventListener('hashchange', () => { if (location.hash === '#nachricht' || location.hash === '#contact-form') open(); });
+  root.addEventListener('click', (e) => { if (e.target.closest('a[href="#nachricht"]')) open(); });
 }
 
 // Abschnitte gleiten herein, sobald sie ins Bild kommen
