@@ -251,4 +251,11 @@ export default [
   "Azienda",
   "Scopri gli streamer",
   "Tutti i diritti riservati.",
+  "Chi siamo",
+  "Lavora con noi",
+  "Chi c'è dietro StreamHelp e perché lo costruiamo.",
+  "Contribuisci con design come artista o aiuta su Discord.",
+  "Arriva appena la nostra attività sarà registrata.",
+  "Siamo qui per qualsiasi domanda o suggerimento.",
+  "Sponsorizza streamer della giusta dimensione – in arrivo.",
 ];

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Über uns · StreamHelp</title>
+  <meta name="description" content="Wer hinter StreamHelp steckt, warum wir es bauen, wie du mitmachen kannst und wie du uns erreichst.">
+  <link rel="canonical" href="https://spitzefluke.github.io/twitch-content/ueber-uns.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="StreamHelp">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:title" content="Über uns · StreamHelp">
+  <meta property="og:description" content="Wer hinter StreamHelp steckt und wie du mitmachen kannst.">
+  <meta property="og:url" content="https://spitzefluke.github.io/twitch-content/ueber-uns.html">
+  <meta property="og:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- Über uns: Wer wir sind, Mitmachen, Karriere (kommt mit dem Gewerbe), Kontakt. Bewusst ohne Skripte
+       wie Impressum und Datenschutz; verlinkt aus der Fußzeile der Startseite (Spalte „Unternehmen“). -->
+  <style>
+    :root { --bg: #0b0714; --card: #161027; --text: #eef1f7; --muted: #a7b0c2; --line: #2c2244; --accent: #b186ff; --warn: #ffd36b; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(80% 50% at 20% -10%, #241a44, var(--bg) 70%) no-repeat, var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { width: min(100% - 32px, 820px); margin: 0 auto; padding: 40px 0 64px; }
+    a { color: var(--accent); }
+    .back { display: inline-block; margin-bottom: 28px; text-decoration: none; }
+    .kicker { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+    h1 { margin: 0 0 10px; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.1; letter-spacing: -.02em; text-wrap: balance; }
+    h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.3; }
+    h3 { margin: 0 0 4px; font-size: 17px; }
+    p { margin: 8px 0; }
+    .lead { max-width: 62ch; font-size: 18px; color: var(--muted); }
+    section { margin-top: 40px; scroll-margin-top: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; margin-top: 14px; }
+    .card { padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+    .card a { display: inline-block; margin-top: 10px; font-weight: 600; text-decoration: none; }
+    .soon { display: inline-block; margin-bottom: 8px; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(255, 211, 107, .5); color: var(--warn); font-size: 13px; font-weight: 700; }
+    footer { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="./">← Zu StreamHelp</a>
+    <p class="kicker">Über uns</p>
+    <h1>Wer hinter StreamHelp steckt</h1>
+    <p class="lead">StreamHelp ist ein unabhängiges Projekt aus Hamburg. Wir bauen Werkzeuge, mit denen Twitch-Streamer ihre Community mitmachen lassen – Chat-Spiele, Overlay, Alerts und Bot an einem Ort, statt fünf verschiedener Tools.</p>
+
+    <section aria-labelledby="warum">
+      <h2 id="warum">Warum wir das machen</h2>
+      <div class="grid">
+        <div class="card"><h3>Mitmachen statt zuschauen</h3><p>Zuschauer drehen das Glücksrad, tippen, rubbeln und spielen mit – der Stream wird zum gemeinsamen Erlebnis.</p></div>
+        <div class="card"><h3>Alles an einem Ort</h3><p>Ein Dashboard, eine Browserquelle für OBS. Einmal einrichten, dann läuft es.</p></div>
+        <div class="card"><h3>Fast alles kostenlos</h3><p>Die meisten Funktionen bleiben dauerhaft frei. Was Pro bringt, steht offen auf <a href="pro.html">Free und Pro</a>.</p></div>
+      </div>
+    </section>
+
+    <section id="mitmachen" aria-labelledby="mitmachen-title">
+      <h2 id="mitmachen-title">Mitmachen</h2>
+      <p>StreamHelp wächst mit seiner Community. So kannst du mithelfen:</p>
+      <div class="grid">
+        <div class="card"><h3>Als Artist</h3><p>Lade Alerts, Hintergründe, Looks oder Sammelkarten hoch – nach der Prüfung stehen sie kostenlos mit deinem Namen in der Design-Bibliothek.</p><a href="./#login">Anmelden → Artist-Bereich</a></div>
+        <div class="card"><h3>Im Discord</h3><p>Teste neue Funktionen als Erste, gib Feedback und hilf anderen Streamern beim Einrichten.</p><a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">Discord beitreten</a></div>
+        <div class="card"><h3>Mit Ideen</h3><p>Dir fehlt etwas? Schlag es vor – viele Funktionen sind aus Vorschlägen entstanden.</p><a href="./#kontakt">Idee schicken</a></div>
+      </div>
+    </section>
+
+    <section id="karriere" aria-labelledby="karriere-title">
+      <h2 id="karriere-title">Karriere</h2>
+      <span class="soon">🛠️ Kommt bald</span>
+      <p>Sobald unser Gewerbe angemeldet ist, suchen wir hier Verstärkung. Bis dahin: Hast du Lust, an StreamHelp mitzuarbeiten? Schreib uns über das <a href="./#kontakt">Kontaktformular</a> – wir melden uns, wenn es losgeht.</p>
+    </section>
+
+    <section id="kontakt" aria-labelledby="kontakt-title">
+      <h2 id="kontakt-title">Kontakt</h2>
+      <p>Wir sind für jede Frage und jeden Vorschlag da: über das <a href="./#kontakt">Kontaktformular</a> auf der Startseite oder im <a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">StreamHelp-Discord</a>.</p>
+    </section>
+
+    <footer>
+      <a href="./">Startseite</a><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a><a href="nutzungsbedingungen.html">Nutzungsbedingungen</a>
+    </footer>
+  </main>
+</body>
+</html>

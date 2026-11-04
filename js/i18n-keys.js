@@ -254,4 +254,11 @@ export default [
   "Unternehmen",
   "Streamer entdecken",
   "Alle Rechte vorbehalten.",
+  "Über uns",
+  "Karriere",
+  "Wer hinter StreamHelp steckt und warum wir es bauen.",
+  "Als Artist Designs beisteuern oder im Discord mithelfen.",
+  "Kommt, sobald unser Gewerbe angemeldet ist.",
+  "Wir sind für jede Frage und jeden Vorschlag da.",
+  "Streamer passender Größe sponsern – startet bald.",
 ];
