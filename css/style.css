@@ -1133,7 +1133,7 @@ code { font-family: var(--font-mono); font-size: .9em; }
 /* Pro Bild: oben Name, Kopieren, Tresor, Löschen – darunter Seltenheit und Zahl im Icon */
 .bingo-items li {
   display: grid; grid-template-columns: 40px minmax(0, 1fr) 78px auto auto auto; gap: 6px 8px; align-items: center;
-  grid-template-areas: "img name name copy vault del" "img rarity amount amount amount amount";
+  grid-template-areas: "img name amount copy vault del" "img rarity cat cat cat cat";
   padding-bottom: 6px; border-bottom: 1px solid var(--line);
 }
 .bingo-items li:last-child { border-bottom: 0; }
@@ -1143,6 +1143,16 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .bingo-items li > .bingo-amount-pick { grid-area: amount; width: 78px; }
 .bingo-items li > button:not(.prank-del, .bingo-vault-btn) { grid-area: copy; }
 .bingo-items li > .bingo-vault-btn { grid-area: vault; }
+.bingo-items li > .bingo-cat-pick { grid-area: cat; min-width: 0; min-height: 36px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); font-size: 13px; }
+/* Lootpool: Filter-Chips nach Kategorie und Überschrift je Kategorie */
+.bingo-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.bingo-cat-chips:empty { display: none; }
+.bingo-cat-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
+.bingo-cat-chip span { color: var(--dim); font-variant-numeric: tabular-nums; }
+.bingo-cat-chip[aria-pressed="true"] { border-color: var(--acc); background: rgba(var(--acc-rgb), .16); color: var(--text); }
+.bingo-cat-auto { margin: 0 0 8px; }
+.bingo-cat-auto[hidden] { display: none; }
+.bingo-items li.bingo-cat-head { display: block; padding: 8px 0 2px; border-bottom: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--acc-ink, var(--text-2)); }
 .bingo-items li > .prank-del { grid-area: del; }
 .bingo-rarity-pick {
   min-height: 36px; max-width: 128px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2);

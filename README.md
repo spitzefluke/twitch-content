@@ -496,6 +496,16 @@ Zuschauer sehen die Stream-Karte nur an. Unter **Meine Karte** zieht sich jeder 
 
 Im OBS-Dialog unter **🎨 Bingo-Design** gibt es drei Looks für die Karte im Overlay: **Klassisch**, **Neon** und **Papier**.
 
+### Lootpool nach Kategorien
+
+Bingo-Items haben eine **Kategorie** wie im Fortnite-Lootpool: 🪖 Sturmgewehre, 💥 Schrotflinten, ⚡ MPs, 🎯 Scharfschützen, 🔫 Pistolen, 🧨 Explosiv, 💊 Heilung, 🛡️ Schild, 🪃 Wurfgegenstände, 🏃 Mobilität, ✨ Sonstiges (`js/bingo.js`, `CATEGORIES`).
+
+- **Automatisch beim Hochladen** aus dem Namen erkannt (`categoryFromName`: „Medkit“ → Heilung, „Pump Shotgun“ → Schrotflinten, „Shockwave Grenade“ → Mobilität …), in der Liste per Auswahl änderbar. Ältere Items ohne Kategorie sortiert der Knopf „… automatisch einsortieren“ ein.
+- **Liste:** nach Kategorie gruppiert (mit Überschrift und Anzahl), darin nach Seltenheit und Name; oben Filter-Chips „Alle · Sturmgewehre · Heilung …“. Der Tresor steht weiter unten.
+- **Ausgewogene Karten:** Die Stream-Karte (`bingo_new_card`) und eigene Karten ziehen reihum aus jeder Kategorie, statt rein zufällig – so besteht eine Karte nicht nur aus Waffen.
+- **Auf der Karte** (Dashboard, Overlay, Zuschauer) steht die Kategorie als kleines Symbol oben links im Feld.
+- Einmal nötig: Migration **`supabase/migrations/20261219000000_bingo_categories.sql`** (Spalte `category`, neue Kartenregel), Tests `supabase/tests/bingo_categories_test.sql`.
+
 ### Lootpool entfernt, Tresor neu
 
 Den automatischen Abgleich mit dem Fortnite-Lootpool (api-fortnite.com) und die eingebaute Item-Liste gibt es nicht mehr – ins Bingo kommen nur noch hochgeladene Bilder. Einmal nötig:
