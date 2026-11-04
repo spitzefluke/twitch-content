@@ -734,7 +734,7 @@ Einmal nötig: Migration **`supabase/migrations/20261207000000_discord.sql`** (n
 - **Ankündigungen:** „Wochenplan posten“ (aus Profil & Zeitplan, Zeiten als Discord-Zeitstempel in der Zeitzone der Lesenden) und „Idee posten“ (Content-Idee mit Termin). Mit „Neue Termine ankündigen“ geht ein neuer oder verschobener Termin einer Content-Idee automatisch raus – je Termin einmal.
 - Status im Dashboard: wann zuletzt gepostet wurde, sonst die letzte Fehlermeldung (z. B. Webhook in Discord gelöscht). **Testnachricht** und **Trennen** dort.
 - **Mod-Rechte:** Bereich „Bot & Chat“. **Demo-Modus:** Einstellungen im Browser, es wird nichts gepostet.
-- **Startseite:** Link zum StreamHelp-Discord (https://discord.gg/XkVG2ZEDG) im Menü, im Kontaktbereich und in der Fußzeile; auch die KI-Hilfe kennt ihn.
+- **Startseite:** Link zum StreamHelp-Discord (https://discord.gg/XkVG2ZEDG) als Karte im Kontaktbereich und in der Fußzeile; auch die KI-Hilfe kennt ihn.
 
 ## Raid-Netzwerk und Freunde werben
 
@@ -991,12 +991,24 @@ Der Balken unter der Vorschau zeigt **Live-Zahlen aus allen Streams** und fragt 
 - Die Zahlen kommen aus `public.platform_stats()`: nur Summen über alle freigeschalteten Kanäle, keine Namen; für 20 Sekunden zwischengespeichert, damit viele Besucher die Datenbank nicht ständig zählen lassen.
 - Einmal nötig: Migration **`supabase/migrations/20261030000000_platform_stats.sql`** (nach der Plattform-Migration). Fehlt sie, zeigt der Balken nur, was in StreamHelp steckt.
 
+## Startseite: Aufbau
+
+Nach dem Entwurf „Startseite neu“ (Variante „Feinschliff“) aus Claude Design, Designsystem Nocturne:
+
+- **Kopfzeile:** Stream finden · Funktionen · So startest du · FAQ · Über uns, Sprache, „Anmelden“. Unter 900 px ein Menü-Knopf, der die Links aufklappt (`js/landing.js`).
+- **Hero:** „Kostenlos starten“ (Twitch) und „Ich schaue nur zu“ (springt zu „Stream finden“), darunter drei Häkchen. Daneben die Overlay-Vorschau.
+- **Zahlen-Band**, dann **Stream finden** mit Suche: Kanal-Liste und Showcase werden zu einer Liste zusammengeführt – steht ein Kanal in beiden, bekommt seine Karte LIVE und das Spiel, live zuerst. Abschnitt, Menüpunkt und „Ich schaue nur zu“ erscheinen erst, wenn es Kanäle gibt.
+- **Funktionen** (drei Rollen-Karten), **So startest du**, **Sicherheit** als vier Kacheln, **FAQ** (sechs Fragen).
+- **Kontakt:** KI-Hilfe, Discord und „Wer wir sind“ (→ `ueber-uns.html`); darunter klappt das Kontaktformular auf („Lieber persönlich?“, Link `#nachricht`).
+- **Fußzeile:** Produkt · Hilfe · Unternehmen (Über uns, Mitmachen, Roadmap, Sponsoring) · Community, darunter © und die Rechtstexte.
+- **Über uns** (`ueber-uns.html`, statisch ohne Skripte): Geschichte, Werte, Zahlen, Roadmap, Mitmachen, Karriere (kommt mit dem Gewerbe). Die Zahlen dort sind fest eingetragen – bei neuen Content-Ideen oder Theme-Paketen mit anpassen.
+
 ## Startseite: Reise beim Scrollen
 
 Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-journey.js`, Stile am Ende von `css/landing.css`):
 
 - **Overlay-Kapitel:** Die Vorschau bleibt stehen, wandert in die Bildschirmmitte, klappt in ihre Ebenen auf (Alerts, Chat & Bot, Glücksrad, Laufband & Haustier, Subathon-Timer – mit Beschriftung und „Eine Browserquelle für alles.“) und setzt sich wieder zusammen. Nur zweispaltig ab 900 px Breite, wenn der Hero ins Fenster passt.
-- **Danach:** Zahlen-Band wächst auf volle Breite, Überschriften erscheinen Wort für Wort, die Rollen-Karten fächern aus einem Stapel auf, Content-Ideen laufen in zwei Reihen gegeneinander, eine Linie zieht durch die Schritte, ein Scan schaltet die Sicherheits-Punkte frei, die FAQ klappt Zeile für Zeile auf, am Ende dreht sich das Logo auf und sprüht Funken.
+- **Danach:** Zahlen-Band wächst auf volle Breite, Überschriften erscheinen Wort für Wort, die Rollen-Karten fächern aus einem Stapel auf, eine Linie zieht durch die Schritte, ein Scan schaltet die Sicherheits-Kacheln frei, die FAQ klappt Zeile für Zeile auf, am Ende dreht sich das Logo auf und sprüht Funken.
 - **Rundherum:** Licht im Hintergrund wandert mit (eins folgt der Maus), große Kapitelnummern, Kapitel-Leiste rechts (ab 1100 px), magnetische Knöpfe, Lichtfleck auf den Karten.
 - **Vorschau-Szene:** Alerts mit Funken, Abos und Bits verlängern den Subathon-Timer, Glücksrad mit Konfetti, Chat mit hervorgehobenen `!Befehlen`, das Haustier hüpft bei `!füttern`, ab und zu ein Raid.
 - Mit „Bewegung reduzieren“ (Systemeinstellung) bleibt die Seite ruhig wie vorher; Live-Zahlen und Streamer-Liste funktionieren unverändert.
@@ -1006,11 +1018,11 @@ Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-j
 - **10 Sprachen** auf Startseite und Anmeldung: Deutsch, Englisch, Spanisch, Französisch, Italienisch, Niederländisch, Polnisch, Portugiesisch, Türkisch, Russisch. Die Seite nimmt die Browsersprache, oben rechts lässt sie sich wechseln (gemerkt in diesem Browser). Das Dashboard bleibt vorerst deutsch.
   - Quelle ist immer der deutsche Text: `js/i18n-keys.js` (Liste), Übersetzungen in `js/i18n-<sprache>.js` in derselben Reihenfolge. Neuer Text: in `i18n-keys.js` **ans Ende** hängen und in jeder Sprachdatei am Ende ergänzen. `node tools/check-i18n.mjs` prüft Anzahl, HTML-Tags und Platzhalter (läuft auch in den GitHub-Checks).
   - Vorlage für neue Texte: Startseite mit `?i18n-dump` öffnen, in der Konsole `i18nKeys()`.
-- **Kontaktformular** statt öffentlicher E-Mail-Adresse (Startseite → „Kontakt“). Nachrichten landen im Admin-Bereich unter **Postfach**; mit Bot-Falle und Grenzen (3 pro Stunde je Person, 300 am Tag insgesamt).
-- **KI-Hilfe** daneben: beantwortet Fragen zu StreamHelp. Ohne eingerichteten KI-Dienst (oder wenn er hakt) sucht die Seite selbst die passende Antwort in den FAQ – kostenlos, auch auf Deutsch gefragt bei englischer Seite.
+- **Kontaktformular** statt öffentlicher E-Mail-Adresse (Startseite → Kontakt → „Lieber persönlich? Schreib uns eine Nachricht“). Nachrichten landen im Admin-Bereich unter **Postfach**; mit Bot-Falle und Grenzen (3 pro Stunde je Person, 300 am Tag insgesamt).
+- **KI-Hilfe** darüber: beantwortet Fragen zu StreamHelp. Ohne eingerichteten KI-Dienst (oder wenn er hakt) sucht die Seite selbst die passende Antwort in den FAQ – kostenlos, auch auf Deutsch gefragt bei englischer Seite.
   - KI einschalten (optional, kostenlose Stufen z. B. bei Google Gemini oder Groq): in Supabase unter **Edge Functions → Secrets** `HELP_AI_URL` (OpenAI-kompatible Adresse, z. B. `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` oder `https://api.groq.com/openai/v1/chat/completions`), `HELP_AI_KEY` (der API-Schlüssel – **nur dort eintragen, nie in den Code oder einen Chat**) und `HELP_AI_MODEL` (z. B. `gemini-2.0-flash` bzw. `llama-3.1-8b-instant`).
   - Grenzen: 8 Fragen pro Minute und 60 am Tag je Besucher, 3000 am Tag insgesamt. Was die KI über StreamHelp weiß, steht in `supabase/functions/_shared/help-kb.ts`.
-- **Showcase** „Diese Streamer nutzen StreamHelp“ auf der Startseite: nur Kanäle, deren Streamer zugestimmt haben (Dashboard → Twitch-Verbindung → „Auf der Startseite zeigen“), live zuerst.
+- **Showcase** auf der Startseite (unter „Stream finden“): nur Kanäle, deren Streamer zugestimmt haben (Dashboard → Twitch-Verbindung → „Auf der Startseite zeigen“), live zuerst. Steht der Kanal auch in der Liste aller Kanäle, zeigt dessen Karte LIVE und das Spiel.
 - **Preise:** in den FAQ – aktuell kostenlos, ein optionales Abo kommt später.
 - Einmal nötig: Migration **`supabase/migrations/20261101000000_contact_showcase.sql`** (nach der Sicherheits-Migration). Die Edge Function `help-chat` kommt mit dem nächsten Deploy.
 

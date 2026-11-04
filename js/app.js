@@ -32,7 +32,7 @@ import {
 } from './channel.js';
 import { h } from './extras-core.js';
 import { maybeOpenIntro, openIntro, setupIntro } from './intro.js';
-import { applyI18n, initI18n, langPicker, t as tr } from './i18n.js';
+import { applyI18n, initI18n, LANGS, langPicker, t as tr } from './i18n.js';
 import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
@@ -370,9 +370,10 @@ function landingFacts() {
   const ideas = new Set(DEFAULT_TILES.map((t) => t.kind).filter((k) => k !== 'countdown')).size;
   return [
     { key: 'ideas', n: ideas, label: 'Content-Ideen zum Mitmachen' },
-    { key: 'packs', n: THEME_PACKS.length, label: 'Theme-Pakete zum Installieren' },
-    { key: 'pets', n: SPECIES.length, label: 'Tiere fürs Stream-Haustier' },
+    { key: 'packs', n: THEME_PACKS.length, label: 'Theme-Pakete' },
+    { key: 'langs', n: LANGS.length, label: 'Sprachen' },
     { key: 'health', n: 30, unit: 'Min', label: 'Twitch-Gesundheitscheck' },
+    { key: 'pets', n: SPECIES.length, label: 'Tiere fürs Stream-Haustier' },
     { key: 'games', n: GAMES.length, label: 'Games mit eigenem Bereich' },
     { key: 'alert-looks', n: ALERT_PRESETS.length, label: 'Alert-Designs' },
     { key: 'themes', n: OVERLAY_THEMES.length, label: 'Overlay-Designs' },

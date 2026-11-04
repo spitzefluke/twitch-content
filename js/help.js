@@ -84,7 +84,7 @@ export function faqAnswer(root, question) {
   }
   return bestScore >= 1.5 && best
     ? best
-    : t('Dazu weiß ich leider nichts Genaues. Schreib uns über das Formular daneben – wir helfen dir persönlich weiter.');
+    : t('Dazu weiß ich leider nichts Genaues. Schreib uns über das Formular darunter – wir helfen dir persönlich weiter.');
 }
 
 // ---------- Kontaktformular ----------
@@ -153,19 +153,22 @@ async function loadShowcase(root) {
     } else {
       ava.textContent = (c.display_name || c.login).slice(0, 1).toUpperCase();
     }
+    // Karte wie in der Kanal-Liste: Bild, Name, darunter Spiel (live) oder Twitch-Adresse, rechts LIVE
+    a.className = 'nc-channel';
+    a.dataset.login = c.login;
+    if (c.live) a.dataset.live = '';
     const name = document.createElement('b');
     name.textContent = c.display_name || c.login;
-    a.append(ava, name);
+    const sub = document.createElement('small');
+    sub.textContent = c.live && c.category ? c.category : `twitch.tv/${c.login}`;
+    const text = document.createElement('span');
+    text.append(name, sub);
+    a.append(ava, text);
     if (c.live) {
       const live = document.createElement('span');
       live.className = 'nc-showcase-live';
       live.textContent = 'LIVE';
       a.append(live);
-      if (c.category) {
-        const cat = document.createElement('small');
-        cat.textContent = c.category;
-        a.append(cat);
-      }
     }
     const li = document.createElement('li');
     li.append(a);
@@ -174,4 +177,5 @@ async function loadShowcase(root) {
   box.hidden = false;
   const section = box.closest('section');
   if (section) section.hidden = false;
+  root.querySelectorAll('[data-for-channels]').forEach((el) => { el.hidden = false; });
 }

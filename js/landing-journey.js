@@ -1,8 +1,8 @@
 // Startseite als Reise beim Scrollen – nach dem Entwurf „StreamHelp Startseite v3“ (Claude Design).
 // Kapitel: 1 Hero (Vorschau fixiert, wandert in die Mitte, klappt in ihre Ebenen auf und setzt sich wieder
-// zusammen) · 2 Zahlen-Band wächst auf volle Breite · 3 Rollen-Karten fächern aus einem Stapel auf,
-// Content-Ideen laufen in zwei Reihen gegeneinander · 4 Linie durch die Schritte · 5 Scan über die
-// Sicherheit · 6 FAQ Zeile für Zeile · Abschluss: Logo dreht sich auf, Funken.
+// zusammen) · 2 Zahlen-Band wächst auf volle Breite · 3 Rollen-Karten fächern aus einem Stapel auf
+// · 4 Linie durch die Schritte · 5 Scan über die Sicherheits-Kacheln · 6 FAQ Zeile für Zeile
+// · Abschluss: Logo dreht sich auf, Funken.
 // Dazu: Licht im Hintergrund wandert mit (eins folgt der Maus), Kapitel-Leiste rechts, magnetische Knöpfe,
 // Lichtfleck auf den Karten. Die Vorschau spielt eine Szene: Alerts mit Funken, Glücksrad mit Konfetti,
 // Chat mit !Befehlen, Haustier hüpft bei !füttern, Subathon-Timer, ab und zu ein Raid.
@@ -60,7 +60,6 @@ class Journey {
 
   start() {
     this.splitWords();
-    this.buildMarquee();
     this.splitTitle();
     this.cacheElements();
     this.scene();
@@ -93,7 +92,6 @@ class Journey {
       l2: q('[data-fx-l2]'), pin: q('[data-fx-pin]'), pinInner: q('[data-fx-pin-inner]'), stage: q('[data-pv]'),
       caption: q('[data-fx-caption]'), band: q('[data-fx-band]'), bandIn: q('[data-fx-bandin]'),
       groupsEl: q('[data-fx-groups]'), pin2: q('[data-fx-pin2]'), pin2Inner: q('[data-fx-pin2-inner]'),
-      ideas: q('[data-fx-ideas]'), rowA: q('[data-fx-row="a"]'), rowB: q('[data-fx-row="b"]'),
       steps: q('[data-fx-steps]'), line: q('[data-fx-line]'), safety: q('[data-fx-safety]'), scan: q('[data-fx-scan]'),
       faqList: q('[data-fx-faqlist]'), cta: q('[data-fx-cta]'), ctaLogo: q('[data-fx-ctalogo]'), ctaGlow: q('.nc-cta-glow'),
       ctaText: q('.nc-cta-text'), orbA: q('[data-orb="a"]'), orbB: q('[data-orb="b"]'), orbC: q('[data-orb="c"]'),
@@ -109,7 +107,7 @@ class Journey {
     this.$.nums = this.qa('[data-fx-num]');
     this.$.navs = this.qa('[data-nav]');
     this.$.rails = this.qa('[data-rail]').map((el) => ({ el, id: el.dataset.rail, bar: el.querySelector('[data-rail-bar]'), lb: el.querySelector('[data-rail-label]') }));
-    this.$.solid = this.qa('.nc-btn-solid');
+    this.$.solid = this.qa('.nc-btn-solid:not(.nc-btn-nav)'); // der Knopf in der Kopfzeile bleibt stehen
   }
 
   // Überschriften Wort für Wort (Lesbarkeit für Screenreader bleibt: aria-label mit dem ganzen Satz)
@@ -125,28 +123,6 @@ class Journey {
         return i < all.length - 1 ? [s, ' '] : [s];
       }));
     });
-  }
-
-  // Content-Ideen: zwei Reihen aus den vorhandenen Schlagwörtern
-  buildMarquee() {
-    const tags = this.q('[data-fx-ideas] .nc-tags');
-    if (!tags) return;
-    const all = [...tags.children];
-    const half = Math.ceil(all.length / 2);
-    const row = (items, id) => {
-      const r = document.createElement('div');
-      r.className = 'nc-marquee-row';
-      r.dataset.fxRow = id;
-      for (let n = 0; n < 3; n++) items.forEach((t) => r.append(t.cloneNode(true)));
-      return r;
-    };
-    const box = document.createElement('div');
-    box.className = 'nc-marquee';
-    box.setAttribute('aria-hidden', 'true');
-    box.append(row(all.slice(0, half), 'a'), row(all.slice(half), 'b'));
-    tags.after(box);
-    // Die ursprüngliche Liste bleibt für Screenreader da, nur unsichtbar
-    tags.classList.add('nc-sr-only');
   }
 
   // Titel Buchstabe für Buchstabe einblenden
@@ -274,7 +250,6 @@ class Journey {
     // Weich hinterherziehen statt hart springen
     this.sy += (target - this.sy) * 0.14;
     if (Math.abs(target - this.sy) < 0.4) this.sy = target;
-    this.vel = target - this.sy;
     this.mx += (this.tmx - this.mx) * 0.08;
     this.my += (this.tmy - this.my) * 0.08;
     let cm = false;
@@ -319,8 +294,8 @@ class Journey {
     }
     const rest = 1 - a;
     const tilt = rest * (1 - x);
-    const rx = (rest * 7 - this.my * 5 * tilt + (1 - ie) * 24) * K + x * 54;
-    const ry = (rest * -11 + this.mx * 7 * tilt) * K + x * this.mx * 6;
+    const rx = (rest * 5 - this.my * 5 * tilt + (1 - ie) * 24) * K + x * 54;
+    const ry = (rest * -8 + this.mx * 7 * tilt) * K + x * this.mx * 6;
     const rz = -26 * x;
     const dx = this.pinOn ? M.dx * a : 0;
     const dy = this.pinOn ? M.dy * a + x * vh * 0.06 : -this.sy * 0.08 * K;
@@ -329,7 +304,7 @@ class Journey {
     card.style.transform = `perspective(1800px) translate3d(${dx.toFixed(1)}px, ${(dy + (1 - ie) * 70).toFixed(1)}px, 0) scale(${s.toFixed(4)}) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) rotateZ(${rz.toFixed(2)}deg)`;
     card.style.opacity = String(ie);
     card.style.zIndex = '2';
-    card.style.boxShadow = `0 0 0 1px #9397ab, 0 16px 40px rgba(0,0,0,.65), 0 50px 140px -30px rgba(120,185,0,${(0.12 + 0.38 * a).toFixed(3)})`;
+    card.style.boxShadow = `0 0 0 1px #9397ab, 0 16px 40px rgba(0,0,0,.65), 0 50px 140px -30px rgba(120,185,0,${(0.2 + 0.3 * a).toFixed(3)})`;
     if (this.pinOn) {
       const open = x > 0.005;
       card.style.overflow = open ? 'visible' : '';
@@ -408,14 +383,6 @@ class Journey {
       });
     }
 
-    // Content-Ideen: zwei Reihen laufen gegeneinander, neigen sich mit dem Tempo
-    if ($.rowA && $.rowB) {
-      const pp = (vh - top($.ideas)) / (vh + $.ideas.offsetHeight);
-      const sk = Math.max(-7, Math.min(7, (this.vel || 0) * 0.025));
-      $.rowA.style.transform = `translate3d(${(-$.rowA.scrollWidth / 3 * 0.25 - pp * 420 * K).toFixed(1)}px,0,0) skewX(${(-sk).toFixed(2)}deg)`;
-      $.rowB.style.transform = `translate3d(${(-$.rowB.scrollWidth / 3 * 1.1 + pp * 420 * K).toFixed(1)}px,0,0) skewX(${(-sk).toFixed(2)}deg)`;
-    }
-
     // Kapitel 4 – Schritte: Linie zieht sich durch
     const sq = prog($.steps, 0.86, 0.42);
     $.line.style.transform = `scaleX(${sq.toFixed(4)})`;
@@ -478,8 +445,8 @@ class Journey {
     if (this.railOn) {
       let ch = 'top';
       if ($.zahlen.getBoundingClientRect().top < vh * 0.5) ch = 'zahlen';
-      if (cur && cur !== 'streamer') ch = cur;
-      if (cur === 'streamer') ch = 'funktionen';
+      // „Stream finden“ hat nur dann einen Eintrag in der Leiste, wenn es Kanäle gibt
+      if (cur) ch = cur === 'streamer' && $.rails.find((r) => r.id === 'streamer')?.el.hidden ? 'zahlen' : cur;
       const wide = vw >= 1440;
       $.rails.forEach(({ id, bar, lb }) => {
         const on = id === ch;

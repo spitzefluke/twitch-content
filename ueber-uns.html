@@ -6,81 +6,274 @@
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Über uns · StreamHelp</title>
-  <meta name="description" content="Wer hinter StreamHelp steckt, warum wir es bauen, wie du mitmachen kannst und wie du uns erreichst.">
+  <meta name="description" content="Warum es StreamHelp gibt, woran wir glauben, was als Nächstes kommt und wie du mitmachen kannst.">
   <link rel="canonical" href="https://spitzefluke.github.io/twitch-content/ueber-uns.html">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="StreamHelp">
   <meta property="og:locale" content="de_DE">
   <meta property="og:title" content="Über uns · StreamHelp">
-  <meta property="og:description" content="Wer hinter StreamHelp steckt und wie du mitmachen kannst.">
+  <meta property="og:description" content="Ein guter Stream braucht kein Tool-Chaos – wer hinter StreamHelp steckt und wie du mitmachen kannst.">
   <meta property="og:url" content="https://spitzefluke.github.io/twitch-content/ueber-uns.html">
   <meta property="og:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <!-- Über uns: Wer wir sind, Mitmachen, Karriere (kommt mit dem Gewerbe), Kontakt. Bewusst ohne Skripte
-       wie Impressum und Datenschutz; verlinkt aus der Fußzeile der Startseite (Spalte „Unternehmen“). -->
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/phosphor.css">
+  <!-- Über uns nach dem Entwurf „Über uns neu“ (Claude Design, Nocturne): Geschichte, Werte, Zahlen, Roadmap,
+       Mitmachen, Karriere (kommt mit dem Gewerbe). Bewusst ohne Skripte wie Impressum und Datenschutz;
+       verlinkt aus Kopfzeile, Kontakt und Fußzeile der Startseite. -->
   <style>
-    :root { --bg: #0b0714; --card: #161027; --text: #eef1f7; --muted: #a7b0c2; --line: #2c2244; --accent: #b186ff; --warn: #ffd36b; color-scheme: dark; }
+    :root {
+      --bg: #0d0b26; --sf: #18164a; --tx: #eceef8; --ac: #78b900;
+      --n200: #e2e4f6; --n300: #c9cce6; --n400: #a5a9cc; --n700: #4f5280; --n800: #2c2c5c; --n900: #15133a;
+      --a100: #f2fbe3; --a200: #def5b5; --a300: #b3e05a; --a700: #4f7d00; --a800: #2e4a08; --ind: #34379a; --indd: #1b1560;
+      --fh: "Bricolage Grotesque", "Inter", system-ui, sans-serif; --fm: "JetBrains Mono", ui-monospace, monospace;
+      color-scheme: dark;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: radial-gradient(80% 50% at 20% -10%, #241a44, var(--bg) 70%) no-repeat, var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    main { width: min(100% - 32px, 820px); margin: 0 auto; padding: 40px 0 64px; }
-    a { color: var(--accent); }
-    .back { display: inline-block; margin-bottom: 28px; text-decoration: none; }
-    .kicker { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
-    h1 { margin: 0 0 10px; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.1; letter-spacing: -.02em; text-wrap: balance; }
-    h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.3; }
-    h3 { margin: 0 0 4px; font-size: 17px; }
-    p { margin: 8px 0; }
-    .lead { max-width: 62ch; font-size: 18px; color: var(--muted); }
-    section { margin-top: 40px; scroll-margin-top: 24px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; margin-top: 14px; }
-    .card { padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
-    .card p { margin: 0; color: var(--muted); font-size: 15px; }
-    .card a { display: inline-block; margin-top: 10px; font-weight: 600; text-decoration: none; }
-    .soon { display: inline-block; margin-bottom: 8px; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(255, 211, 107, .5); color: var(--warn); font-size: 13px; font-weight: 700; }
-    footer { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+      font: 15px/1.55 "Inter", system-ui, sans-serif; color: var(--tx); text-wrap: pretty;
+      background:
+        radial-gradient(1100px 680px at 85% -180px, color-mix(in srgb, var(--ind) 55%, transparent), transparent 60%),
+        radial-gradient(800px 600px at 0% 40%, color-mix(in srgb, var(--ac) 6%, transparent), transparent 60%),
+        var(--bg);
+    }
+    a { color: var(--a300); text-decoration: none; }
+    a:hover { color: var(--a200); }
+    :focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+    ::selection { background: color-mix(in srgb, var(--ac) 30%, transparent); }
+    h1, h2 { font-family: var(--fh); font-weight: 600; }
+    p { margin: 0; }
+    [id] { scroll-margin-top: 80px; }
+    .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px); }
+    .eyebrow { margin: 0 0 12px; font-family: var(--fm); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ac); }
+    .h2 { margin: 0 0 40px; font-size: clamp(28px, 3vw, 40px); letter-spacing: -.025em; line-height: 1.1; max-width: 20ch; }
+    .sec { padding: 0 0 clamp(64px, 8vw, 112px); }
+    .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--fh); font-weight: 500; font-size: 14px; border-radius: 8px; }
+    .btn-line { color: var(--ac); border: 1px solid var(--ac); padding: 10px 14px; }
+    .btn-line:hover { color: var(--ac); background: color-mix(in srgb, var(--ac) 12%, transparent); }
+    .btn-solid { color: #10200a; background: var(--ac); border: 1px solid var(--ac); font-weight: 600; }
+    .btn-solid:hover { color: #10200a; background: #98d12b; }
+    .btn-lg { padding: 13px 22px; font-size: 16px; }
+    .btn-lg .ph { font-size: 20px; }
+
+    /* Kopfzeile */
+    .nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; padding: 12px clamp(20px, 5vw, 72px); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--n800) 60%, transparent); }
+    .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; font-family: var(--fh); font-weight: 500; font-size: 18px; color: var(--tx); }
+    .brand:hover { color: var(--tx); }
+    .brand img { display: block; }
+    .back { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--tx); font-size: 14px; }
+    .back:hover { color: var(--ac); }
+
+    /* Einstieg */
+    .hero { padding: clamp(56px, 9vw, 120px) 0 clamp(48px, 6vw, 80px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 40px clamp(32px, 6vw, 96px); align-items: end; }
+    .hero .eyebrow { margin-bottom: 20px; }
+    h1 { margin: 0 0 0 -.03em; font-size: clamp(42px, 6.2vw, 84px); line-height: .98; letter-spacing: -.035em; max-width: 12ch; }
+    .accent { color: var(--a300); }
+    .hero-text { display: grid; gap: 16px; max-width: 52ch; }
+    .hero-text p { font-size: clamp(16px, 1.4vw, 18px); line-height: 1.7; color: var(--n200); }
+
+    /* Zitat */
+    .quote { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px 28px; align-items: start; padding: clamp(24px, 4vw, 44px); border-radius: 16px; border: 1px solid var(--n800); background: linear-gradient(150deg, color-mix(in srgb, var(--indd) 75%, transparent), color-mix(in srgb, var(--sf) 50%, transparent)); }
+    .quote-mark { font-family: var(--fh); font-weight: 600; font-size: clamp(64px, 8vw, 112px); line-height: .7; color: var(--ac); }
+    blockquote { margin: 0; font-family: var(--fh); font-weight: 500; font-size: clamp(22px, 2.6vw, 34px); line-height: 1.25; letter-spacing: -.02em; max-width: 30ch; }
+    figcaption { margin-top: 18px; font-family: var(--fm); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--n400); }
+
+    /* Werte */
+    .values { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 32px 28px; }
+    .values li { display: grid; gap: 10px; align-content: start; padding-top: 20px; border-top: 2px solid var(--ac); }
+    .num { font-family: var(--fm); font-size: 12px; color: var(--ac); }
+    .values b, .join b, .road b { font-family: var(--fh); font-weight: 600; font-size: 21px; letter-spacing: -.015em; }
+    .values li > span:last-child { font-size: 15px; line-height: 1.65; color: var(--n300); }
+
+    /* Zahlen */
+    .band { background: radial-gradient(900px 420px at 85% -40%, color-mix(in srgb, var(--ind) 70%, transparent), transparent 64%), var(--indd); padding: 56px 0; }
+    .band .eyebrow { margin-bottom: 28px; color: var(--a300); }
+    .stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 36px 24px; }
+    .stats b { display: block; font-family: var(--fh); font-size: clamp(36px, 3.6vw, 56px); font-weight: 600; line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
+    .stats span { display: block; margin-top: 12px; font-family: var(--fm); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--tx) 72%, transparent); }
+
+    /* Geschichte */
+    .story { padding: clamp(64px, 8vw, 112px) 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 40px clamp(24px, 6vw, 96px); align-items: start; }
+    .story .h2 { margin: 0; max-width: 16ch; }
+    .lead { margin-top: 20px; font-size: 15.5px; line-height: 1.7; color: var(--n200); max-width: 40ch; }
+    .timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+    .timeline li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 18px; }
+    .tl-mark { display: grid; justify-items: center; grid-template-rows: 40px 1fr; }
+    .tl-dot { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--n700); color: var(--a300); font-size: 18px; }
+    .is-now .tl-dot { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 18%, transparent); }
+    .tl-line { width: 1px; min-height: 24px; background: linear-gradient(var(--n700), transparent); }
+    .tl-body { display: grid; gap: 4px; padding: 6px 0 32px; }
+    .tl-when { font-family: var(--fm); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--n400); }
+    .tl-body b { font-family: var(--fh); font-weight: 600; font-size: 19px; letter-spacing: -.01em; }
+    .tl-body > span:last-child, .road span:last-child, .join li span { font-size: 14.5px; line-height: 1.6; color: var(--n300); }
+
+    /* Roadmap */
+    .road { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; }
+    .road li { display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 14px; border: 1px solid var(--n800); background: linear-gradient(170deg, color-mix(in srgb, var(--indd) 70%, transparent), color-mix(in srgb, var(--sf) 60%, transparent)); }
+    .road-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .road-top .ph { font-size: 22px; color: var(--a300); }
+    .tag { font-size: 11px; letter-spacing: .02em; padding: 3px 10px; border-radius: 6px; background: var(--a800); color: var(--a100); }
+    .road b { font-size: 20px; }
+    .note { margin-top: 20px; font-size: 14px; color: var(--n400); }
+
+    /* Mitmachen */
+    .join { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1px; border-radius: 14px; overflow: hidden; border: 1px solid var(--n800); background: var(--n800); }
+    .join a { height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 24px; background: var(--bg); color: var(--tx); transition: background-color .2s; }
+    .join a:hover { background: var(--n900); color: var(--tx); }
+    .join .ph-ico { font-size: 24px; color: var(--a300); }
+    .join b { font-size: 20px; }
+    .join li span { flex: 1; }
+    .join .cta { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-family: var(--fh); font-weight: 500; font-size: 14px; color: var(--ac); }
+
+    /* Karriere */
+    .career { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px clamp(24px, 6vw, 96px); align-items: start; }
+    .career .h2 { margin: 0; }
+    .career-text { display: grid; gap: 16px; justify-items: start; }
+    .career-text p { font-size: 15.5px; line-height: 1.7; color: var(--n200); max-width: 52ch; }
+    .soon { display: inline-block; padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255, 211, 107, .5); color: #ffd36b; font-size: 12px; font-weight: 600; }
+
+    /* Abschluss + Fußzeile */
+    .cta-band { border-top: 1px solid var(--n800); }
+    .cta-inner { padding-top: 72px; padding-bottom: 72px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px 40px; }
+    .cta-inner > div:first-child { flex: 1; min-width: min(100%, 260px); }
+    .cta-inner h2 { margin: 0; font-size: clamp(28px, 3.4vw, 44px); letter-spacing: -.03em; line-height: 1.05; }
+    .cta-inner p { margin-top: 12px; font-size: 16px; line-height: 1.65; color: var(--n200); max-width: 52ch; }
+    .cta-btns { display: flex; flex-wrap: wrap; gap: 12px; }
+    .cta-btns .btn-line { padding: 13px 20px; font-size: 16px; }
+    footer { border-top: 1px solid var(--n800); padding: 24px 0 28px; }
+    .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; font-size: 14px; color: var(--n400); }
+    .foot-copy { display: flex; align-items: center; gap: 8px; margin-right: auto; color: var(--n300); }
+    .foot nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+    .foot nav a { color: var(--n400); }
+    .foot nav a:hover { color: var(--tx); }
+    @media (max-width: 520px) { .quote { grid-template-columns: 1fr; gap: 8px; } }
   </style>
 </head>
 <body>
-  <main>
-    <a class="back" href="./">← Zu StreamHelp</a>
-    <p class="kicker">Über uns</p>
-    <h1>Wer hinter StreamHelp steckt</h1>
-    <p class="lead">StreamHelp ist ein unabhängiges Projekt aus Hamburg. Wir bauen Werkzeuge, mit denen Twitch-Streamer ihre Community mitmachen lassen – Chat-Spiele, Overlay, Alerts und Bot an einem Ort, statt fünf verschiedener Tools.</p>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a class="brand" href="./"><img src="assets/favicon.svg" width="28" height="28" alt=""><span>Stream<span class="accent">Help</span></span></a>
+    <a class="back" href="./"><i class="ph ph-arrow-left" aria-hidden="true"></i>Zur Startseite</a>
+  </nav>
 
-    <section aria-labelledby="warum">
-      <h2 id="warum">Warum wir das machen</h2>
-      <div class="grid">
-        <div class="card"><h3>Mitmachen statt zuschauen</h3><p>Zuschauer drehen das Glücksrad, tippen, rubbeln und spielen mit – der Stream wird zum gemeinsamen Erlebnis.</p></div>
-        <div class="card"><h3>Alles an einem Ort</h3><p>Ein Dashboard, eine Browserquelle für OBS. Einmal einrichten, dann läuft es.</p></div>
-        <div class="card"><h3>Fast alles kostenlos</h3><p>Die meisten Funktionen bleiben dauerhaft frei. Was Pro bringt, steht offen auf <a href="pro.html">Free und Pro</a>.</p></div>
+  <main class="wrap">
+    <section class="hero" aria-labelledby="title">
+      <div>
+        <p class="eyebrow">Über uns</p>
+        <h1 id="title">Ein guter Stream braucht kein <span class="accent">Tool-Chaos.</span></h1>
+      </div>
+      <div class="hero-text">
+        <p>Bevor es StreamHelp gab, haben wir selbst viele Streams geschaut und es auch mal mit eigenem Stream versucht. Dabei ist uns aufgefallen: Für einen coolen Stream braucht man unendlich viele Tools und Seiten.</p>
+        <p>Das wollten wir ändern. StreamHelp ist ein unabhängiges Projekt aus Hamburg – Overlay, Alerts, Chat-Bot und Mitmach-Spiele an einem Ort.</p>
       </div>
     </section>
 
-    <section id="mitmachen" aria-labelledby="mitmachen-title">
-      <h2 id="mitmachen-title">Mitmachen</h2>
-      <p>StreamHelp wächst mit seiner Community. So kannst du mithelfen:</p>
-      <div class="grid">
-        <div class="card"><h3>Als Artist</h3><p>Lade Alerts, Hintergründe, Looks oder Sammelkarten hoch – nach der Prüfung stehen sie kostenlos mit deinem Namen in der Design-Bibliothek.</p><a href="./#login">Anmelden → Artist-Bereich</a></div>
-        <div class="card"><h3>Im Discord</h3><p>Teste neue Funktionen als Erste, gib Feedback und hilf anderen Streamern beim Einrichten.</p><a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">Discord beitreten</a></div>
-        <div class="card"><h3>Mit Ideen</h3><p>Dir fehlt etwas? Schlag es vor – viele Funktionen sind aus Vorschlägen entstanden.</p><a href="./#kontakt">Idee schicken</a></div>
-      </div>
+    <section class="sec" aria-label="Der Anfang">
+      <figure class="quote">
+        <span class="quote-mark" aria-hidden="true">“</span>
+        <div>
+          <blockquote>Fünf Tabs, drei Logins und zwei Browserquellen – nur damit der Chat ein Glücksrad drehen kann. Das geht einfacher.</blockquote>
+          <figcaption>Der Gedanke, mit dem StreamHelp angefangen hat</figcaption>
+        </div>
+      </figure>
     </section>
 
-    <section id="karriere" aria-labelledby="karriere-title">
-      <h2 id="karriere-title">Karriere</h2>
-      <span class="soon">🛠️ Kommt bald</span>
-      <p>Sobald unser Gewerbe angemeldet ist, suchen wir hier Verstärkung. Bis dahin: Hast du Lust, an StreamHelp mitzuarbeiten? Schreib uns über das <a href="./#kontakt">Kontaktformular</a> – wir melden uns, wenn es losgeht.</p>
+    <section id="werte" class="sec" aria-labelledby="werte-title">
+      <p class="eyebrow">Woran wir glauben</p>
+      <h2 class="h2" id="werte-title">Vier Regeln für alles, was wir bauen.</h2>
+      <ol class="values">
+        <li><span class="num">01</span><b>Mitmachen statt zuschauen</b><span>Zuschauer drehen das Glücksrad, tippen und spielen mit – der Stream wird zum gemeinsamen Erlebnis.</span></li>
+        <li><span class="num">02</span><b>Alles an einem Ort</b><span>Ein Dashboard, eine Browserquelle für OBS. Einmal einrichten, dann läuft es.</span></li>
+        <li><span class="num">03</span><b>Fast alles kostenlos</b><span>Die meisten Funktionen bleiben dauerhaft frei. Was Pro bringt, steht offen auf <a href="pro.html">„Free und Pro“</a>.</span></li>
+        <li><span class="num">04</span><b>Dein Kanal bleibt deiner</b><span>Jeder Kanal wird von Hand freigeschaltet. Mods bekommen nur, was du freigibst.</span></li>
+      </ol>
     </section>
-
-    <section id="kontakt" aria-labelledby="kontakt-title">
-      <h2 id="kontakt-title">Kontakt</h2>
-      <p>Wir sind für jede Frage und jeden Vorschlag da: über das <a href="./#kontakt">Kontaktformular</a> auf der Startseite oder im <a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">StreamHelp-Discord</a>.</p>
-    </section>
-
-    <footer>
-      <a href="./">Startseite</a><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a><a href="nutzungsbedingungen.html">Nutzungsbedingungen</a>
-    </footer>
   </main>
+
+  <section class="band" aria-labelledby="zahlen-title">
+    <div class="wrap">
+      <p class="eyebrow" id="zahlen-title">StreamHelp in Zahlen</p>
+      <ul class="stats">
+        <li><b>25</b><span>Content-Ideen</span></li>
+        <li><b>30</b><span>Theme-Pakete</span></li>
+        <li><b>10</b><span>Sprachen</span></li>
+        <li><b>1</b><span>Browserquelle für alles</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section id="geschichte" class="story" aria-labelledby="geschichte-title">
+      <div>
+        <p class="eyebrow">Geschichte</p>
+        <h2 class="h2" id="geschichte-title">Vom Ärger zur Zentrale.</h2>
+        <p class="lead">Viele Funktionen sind aus Vorschlägen der Community entstanden – und es kommen ständig neue dazu.</p>
+      </div>
+      <ol class="timeline">
+        <li><span class="tl-mark" aria-hidden="true"><span class="tl-dot"><i class="ph ph-hand-waving"></i></span><span class="tl-line"></span></span><span class="tl-body"><span class="tl-when">Vorher</span><b>Selbst geschaut, selbst probiert</b><span>Wir merken: Für einen coolen Stream braucht man unzählige Tools und Seiten.</span></span></li>
+        <li><span class="tl-mark" aria-hidden="true"><span class="tl-dot"><i class="ph ph-rocket-launch"></i></span><span class="tl-line"></span></span><span class="tl-body"><span class="tl-when">September 2026</span><b>Die erste Version</b><span>Content-Ideen, Glücksrad mit Kanalpunkten und Anmeldung mit Twitch, Discord, Google &amp; Co.</span></span></li>
+        <li><span class="tl-mark" aria-hidden="true"><span class="tl-dot"><i class="ph ph-grid-nine"></i></span><span class="tl-line"></span></span><span class="tl-body"><span class="tl-when">September 2026</span><b>Zuschauer machen mit</b><span>Fortnite-Bingo, „Ärgere den Streamer“, unangenehme Fragen und das Stream-Haustier.</span></span></li>
+        <li><span class="tl-mark" aria-hidden="true"><span class="tl-dot"><i class="ph ph-monitor-play"></i></span><span class="tl-line"></span></span><span class="tl-body"><span class="tl-when">Oktober 2026</span><b>Eine Browserquelle für alles</b><span>Das Live-Overlay mit Alerts, Chat und Laufband – dazu Kisten-Shop und Versus-Modus.</span></span></li>
+        <li class="is-now"><span class="tl-mark" aria-hidden="true"><span class="tl-dot"><i class="ph ph-planet"></i></span><span class="tl-line"></span></span><span class="tl-body"><span class="tl-when">Heute</span><b>Zehn Sprachen, eine Zentrale</b><span>Startseite und Anmeldung in zehn Sprachen, Twitch-Erweiterung und Aufnahme-Studio.</span></span></li>
+      </ol>
+    </section>
+
+    <section id="roadmap" class="sec" aria-labelledby="roadmap-title">
+      <p class="eyebrow">Roadmap</p>
+      <h2 class="h2" id="roadmap-title">Was als Nächstes kommt.</h2>
+      <ul class="road">
+        <li><span class="road-top"><i class="ph ph-crown" aria-hidden="true"></i><span class="tag">Geplant</span></span><b>StreamHelp Pro</b><span>Ein optionales Abo mit Extras. Die meisten Funktionen bleiben kostenlos – wir sagen rechtzeitig Bescheid.</span></li>
+        <li><span class="road-top"><i class="ph ph-handshake" aria-hidden="true"></i><span class="tag">Startet bald</span></span><b>Sponsoring für Firmen</b><span>Firmen sponsern Streamer passender Größe – fair gekennzeichnet.</span></li>
+        <li><span class="road-top"><i class="ph ph-planet" aria-hidden="true"></i><span class="tag">In Arbeit</span></span><b>Dashboard mehrsprachig</b><span>Nach Startseite und Anmeldung kommt auch das Dashboard in weiteren Sprachen.</span></li>
+        <li><span class="road-top"><i class="ph ph-identification-card" aria-hidden="true"></i><span class="tag">Geplant</span></span><b>Gewerbe &amp; Team</b><span>Mit der Gewerbe-Anmeldung öffnen wir die ersten Stellen.</span></li>
+      </ul>
+      <p class="note">Dir fehlt etwas? <a href="./#nachricht">Schlag es vor</a> – die Roadmap richtet sich nach euch.</p>
+    </section>
+
+    <section id="mitmachen" class="sec" aria-labelledby="mitmachen-title">
+      <p class="eyebrow">Mitmachen</p>
+      <h2 class="h2" id="mitmachen-title">StreamHelp wächst mit seiner Community.</h2>
+      <ul class="join">
+        <li><a href="./#login"><i class="ph ph-paint-brush ph-ico" aria-hidden="true"></i><b>Als Artist</b><span>Lade Alerts, Hintergründe, Looks oder Sammelkarten hoch – nach der Prüfung stehen sie mit deinem Namen in der Design-Bibliothek.</span><span class="cta">Artist-Bereich<i class="ph ph-arrow-right" aria-hidden="true"></i></span></a></li>
+        <li><a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener"><i class="ph ph-discord-logo ph-ico" aria-hidden="true"></i><b>Im Discord</b><span>Teste neue Funktionen als Erste, gib Feedback und hilf anderen Streamern beim Einrichten.</span><span class="cta">Discord beitreten<i class="ph ph-arrow-right" aria-hidden="true"></i></span></a></li>
+        <li><a href="./#nachricht"><i class="ph ph-lightbulb ph-ico" aria-hidden="true"></i><b>Mit Ideen</b><span>Dir fehlt etwas? Schlag es vor – viele Funktionen sind aus Vorschlägen entstanden.</span><span class="cta">Idee schicken<i class="ph ph-arrow-right" aria-hidden="true"></i></span></a></li>
+      </ul>
+    </section>
+
+    <section id="karriere" class="sec career" aria-labelledby="karriere-title">
+      <div>
+        <p class="eyebrow">Karriere</p>
+        <h2 class="h2" id="karriere-title">Bald suchen wir Verstärkung.</h2>
+      </div>
+      <div class="career-text">
+        <span class="soon">🛠️ Kommt bald</span>
+        <p>Sobald unser Gewerbe angemeldet ist, schreiben wir hier Stellen aus. Lust, schon jetzt mitzuarbeiten? Schreib uns – wir melden uns, wenn es losgeht.</p>
+        <a class="btn btn-line" href="./#nachricht">Kontakt aufnehmen<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+    </section>
+  </div>
+
+  <section id="kontakt" class="cta-band" aria-labelledby="kontakt-title">
+    <div class="wrap cta-inner">
+      <div>
+        <h2 id="kontakt-title">Fragen? Wir sind da.</h2>
+        <p>Über das Kontaktformular auf der Startseite oder direkt im StreamHelp-Discord.</p>
+      </div>
+      <div class="cta-btns">
+        <a class="btn btn-solid btn-lg" href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener"><i class="ph ph-discord-logo" aria-hidden="true"></i>Discord beitreten</a>
+        <a class="btn btn-line" href="./#nachricht">Nachricht schreiben</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap foot">
+      <span class="foot-copy"><img src="assets/favicon.svg" width="18" height="18" alt="">© 2026 StreamHelp · Hamburg</span>
+      <nav aria-label="Rechtliches"><a href="./">Startseite</a><a href="impressum.html">Impressum</a><a href="datenschutz.html">Datenschutz</a><a href="nutzungsbedingungen.html">Nutzungsbedingungen</a></nav>
+    </div>
+  </footer>
 </body>
 </html>
