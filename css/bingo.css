@@ -84,6 +84,12 @@ button.bingo-cell:focus-visible { outline: 2px solid #ffb81c; outline-offset: 2p
 }
 .bingo-cell.r-mythic .bingo-amount { color: #fff6c9; }
 .bingo-cell:has(.bingo-rarity) img { padding-top: .5em; }
+/* Kategorie (Sturmgewehr, Heilung …): kleines Symbol oben links */
+.bingo-cat {
+  position: absolute; left: .2em; top: .2em; z-index: 2; display: grid; place-items: center;
+  width: 1.5em; height: 1.5em; border-radius: 50%; background: rgba(0, 0, 0, .5);
+  font-size: .9em; line-height: 1; pointer-events: none;
+}
 
 /* B-I-N-G-O über den Spalten (nur 5 × 5) */
 .bingo-letter {

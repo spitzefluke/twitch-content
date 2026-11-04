@@ -251,4 +251,11 @@ export default [
   "Firma",
   "Odkryj streamerów",
   "Wszelkie prawa zastrzeżone.",
+  "O nas",
+  "Kariera",
+  "Kto stoi za StreamHelp i dlaczego go tworzymy.",
+  "Dodawaj projekty jako artysta lub pomagaj na Discordzie.",
+  "Pojawi się, gdy tylko zarejestrujemy działalność.",
+  "Jesteśmy tu dla każdego pytania i sugestii.",
+  "Sponsoruj streamerów odpowiedniej wielkości – już wkrótce.",
 ];

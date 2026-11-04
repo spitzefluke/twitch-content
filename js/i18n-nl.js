@@ -251,4 +251,11 @@ export default [
   "Bedrijf",
   "Ontdek streamers",
   "Alle rechten voorbehouden.",
+  "Over ons",
+  "Vacatures",
+  "Wie er achter StreamHelp zit en waarom we het bouwen.",
+  "Lever als artiest ontwerpen aan of help mee op Discord.",
+  "Volgt zodra ons bedrijf is ingeschreven.",
+  "We staan klaar voor elke vraag en elk voorstel.",
+  "Sponsor streamers van de juiste grootte – binnenkort.",
 ];

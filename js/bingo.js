@@ -13,6 +13,35 @@ export const RARITIES = [
 ];
 export const rarityName = (id) => RARITIES.find((r) => r.id === id)?.name ?? '';
 
+// Kategorien wie im Fortnite-Lootpool (Migration …_bingo_categories.sql) – Reihenfolge = Reihenfolge der Liste.
+// Das Symbol steht klein auf der Karte (Emoji, weil das Overlay keine Icon-Schrift lädt).
+// words: ganze Wörter (oder Wortanfänge ab 4 Buchstaben, „heil“ → „Heiltrank“); mit Leerzeichen: Wortgruppe.
+export const CATEGORIES = [
+  { id: 'ar', name: 'Sturmgewehre', icon: '🪖', words: ['ar', 'assault', 'sturmgewehr', 'scar', 'm4', 'm16', 'famas', 'ranger', 'striker', 'enforcer', 'warforged', 'nemesis', 'red-eye', 'redeye', 'thermal', 'infantry', 'gewehr', 'rifle', 'minigun'] },
+  { id: 'shotgun', name: 'Schrotflinten', icon: '💥', words: ['shotgun', 'schrotflinte', 'schrot', 'pump', 'pumpgun', 'tactical shotgun', 'taktische schrotflinte', 'charge', 'gatekeeper', 'frenzy', 'sentinel', 'drum shotgun', 'auto shotgun', 'lever action shotgun'] },
+  { id: 'smg', name: 'MPs', icon: '⚡', words: ['smg', 'mp', 'maschinenpistole', 'submachine', 'stinger', 'hyper', 'thunder', 'swarmstrike', 'ares', 'drum gun'] },
+  { id: 'sniper', name: 'Scharfschützen', icon: '🎯', words: ['sniper', 'scharfschütze', 'scharfschützengewehr', 'scharfschuetze', 'hunting', 'jagdgewehr', 'dmr', 'bolt', 'reaper', 'heavy sniper', 'precision'] },
+  { id: 'pistol', name: 'Pistolen', icon: '🔫', words: ['pistol', 'pistole', 'revolver', 'hand cannon', 'handkanone', 'deagle', 'sidearm', 'six shooter', 'dual pistols'] },
+  { id: 'explosive', name: 'Explosiv', icon: '🧨', words: ['rocket', 'rakete', 'raketenwerfer', 'rpg', 'launcher', 'granatwerfer', 'granatenwerfer', 'grenade launcher', 'c4', 'sprengstoff', 'explosive', 'remote explosives', 'guided'] },
+  { id: 'heal', name: 'Heilung', icon: '💊', words: ['heal', 'heil', 'health', 'medkit', 'medikit', 'med kit', 'bandage', 'verband', 'chug', 'kanister', 'slurp', 'flowberry', 'fizz', 'apple', 'apfel', 'banana', 'med mist', 'leben', 'erste hilfe'] },
+  { id: 'shield', name: 'Schild', icon: '🛡️', words: ['shield', 'schild', 'minis', 'mini shield', 'big pot', 'keg', 'mushroom', 'pilz', 'shield potion', 'schildtrank'] },
+  { id: 'throw', name: 'Wurfgegenstände', icon: '🪃', words: ['grenade', 'granate', 'impulse', 'firefly', 'glühwürmchen', 'smoke', 'rauch', 'boogie', 'bubble', 'clinger', 'stink', 'wurf', 'throw', 'snowball', 'schneeball', 'chug splash', 'splash'] },
+  { id: 'mobility', name: 'Mobilität', icon: '🏃', words: ['shockwave', 'schockwelle', 'launch pad', 'sprungpad', 'grappler', 'enterhaken', 'rift', 'riss', 'crash pad', 'glider', 'gleiter', 'mobility', 'sprint', 'jetpack', 'car', 'boat'] },
+  { id: 'other', name: 'Sonstiges', icon: '✨', words: [] },
+];
+const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+export const categoryOf = (id) => CAT[id] ?? CAT.other;
+// Reihenfolge beim Erkennen: Spezielles vor Allgemeinem („Grenade Launcher“ ist Explosiv, nicht Wurf;
+// „Shockwave Grenade“ ist Mobilität; „Shield Bubble“ ein Wurfgegenstand; „Burst SMG“ eine MP).
+const DETECT = ['heal', 'explosive', 'mobility', 'throw', 'shield', 'sniper', 'shotgun', 'smg', 'pistol', 'ar'];
+export function categoryFromName(name) {
+  const text = ` ${String(name ?? '').toLowerCase().replace(/[^a-z0-9äöüß-]+/g, ' ').trim()} `;
+  const tokens = text.trim().split(/\s+/);
+  const hit = (w) => (w.includes(' ') ? text.includes(` ${w} `)
+    : tokens.some((t) => t === w || (w.length >= 4 && t.startsWith(w))));
+  return DETECT.find((id) => CAT[id].words.some(hit)) ?? 'other';
+}
+
 // Seltenheit aus dem Dateinamen: "scar_legendary.png", "Pump Episch.png" …
 // "uncommon" vor "common" prüfen, sonst wird Grün zu Grau.
 export function rarityFromFile(fileName) {
@@ -44,8 +73,8 @@ function stripRarity(fileName) {
 }
 
 // Was von einem Bild in eine Karte kommt (ohne leere Felder)
-export function cardCell({ id, name, path, rarity, amount }) {
-  return { id, name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}) };
+export function cardCell({ id, name, path, rarity, amount, category }) {
+  return { id, name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}), ...(category ? { category } : {}) };
 }
 
 // Alle Reihen, Spalten und die beiden Diagonalen als Listen von Feld-Nummern
@@ -148,7 +177,7 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
       name.className = 'bingo-name';
       name.textContent = cell.name;
       node.append(img, name);
-      node.title = [cell.name, amount, rarity && rarityName(rarity)].filter(Boolean).join(' · ');
+      node.title = [cell.name, amount, rarity && rarityName(rarity), CAT[live?.category ?? cell.category]?.name].filter(Boolean).join(' · ');
       if (amount) {
         // Die Zahl steht groß im Icon, z. B. 5 auf dem Kill-Symbol
         const num = document.createElement('span');
@@ -161,6 +190,16 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
         badge.className = 'bingo-rarity';
         badge.textContent = rarityName(rarity);
         node.append(badge);
+      }
+      // Kategorie als kleines Symbol oben links (ältere Karten ohne Kategorie: keins)
+      const category = live?.category ?? cell.category;
+      if (category && CAT[category]) {
+        const cat = document.createElement('span');
+        cat.className = 'bingo-cat';
+        cat.textContent = CAT[category].icon;
+        cat.title = CAT[category].name;
+        cat.setAttribute('aria-hidden', 'true');
+        node.append(cat);
       }
     }
     if (marked.has(i) && !cell.free) {
@@ -186,7 +225,7 @@ export function renderBingoGrid(el, card, { urlFor, onCell = null, stamped = nul
 const nameKey = (item) => String(item.name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 const imageOf = (item) => item.image_key || item.path;
 export function pickDistinct(items, need = Infinity) {
-  const pool = shuffled(items.filter((i) => !i.vault));
+  const pool = balanced(shuffled(items.filter((i) => !i.vault)));
   const names = new Set();
   const images = new Set();
   const out = [];
@@ -197,6 +236,20 @@ export function pickDistinct(items, need = Infinity) {
     images.add(imageOf(item));
     out.push(item);
   }
+  return out;
+}
+// Ausgewogen mischen: reihum aus jeder Kategorie eins (Kategorien in zufälliger Reihenfolge),
+// ohne Kategorie zählt als „Sonstiges“ – so wird eine Karte nicht nur aus Waffen gezogen.
+function balanced(pool) {
+  const groups = new Map();
+  for (const item of pool) {
+    const key = CAT[item.category] ? item.category : 'other';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  const lists = shuffled([...groups.values()]);
+  const out = [];
+  for (let k = 0; out.length < pool.length; k++) for (const list of lists) if (list[k]) out.push(list[k]);
   return out;
 }
 // Wie viele verschiedene Items eine Karte höchstens bekommen kann (Namen außerhalb des Tresors)

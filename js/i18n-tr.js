@@ -251,4 +251,11 @@ export default [
   "Şirket",
   "Yayıncıları keşfet",
   "Tüm hakları saklıdır.",
+  "Hakkımızda",
+  "Kariyer",
+  "StreamHelp'in arkasında kim var ve neden geliştiriyoruz.",
+  "Sanatçı olarak tasarım ekle ya da Discord'da yardım et.",
+  "İşletmemiz kaydedilir edilmez geliyor.",
+  "Her soru ve öneri için buradayız.",
+  "Doğru büyüklükteki yayıncılara sponsor ol – yakında.",
 ];

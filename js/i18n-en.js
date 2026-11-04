@@ -251,4 +251,11 @@ export default [
   "Company",
   "Discover streamers",
   "All rights reserved.",
+  "About us",
+  "Careers",
+  "Who is behind StreamHelp and why we build it.",
+  "Contribute designs as an artist or help out on Discord.",
+  "Coming as soon as our business is registered.",
+  "We're here for any question or suggestion.",
+  "Sponsor streamers of the right size – coming soon.",
 ];

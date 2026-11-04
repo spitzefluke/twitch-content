@@ -585,12 +585,12 @@ async function createSupabaseApi() {
     },
     // rarities: ein Bild in mehreren Seltenheiten – ein Eintrag je Seltenheit, jeder mit eigener
     // Datei-Kopie (Löschen des einen nimmt das Bild der anderen nicht mit). Alle teilen den Fingerabdruck.
-    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null } = {}) {
+    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null, category = null } = {}) {
       const ext = blob.type === 'image/webp' ? 'webp' : 'png';
       const path = `${storageFolder()}${crypto.randomUUID()}.${ext}`;
       unwrap(await sb.storage.from('bingo').upload(path, blob, { contentType: blob.type, cacheControl: '31536000', upsert: false }));
       const list = rarities?.length ? rarities : [rarity];
-      const first = await this.insertBingoItem({ name, path, rarity: list[0], amount, image_key: imageKey });
+      const first = await this.insertBingoItem({ name, path, rarity: list[0], amount, image_key: imageKey, category });
       const made = [first];
       for (const r of list.slice(1)) made.push(await this.copyBingoItem(first, { rarity: r }));
       return made;
@@ -600,12 +600,12 @@ async function createSupabaseApi() {
     async copyBingoItem(item, patch = {}) {
       const path = `${storageFolder()}${crypto.randomUUID()}.${item.path.split('.').pop()}`;
       unwrap(await sb.storage.from('bingo').copy(item.path, path));
-      return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, image_key: item.image_key ?? null, ...patch });
+      return this.insertBingoItem({ name: item.name, path, rarity: item.rarity, amount: item.amount, image_key: item.image_key ?? null, category: item.category ?? null, ...patch });
     },
-    async insertBingoItem({ name, path, rarity, amount, image_key = null }) {
+    async insertBingoItem({ name, path, rarity, amount, image_key = null, category = null }) {
       // Leere Felder nicht mitschicken – so klappt das Hochladen auch, solange einzelne
-      // Migrationen (…_bingo_rarity.sql, …_bingo_amount.sql, …_bingo_vault.sql) noch fehlen.
-      const row = { name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}), ...(image_key ? { image_key } : {}) };
+      // Migrationen (…_bingo_rarity.sql, …_bingo_amount.sql, …_bingo_vault.sql, …_bingo_categories.sql) noch fehlen.
+      const row = { name, path, ...(rarity ? { rarity } : {}), ...(amount ? { amount } : {}), ...(image_key ? { image_key } : {}), ...(category ? { category } : {}) };
       const { data, error } = await sb.from('bingo_items').insert(row).select('*').single();
       if (error) {
         await sb.storage.from('bingo').remove([path]).catch(() => {});
@@ -2180,7 +2180,7 @@ function createLocalApi() {
         card: store.get('bingo_card', null),
       };
     },
-    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null } = {}) {
+    async addBingoItem(blob, name, { rarity = null, amount = null, imageKey = null, rarities = null, category = null } = {}) {
       await requireAdmin();
       const url = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2190,16 +2190,16 @@ function createLocalApi() {
       });
       const list = rarities?.length ? rarities : [rarity];
       const made = [];
-      for (const r of list) made.push(await this.insertBingoItem({ name, rarity: r, amount, url, image_key: imageKey }));
+      for (const r of list) made.push(await this.insertBingoItem({ name, rarity: r, amount, url, image_key: imageKey, category }));
       return made;
     },
     async copyBingoItem(item, patch = {}) {
       await requireAdmin();
-      return this.insertBingoItem({ name: item.name, rarity: item.rarity, amount: item.amount, url: item.url, image_key: item.image_key ?? null, ...patch });
+      return this.insertBingoItem({ name: item.name, rarity: item.rarity, amount: item.amount, url: item.url, image_key: item.image_key ?? null, category: item.category ?? null, ...patch });
     },
-    async insertBingoItem({ name, rarity = null, amount = null, url, image_key = null }) {
+    async insertBingoItem({ name, rarity = null, amount = null, url, image_key = null, category = null }) {
       const id = `demo-${nextId++}`;
-      const item = { id, name, rarity, amount, path: `demo/${id}`, url, image_key, vault: false, created_at: new Date().toISOString() };
+      const item = { id, name, rarity, amount, category, path: `demo/${id}`, url, image_key, vault: false, created_at: new Date().toISOString() };
       try {
         localStorage.setItem('zd_bingo_items', JSON.stringify([...store.get('bingo_items', []), item]));
       } catch {
