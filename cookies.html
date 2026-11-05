@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cookie-Richtlinie · StreamHelp</title>
+  <meta name="description" content="Welche Cookies und welchen Speicher im Browser StreamHelp nutzt – keine Werbung, kein Tracking – und wie du deine Auswahl änderst.">
+  <link rel="canonical" href="https://spitzefluke.github.io/twitch-content/cookies.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="StreamHelp">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:title" content="Cookie-Richtlinie · StreamHelp">
+  <meta property="og:description" content="Keine Werbe- oder Tracking-Cookies: was StreamHelp im Browser speichert und wofür.">
+  <meta property="og:url" content="https://spitzefluke.github.io/twitch-content/cookies.html">
+  <meta property="og:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- Cookie-Richtlinie. Bewusst ohne Skripte wie Impressum und Datenschutz; das Cookie-Fenster selbst steht in
+       js/consent.js, „Cookie-Einstellungen“ unten auf der Startseite (./#cookies) öffnet es wieder.
+       Neue Speicher-Einträge oder Dienste hier nachtragen. -->
+  <style>
+    :root { --bg: #0b0714; --card: #161027; --text: #eef1f7; --muted: #a7b0c2; --line: #2c2244; --accent: #b186ff; --ok: #9ff0c3; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { width: min(100% - 32px, 820px); margin: 0 auto; padding: 40px 0 64px; }
+    a { color: var(--accent); }
+    h1 { margin: 0 0 6px; font-size: clamp(28px, 5vw, 38px); line-height: 1.15; }
+    h2 { margin: 36px 0 8px; font-size: 21px; line-height: 1.3; }
+    p, ul { margin: 8px 0; }
+    ul { padding-left: 22px; }
+    li { margin: 4px 0; }
+    code { font-size: .9em; overflow-wrap: anywhere; }
+    .lead { color: var(--muted); }
+    .box { margin: 18px 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    .back { display: inline-block; margin-bottom: 24px; text-decoration: none; }
+    .tag { display: inline-block; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+    .tag--ok { border-color: rgba(159, 240, 195, .45); color: var(--ok); }
+    .tag--ask { border-color: rgba(255, 211, 107, .5); color: #ffd36b; }
+    .table { margin: 12px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+    th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    th { background: var(--card); font-weight: 600; }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { min-width: 170px; }
+    small { color: var(--muted); }
+    @media (max-width: 640px) {
+      table, tbody, tr, td { display: block; }
+      thead { display: none; }
+      tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+      tr:last-child { border-bottom: 0; }
+      td { padding: 2px 0; border: 0; }
+      td:first-child { min-width: 0; font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="./">← Zu StreamHelp</a>
+    <h1>Cookie-Richtlinie</h1>
+    <p class="lead">Welche Cookies und welchen Speicher im Browser StreamHelp nutzt, wofür, wie lange – und wie du deine Auswahl änderst.</p>
+
+    <div class="box">
+      <p><b>Kurz:</b> StreamHelp setzt <b>keine</b> Werbe-, Analyse- oder Tracking-Cookies und bindet keine Tracking-Dienste ein. Im Browser gespeichert wird nur, was die Seite zum Funktionieren braucht – die Anmeldung und deine Einstellungen. Fragen müssen wir nur bei einer Sache: dem <b>YouTube-Player für Song-Wünsche</b> im Dashboard. Er lädt erst, wenn du zustimmst.</p>
+      <p><b>Auswahl ändern:</b> unten auf der Startseite <a href="./#cookies">„Cookie-Einstellungen“</a> – oder die Website-Daten für diese Seite in deinem Browser löschen (dann fragt das Cookie-Fenster neu).</p>
+    </div>
+
+    <h2>1. Cookies und Speicher – was ist das?</h2>
+    <p>Cookies sind kleine Textdateien, die eine Webseite in deinem Browser ablegt. Ähnlich funktionieren <b>localStorage</b>, <b>sessionStorage</b> und <b>IndexedDB</b> (Speicher im Browser) sowie der <b>Cache</b> eines Service Workers. StreamHelp selbst setzt keine klassischen Cookies, sondern nutzt diese Speicher. Für sie gelten dieselben Regeln (§ 25 TDDDG), deshalb führen wir sie hier alle auf.</p>
+
+    <h2>2. Notwendig <span class="tag tag--ok">immer an</span></h2>
+    <p>Ohne diese Einträge funktioniert die Seite nicht oder vergisst deine Einstellungen. Sie sind ohne Einwilligung erlaubt (§ 25 Abs. 2 Nr. 2 TDDDG), bleiben in deinem Browser und werden nicht für Werbung oder Statistik genutzt.</p>
+    <div class="table">
+      <table>
+        <thead><tr><th>Name</th><th>Zweck</th><th>Speicher · Dauer</th></tr></thead>
+        <tbody>
+          <tr><td><code>sb-…-auth-token</code></td><td>Anmeldung (Sitzung) bei Supabase, damit du angemeldet bleibst.</td><td>localStorage · bis zum Abmelden</td></tr>
+          <tr><td><code>sh_consent</code></td><td>Deine Auswahl im Cookie-Fenster (nur „Externe Medien“ ja/nein und wann).</td><td>localStorage · bis du sie änderst</td></tr>
+          <tr><td><code>sh_lang</code></td><td>Gewählte Sprache von Startseite und Anmeldung.</td><td>localStorage · dauerhaft</td></tr>
+          <tr><td><code>sh_channel</code></td><td>Welchen Kanal du zuletzt geöffnet hast.</td><td>localStorage · dauerhaft</td></tr>
+          <tr><td><code>sh_ref</code></td><td>Kanal aus einem Einladungs-Link (<code>?ref=…</code>, „Freunde werben“).</td><td>localStorage · 30 Tage</td></tr>
+          <tr><td><code>sh_view</code>, <code>sh_sidebar</code>, <code>sh_ideas_view</code>, <code>sh_look</code>, <code>sh_lib_favs_v1</code>, <code>sh_obs_cols</code>, <code>sh_obs_guide_seen</code>, <code>sh_obs_setup_seen</code>, <code>sh_rec_settings</code></td><td>Ansicht und Einstellungen im Dashboard: Darstellung, Seitenleiste, Raster oder Liste, Favoriten, OBS-Fenster, gesehene Anleitungen, Aufnahme-Studio.</td><td>localStorage · dauerhaft</td></tr>
+          <tr><td><code>zd_song_player</code>, <code>zd_prank_listen</code>, <code>zd_tts_played</code></td><td>Ob Song-Wünsche und Sounds in diesem Fenster abgespielt werden, Lautstärke, bereits vorgelesene Nachrichten.</td><td>localStorage · dauerhaft</td></tr>
+          <tr><td><code>zd_obs_ws</code> und Schlüssel <code>aes-key</code></td><td>Verbindung zu OBS auf deinem PC. Das Passwort liegt verschlüsselt nur in deinem Browser und wird nie an uns geschickt.</td><td>localStorage und IndexedDB · bis du es löschst</td></tr>
+          <tr><td><code>zd_…</code> im Demo-Modus</td><td>Ohne eingerichtete Datenbank liegen alle Demo-Daten nur in deinem Browser.</td><td>localStorage · bis du sie löschst</td></tr>
+          <tr><td>Kurzzeit-Einträge</td><td>Zwischenstände beim Anmelden mit Twitch oder beim Verbinden des Chat-Bots, damit du danach an der richtigen Stelle landest.</td><td>sessionStorage · bis der Tab geschlossen wird</td></tr>
+          <tr><td><code>streamhelp-v1</code></td><td>Als Handy-App installiert: eine Kopie der Startseite für den Fall ohne Netz (Service Worker).</td><td>Cache · bis zur nächsten Version</td></tr>
+          <tr><td>OBS-Overlay</td><td>Das Overlay in der OBS-Browserquelle merkt sich seine Einstellungen (z. B. <code>zd_overlay_config</code>) im Speicher von OBS auf deinem PC.</td><td>localStorage von OBS · dauerhaft</td></tr>
+          <tr><td>Bot-Schutz (Cloudflare Turnstile)</td><td>Nur wenn eingerichtet: prüft beim Anmelden und Registrieren, dass ein Mensch das Formular abschickt. Anbieter: Cloudflare, Inc. – <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener noreferrer" target="_blank">Datenschutz bei Cloudflare</a>.</td><td>nur auf der Anmeldeseite</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>3. Externe Medien <span class="tag tag--ask">nur mit Einwilligung</span></h2>
+    <div class="table">
+      <table>
+        <thead><tr><th>Dienst</th><th>Zweck</th><th>Was dabei passiert</th></tr></thead>
+        <tbody>
+          <tr><td>YouTube-Player (<code>youtube-nocookie.com</code>)</td><td>Song-Wünsche im Dashboard des Streamers abspielen (Bot &amp; Chat → Song-Wünsche → „Hier abspielen“). Zuschauer sehen ihn nicht.</td><td>Beim Laden erhält YouTube deine IP-Adresse und kann Daten in deinem Browser speichern (z. B. für Wiedergabe-Einstellungen). Anbieter: Google Ireland Ltd. – <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Datenschutzerklärung von Google</a>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Ohne Einwilligung zeigt das Dashboard statt des Players nur einen Platzhalter mit „YouTube erlauben“. Rechtsgrundlage der Einwilligung: § 25 Abs. 1 TDDDG und Art. 6 Abs. 1 lit. a DSGVO. Du kannst sie jederzeit mit Wirkung für die Zukunft widerrufen (<a href="./#cookies">Cookie-Einstellungen</a>).</p>
+
+    <h2>4. Was wir nicht nutzen</h2>
+    <ul>
+      <li>Keine Werbe- oder Analyse-Cookies, kein Google Analytics, kein Facebook-Pixel, keine Reichweitenmessung.</li>
+      <li>Keine Schriften von Google Fonts – alle Schriftarten liefert StreamHelp selbst aus.</li>
+      <li>Keine Cookies von Dritten auf der Startseite, den Profil-Seiten und den Rechtstexten.</li>
+    </ul>
+
+    <h2>5. Twitch, Discord und andere Seiten</h2>
+    <p>Die <b>Twitch-Erweiterung</b> (Panel, Komponente, Overlay) läuft bei Twitch: StreamHelp speichert dort nichts in deinem Browser; für Twitch gelten dessen eigene Regeln. Folgst du einem Link zu Twitch, Discord, YouTube oder Ko-fi oder meldest dich dort an, gelten die Cookie-Regeln dieser Seiten.</p>
+
+    <h2>6. Kontakt</h2>
+    <p>Fragen zu Cookies und Datenschutz beantworten wir gern – über das <a href="./#nachricht">Kontaktformular</a> oder die Angaben in der <a href="datenschutz.html">Datenschutzerklärung</a>.</p>
+
+    <p><a href="datenschutz.html">Datenschutz</a> · <a href="impressum.html">Impressum</a> · <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a></p>
+    <p><small>Stand: November 2026</small></p>
+  </main>
+</body>
+</html>

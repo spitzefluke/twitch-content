@@ -40,7 +40,7 @@ Twitch-Panel: eine Twitch-Erweiterung unter dem Stream mit aktuellem Game, Ideen
 
 YouTube: Chat im Overlay zeigt Twitch und YouTube zusammen. Kanalpunkte, Alerts und Chat-Bot gibt es nur für Twitch.
 
-Sicherheit und Daten: Anmeldung über Twitch, das Passwort sieht StreamHelp nie. Verbindung jederzeit in den Twitch-Einstellungen unter „Verbindungen“ trennbar. Streamer können alle Kanal-Daten exportieren (Dashboard → Sicherheit). Details auf der Seite „Datenschutz“.
+Sicherheit und Daten: Anmeldung über Twitch, das Passwort sieht StreamHelp nie. Verbindung jederzeit in den Twitch-Einstellungen unter „Verbindungen“ trennbar. Streamer können alle Kanal-Daten exportieren (Dashboard → Sicherheit). Details auf der Seite „Datenschutz“. Cookies: keine Werbe- oder Tracking-Cookies; nur Anmeldung und Einstellungen werden im Browser gespeichert. Das Cookie-Fenster fragt nur nach dem YouTube-Player für Song-Wünsche; ändern unter „Cookie-Einstellungen“ unten auf der Startseite, Details in der „Cookie-Richtlinie“ (cookies.html).
 
 Sprachen: Startseite und Anmeldung gibt es in mehreren Sprachen, das Dashboard ist bisher deutsch.
 

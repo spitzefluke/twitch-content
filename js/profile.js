@@ -4,9 +4,12 @@
 // aus der Datenbank (Zeitzone des Streamers, Sommerzeit, „Pause bis …“) und stehen hier in der
 // Zeitzone des Besuchers. „In den Kalender“ lädt den Wochenplan als .ics (wiederholt sich wöchentlich).
 import { createApi, germanError } from './api.js';
+import { setupConsent } from './consent.js';
 import { h } from './extras-core.js';
 import { socialFor } from './social-icons.js';
 import { WEEKDAYS, fmtDuration } from './dash-profile.js';
+
+setupConsent(); // Cookie-Fenster (js/consent.js)
 
 const $ = (sel) => document.querySelector(sel);
 const login = (new URLSearchParams(location.search).get('c') ?? '').trim().toLowerCase();

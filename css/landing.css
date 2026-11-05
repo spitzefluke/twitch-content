@@ -263,7 +263,8 @@ main.nc-wrap { flex: 1; }
 .nc-foot-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--color-neutral-800); font-size: 14px; color: var(--color-neutral-400); }
 .nc-foot-copy { display: flex; align-items: center; gap: 8px; margin-right: auto; color: var(--color-neutral-300); }
 .nc-foot-legal { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.nc-foot-legal a { font-size: 14px; }
+.nc-foot-legal a, .nc-foot-legal .ck-open { font-size: 14px; color: var(--color-neutral-400); font-weight: 500; transition: color .15s; }
+.nc-foot-legal .ck-open:hover, .nc-foot-legal .ck-open:focus-visible { color: var(--color-text); text-decoration: none; }
 @media (max-width: 760px) {
   .nc-foot { padding-top: 40px; }
   .nc-foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }

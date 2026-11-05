@@ -1,8 +1,11 @@
 // Vergleichsseite Free und Pro (pro.html). Was Pro ist und kostet, steht in js/pro.js; die kostenlosen
 // Content-Ideen kommen aus js/defaults.js – neue Ideen erscheinen hier also von selbst.
 import { DEFAULT_TILES } from './defaults.js';
+import { setupConsent } from './consent.js';
 import { h } from './extras-core.js';
 import { PRO_KINDS, PRO_PRICE, PRO_SOON, isProKind } from './pro.js';
+
+setupConsent(); // Cookie-Fenster (js/consent.js)
 
 const $ = (sel) => document.querySelector(sel);
 const icon = (cls) => h('i', { class: `ph ${cls}`, 'aria-hidden': 'true' });

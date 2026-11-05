@@ -33,6 +33,7 @@ import {
 import { h } from './extras-core.js';
 import { maybeOpenIntro, openIntro, setupIntro } from './intro.js';
 import { applyI18n, initI18n, LANGS, langPicker, t as tr } from './i18n.js';
+import { setupConsent } from './consent.js';
 import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
 import { DEFAULT_GAMES, GAME_GROUPS, GAMES, activeGames, gameById, liveGameId, splitTiles } from './games.js';
@@ -173,6 +174,7 @@ async function boot() {
   document.title = tr(document.title);
   $('#landing .lp-login')?.before(langPicker('lang-pick--nav'));
   $('#auth .auth-back')?.after(langPicker('lang-pick--auth'));
+  setupConsent(); // Cookie-Fenster (js/consent.js) – nach der Sprache, damit es übersetzt ist
 
   // Rückweg vom Chat-Bot-Verbinden im Admin-Bereich: Das Ergebnis gehört dorthin,
   // auch wenn die Weiterleitung hier gelandet ist. Aus dem Dashboard verbundene

@@ -8,6 +8,7 @@
 //   · Clips & Statistik (!clip, !stats, !topchatter, !topwatch), Ansagen (Werbung, Hype-Train, Ziele) und
 //     Stichwort-Antworten (Migration …_bot_more.sql)
 // Eingebunden von js/app.js (renderBotPanel). api = state.api, toast/germanError aus app.js.
+import { hasConsent, onConsent, setConsent } from './consent.js';
 import { h } from './extras-core.js';
 
 let ctx = null;          // { api, toast, germanError }
@@ -368,7 +369,9 @@ const faqError = (err) => (/Stichwort/.test(err?.message ?? '') ? err.message
 
 // ---------- Song-Wünsche ----------
 const PLAY_KEY = 'zd_song_player';
-const songPlayer = { on: false, frame: null, current: null, volume: 60, paused: false, ending: false };
+const songPlayer = { on: false, frame: null, current: null, volume: 60, paused: false, ending: false, reload: null };
+// Einwilligung erteilt oder zurückgenommen: den laufenden Song neu laden (Player bzw. Platzhalter)
+onConsent(() => songPlayer.reload?.());
 const fmtLen = (s) => (s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
 
 function songCard(card) {
@@ -425,6 +428,18 @@ function songCard(card) {
     songPlayer.paused = false;
     playBtn.textContent = '⏸';
     if (!songPlayer.on || !song) { frameBox.hidden = true; frameBox.replaceChildren(); songPlayer.frame = null; return; }
+    // YouTube erst nach Einwilligung („Externe Medien“, js/consent.js) – vorher nur ein Platzhalter
+    if (!hasConsent('media')) {
+      songPlayer.frame = null;
+      const allow = h('button', { class: 'btn btn--primary btn--sm', type: 'button' }, '▶ YouTube erlauben und abspielen');
+      allow.addEventListener('click', () => setConsent({ media: true }));
+      frameBox.replaceChildren(h('div', { class: 'ck-gate' },
+        h('p', {}, 'Der Player kommt von YouTube (Google). Beim Laden erhält YouTube deine IP-Adresse und kann Daten in deinem Browser speichern.'),
+        allow,
+        h('small', {}, 'Ändern unter ', h('a', { href: '#cookies' }, 'Cookie-Einstellungen'), ' · ', h('a', { href: 'cookies.html', target: '_blank', rel: 'noopener' }, 'Cookie-Richtlinie'))));
+      frameBox.hidden = false;
+      return;
+    }
     const src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(song.video_id)}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&origin=${encodeURIComponent(location.origin)}`;
     const frame = h('iframe', { src, title: `YouTube: ${song.title}`, allow: 'autoplay; encrypted-media', referrerpolicy: 'strict-origin-when-cross-origin' });
     frame.addEventListener('load', () => {
@@ -435,6 +450,7 @@ function songCard(card) {
     frameBox.replaceChildren(frame);
     frameBox.hidden = false;
   };
+  songPlayer.reload = () => { if (songPlayer.on && songPlayer.current) loadVideo(songPlayer.current); };
   const step = async (action) => {
     if (songPlayer.ending) return;
     songPlayer.ending = true;

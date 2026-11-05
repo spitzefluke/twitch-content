@@ -5,8 +5,11 @@
 //     Zusagen/Absagen, laufende Sponsorings beenden, Angebot beenden.
 // Der Schlüssel steht im #-Teil der Adresse – der geht beim Laden nie an einen Server.
 import { createApi, germanError } from './api.js';
+import { setupConsent } from './consent.js';
 import { h } from './extras-core.js';
 import { SPONSORING_OPEN, SPONSORING_SOON, readLogo, sponsorLogoUrl } from './sponsor-files.js';
+
+setupConsent(); // Cookie-Fenster (js/consent.js)
 
 const $ = (sel) => document.querySelector(sel);
 const api = createApi();
