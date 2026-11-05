@@ -308,4 +308,5 @@ export default [
   "Niente pubblicità, niente tracciamento. Servono solo l'accesso e le tue impostazioni. Facoltativo: il player di YouTube per le richieste di canzoni.",
   "Informativa sui cookie",
   "Impostazioni cookie",
+  "Accedendo accetti le nostre <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">condizioni d’uso</a>. Come trattiamo i tuoi dati è spiegato nell’<a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">informativa sulla privacy</a>.",
 ];

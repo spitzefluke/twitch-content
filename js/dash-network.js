@@ -3,6 +3,7 @@
 //     die Mitglieder, die gerade live sind (gleiches Spiel und Sprache zuerst, kleinere Kanäle vor großen)
 //     und raidet mit einem Klick. Der Bot sagt den Raid an und begrüßt Raids aus dem Netzwerk.
 //   · Freunde werben: eigener Link (?ref=<login>), wer darüber kam, Abzeichen ab 1, 3 und 10 Kanälen.
+import { avatarSrc } from './avatar.js';
 import { h } from './extras-core.js';
 
 export const LANGUAGES = { de: 'Deutsch', en: 'Englisch', es: 'Spanisch', fr: 'Französisch', it: 'Italienisch', nl: 'Niederländisch', pl: 'Polnisch', pt: 'Portugiesisch', tr: 'Türkisch', ru: 'Russisch', other: 'Andere' };
@@ -20,8 +21,8 @@ const card = (ico, title, sub, ...kids) => h('section', { class: 'dash-card dash
     h('div', {}, h('h2', {}, title), sub ? h('p', { class: 'dash-status' }, sub) : null)),
   ...kids);
 const missing = (err, fn) => new RegExp(`${fn}|raid_network|referrals`).test(err?.message ?? '');
-const avatar = (m) => (/^https:\/\//.test(m.avatar_url ?? '')
-  ? h('img', { class: 'rn-ava', src: m.avatar_url, alt: '', referrerpolicy: 'no-referrer', loading: 'lazy' })
+const avatar = (m) => (avatarSrc(m.avatar_url)
+  ? h('img', { class: 'rn-ava', src: avatarSrc(m.avatar_url), alt: '', referrerpolicy: 'no-referrer', loading: 'lazy' })
   : h('span', { class: 'rn-ava', 'aria-hidden': 'true' }, (m.display_name || m.login || '?').slice(0, 1).toUpperCase()));
 
 // ============================================================

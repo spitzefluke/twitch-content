@@ -308,4 +308,5 @@ export default [
   "Sem anúncios, sem rastreamento. Só são necessários seu login e suas configurações. Opcional: o player do YouTube para pedidos de música.",
   "Política de cookies",
   "Configurações de cookies",
+  "Ao entrar, você aceita nossos <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">termos de uso</a>. Como tratamos seus dados está na <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">política de privacidade</a>.",
 ];

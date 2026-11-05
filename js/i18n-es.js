@@ -308,4 +308,5 @@ export default [
   "Sin anuncios ni rastreo. Solo se necesitan tu inicio de sesión y tus ajustes. Opcional: el reproductor de YouTube para peticiones de canciones.",
   "Política de cookies",
   "Ajustes de cookies",
+  "Al iniciar sesión aceptas nuestras <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">condiciones de uso</a>. Cómo tratamos tus datos se explica en la <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">política de privacidad</a>.",
 ];

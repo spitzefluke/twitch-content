@@ -36,3 +36,7 @@ verify_jwt = false
 # Sponsoring-Börse: Firmen haben kein Konto (Verwaltungs-Link mit geheimem Schlüssel, Spam-Schutz in der Function)
 [functions.sponsoring]
 verify_jwt = false
+
+# Kanalbilder von Twitch über den eigenen Server: öffentliche Bilder, Besucher haben kein Konto
+[functions.avatar]
+verify_jwt = false

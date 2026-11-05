@@ -308,4 +308,5 @@ export default [
   "Bez reklam i śledzenia. Potrzebne jest tylko logowanie i twoje ustawienia. Opcjonalnie: odtwarzacz YouTube do próśb o piosenki.",
   "Polityka cookies",
   "Ustawienia cookies",
+  "Logując się akceptujesz nasz <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">regulamin</a>. Jak przetwarzamy twoje dane, opisuje <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">polityka prywatności</a>.",
 ];

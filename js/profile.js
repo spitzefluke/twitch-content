@@ -3,6 +3,7 @@
 // Links, Wochenplan und die nächsten Termine (mit Countdown). Termine kommen schon in echter Zeit
 // aus der Datenbank (Zeitzone des Streamers, Sommerzeit, „Pause bis …“) und stehen hier in der
 // Zeitzone des Besuchers. „In den Kalender“ lädt den Wochenplan als .ics (wiederholt sich wöchentlich).
+import { avatarSrc } from './avatar.js';
 import { createApi, germanError } from './api.js';
 import { setupConsent } from './consent.js';
 import { h } from './extras-core.js';
@@ -70,8 +71,9 @@ function paint() {
   $('#pp').setAttribute('aria-busy', 'false');
 
   const ava = $('#pp-ava');
-  if (/^https:\/\//.test(p.avatar_url ?? '')) {
-    ava.replaceChildren(h('img', { src: p.avatar_url, alt: '', referrerpolicy: 'no-referrer' }));
+  const src = avatarSrc(p.avatar_url); // über den eigenen Server, nicht direkt bei Twitch
+  if (src) {
+    ava.replaceChildren(h('img', { src, alt: '', referrerpolicy: 'no-referrer' }));
   } else ava.textContent = name.slice(0, 1).toUpperCase();
   $('#pp-name').textContent = name;
   // Abzeichen fürs Werben anderer Streamer (Migration …_raid_network.sql)

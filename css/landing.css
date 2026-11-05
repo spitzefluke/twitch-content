@@ -99,6 +99,7 @@ html:has(.nct:not([hidden])) { scroll-behavior: smooth; }
 }
 .nct .nc-nav-link { color: var(--color-text); font-size: 14px; }
 .nct .nc-nav-link:hover { color: var(--color-accent); }
+.nct .nc-nav-link:focus-visible, .nct .nc-menu a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: 4px; }
 .nct .nc-btn-nav { box-shadow: none; padding: 8px 14px; }
 .nct .nc-btn-nav:hover { transform: none; box-shadow: none; }
 .nc-nav-burger { display: none; place-items: center; flex: none; width: 44px; height: 44px; border-radius: var(--radius-md); border: 1px solid var(--color-neutral-800); background: transparent; color: var(--color-text); font-size: 20px; cursor: pointer; }
@@ -469,7 +470,7 @@ main.nc-wrap { flex: 1; }
   padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-neutral-800); background: rgba(0, 0, 0, .25); color: inherit; font: inherit; font-size: 14px;
 }
 .nc-help-form input:focus, .nc-field :is(input, select, textarea):focus { outline: 2px solid color-mix(in srgb, var(--color-accent) 60%, transparent); outline-offset: 1px; }
-.nc-help-note { opacity: .6; margin: 0; }
+.nc-help-note { margin: 0; color: var(--color-neutral-300); } /* ohne Transparenz: Kontrast über 4,5 : 1 */
 .nc-contact-form { display: grid; gap: 12px; }
 .nc-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
 .nc-field { display: grid; gap: 5px; font-size: 13px; }

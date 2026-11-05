@@ -308,4 +308,5 @@ export default [
   "No ads, no tracking. Only your login and settings are needed. Optional: the YouTube player for song requests.",
   "Cookie policy",
   "Cookie settings",
+  "By signing in you accept our <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">terms of use</a>. How we handle your data is explained in the <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">privacy policy</a>.",
 ];

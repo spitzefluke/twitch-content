@@ -308,4 +308,5 @@ export default [
   "Pas de pub, pas de pistage. Seuls ta connexion et tes réglages sont nécessaires. En option : le lecteur YouTube pour les demandes de chansons.",
   "Politique relative aux cookies",
   "Paramètres des cookies",
+  "En te connectant, tu acceptes nos <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">conditions d’utilisation</a>. La façon dont nous traitons tes données est expliquée dans la <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">politique de confidentialité</a>.",
 ];

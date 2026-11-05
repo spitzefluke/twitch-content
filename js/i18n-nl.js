@@ -308,4 +308,5 @@ export default [
   "Geen advertenties, geen tracking. Alleen je login en instellingen zijn nodig. Optioneel: de YouTube-speler voor songverzoeken.",
   "Cookiebeleid",
   "Cookie-instellingen",
+  "Met het inloggen gelden onze <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">gebruiksvoorwaarden</a>. Hoe we met je gegevens omgaan, staat in de <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">privacyverklaring</a>.",
 ];

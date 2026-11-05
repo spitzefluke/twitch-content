@@ -139,6 +139,9 @@
 .auth-sub { margin: 8px 0 22px; text-align: center; color: var(--text-2); animation: sh-fade .6s .35s var(--ease-out) both; }
 .auth-sub b { color: #fff; }
 .auth-card-body { animation: sh-fade .6s .45s var(--ease-out) both; }
+.auth-legal { margin: 18px 0 0; font-size: 12.5px; line-height: 1.5; text-align: center; color: var(--text-2); }
+.auth-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.auth-legal a:hover { color: var(--text-strong); }
 .auth .social { margin-bottom: 18px; }
 
 /* Nach dem Anmelden: Karte fliegt weg, ein lila Kreis füllt den Bildschirm */

@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-RjoarRDv+lc+j85oC/tGh9p2P7IJO3nmiBCMiKk/Fus=' 'sha256-3M0suPL89iWsWaE5OwDpMufWF64e4spmQFZru0SPBVs='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3gKk/DROjFiUfZXe2hmKK0N2aJULEHLr+GtCWt+CGpU=' 'sha256-3M0suPL89iWsWaE5OwDpMufWF64e4spmQFZru0SPBVs='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
@@ -11,7 +11,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/fonts.css?v=c6a8cf99d9">
+  <link rel="stylesheet" href="css/fonts.css?v=3f13b774a7">
   <link rel="stylesheet" href="css/style.css?v=23708f2cbb">
   <link rel="stylesheet" href="css/record.css?v=60134a9e2a">
   <!-- versions:start (node tools/stamp-versions.mjs) -->
@@ -22,8 +22,9 @@
       "./js/alert-designer.js": "./js/alert-designer.js?v=f11d4c5837",
       "./js/alerts.js": "./js/alerts.js?v=657d11f509",
       "./js/api.js": "./js/api.js?v=15ac0d0b52",
-      "./js/app.js": "./js/app.js?v=2f59cadd6f",
+      "./js/app.js": "./js/app.js?v=908feae36d",
       "./js/artist-files.js": "./js/artist-files.js?v=5ca31ade50",
+      "./js/avatar.js": "./js/avatar.js?v=136eccd608",
       "./js/bingo.js": "./js/bingo.js?v=1b500b0cd6",
       "./js/bot-plus.js": "./js/bot-plus.js?v=ced2515118",
       "./js/bot-reasons.js": "./js/bot-reasons.js?v=e2e03e6022",
@@ -37,7 +38,7 @@
       "./js/dash-bot.js": "./js/dash-bot.js?v=4f62b52221",
       "./js/dash-discord.js": "./js/dash-discord.js?v=9526da96a9",
       "./js/dash-money.js": "./js/dash-money.js?v=8b2b3a1706",
-      "./js/dash-network.js": "./js/dash-network.js?v=522652f4ce",
+      "./js/dash-network.js": "./js/dash-network.js?v=fec34b21f7",
       "./js/dash-obsdata.js": "./js/dash-obsdata.js?v=800b31c135",
       "./js/dash-profile.js": "./js/dash-profile.js?v=d64a161e18",
       "./js/dash-start.js": "./js/dash-start.js?v=19702535f8",
@@ -64,17 +65,17 @@
       "./js/extras.js": "./js/extras.js?v=ffe0fcb1ef",
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=1dbc5571d9",
-      "./js/help.js": "./js/help.js?v=d39deed222",
-      "./js/i18n-en.js": "./js/i18n-en.js?v=6659308c56",
-      "./js/i18n-es.js": "./js/i18n-es.js?v=737c7d0ab3",
-      "./js/i18n-fr.js": "./js/i18n-fr.js?v=c357bba399",
-      "./js/i18n-it.js": "./js/i18n-it.js?v=981cdaeef8",
-      "./js/i18n-keys.js": "./js/i18n-keys.js?v=4a9ee6059f",
-      "./js/i18n-nl.js": "./js/i18n-nl.js?v=106493d1f6",
-      "./js/i18n-pl.js": "./js/i18n-pl.js?v=66d4c5f3b0",
-      "./js/i18n-pt.js": "./js/i18n-pt.js?v=de046c6178",
-      "./js/i18n-ru.js": "./js/i18n-ru.js?v=1972b8acc6",
-      "./js/i18n-tr.js": "./js/i18n-tr.js?v=0df347571f",
+      "./js/help.js": "./js/help.js?v=a68e78522c",
+      "./js/i18n-en.js": "./js/i18n-en.js?v=0136d87fb8",
+      "./js/i18n-es.js": "./js/i18n-es.js?v=b2ead24677",
+      "./js/i18n-fr.js": "./js/i18n-fr.js?v=95691c574b",
+      "./js/i18n-it.js": "./js/i18n-it.js?v=072bbe339a",
+      "./js/i18n-keys.js": "./js/i18n-keys.js?v=e18282313f",
+      "./js/i18n-nl.js": "./js/i18n-nl.js?v=471b639f26",
+      "./js/i18n-pl.js": "./js/i18n-pl.js?v=a5cf60903d",
+      "./js/i18n-pt.js": "./js/i18n-pt.js?v=349ec8e028",
+      "./js/i18n-ru.js": "./js/i18n-ru.js?v=aba7221803",
+      "./js/i18n-tr.js": "./js/i18n-tr.js?v=337ad74802",
       "./js/i18n.js": "./js/i18n.js?v=268ccfe713",
       "./js/intro.js": "./js/intro.js?v=91b52e9132",
       "./js/landing-journey.js": "./js/landing-journey.js?v=793601534e",
@@ -98,7 +99,7 @@
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
       "./js/pro-page.js": "./js/pro-page.js?v=0b196134d4",
       "./js/pro.js": "./js/pro.js?v=827a563678",
-      "./js/profile.js": "./js/profile.js?v=c07340791d",
+      "./js/profile.js": "./js/profile.js?v=179c7737c3",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
       "./js/record.js": "./js/record.js?v=1cd418223e",
@@ -109,7 +110,7 @@
       "./js/shop.js": "./js/shop.js?v=fcc50151a8",
       "./js/social-icons.js": "./js/social-icons.js?v=5a363186bc",
       "./js/sponsor-files.js": "./js/sponsor-files.js?v=10d77a4c8f",
-      "./js/sponsoring.js": "./js/sponsoring.js?v=84d1f77325",
+      "./js/sponsoring.js": "./js/sponsoring.js?v=7729fc4016",
       "./js/supabase-js.js": "./js/supabase-js.js?v=397c32fbeb",
       "./js/theme-packs.js": "./js/theme-packs.js?v=90faabe1ce",
       "./js/ticker.js": "./js/ticker.js?v=f42d43ff2c",

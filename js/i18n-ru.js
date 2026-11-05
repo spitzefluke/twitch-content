@@ -308,4 +308,5 @@ export default [
   "Без рекламы и отслеживания. Нужны только вход и твои настройки. По желанию: плеер YouTube для заказов песен.",
   "Политика cookies",
   "Настройки cookies",
+  "Входя, ты принимаешь наши <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">условия использования</a>. Как мы обрабатываем твои данные, описано в <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">политике конфиденциальности</a>.",
 ];
