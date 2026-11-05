@@ -6,6 +6,10 @@
 // nur das Abzeichen und bleiben für alle nutzbar. Zum Start hier true setzen – dann sind sie ohne Pro gesperrt.
 export const PRO_ENFORCED = false;
 
+// Kann man Pro schon kaufen? Erst mit Gewerbe und Zahlungsanbieter. Bis dahin sind Bestell-Knopf (pro.html)
+// und das Formular unter „Verträge hier kündigen“ (kuendigen.html) gesperrt; AGB und Widerrufsbelehrung stehen bereit.
+export const PRO_BOOKABLE = false;
+
 export const PRO_PRICE = { month: '2,99 €', label: '2,99 € im Monat' };
 export const PRO_SOON = 'Pro ist bald buchbar – wir melden dafür gerade ein Gewerbe an. Bis dahin kannst du alles kostenlos nutzen.';
 

@@ -286,8 +286,8 @@ export default [
   "Her özelliği bilir ve anında yanıtlar.",
   "Soru sor, geri bildirim ver ve yeni özellikleri ilk sen dene.",
   "Biz kimiz",
-  "İzleyiciler tarafından yapıldı",
-  "Kendimiz de yayın yaptık ve iyi bir yayın için ne kadar çok araç gerektiğini gördük. StreamHelp bu yüzden var – Hamburg'dan bağımsız bir proje.",
+  "Kendi deneyimimizden doğdu",
+  "Kendimiz çok yayın izledik ve iyi bir yayın için ne kadar çok araç gerektiğini gördük. StreamHelp bu yüzden var – Hamburg'dan bağımsız bir proje.",
   "Hikâyemiz",
   "Kişisel mi tercih edersin? Bize mesaj yaz",
   "Beş dakikada kurulur. Şu an ücretsiz.",
@@ -309,4 +309,7 @@ export default [
   "Çerez politikası",
   "Çerez ayarları",
   "Giriş yaparak <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">kullanım koşullarımızı</a> kabul edersin. Verilerini nasıl işlediğimiz <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">gizlilik politikasında</a> yazıyor.",
+  "Satış koşulları",
+  "Cayma",
+  "Sözleşmeleri buradan iptal et",
 ];

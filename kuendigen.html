@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verträge hier kündigen · StreamHelp</title>
+  <meta name="description" content="Kündigung von StreamHelp Pro mit einem Klick (§ 312k BGB).">
+  <link rel="canonical" href="https://spitzefluke.github.io/twitch-content/kuendigen.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="StreamHelp">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:title" content="Verträge hier kündigen · StreamHelp">
+  <meta property="og:description" content="Kündigung von StreamHelp Pro mit einem Klick (§ 312k BGB).">
+  <meta property="og:url" content="https://spitzefluke.github.io/twitch-content/kuendigen.html">
+  <meta property="og:image" content="https://spitzefluke.github.io/twitch-content/assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- Kündigungsbutton nach § 312k BGB. Muss immer erreichbar sein (Fußzeilen verlinken hierher), ohne Anmeldung. Solange Pro nicht buchbar ist (js/pro.js: PRO_BOOKABLE), ist das Formular gesperrt. Zum Start: Formular per Skript an eine Edge Function schicken, die die Kündigung speichert und sofort per E-Mail bestätigt (Datum und Uhrzeit des Eingangs, Kündigungszeitpunkt). -->
+  <style>
+    :root { --bg: #0b0714; --card: #161027; --text: #eef1f7; --muted: #a7b0c2; --line: #2c2244; --accent: #b186ff; --warn: #ffd36b; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { width: min(100% - 32px, 760px); margin: 0 auto; padding: 40px 0 64px; }
+    a { color: var(--accent); }
+    h1 { margin: 0 0 6px; font-size: clamp(28px, 5vw, 38px); line-height: 1.15; }
+    h2 { margin: 32px 0 8px; font-size: 20px; line-height: 1.3; }
+    p, ul, ol { margin: 8px 0; }
+    ul, ol { padding-left: 22px; }
+    li { margin: 4px 0; }
+    .lead { color: var(--muted); }
+    .box { margin: 18px 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+    .soon { border-color: rgba(255, 211, 107, .45); background: rgba(255, 211, 107, .07); }
+    .soon b { color: var(--warn); }
+    .back { display: inline-block; margin-bottom: 24px; text-decoration: none; }
+    small { color: var(--muted); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    form { display: grid; gap: 14px; margin-top: 18px; }
+    fieldset { margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; }
+    legend { padding: 0 6px; font-weight: 600; }
+    label { display: grid; gap: 6px; font-size: 15px; }
+    .radio { display: flex; align-items: center; gap: 8px; }
+    input[type=text], input[type=email], textarea, select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0f0a1d; color: inherit; font: inherit; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { justify-self: start; padding: 12px 20px; border: 0; border-radius: 10px; background: #b186ff; color: #170f2a; font: 700 16px/1.2 system-ui, sans-serif; cursor: pointer; }
+    button:disabled, input:disabled, textarea:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="./">← Zu StreamHelp</a>
+    <h1>Verträge hier kündigen</h1>
+    <p class="lead">Hier kündigst du StreamHelp Pro – ohne Anmeldung, mit einem Klick. Die Kündigung bestätigen wir sofort per E-Mail mit Datum und Uhrzeit des Eingangs.</p>
+
+    <div class="box soon" role="status">
+      <p><b>🛠️ Derzeit gibt es nichts zu kündigen:</b> StreamHelp Pro kann noch nicht gekauft werden, und StreamHelp selbst ist kostenlos. Sobald Pro startet, funktioniert dieses Formular. Ein kostenloses Konto löschen wir auf Wunsch über das <a href="./#nachricht">Kontaktformular</a>.</p>
+    </div>
+
+    <form aria-describedby="kd-note">
+      <fieldset disabled>
+        <legend>Art der Kündigung</legend>
+        <label class="radio"><input type="radio" name="kind" value="regular" checked> Ordentliche Kündigung – zum nächstmöglichen Zeitpunkt (Ende des laufenden Monats)</label>
+        <label class="radio"><input type="radio" name="kind" value="extraordinary"> Außerordentliche Kündigung aus wichtigem Grund</label>
+        <label>Grund (nur bei außerordentlicher Kündigung)<textarea name="reason" maxlength="1000"></textarea></label>
+      </fieldset>
+      <fieldset disabled>
+        <legend>Wer kündigt?</legend>
+        <label>Vor- und Nachname<input type="text" name="name" autocomplete="name" maxlength="120" required></label>
+        <label>E-Mail-Adresse deines StreamHelp-Kontos<input type="email" name="email" autocomplete="email" maxlength="160" required></label>
+        <label>Twitch-Kanal, für den Pro gebucht ist<input type="text" name="channel" maxlength="60" required></label>
+        <label>Kündigung zum<select name="when"><option value="next">nächstmöglichen Zeitpunkt</option></select></label>
+        <label>E-Mail für die Bestätigung<input type="email" name="confirm_email" autocomplete="email" maxlength="160" required></label>
+      </fieldset>
+      <button type="submit" disabled aria-describedby="kd-note">jetzt kündigen</button>
+      <p id="kd-note"><small>Noch gesperrt, bis Pro buchbar ist. Kündigen kannst du später außerdem jederzeit per E-Mail an spitzefluke@gmail.com oder per Brief an die Anschrift im <a href="impressum.html">Impressum</a>.</small></p>
+    </form>
+
+    <p><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a> · <a href="agb.html">AGB</a> · <a href="widerruf.html">Widerruf</a> · <a href="kuendigen.html">Verträge hier kündigen</a></p>
+    <p><small>Stand: November 2026</small></p>
+  </main>
+</body>
+</html>

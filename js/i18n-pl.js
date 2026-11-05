@@ -286,8 +286,8 @@ export default [
   "Zna każdą funkcję i odpowiada od razu.",
   "Zadawaj pytania, dziel się opinią i testuj nowości jako pierwszy.",
   "Kim jesteśmy",
-  "Stworzone przez widzów",
-  "Sami streamowaliśmy i zauważyliśmy, ile narzędzi potrzebuje dobry stream. Dlatego powstał StreamHelp – niezależny projekt z Hamburga.",
+  "Zbudowane z własnego doświadczenia",
+  "Sami obejrzeliśmy wiele streamów i zauważyliśmy, ile narzędzi potrzebuje dobry stream. Dlatego powstał StreamHelp – niezależny projekt z Hamburga.",
   "Nasza historia",
   "Wolisz osobiście? Napisz do nas wiadomość",
   "Gotowe w pięć minut. Obecnie za darmo.",
@@ -309,4 +309,7 @@ export default [
   "Polityka cookies",
   "Ustawienia cookies",
   "Logując się akceptujesz nasz <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">regulamin</a>. Jak przetwarzamy twoje dane, opisuje <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">polityka prywatności</a>.",
+  "Warunki sprzedaży",
+  "Odstąpienie",
+  "Wypowiedz umowę tutaj",
 ];

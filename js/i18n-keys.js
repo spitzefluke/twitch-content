@@ -288,8 +288,8 @@ export default [
   "Kennt jede Funktion und antwortet sofort.",
   "Fragen stellen, Feedback geben und neue Funktionen als Erstes testen.",
   "Wer wir sind",
-  "Von Zuschauern gebaut",
-  "Wir haben selbst gestreamt und gemerkt, wie viele Tools ein guter Stream braucht. Deshalb gibt es StreamHelp – ein unabhängiges Projekt aus Hamburg.",
+  "Aus eigener Erfahrung gebaut",
+  "Wir haben selbst viele Streams geschaut und gemerkt, wie viele Tools ein guter Stream braucht. Deshalb gibt es StreamHelp – ein unabhängiges Projekt aus Hamburg.",
   "Unsere Geschichte",
   "Lieber persönlich? Schreib uns eine Nachricht",
   "In fünf Minuten eingerichtet. Aktuell kostenlos.",
@@ -311,4 +311,7 @@ export default [
   "Cookie-Richtlinie",
   "Cookie-Einstellungen",
   "Mit der Anmeldung gelten unsere <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">Nutzungsbedingungen</a>. Wie wir mit deinen Daten umgehen, steht im <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">Datenschutz</a>.",
+  "AGB",
+  "Widerruf",
+  "Verträge hier kündigen",
 ];
