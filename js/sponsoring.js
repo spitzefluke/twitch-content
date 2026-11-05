@@ -4,6 +4,7 @@
 //   · Mit #k=<schlüssel>: Stand des Angebots, Bewerbungen (Zahlen nur, wenn der Streamer zustimmt),
 //     Zusagen/Absagen, laufende Sponsorings beenden, Angebot beenden.
 // Der Schlüssel steht im #-Teil der Adresse – der geht beim Laden nie an einen Server.
+import { avatarSrc } from './avatar.js';
 import { createApi, germanError } from './api.js';
 import { setupConsent } from './consent.js';
 import { h } from './extras-core.js';
@@ -184,7 +185,7 @@ function appRow(a) {
   }
   const s = a.stats;
   return h('li', { class: 'sp-app' },
-    h('span', { class: 'sp-app-ava', 'aria-hidden': 'true' }, /^https:\/\//.test(a.avatar_url ?? '') ? h('img', { src: a.avatar_url, alt: '', referrerpolicy: 'no-referrer' }) : name.slice(0, 1).toUpperCase()),
+    h('span', { class: 'sp-app-ava', 'aria-hidden': 'true' }, avatarSrc(a.avatar_url) ? h('img', { src: avatarSrc(a.avatar_url), alt: '', referrerpolicy: 'no-referrer' }) : name.slice(0, 1).toUpperCase()),
     h('span', { class: 'sp-app-who' },
       h('a', { href: `https://www.twitch.tv/${encodeURIComponent(a.login)}`, target: '_blank', rel: 'noopener noreferrer' }, name),
       h('span', {}, `${APP_STATUS[a.status] ?? a.status}${s ? ` · Ø ${s.avg} Zuschauer, Spitze ${s.peak}, ${s.streams} Streams in 30 Tagen` : ' · Zahlen nicht geteilt'}`),

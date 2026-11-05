@@ -33,6 +33,7 @@ import {
 import { h } from './extras-core.js';
 import { maybeOpenIntro, openIntro, setupIntro } from './intro.js';
 import { applyI18n, initI18n, LANGS, langPicker, t as tr } from './i18n.js';
+import { avatarSrc } from './avatar.js';
 import { setupConsent } from './consent.js';
 import { setupHelp } from './help.js';
 import { botTrap, captchaToken, looksLikeBot, mfaGate, mountCaptcha, renderModSecurity, renderSecurityPage, resetCaptcha, setupSecurity } from './security.js';
@@ -1203,11 +1204,12 @@ async function claimReferral(api) {
 
 function channelAvatar(el, c) {
   el.replaceChildren();
-  if (c?.avatar_url && /^https:\/\//.test(c.avatar_url)) {
+  const src = avatarSrc(c?.avatar_url); // über den eigenen Server, nicht direkt bei Twitch (js/avatar.js)
+  if (src) {
     const img = new Image();
     img.alt = '';
     img.referrerPolicy = 'no-referrer';
-    img.src = c.avatar_url;
+    img.src = src;
     el.append(img);
   } else {
     el.textContent = channelLabel(c).slice(0, 1).toUpperCase();

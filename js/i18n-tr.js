@@ -308,4 +308,5 @@ export default [
   "Reklam yok, takip yok. Yalnızca girişin ve ayarların gerekli. İsteğe bağlı: şarkı istekleri için YouTube oynatıcısı.",
   "Çerez politikası",
   "Çerez ayarları",
+  "Giriş yaparak <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">kullanım koşullarımızı</a> kabul edersin. Verilerini nasıl işlediğimiz <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">gizlilik politikasında</a> yazıyor.",
 ];

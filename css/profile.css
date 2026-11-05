@@ -124,3 +124,5 @@ a { color: var(--acc-ink); }
 .pp-sponsors a, .pp-sponsors b { font-weight: 700; color: inherit; }
 .pp-sponsors span { font-size: 14px; opacity: .85; overflow-wrap: anywhere; }
 .pp-code { font-family: ui-monospace, monospace; }
+/* Tastatur: sichtbarer Fokus auf Knöpfen und Links (auch auf „Free und Pro“ und Sponsoring) */
+.pp-btn:focus-visible, .pp-links a:focus-visible { outline: 2px solid var(--acc-2); outline-offset: 3px; }

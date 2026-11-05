@@ -310,4 +310,5 @@ export default [
   "Keine Werbung, kein Tracking. Nötig sind nur Anmeldung und deine Einstellungen. Optional: der YouTube-Player für Song-Wünsche.",
   "Cookie-Richtlinie",
   "Cookie-Einstellungen",
+  "Mit der Anmeldung gelten unsere <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">Nutzungsbedingungen</a>. Wie wir mit deinen Daten umgehen, steht im <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">Datenschutz</a>.",
 ];

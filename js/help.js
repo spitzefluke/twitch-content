@@ -3,6 +3,7 @@
 //     eingerichtet oder hakt es, sucht die Seite selbst die passende Antwort in den FAQ – kostenlos.
 //   · Kontaktformular: contact_send (Migration …_contact_showcase.sql), Nachrichten landen im Admin-Bereich.
 //   · Showcase: showcase_list – nur Kanäle, deren Streamer zugestimmt haben.
+import { avatarSrc } from './avatar.js';
 import { currentLang, sourceOf, t } from './i18n.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -144,11 +145,12 @@ async function loadShowcase(root) {
     const ava = document.createElement('span');
     ava.className = 'nc-channel-ava';
     ava.setAttribute('aria-hidden', 'true');
-    if (/^https:\/\//.test(c.avatar_url ?? '')) {
+    const src = avatarSrc(c.avatar_url); // über den eigenen Server, nicht direkt bei Twitch
+    if (src) {
       const img = new Image();
       img.alt = '';
       img.referrerPolicy = 'no-referrer';
-      img.src = c.avatar_url;
+      img.src = src;
       ava.append(img);
     } else {
       ava.textContent = (c.display_name || c.login).slice(0, 1).toUpperCase();
