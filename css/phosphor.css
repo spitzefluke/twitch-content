@@ -153,3 +153,5 @@
 .ph.ph-plugs-connected:before { content: "\eb5a"; }
 .ph.ph-push-pin:before { content: "\e3e2"; }
 .ph.ph-envelope-simple:before { content: "\e218"; }
+.ph.ph-columns:before { content: "\e546"; }
+.ph.ph-square-half-bottom:before { content: "\eb16"; }

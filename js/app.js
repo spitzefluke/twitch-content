@@ -3,8 +3,8 @@ import { createApi, germanError, missingFunction } from './api.js';
 import { Wheel } from './wheel.js';
 import { DEFAULT_TILES, RARITY_WHEEL, bonusWheel, spinTitle } from './defaults.js';
 import { PRO_PRICE, isProKind, proLocked } from './pro.js';
-import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
-import { BOARD, ITEMS, MAX_SOUND_SECONDS, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, throwItem } from './prank-fx.js';
+import { ALERT_KINDS, ALERT_LOOKS, ALERT_PRESETS, ALERT_SFX, ALERT_SOUND_BYTES, ALERT_SOUND_SECONDS, playAlertSound } from './alerts.js';
+import { BOARD, ITEMS, MAX_SOUND_SECONDS, SFX_EQ, SFX_REVERB, Sfx, prankEmoji, prankText, setItemIcon, setPrankIcon, setSfxFx, throwItem } from './prank-fx.js';
 import { CATEGORIES, MAX_AMOUNT, RARITIES, amountFromFile, bingoState, categoryFromName, categoryOf, distinctCount, drawCard, fullBetLines, imageKey, nameFromFile, rarityFromFile, rarityName, renderBingoGrid, shrinkImage } from './bingo.js';
 import { DEFAULT_STAGE, OUTCOME_LABEL, STATUS_LABEL, paintQuestionCard } from './questions.js';
 import { setupLanding } from './landing.js';
@@ -5911,7 +5911,6 @@ function paintFrenzyButtons() {
 function paintObsPet() {
   const admin = !!state.profile?.is_admin && !!state.pet?.on;
   $('#obs-pet-admin').hidden = !admin;
-  $('#obs-pet-frenzy').hidden = !admin;
   if (!admin) return;
   const pet = { ...DEFAULT_PET, ...state.pet.data };
   const costume = $('#obs-pet-costume');
@@ -6098,7 +6097,7 @@ function toLocalInput(d) {
 // und Kamera-Rahmen lassen sich dort verschieben (overlay.html?edit=1).
 const OBS_KEY = 'obs_options';
 const OBS_WS_KEY = 'zd_obs_ws'; // früher Klartext in localStorage – wird beim ersten Lesen verschlüsselt umgezogen
-const OBS_UNITS = { ercool: ' s', ercombo: '×', ermax: '', ersize: '%', lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', sosize: '%', cpsize: '%', cptop: '', btsize: '%', scsize: '%', spsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
+const OBS_UNITS = { ercool: ' s', ercombo: '×', ermax: '', ersize: '%', lbsize: '%', gsize: '%', fwsize: '%', sasize: '%', qzsize: '%', qusize: '%', ttsize: '%', cdsize: '%', gwsize: '%', hwsize: '%', plsize: '%', ctsize: '%', sgsize: '%', hrsize: '%', cmsize: '%', sosize: '%', cpsize: '%', cptop: '', btsize: '%', scsize: '%', spsize: '%', wsize: '%', nsize: '%', bsize: '%', psize: '%', qsize: '%', ssize: '%', csize: '%', asize: '%', rsize: '%', chsize: '%', chh: '%', chmax: '', dsize: '%', tsize: '%', tspeed: ' px/s', vol: '%', vwheel: '%', valert: '%', vprank: '%', vpet: '%', vquest: '%', vbingo: '%', vshop: '%', vchal: '%', vtts: '%', vquiz: '%', vforbid: '%', vsub: '%', vpause: '%', vcards: '%', vgive: '%', sfxpitch: '%', avfollow: '%', avsub: '%', avresub: '%', avgift: '%', avbits: '%', avredeem: '%', avtip: '%', hold: ' s', rotate: ' s', margin: ' px', bg: '%' };
 const OBS_PARTS = ['wheel', 'next', 'bingo', 'quest', 'shop', 'challenge', 'alerts', 'recent', 'chat', 'forbid', 'subathon', 'quiz', 'queue', 'tts', 'cards', 'giveaway', 'hotwords', 'poll', 'counter', 'gamewheel', 'heart', 'chatcontrol', 'songs', 'cup', 'bet', 'scratch', 'sponsor', 'scene', 'labels', 'goal'];
 const OBS_SIZE = {
   wheel: 'wsize', next: 'nsize', bingo: 'bsize', quest: 'qsize', shop: 'ssize', challenge: 'csize', alerts: 'asize', recent: 'rsize', chat: 'chsize',
@@ -6168,7 +6167,6 @@ function setupObs() {
   });
   $('#obs-ws-form').addEventListener('submit', (e) => { e.preventDefault(); connectObs(); });
   $('#obs-ws-disconnect').addEventListener('click', () => disconnectObs(true));
-  $('#obs-apply').addEventListener('click', applyObs);
   $('#obs-cam-source').addEventListener('change', useObsCamera);
   $('#obs-share').addEventListener('click', shareObsWindow);
   setupObsLayers();
@@ -6225,6 +6223,8 @@ function setupObsTools() {
     setCols(body.classList.contains(`is-closed-${side}`) ? '' : side);
   }));
 
+  setupObsLayout();
+
   // Ebenen suchen und filtern – die Felder gehören nicht zu den OBS-Einstellungen
   const tools = $('#obs-layer-tools');
   for (const type of ['input', 'change']) tools.addEventListener(type, (e) => { e.stopPropagation(); filterObsLayers(); });
@@ -6255,6 +6255,24 @@ function setupObsTools() {
     if (row && !row.classList.contains('is-on')) toast('Die Ebene ist aus – sie erscheint nur in der Vorschau kurz zum Testen, wenn du sie einschaltest.', 'info', 5000);
     frame.contentWindow?.postMessage({ type: 'stellwerk-test', key: obsSelected }, location.origin);
   });
+}
+
+// Anordnung der Bereiche auf der OBS-Seite: unter der Vorschau oder links und rechts daneben (css/style.css)
+const OBS_LAYOUT_KEY = 'sh_obs_layout';
+const OBS_LAYOUTS = ['bottom', 'side', 'side-r'];
+function setObsLayout(layout) {
+  const name = OBS_LAYOUTS.includes(layout) ? layout : 'bottom';
+  const dlg = $('#obs-dialog');
+  dlg.querySelector('.obs-body').dataset.layout = name;
+  dlg.querySelectorAll('[data-obs-layout]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.obsLayout === name)));
+  try { localStorage.setItem(OBS_LAYOUT_KEY, name); } catch { /* egal */ }
+  requestAnimationFrame(fitObsPreview);
+}
+function setupObsLayout() {
+  let saved = '';
+  try { saved = localStorage.getItem(OBS_LAYOUT_KEY) ?? ''; } catch { /* egal */ }
+  setObsLayout(saved);
+  $('#obs-dialog').querySelectorAll('[data-obs-layout]').forEach((b) => b.addEventListener('click', () => setObsLayout(b.dataset.obsLayout)));
 }
 
 function filterObsLayers() {
@@ -6483,6 +6501,7 @@ function setupObsMixer() {
   toggle.innerHTML = '<input type="checkbox" id="obs-preview-sound"><span class="toggle-ui" aria-hidden="true"></span>🔈 Ton in der Vorschau';
   head.after(toggle);
   $('#obs-preview-sound').addEventListener('change', (e) => { obs.previewSound = e.target.checked; renderObsPreview(); });
+  setupObsStudio();
   mixer.querySelectorAll('.obs-mix[data-mix]').forEach((row) => {
     const range = row.querySelector('input[type=range]');
     const key = row.dataset.mix;
@@ -6515,6 +6534,68 @@ function setupObsMixer() {
   $('#obs-options').addEventListener('input', paintMutes);
   $('#obs-options').addEventListener('change', paintMutes);
   setTimeout(paintMutes);
+}
+
+// ---------- Sound-Studio: Klangfarbe, Hall, Tonhöhe (Parameter sfxeq, sfxrev, sfxpitch) ----------
+const STUDIO_PRESETS = [
+  { id: 'natural', name: '🎧 Natürlich', eq: '', rev: '', pitch: 100 },
+  { id: 'cinema', name: '🎬 Kino', eq: 'bass', rev: 'hall', pitch: 100 },
+  { id: 'arena', name: '🏟️ Stadion', eq: '', rev: 'arena', pitch: 100 },
+  { id: 'arcade', name: '🕹️ Arcade', eq: 'bright', rev: '', pitch: 115 },
+  { id: 'radio', name: '📻 Radio', eq: 'radio', rev: 'room', pitch: 100 },
+  { id: 'echo', name: '🌀 Echo-Kammer', eq: 'warm', rev: 'echo', pitch: 100 },
+  { id: 'monster', name: '👹 Monster', eq: 'bass', rev: 'hall', pitch: 70 },
+  { id: 'mini', name: '🐿️ Mini', eq: 'bright', rev: '', pitch: 160 },
+];
+function applyStudioFx() {
+  const f = $('#obs-options');
+  setSfxFx({ eq: f.elements.sfxeq.value, rev: f.elements.sfxrev.value, pitch: Number(f.elements.sfxpitch.value) / 100 });
+}
+function paintStudio() {
+  const f = $('#obs-options');
+  const now = `${f.elements.sfxeq.value}|${f.elements.sfxrev.value}|${f.elements.sfxpitch.value}`;
+  $('#obs-studio-presets').querySelectorAll('[data-studio]').forEach((b) => {
+    const p = STUDIO_PRESETS.find((x) => x.id === b.dataset.studio);
+    b.setAttribute('aria-pressed', String(`${p.eq}|${p.rev}|${p.pitch}` === now));
+    b.disabled = obsLocked();
+  });
+}
+function setupObsStudio() {
+  const f = $('#obs-options');
+  const fill = (el, list) => {
+    el.replaceChildren(...list.map((x) => new Option(x.name, x.id)));
+    el.options[0].defaultSelected = true;
+  };
+  fill(f.elements.sfxeq, SFX_EQ);
+  fill(f.elements.sfxrev, SFX_REVERB);
+  const box = $('#obs-studio-presets');
+  box.replaceChildren(...STUDIO_PRESETS.map((p) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'obs-studio-preset';
+    b.dataset.studio = p.id;
+    b.textContent = p.name;
+    return b;
+  }));
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-studio]');
+    const p = b && STUDIO_PRESETS.find((x) => x.id === b.dataset.studio);
+    if (!p || obsLocked()) return;
+    setSelect(f.elements.sfxeq, p.eq);
+    setSelect(f.elements.sfxrev, p.rev);
+    f.elements.sfxpitch.value = String(p.pitch);
+    updateObs({ now: true });
+    playStudioSample();
+  });
+  $('#obs-studio-try').addEventListener('click', playStudioSample);
+  f.addEventListener('input', paintStudio);
+  f.addEventListener('change', paintStudio);
+  setTimeout(paintStudio);
+}
+// Probe: der Abo-Sound (wie eingestellt) – mit Klangfarbe, Hall und Tonhöhe
+function playStudioSample() {
+  const f = $('#obs-options');
+  playPreview(f.elements.ssub.value || 'default', 'sub');
 }
 
 // Ton der Ebene in der Vorschau vorführen (schaltet „Ton in der Vorschau“ dafür ein)
@@ -6831,11 +6912,6 @@ function setupObsDocks() {
     if (b.dataset.scene) setSelect(f.elements.scene, b.dataset.scene);
     updateObs({ now: true });
   });
-  // Steuerung: Bereiche öffnen im Dock „Eigenschaften“
-  dlg.querySelectorAll('[data-obs-go]').forEach((b) => b.addEventListener('click', () => {
-    showObsTab(b.dataset.obsGo);
-    setObsMobileTab('props');
-  }));
   dlg.querySelectorAll('.obs-mtabs [data-mtab]').forEach((b) => b.addEventListener('click', () => setObsMobileTab(b.dataset.mtab)));
   setObsMobileTab(body.dataset.mtab || 'layers');
   // Auf dem Handy: Ebene gewählt → gleich ihre Eigenschaften zeigen
@@ -7172,7 +7248,6 @@ async function allowAdminsObs(e) {
 function paintStreamerView({ firstOpen = false } = {}) {
   const admin = !!state.profile?.is_admin;
   $('#obs-dialog .obs-tab[data-tab="content"]').hidden = !admin;
-  $('#obs-dialog [data-obs-go="content"]').hidden = !admin;
   $('#obs-title').textContent = 'OBS-Editor';
   $('#obs-eyebrow').textContent = !admin ? 'Für den Stream'
     : state.access?.is_mod ? `Als Mod für ${streamerName()}` : `Für ${streamerName()}`;
@@ -7415,6 +7490,7 @@ function paintAlertSoundOptions() {
     const el = $('#obs-options').elements[k.param];
     const current = el.value;
     const groups = [
+      group('Effekt-Sounds', ALERT_SFX.map((x) => new Option(`${x.emoji} ${x.name}`, `x:${x.id}`))),
       obs.alertSounds?.length && group('Eigene Alert-Sounds', obs.alertSounds.map((x) => new Option(`🔔 ${x.name}`, `a:${x.path}`))),
       group('Soundboard', BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id))),
       obs.sounds?.length && group('Aus „Ärgere den Streamer“', obs.sounds.map((x) => new Option(x.name, `c:${x.path}`))),
@@ -7510,9 +7586,10 @@ function testAlertSound(kind) {
 async function playPreview(choice, kind) {
   const f = $('#obs-options');
   obs.sfx ??= new Sfx();
-  const vol = Number(f.elements.vol.value);
-  obs.sfx.volume = Number.isFinite(vol) ? vol / 100 : 1;
-  if (!obs.sfx.volume) { toast('Die Lautstärke steht auf 0.', 'error'); return; }
+  const pct = (name) => { const v = Number(f.elements[name]?.value); return Number.isFinite(v) ? v / 100 : 1; };
+  applyStudioFx();
+  obs.sfx.volume = pct('vol') * pct('valert') * pct(`av${kind}`);
+  if (!obs.sfx.volume) { toast('Die Lautstärke steht auf 0 – Gesamtlautstärke, „Alerts“ im Mixer oder der Regler dieses Alerts.', 'error'); return; }
   // Beim ersten Klick muss der Browser den Ton erst freigeben
   if (!obs.sfx.get()) await obs.sfx.ctx?.resume().catch(() => {});
   playAlertSound(obs.sfx, kind, choice, (value) => {
@@ -7794,7 +7871,7 @@ function paintObsConnection() {
   $('#obs-share').hidden = on;
   $('#obs-ws-title').textContent = on ? 'Mit OBS verbunden' : 'Mit OBS verbinden';
   $('#obs-ws-status').textContent = on
-    ? `Vorschau zeigt die Szene „${obs.scene ?? '…'}“. „In OBS übernehmen“ legt die Browserquelle „StreamHelp-Overlay“ an bzw. aktualisiert sie.`
+    ? `Vorschau zeigt die Szene „${obs.scene ?? '…'}“. „In OBS übernehmen“ oben in der Kopfzeile legt die Browserquelle „StreamHelp-Overlay“ an bzw. aktualisiert sie.`
     : 'Dann siehst du unten dein echtes OBS-Bild, die Seite findet deine Kamera und richtet das Overlay in OBS ein.';
   $('#obs-preview-label').textContent = on ? `Live aus OBS · ${obs.scene ?? ''}` : obs.stream ? 'Geteiltes Fenster' : 'Beispielbild';
   $('#obs-preview').classList.toggle('has-shot', on || !!obs.stream);
@@ -7861,7 +7938,7 @@ function pollObsShot() {
 }
 
 async function applyObs() {
-  const btns = [$('#obs-apply'), $('#obs-head-apply')];
+  const btns = [$('#obs-head-apply')];
   const busy = (on) => btns.forEach((b) => { b.disabled = on; b.classList.toggle('is-loading', on); });
   busy(true);
   try {

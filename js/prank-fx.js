@@ -104,11 +104,35 @@ export function prankEmoji(p) {
 // ============================================================
 // Töne
 // ============================================================
+// Sound-Studio (OBS-Fenster → Aussehen & Ton): Klangfarbe, Hall und Tonhöhe für alle Töne aus Sfx –
+// eingebaute Klänge, Soundboard, Würfe, Spiele und eigene Sound-Dateien. Das Overlay setzt es beim Start
+// aus den Parametern sfxeq, sfxrev und sfxpitch (setSfxFx), der Editor vor dem Probehören.
+export const SFX_EQ = [
+  { id: '', name: 'Natürlich' }, { id: 'warm', name: 'Warm' }, { id: 'bright', name: 'Hell & klar' },
+  { id: 'bass', name: 'Mehr Bass' }, { id: 'radio', name: 'Radio' }, { id: 'phone', name: 'Telefon' },
+];
+export const SFX_REVERB = [
+  { id: '', name: 'Ohne' }, { id: 'room', name: 'Zimmer' }, { id: 'hall', name: 'Konzertsaal' },
+  { id: 'arena', name: 'Stadion' }, { id: 'echo', name: 'Echo' },
+];
+const REVERB = { room: { sec: 0.6, decay: 3.2, wet: 0.22 }, hall: { sec: 1.9, decay: 2.6, wet: 0.32 }, arena: { sec: 3.4, decay: 2.1, wet: 0.38 } };
+const sfxFx = { eq: '', rev: '', pitch: 1 };
+export function setSfxFx({ eq = '', rev = '', pitch = 1 } = {}) {
+  sfxFx.eq = SFX_EQ.some((e) => e.id === eq) ? eq : '';
+  sfxFx.rev = SFX_REVERB.some((r) => r.id === rev) ? rev : '';
+  sfxFx.pitch = Number.isFinite(pitch) ? Math.min(2, Math.max(0.5, pitch)) : 1;
+}
+const fxKey = () => `${sfxFx.eq}|${sfxFx.rev}`;
+// Frequenzen bleiben im hörbaren Bereich, auch wenn die Tonhöhe sie verschiebt
+const hz = (f) => Math.min(18000, Math.max(20, f * sfxFx.pitch));
+
 export class Sfx {
   constructor({ volume = 1 } = {}) {
     this.volume = volume;
     this.ctx = null;
     this.out = null;
+    this.fxNodes = [];
+    this.fxKey = null;
   }
 
   // null, solange der Browser keinen Ton erlaubt (vor dem ersten Klick) oder die Lautstärke 0 ist
@@ -118,16 +142,71 @@ export class Sfx {
       if (!this.ctx) {
         this.ctx = new (window.AudioContext ?? window.webkitAudioContext)();
         // Kompressor: Mehrere Töne gleichzeitig sollen nicht übersteuern.
-        const comp = this.ctx.createDynamicsCompressor();
-        comp.threshold.value = -14;
-        comp.ratio.value = 6;
+        this.comp = this.ctx.createDynamicsCompressor();
+        this.comp.threshold.value = -14;
+        this.comp.ratio.value = 6;
+        this.comp.connect(this.ctx.destination);
         this.out = this.ctx.createGain();
-        this.out.connect(comp).connect(this.ctx.destination);
       }
+      if (this.fxKey !== fxKey()) this.wireFx();
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
       this.out.gain.value = this.volume;
     } catch { return null; }
     return this.ctx.state === 'running' ? this.ctx : null;
+  }
+
+  // Lautstärke → Klangfarbe → trocken + Hall/Echo → Kompressor
+  wireFx() {
+    const ctx = this.ctx;
+    this.out.disconnect();
+    for (const n of this.fxNodes) n.disconnect();
+    this.fxNodes = [];
+    this.fxKey = fxKey();
+    const keep = (n) => { this.fxNodes.push(n); return n; };
+    const filter = (type, freq, { gain = 0, q = 0.7 } = {}) => {
+      const f = keep(ctx.createBiquadFilter());
+      f.type = type;
+      f.frequency.value = freq;
+      f.gain.value = gain;
+      f.Q.value = q;
+      return f;
+    };
+    const eq = {
+      warm: () => [filter('lowshelf', 250, { gain: 4 }), filter('highshelf', 4200, { gain: -6 })],
+      bright: () => [filter('lowshelf', 200, { gain: -2 }), filter('highshelf', 3500, { gain: 6 })],
+      bass: () => [filter('lowshelf', 150, { gain: 9 }), filter('peaking', 70, { gain: 3, q: 1 })],
+      radio: () => [filter('highpass', 450), filter('lowpass', 3400), filter('peaking', 1600, { gain: 5, q: 1 })],
+      phone: () => [filter('highpass', 500), filter('highpass', 500), filter('lowpass', 2800), filter('lowpass', 2800)],
+    }[sfxFx.eq]?.() ?? [];
+    let node = this.out;
+    for (const f of eq) node = node.connect(f);
+    node.connect(this.comp);
+    if (!sfxFx.rev) return;
+    const wet = keep(ctx.createGain());
+    if (sfxFx.rev === 'echo') {
+      const delay = keep(ctx.createDelay(1));
+      delay.delayTime.value = 0.28;
+      const back = keep(ctx.createGain());
+      back.gain.value = 0.42;
+      const damp = filter('lowpass', 2600);
+      node.connect(delay);
+      delay.connect(damp).connect(back).connect(delay);
+      delay.connect(wet);
+      wet.gain.value = 0.5;
+    } else {
+      const r = REVERB[sfxFx.rev];
+      const len = Math.floor(ctx.sampleRate * r.sec);
+      const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, r.decay);
+      }
+      const conv = keep(ctx.createConvolver());
+      conv.buffer = buf;
+      node.connect(conv).connect(wet);
+      wet.gain.value = r.wet;
+    }
+    wet.connect(this.comp);
   }
 
   // Hüllkurve: Anstieg, Halten, Ausklingen
@@ -147,16 +226,16 @@ export class Sfx {
     const gain = ctx.createGain();
     osc.type = type;
     const dur = this.env(ctx, gain, t0, { peak: 0.3, ...env });
-    if (curve) osc.frequency.setValueCurveAtTime(curve, t0, dur);
+    if (curve) osc.frequency.setValueCurveAtTime(curve.map(hz), t0, dur);
     else {
-      osc.frequency.setValueAtTime(freq, t0);
-      if (to) osc.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      osc.frequency.setValueAtTime(hz(freq), t0);
+      if (to) osc.frequency.exponentialRampToValueAtTime(hz(to), t0 + dur);
     }
     if (vibrato) {
       const lfo = ctx.createOscillator();
       const depth = ctx.createGain();
       lfo.frequency.value = vibrato.rate;
-      depth.gain.setValueAtTime(vibrato.depth, t0);
+      depth.gain.setValueAtTime(vibrato.depth * sfxFx.pitch, t0);
       if (vibrato.fade) depth.gain.exponentialRampToValueAtTime(1, t0 + dur);
       lfo.connect(depth).connect(osc.frequency);
       lfo.start(t0);
@@ -166,7 +245,7 @@ export class Sfx {
     if (filter) {
       const f = ctx.createBiquadFilter();
       f.type = filter.type;
-      f.frequency.value = filter.freq;
+      f.frequency.value = hz(filter.freq);
       f.Q.value = filter.q ?? 1;
       node = node.connect(f);
     }
@@ -184,11 +263,12 @@ export class Sfx {
     src.loop = !buffer;
     const f = ctx.createBiquadFilter();
     f.type = type;
-    f.frequency.setValueAtTime(freq, t0);
+    f.frequency.setValueAtTime(hz(freq), t0);
     f.Q.value = q;
     const gain = ctx.createGain();
     const dur = this.env(ctx, gain, t0, { peak: 0.3, ...env });
-    if (to) f.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+    if (to) f.frequency.exponentialRampToValueAtTime(hz(to), t0 + dur);
+    if (sfxFx.pitch !== 1 && buffer) src.playbackRate.value = sfxFx.pitch;
     src.connect(f).connect(gain).connect(this.out);
     src.start(t0);
     src.stop(t0 + dur + 0.05);
@@ -324,17 +404,46 @@ export class Sfx {
     board[id]?.();
   }
 
-  // Eigener Sound: höchstens maxSeconds lang (Zuschauer-Sounds 10, Alert-Sounds 20 Sekunden)
+  // Eigener Sound: höchstens maxSeconds lang (Zuschauer-Sounds 10, Alert-Sounds 20 Sekunden).
+  // Mit Klangfarbe oder Hall läuft die Datei durch dieselbe Kette wie die eingebauten Töne
+  // (braucht CORS – klappt das nicht, spielt sie ohne Effekte). Die Tonhöhe ändert das Tempo mit.
   playUrl(url, maxSeconds = MAX_SOUND_SECONDS) {
     return new Promise((resolve) => {
       if (!this.volume) { resolve(); return; }
-      const audio = new Audio(url);
-      audio.volume = Math.min(1, this.volume);
-      const done = () => { clearTimeout(timer); audio.pause(); resolve(); };
-      const timer = setTimeout(done, maxSeconds * 1000);
-      audio.addEventListener('ended', done, { once: true });
-      audio.addEventListener('error', done, { once: true });
-      audio.play().catch(done);
+      let finished = false;
+      let timer = 0;
+      const start = (routed) => {
+        const audio = new Audio();
+        if (routed) audio.crossOrigin = 'anonymous';
+        audio.src = url;
+        audio.playbackRate = sfxFx.pitch;
+        audio.preservesPitch = false;
+        audio.volume = routed ? 1 : Math.min(1, this.volume);
+        const done = () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          audio.pause();
+          resolve();
+        };
+        audio.addEventListener('ended', done, { once: true });
+        audio.addEventListener('error', () => {
+          if (routed && !audio.currentTime) { audio.pause(); start(false); } else done();
+        }, { once: true });
+        if (routed) {
+          try {
+            this.ctx.createMediaElementSource(audio).connect(this.out);
+          } catch (err) {
+            console.warn('Sound-Effekte:', err);
+            start(false);
+            return;
+          }
+        }
+        clearTimeout(timer);
+        timer = setTimeout(done, maxSeconds * 1000);
+        audio.play().catch(done);
+      };
+      start(!!(sfxFx.eq || sfxFx.rev) && !!this.get());
     });
   }
 }
