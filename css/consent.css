@@ -1,0 +1,43 @@
+/* Cookie-Fenster (js/consent.js) – eigenständig, sieht auf Startseite, Dashboard und Profil-Seiten gleich aus
+   (Farben aus dem Designsystem Nocturne). Unten links, verdeckt nichts Wichtiges, blockiert die Seite nicht. */
+.ck {
+  position: fixed; left: 16px; bottom: 16px; z-index: 2147483000; width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto;
+  display: grid; gap: 12px; padding: 18px 20px; border-radius: 14px; border: 1px solid #2c2c5c;
+  background: linear-gradient(170deg, #1b1560, #18164a); color: #eceef8; box-shadow: 0 0 0 1px rgba(147, 151, 171, .25), 0 18px 48px rgba(0, 0, 0, .55);
+  font: 14px/1.55 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; text-align: left;
+  animation: ck-in .35s cubic-bezier(.2, .8, .2, 1) both;
+}
+.ck[hidden] { display: none; }
+.ck *, .ck *::before, .ck *::after { box-sizing: border-box; }
+@keyframes ck-in { from { opacity: 0; transform: translateY(12px); } }
+@media (prefers-reduced-motion: reduce) { .ck { animation: none; } }
+.ck-title { margin: 0; font: 600 17px/1.3 "Bricolage Grotesque", "Inter", system-ui, sans-serif; letter-spacing: -.01em; text-transform: none; color: #eceef8; }
+.ck-text { margin: 0; color: #c9cce6; }
+.ck a { color: #b3e05a; text-decoration: underline; text-underline-offset: 2px; }
+.ck a:hover { color: #def5b5; }
+.ck-settings { display: grid; gap: 8px; }
+.ck-settings[hidden] { display: none; }
+.ck-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; border: 1px solid #2c2c5c; background: rgba(0, 0, 0, .2); cursor: pointer; }
+.ck-row.is-fixed { cursor: default; opacity: .85; }
+.ck-row input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: #78b900; }
+.ck-row b { display: block; font-weight: 600; color: #eceef8; }
+.ck-row small { display: block; font-size: 12.5px; line-height: 1.5; color: #a5a9cc; }
+.ck-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.ck-btn { min-height: 40px; padding: 8px 14px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #eceef8; font: 600 14px/1.2 "Bricolage Grotesque", "Inter", system-ui, sans-serif; cursor: pointer; }
+.ck-btn[hidden] { display: none; }
+.ck-btn:focus-visible { outline: 2px solid #78b900; outline-offset: 2px; }
+.ck-btn--link { margin-right: auto; padding-inline: 4px; color: #b3e05a; font-weight: 500; }
+.ck-btn--link:hover { color: #def5b5; }
+.ck-btn--line { border-color: #78b900; color: #b3e05a; }
+.ck-btn--line:hover { background: rgba(120, 185, 0, .12); }
+.ck-btn--solid { background: #78b900; border-color: #78b900; color: #10200a; }
+.ck-btn--solid:hover { background: #98d12b; }
+/* „Nur notwendige“ und „Alle erlauben“ gleich groß nebeneinander – keine Wahl wird versteckt */
+.ck-actions .ck-btn--line, .ck-actions .ck-btn--solid { flex: 1 1 0; min-width: max-content; }
+@media (max-width: 480px) { .ck { left: 8px; right: 8px; bottom: 8px; width: auto; } .ck-btn--link { flex-basis: 100%; text-align: left; } }
+/* Platzhalter vor dem YouTube-Player (js/bot-plus.js) */
+.ck-gate { display: grid; gap: 10px; justify-items: start; padding: 16px; border-radius: 10px; border: 1px dashed #4f5280; background: rgba(0, 0, 0, .2); font-size: 14px; line-height: 1.5; }
+.ck-gate p { margin: 0; }
+/* Link-Knopf „Cookie-Einstellungen“ in Fußzeilen */
+.ck-open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: inherit; cursor: pointer; }
+.ck-open:hover { color: inherit; text-decoration: underline; }

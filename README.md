@@ -1003,6 +1003,12 @@ Nach dem Entwurf „Startseite neu“ (Variante „Feinschliff“) aus Claude De
 - **Fußzeile:** Produkt · Hilfe · Unternehmen (Über uns, Mitmachen, Roadmap, Sponsoring) · Community, darunter © und die Rechtstexte.
 - **Über uns** (`ueber-uns.html`, statisch ohne Skripte): Geschichte, Werte, Zahlen, Roadmap, Mitmachen, Karriere (kommt mit dem Gewerbe). Die Zahlen dort sind fest eingetragen – bei neuen Content-Ideen oder Theme-Paketen mit anpassen.
 
+## Cookies: Richtlinie und Cookie-Fenster
+
+- **Cookie-Richtlinie** `cookies.html` (statisch, ohne Skripte): Liste aller Einträge im Browser (Anmeldung, Sprache, Einstellungen, OBS-Passwort, Demo-Daten, Handy-App-Cache) und der einzigen Einwilligung. Verlinkt aus Fußzeilen, Datenschutz, Impressum und Nutzungsbedingungen. Kommt ein neuer Speicher-Eintrag oder Dienst dazu, dort nachtragen.
+- **Cookie-Fenster** `js/consent.js` + `css/consent.css`: erscheint beim ersten Besuch unten links auf Startseite/Dashboard, Profil, „Free und Pro“ und Sponsoring – nie im OBS-Overlay. Knöpfe „Nur notwendige“ und „Alle erlauben“ gleichwertig, dazu „Einstellungen“ mit den Kategorien **Notwendig** (immer an) und **Externe Medien** (YouTube-Player der Song-Wünsche). Die Wahl liegt unter `sh_consent`; „Cookie-Einstellungen“ in der Fußzeile (`data-consent-open`) oder `./#cookies` öffnet es wieder.
+- **YouTube erst nach Einwilligung:** Ohne „Externe Medien“ zeigt der Song-Player im Dashboard einen Platzhalter mit „YouTube erlauben und abspielen“; erst danach wird `youtube-nocookie.com` geladen. Neue Kategorie? `VERSION` in `js/consent.js` erhöhen – dann fragt das Fenster alle neu.
+
 ## Startseite: Reise beim Scrollen
 
 Nach dem Entwurf „StreamHelp Startseite v3“ aus Claude Design (`js/landing-journey.js`, Stile am Ende von `css/landing.css`):
