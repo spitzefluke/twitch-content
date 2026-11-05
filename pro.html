@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3gKk/DROjFiUfZXe2hmKK0N2aJULEHLr+GtCWt+CGpU=' 'sha256-uBvHULBLSKZyzL3k1NCSZckXuAevXXGmhLNvRTcxVhI='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pMr7plpRSOzYfO1zVVzN0PsmQsfBhY9FOLHtbx67haA=' 'sha256-uBvHULBLSKZyzL3k1NCSZckXuAevXXGmhLNvRTcxVhI='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://irc-ws.chat.twitch.tv ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="same-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Free und Pro · StreamHelp</title>
@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/phosphor.css?v=ae305bbe25">
   <link rel="stylesheet" href="css/profile.css?v=473cb2f696">
   <link rel="stylesheet" href="css/consent.css?v=942aa7d09e">
-  <link rel="stylesheet" href="css/pro.css?v=f3d9b8d704">
+  <link rel="stylesheet" href="css/pro.css?v=7e069a2e76">
   <!-- Free und Pro im Vergleich (js/pro-page.js, Daten aus js/pro.js und js/defaults.js) -->
   <!-- versions:start (node tools/stamp-versions.mjs) -->
   <script type="importmap">{
@@ -75,16 +75,16 @@
       "./js/frame-guard.js": "./js/frame-guard.js?v=3a391987bd",
       "./js/games.js": "./js/games.js?v=1dbc5571d9",
       "./js/help.js": "./js/help.js?v=a68e78522c",
-      "./js/i18n-en.js": "./js/i18n-en.js?v=0136d87fb8",
-      "./js/i18n-es.js": "./js/i18n-es.js?v=b2ead24677",
-      "./js/i18n-fr.js": "./js/i18n-fr.js?v=95691c574b",
-      "./js/i18n-it.js": "./js/i18n-it.js?v=072bbe339a",
-      "./js/i18n-keys.js": "./js/i18n-keys.js?v=e18282313f",
-      "./js/i18n-nl.js": "./js/i18n-nl.js?v=471b639f26",
-      "./js/i18n-pl.js": "./js/i18n-pl.js?v=a5cf60903d",
-      "./js/i18n-pt.js": "./js/i18n-pt.js?v=349ec8e028",
-      "./js/i18n-ru.js": "./js/i18n-ru.js?v=aba7221803",
-      "./js/i18n-tr.js": "./js/i18n-tr.js?v=337ad74802",
+      "./js/i18n-en.js": "./js/i18n-en.js?v=e4a65278b2",
+      "./js/i18n-es.js": "./js/i18n-es.js?v=8be42dab54",
+      "./js/i18n-fr.js": "./js/i18n-fr.js?v=4a91fdd124",
+      "./js/i18n-it.js": "./js/i18n-it.js?v=9db7378a31",
+      "./js/i18n-keys.js": "./js/i18n-keys.js?v=4ec5eeb08b",
+      "./js/i18n-nl.js": "./js/i18n-nl.js?v=f92869f412",
+      "./js/i18n-pl.js": "./js/i18n-pl.js?v=47afe22e70",
+      "./js/i18n-pt.js": "./js/i18n-pt.js?v=b4e5660d4e",
+      "./js/i18n-ru.js": "./js/i18n-ru.js?v=90dd11210e",
+      "./js/i18n-tr.js": "./js/i18n-tr.js?v=62ed55b67f",
       "./js/i18n.js": "./js/i18n.js?v=268ccfe713",
       "./js/intro.js": "./js/intro.js?v=91b52e9132",
       "./js/landing-journey.js": "./js/landing-journey.js?v=793601534e",
@@ -106,8 +106,8 @@
       "./js/platform-gate.js": "./js/platform-gate.js?v=f7bbf2bf31",
       "./js/platform-notices.js": "./js/platform-notices.js?v=2e1994fbf3",
       "./js/prank-fx.js": "./js/prank-fx.js?v=8577e8f9f4",
-      "./js/pro-page.js": "./js/pro-page.js?v=0b196134d4",
-      "./js/pro.js": "./js/pro.js?v=827a563678",
+      "./js/pro-page.js": "./js/pro-page.js?v=68b6d090ed",
+      "./js/pro.js": "./js/pro.js?v=60cb4e3468",
       "./js/profile.js": "./js/profile.js?v=179c7737c3",
       "./js/questions.js": "./js/questions.js?v=9749040be0",
       "./js/random.js": "./js/random.js?v=15aa4d00fa",
@@ -157,7 +157,7 @@
     <section class="pr-plans" aria-label="Pläne">
       <article class="pr-plan">
         <h2>Free</h2>
-        <p class="pr-price"><b>0 €</b><span>für immer</span></p>
+        <p class="pr-price"><b>0 €</b><span>kostenlos</span></p>
         <p class="pr-plan-sub">Alles, was du für deinen Stream brauchst.</p>
         <ul class="pr-list" id="pr-free-list"></ul>
         <a class="pp-btn pp-btn--ghost pr-cta" href="./#login">Kostenlos starten</a>
@@ -165,10 +165,28 @@
       <article class="pr-plan is-pro">
         <h2>Pro <span class="pr-chip">Pro</span></h2>
         <p class="pr-price"><b id="pr-price">2,99 €</b><span>im Monat</span></p>
+        <p class="pr-terms">Endpreis · Laufzeit 1 Monat, verlängert sich jeweils um 1 Monat · jederzeit zum Monatsende kündbar</p>
         <p class="pr-plan-sub">Alles aus Free, dazu:</p>
         <ul class="pr-list" id="pr-pro-list"></ul>
         <button class="pp-btn pr-cta" type="button" disabled>Bald buchbar</button>
       </article>
+    </section>
+
+    <!-- So sieht die Buchung aus, sobald Pro startet (Pflichtangaben nach § 312j BGB) – bis dahin gesperrt.
+         Zum Start: Zahlungsanbieter anbinden, Knopf und Häkchen freischalten (js/pro.js: PRO_BOOKABLE). -->
+    <section class="pr-order" aria-labelledby="pr-order-title">
+      <h2 id="pr-order-title">So läuft die Buchung</h2>
+      <dl class="pr-order-sum">
+        <div><dt>Produkt</dt><dd>StreamHelp Pro für deinen Kanal</dd></div>
+        <div><dt>Preis</dt><dd><b id="pr-order-price">2,99 €</b> im Monat (Endpreis), monatlich im Voraus</dd></div>
+        <div><dt>Laufzeit</dt><dd>1 Monat, verlängert sich jeweils um 1 Monat</dd></div>
+        <div><dt>Kündigung</dt><dd>jederzeit zum Ende des laufenden Monats – über <a href="kuendigen.html">Verträge hier kündigen</a></dd></div>
+        <div><dt>Bezahlen</dt><dd>Zahlungsanbieter wird zum Start genannt</dd></div>
+      </dl>
+      <label class="pr-order-check"><input type="checkbox" disabled> <span>Ich möchte, dass Pro sofort startet. Mir ist bekannt, dass ich bei einem Widerruf für die bis dahin genutzte Zeit anteilig zahle.</span></label>
+      <p class="pr-order-legal">Es gelten die <a href="agb.html">AGB</a>. Informationen zu deinem Widerrufsrecht findest du in der <a href="widerruf.html">Widerrufsbelehrung</a>, zum Datenschutz im <a href="datenschutz.html">Datenschutz</a>.</p>
+      <button class="pp-btn pr-order-btn" type="button" disabled aria-describedby="pr-order-note">zahlungspflichtig bestellen</button>
+      <p class="pr-order-note" id="pr-order-note">Noch nicht buchbar – wir melden gerade ein Gewerbe an. Es wird nichts berechnet.</p>
     </section>
 
     <section class="pr-table-wrap" aria-labelledby="pr-cmp-title">
@@ -184,13 +202,14 @@
       <h2 id="pr-faq-title">Fragen</h2>
       <details><summary>Wann kann ich Pro buchen?</summary><p>Sobald unser Gewerbe angemeldet ist – daran arbeiten wir gerade. Bezahlen kannst du bis dahin nichts.</p></details>
       <details><summary>Was passiert bis dahin mit den Pro-Ideen?</summary><p>Du kannst sie bis zum Start kostenlos nutzen. Sie tragen schon das Abzeichen „Pro“, damit du weißt, was später dazugehört.</p></details>
-      <details><summary>Bleibt der Rest wirklich kostenlos?</summary><p>Ja. Chat-Bot, Alerts, Overlay, Design-Bibliothek, Statistik, Raid-Netzwerk und alle anderen Content-Ideen bleiben in Free.</p></details>
+      <details><summary>Ist der Rest wirklich kostenlos?</summary><p>Ja. Chat-Bot, Alerts, Overlay, Design-Bibliothek, Statistik, Raid-Netzwerk und alle anderen Content-Ideen sind in Free enthalten. Sollte sich daran etwas ändern, sagen wir es rechtzeitig vorher.</p></details>
+      <details><summary>Wie kündige ich Pro?</summary><p>Jederzeit zum Ende des laufenden Monats – mit einem Klick unter <a href="kuendigen.html">Verträge hier kündigen</a> (auch ohne Anmeldung) oder per E-Mail. Die Bedingungen stehen in den <a href="agb.html">AGB</a>, dein Widerrufsrecht in der <a href="widerruf.html">Widerrufsbelehrung</a>.</p></details>
       <details><summary>Ich habe eine Frage zu Pro.</summary><p>Schreib uns über das <a href="./#kontakt">Kontaktformular</a> oder im <a href="https://discord.gg/XkVG2ZEDG" target="_blank" rel="noopener">StreamHelp-Discord</a>.</p></details>
     </section>
 
     <footer class="pp-foot">
       <span>StreamHelp · Free und Pro</span>
-      <span><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="cookies.html">Cookies</a> · <button type="button" class="ck-open" data-consent-open>Cookie-Einstellungen</button> · <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a></span>
+      <span><a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · <a href="cookies.html">Cookies</a> · <button type="button" class="ck-open" data-consent-open>Cookie-Einstellungen</button> · <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a> · <a href="agb.html">AGB</a> · <a href="widerruf.html">Widerruf</a> · <a href="kuendigen.html">Verträge hier kündigen</a></span>
     </footer>
   </main>
 </body>

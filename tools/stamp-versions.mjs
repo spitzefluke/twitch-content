@@ -83,7 +83,7 @@ for (const [page, entry] of Object.entries(PAGES)) {
   }
 }
 
-// Statische Seiten ohne Module (404.html, cookies.html, datenschutz.html, impressum.html, ueber-uns.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
+// Statische Seiten ohne Module (404.html, agb.html, cookies.html, datenschutz.html, impressum.html, kuendigen.html, ueber-uns.html, widerruf.html): eigene, enge Content-Security-Policy mit dem Hash des Inline-Skripts
 const STATIC_CSP = (scriptHashes) => [
   "default-src 'none'",
   `script-src ${scriptHashes.length ? scriptHashes.map((h) => `'sha256-${h}'`).join(' ') : "'none'"}`,
@@ -93,7 +93,7 @@ const STATIC_CSP = (scriptHashes) => [
   "base-uri 'none'",
   "form-action 'none'",
 ].join('; ');
-for (const page of ['404.html', 'cookies.html', 'datenschutz.html', 'impressum.html', 'ueber-uns.html']) {
+for (const page of ['404.html', 'agb.html', 'cookies.html', 'datenschutz.html', 'impressum.html', 'kuendigen.html', 'ueber-uns.html', 'widerruf.html']) {
   const file = join(root, page);
   const before = readFileSync(file, 'utf8');
   // Inline-Skripte (ohne src); Schlusstag auch mit Leerzeichen/Großbuchstaben, z. B. </SCRIPT >

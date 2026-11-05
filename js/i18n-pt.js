@@ -286,8 +286,8 @@ export default [
   "Conhece cada função e responde na hora.",
   "Tire dúvidas, dê feedback e teste novidades primeiro.",
   "Quem somos",
-  "Feito por espectadores",
-  "Nós mesmos fizemos streams e vimos quantas ferramentas uma boa live precisa. Por isso existe o StreamHelp – um projeto independente de Hamburgo.",
+  "Feito a partir da nossa experiência",
+  "Nós assistimos a muitas lives e vimos quantas ferramentas uma boa live precisa. Por isso existe o StreamHelp – um projeto independente de Hamburgo.",
   "Nossa história",
   "Prefere falar com alguém? Mande uma mensagem",
   "Pronto em cinco minutos. Grátis no momento.",
@@ -309,4 +309,7 @@ export default [
   "Política de cookies",
   "Configurações de cookies",
   "Ao entrar, você aceita nossos <a href=\"nutzungsbedingungen.html\" target=\"_blank\" rel=\"noopener\">termos de uso</a>. Como tratamos seus dados está na <a href=\"datenschutz.html\" target=\"_blank\" rel=\"noopener\">política de privacidade</a>.",
+  "Termos de venda",
+  "Arrependimento",
+  "Cancelar contratos aqui",
 ];

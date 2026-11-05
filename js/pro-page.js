@@ -32,6 +32,7 @@ const pro = Object.entries(PRO_KINDS);
 $('#pr-soon').textContent = PRO_SOON;
 $('#pr-price').textContent = PRO_PRICE.month;
 $('#pr-price-lead').textContent = PRO_PRICE.label;
+$('#pr-order-price').textContent = PRO_PRICE.month;
 $('#pr-free-list').replaceChildren(
   ...BASICS.slice(0, 4).map((t) => h('li', {}, icon('ph-check'), t)),
   h('li', {}, icon('ph-check'), `${free.length} Content-Ideen, z. B. ${free.slice(0, 4).map(ideaName).join(', ')}`));
