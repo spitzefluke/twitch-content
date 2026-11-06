@@ -115,6 +115,14 @@ export const SFX_REVERB = [
   { id: '', name: 'Ohne' }, { id: 'room', name: 'Zimmer' }, { id: 'hall', name: 'Konzertsaal' },
   { id: 'arena', name: 'Stadion' }, { id: 'echo', name: 'Echo' },
 ];
+// Filter je Klangfarbe: [Typ, Frequenz, { gain, q }]
+const EQ_BANDS = {
+  warm: [['lowshelf', 250, { gain: 4 }], ['highshelf', 4200, { gain: -6 }]],
+  bright: [['lowshelf', 200, { gain: -2 }], ['highshelf', 3500, { gain: 6 }]],
+  bass: [['lowshelf', 150, { gain: 9 }], ['peaking', 70, { gain: 3, q: 1 }]],
+  radio: [['highpass', 450], ['lowpass', 3400], ['peaking', 1600, { gain: 5, q: 1 }]],
+  phone: [['highpass', 500], ['highpass', 500], ['lowpass', 2800], ['lowpass', 2800]],
+};
 const REVERB = { room: { sec: 0.6, decay: 3.2, wet: 0.22 }, hall: { sec: 1.9, decay: 2.6, wet: 0.32 }, arena: { sec: 3.4, decay: 2.1, wet: 0.38 } };
 const sfxFx = { eq: '', rev: '', pitch: 1 };
 export function setSfxFx({ eq = '', rev = '', pitch = 1 } = {}) {
@@ -171,13 +179,8 @@ export class Sfx {
       f.Q.value = q;
       return f;
     };
-    const eq = {
-      warm: () => [filter('lowshelf', 250, { gain: 4 }), filter('highshelf', 4200, { gain: -6 })],
-      bright: () => [filter('lowshelf', 200, { gain: -2 }), filter('highshelf', 3500, { gain: 6 })],
-      bass: () => [filter('lowshelf', 150, { gain: 9 }), filter('peaking', 70, { gain: 3, q: 1 })],
-      radio: () => [filter('highpass', 450), filter('lowpass', 3400), filter('peaking', 1600, { gain: 5, q: 1 })],
-      phone: () => [filter('highpass', 500), filter('highpass', 500), filter('lowpass', 2800), filter('lowpass', 2800)],
-    }[sfxFx.eq]?.() ?? [];
+    const bands = Object.hasOwn(EQ_BANDS, sfxFx.eq) ? EQ_BANDS[sfxFx.eq] : [];
+    const eq = bands.map(([type, freq, opts]) => filter(type, freq, opts));
     let node = this.out;
     for (const f of eq) node = node.connect(f);
     node.connect(this.comp);
