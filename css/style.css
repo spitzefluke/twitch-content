@@ -1318,9 +1318,36 @@ code { font-family: var(--font-mono); font-size: .9em; }
 .obs-ticker-edit summary { cursor: pointer; font-weight: 700; }
 .obs-ticker-edit[open] summary, .obs-ticker-edit details[open] summary { margin-bottom: 10px; }
 .obs-ticker-edit details > * + * { margin-top: 8px; }
-.obs-sound-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; align-items: end; margin-top: 10px; }
-.obs-sound-grid .field select { background: var(--bg); }
-.obs-sound-grid .btn { min-height: 44px; }
+/* Alert-Sounds: je Alert-Art Sound, eigene Lautstärke und ▶ */
+.obs-asounds { display: grid; gap: 6px; margin-top: 10px; }
+.obs-asound {
+  display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 30px; gap: 8px; align-items: end;
+  padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+.obs-asound-pick { display: grid; gap: 4px; min-width: 0; font-size: 13px; color: var(--muted); }
+.obs-asound-pick select { min-width: 0; width: 100%; min-height: 34px; background: var(--bg); }
+.obs-asound-vol { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 6px; align-items: center; min-height: 34px; }
+.obs-asound-vol input { width: 100%; accent-color: var(--twitch); }
+.obs-asound-vol output { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--muted); }
+.obs-asound .obs-mini-btn { width: 30px; height: 34px; padding: 0; display: grid; place-items: center; }
+@media (max-width: 520px) {
+  .obs-asound { grid-template-columns: minmax(0, 1fr) 30px; }
+  .obs-asound-vol { grid-column: 1; grid-row: 2; }
+  .obs-asound .obs-mini-btn { grid-row: 1 / 3; grid-column: 2; align-self: center; }
+}
+/* Sound-Studio: Vorlagen und Regler für den Klang aller Overlay-Sounds */
+.obs-studio { display: grid; gap: 8px; padding: 12px 14px; margin-top: 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(var(--bg-rgb), .45); }
+.obs-studio-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.obs-studio-preset {
+  min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent;
+  color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer;
+}
+.obs-studio-preset:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.obs-studio-preset[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-900); color: var(--acc-100); }
+.obs-studio-preset:disabled { opacity: .55; cursor: default; }
+.obs-studio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 18px; align-items: center; }
+.obs-studio-grid select { min-width: 0; }
+.obs-studio-try { justify-self: start; }
 .obs-alert-upload { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
 .obs-alert-upload h4 { font-size: 14px; font-weight: 700; }
 .obs-alert-sound-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -2425,6 +2452,38 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
 .obs-control .obs-connect small { font-size: 12px; }
 .obs-control .obs-manual, .obs-control .obs-help { font-size: 12.5px; }
 
+/* Anordnung (js/app.js setupObsLayout): Bereiche links und rechts neben der Vorschau statt darunter.
+   Nur auf der OBS-Seite und ab 1280 px – darunter gibt es keinen Platz daneben. */
+.obs-layout { display: none; }
+@media (min-width: 1280px) {
+  body.obs-page .obs-layout { display: flex; gap: 2px; padding: 2px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-soft); }
+  .obs-layout-btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+  }
+  .obs-layout-btn i { font-size: 15px; }
+  .obs-layout-btn:hover { color: var(--text); background: var(--surface-2); }
+  .obs-layout-btn[aria-pressed="true"] { color: var(--acc-100); background: var(--acc-900); box-shadow: inset 0 0 0 1px var(--acc-800); }
+  body.obs-page .obs-body[data-layout="side"], body.obs-page .obs-body[data-layout="side-r"] {
+    grid-template-rows: 30px minmax(150px, auto) minmax(0, 1fr) minmax(0, 300px);
+  }
+  body.obs-page .obs-body[data-layout="side"] {
+    grid-template-columns: 290px minmax(0, 1fr) 420px;
+    grid-template-areas: "scenes stage tabs" "scenes stage panel" "layers stage panel" "layers stage control";
+  }
+  body.obs-page .obs-body[data-layout="side-r"] {
+    grid-template-columns: 420px minmax(0, 1fr) 290px;
+    grid-template-areas: "tabs stage scenes" "panel stage scenes" "panel stage layers" "control stage layers";
+  }
+  /* Seitlich hat die Vorschau die volle Höhe – Hinweis darunter kompakter */
+  body.obs-page .obs-body[data-layout^="side"] .obs-drag-hint { gap: 2px 14px; }
+}
+@media (min-width: 1280px) and (max-width: 1599px) {
+  body.obs-page .obs-body[data-layout="side"] { grid-template-columns: 250px minmax(0, 1fr) 380px; }
+  body.obs-page .obs-body[data-layout="side-r"] { grid-template-columns: 380px minmax(0, 1fr) 250px; }
+  body.obs-page .obs-body[data-layout^="side"] .obs-tab { padding: 0 6px; letter-spacing: .04em; }
+}
+
 /* Tablet: Vorschau, Szenen-Chips und Steuerung links – Quellen und Eigenschaften rechts */
 @media (max-width: 1279px) {
   body.obs-page .obs-body {
@@ -2438,9 +2497,9 @@ body.obs-page .obs-insp-head { padding-bottom: 8px; border-bottom: 1px solid var
   .obs-scene-list { flex-direction: row; overflow-x: auto; padding: 0; gap: 6px; scrollbar-width: none; }
   .obs-scene { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
   .obs-scene.is-on { box-shadow: inset 0 0 0 1px var(--acc); }
-  .obs-control .obs-control-btns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .obs-control .obs-control-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .obs-ctl { min-height: 44px; justify-content: center; }
-  .obs-ctl--ext { grid-column: span 2; }
+  .obs-ctl--ext { grid-column: auto; }
   body.obs-page .obs-layer-head { min-height: 44px; }
   body.obs-page .obs-inspector .obs-layer-body { grid-template-columns: minmax(0, 1fr); }
 }

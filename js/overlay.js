@@ -83,7 +83,7 @@ import { CONFIG } from './config.js';
 import { alertFeed, channelFetch, channelFromUrl, channelHeaders, lookupChannel, rtSpec, setChannel } from './channel.js';
 import { DEFAULT_TILES, DEFAULT_VARIANTS, bonusWheel } from './defaults.js';
 import { Wheel } from './wheel.js';
-import { Sfx, prankText, setPrankIcon, throwItem } from './prank-fx.js';
+import { Sfx, prankText, setPrankIcon, setSfxFx, throwItem } from './prank-fx.js';
 import { bingoState, renderBingoGrid } from './bingo.js';
 import { paintQuestionCard } from './questions.js';
 import { DEFAULT_PET, Dino, runDino } from './pet.js';
@@ -273,6 +273,9 @@ const MIX = {
   vchal: 'challenge', vforbid: 'forbid', vsub: 'subathon', vpause: 'pause', vquiz: 'quiz', vtts: 'tts', vcards: 'cards', vgive: 'giveaway',
 };
 for (const [param, key] of Object.entries(MIX)) opt.vols[key] = opt.volume * number(param, 100, 0, 200) / 100;
+// Sound-Studio: Klangfarbe, Hall und Tonhöhe für alle Sfx-Töne; Lautstärke je Alert-Art (100 = wie „Alerts“)
+setSfxFx({ eq: params.get('sfxeq') ?? '', rev: params.get('sfxrev') ?? '', pitch: number('sfxpitch', 100, 50, 200) / 100 });
+opt.avol = Object.fromEntries(ALERT_KINDS.map((k) => [k.kind, number(`av${k.kind}`, 100, 0, 200) / 100]));
 
 // ---------- Aussehen je Ebene (OBS-Fenster → Ebene → „Aussehen“) ----------
 //   lc_<ebene>=ff4fd8     eigene Akzentfarbe der Karte (Hex ohne #; custom = Farbe aus lcc_<ebene>)
@@ -1600,8 +1603,9 @@ async function setupAlerts(source) {
     if (src && /\.(webm|mp4)$/i.test(d.media)) {
       video = document.createElement('video');
       Object.assign(video, { src, playsInline: true, loop: false, preload: 'auto' });
-      video.muted = !d.vsound || !opt.vols.alerts;
-      video.volume = Math.min(1, opt.vols.alerts || 0);
+      const vol = (opt.vols.alerts || 0) * (opt.avol[a.kind] ?? 1);
+      video.muted = !d.vsound || !vol;
+      video.volume = Math.min(1, vol);
       box.replaceChildren(video);
     } else if (src) {
       const img = new Image();
@@ -1644,6 +1648,7 @@ async function setupAlerts(source) {
       onAlertShown(a.kind);
       if (d.confetti) burst(fx, a.kind);
       const choice = d.sound || opt.asound[a.kind];
+      sfx.volume = opt.vols.alerts * (opt.avol[a.kind] ?? 1);
       const sound = playAlertSound(sfx, a.kind, choice,
         (c) => (c.startsWith('a:') ? source.alertSoundUrl : source.soundUrl)(c.slice(2)));
       // Stehen bleiben, bis Zeit, Sound (bis 20 Sekunden) und Video durch sind

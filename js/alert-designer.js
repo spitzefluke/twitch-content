@@ -4,7 +4,7 @@
 // (Migration …_overlay_designs.sql); das Overlay übernimmt Änderungen ohne Neuladen.
 // Die Vorschau ist overlay.html?apreview=1 in einem iframe und bekommt das Design per postMessage.
 import {
-  ALERT_KINDS, ALERT_LAYOUTS, ALERT_LOOKS, ALERT_MEDIA, ALERT_PRESETS, ENTER_ANIMS, PLACEHOLDERS, TEXT_ANIMS,
+  ALERT_KINDS, ALERT_LAYOUTS, ALERT_LOOKS, ALERT_MEDIA, ALERT_PRESETS, ALERT_SFX, ENTER_ANIMS, PLACEHOLDERS, TEXT_ANIMS,
   VARIANT_KINDS, alertLines, builtinMediaUrl, normalizeAlertConfig, normalizeDesign, playAlertSound, sampleAlert,
 } from './alerts.js';
 import { BOARD, Sfx } from './prank-fx.js';
@@ -669,6 +669,7 @@ function paintSoundOptions() {
   el.replaceChildren(
     new Option('wie im OBS-Fenster', ''), new Option('Standard-Klang', 'default'), new Option('Kein Ton', 'none'),
     ...[
+      group('Effekt-Sounds', ALERT_SFX.map((x) => new Option(`${x.emoji} ${x.name}`, `x:${x.id}`))),
       ad.alertSounds.length && group('Eigene Alert-Sounds', ad.alertSounds.map((x) => new Option(`🔔 ${x.name}`, `a:${x.path}`))),
       group('Soundboard', BOARD.map((b) => new Option(`${b.emoji} ${b.name}`, b.id))),
       ad.sounds.length && group('Aus „Ärgere den Streamer“', ad.sounds.map((x) => new Option(x.name, `c:${x.path}`))),

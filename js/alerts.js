@@ -117,14 +117,78 @@ export function alertSound(sfx, kind) {
   }
 }
 
-// Sound eines Alerts: "default" (eigener Klang je Art), "none", ein Sound vom
+// Effekt-Sounds nur für Alerts (Wert "x:<id>"), gebaut mit Sfx – kein Download, klingen mit dem
+// Sound-Studio (Klangfarbe, Hall, Tonhöhe) mit.
+export const ALERT_SFX = [
+  { id: 'levelup', name: 'Level-Up', emoji: '⬆️', play(s) {
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => s.tone(f, { at: i * 0.07, type: 'square', release: 0.12, peak: 0.07, filter: { type: 'lowpass', freq: 4000 } }));
+    s.tone(1568, { at: 0.36, type: 'triangle', attack: 0.01, hold: 0.25, release: 0.7, peak: 0.16, vibrato: { rate: 7, depth: 12 } });
+  } },
+  { id: 'airhorn', name: 'Air-Horn', emoji: '📣', play(s) {
+    for (const [at, hold] of [[0, 0.16], [0.24, 0.16], [0.48, 0.9]]) {
+      for (const f of [415, 523, 622]) s.tone(f, { at, type: 'sawtooth', attack: 0.015, hold, release: 0.12, peak: 0.08, vibrato: { rate: 9, depth: 6 }, filter: { type: 'lowpass', freq: 2600 } });
+    }
+  } },
+  { id: 'laser', name: 'Laser', emoji: '🔫', play(s) {
+    for (const at of [0, 0.18, 0.36]) s.tone(1900, { at, to: 160, type: 'square', release: 0.16, peak: 0.06, filter: { type: 'lowpass', freq: 3800 } });
+  } },
+  { id: 'tada', name: 'Tadaa!', emoji: '🎉', play(s) {
+    for (const [at, hold] of [[0, 0.06], [0.16, 0.9]]) {
+      for (const f of [392, 493.9, 587.3, 784]) s.tone(f, { at, type: 'sawtooth', attack: 0.02, hold, release: 0.5, peak: 0.06, filter: { type: 'lowpass', freq: 2400 } });
+    }
+    s.noise({ at: 0.16, type: 'highpass', freq: 7000, attack: 0.01, release: 1.2, peak: 0.12 });
+  } },
+  { id: 'drumroll', name: 'Trommelwirbel', emoji: '🥁', play(s) {
+    for (let i = 0; i < 26; i++) s.noise({ at: i * 0.045, type: 'bandpass', freq: 900, q: 0.9, release: 0.05, peak: 0.12 + i * 0.012 });
+    s.tone(110, { at: 1.18, to: 55, release: 0.4, peak: 0.6 });
+    s.noise({ at: 1.18, type: 'highpass', freq: 5000, attack: 0.005, release: 1.6, peak: 0.35 });
+  } },
+  { id: 'sadtrombone', name: 'Traurige Posaune', emoji: '🎺', play(s) {
+    [[293.7, 0, 0.22], [277.2, 0.32, 0.22], [261.6, 0.64, 0.22], [246.9, 0.96, 0.9]].forEach(([f, at, hold], i) => {
+      s.tone(f, { at, type: 'sawtooth', attack: 0.03, hold, release: 0.2, peak: 0.12, filter: { type: 'lowpass', freq: 1400 }, vibrato: i === 3 ? { rate: 5, depth: 8 } : null });
+    });
+  } },
+  { id: 'magic', name: 'Magie', emoji: '✨', play(s) {
+    for (let i = 0; i < 12; i++) s.tone(880 * Math.pow(2, i / 7), { at: i * 0.05, type: 'sine', release: 0.5, peak: 0.07 });
+    s.noise({ type: 'bandpass', freq: 6000, to: 9000, q: 2, attack: 0.2, release: 0.8, peak: 0.05 });
+  } },
+  { id: 'powerup', name: 'Power-Up', emoji: '⚡', play(s) {
+    s.tone(180, { to: 1400, type: 'sawtooth', attack: 0.02, hold: 0.55, release: 0.15, peak: 0.07, vibrato: { rate: 18, depth: 40 }, filter: { type: 'lowpass', freq: 3000 } });
+    s.tone(1760, { at: 0.7, type: 'triangle', release: 0.6, peak: 0.14 });
+  } },
+  { id: 'heartbeat', name: 'Herzschlag', emoji: '💓', play(s) {
+    for (const at of [0, 0.75]) {
+      s.tone(70, { at, to: 45, release: 0.18, peak: 0.8 });
+      s.tone(62, { at: at + 0.22, to: 40, release: 0.22, peak: 0.6 });
+    }
+  } },
+  { id: 'chime', name: 'Glockenspiel', emoji: '🔔', play(s) {
+    [1568, 1318.5, 1046.5, 1318.5, 1568].forEach((f, i) => s.tone(f, { at: i * 0.13, type: 'triangle', release: 0.9, peak: 0.13 }));
+  } },
+  { id: 'bassdrop', name: 'Bass-Drop', emoji: '🔊', play(s) {
+    s.noise({ type: 'bandpass', freq: 300, to: 5000, q: 1.5, attack: 0.9, release: 0.05, peak: 0.16 });
+    s.tone(95, { at: 0.95, to: 32, attack: 0.005, hold: 0.2, release: 1.2, peak: 0.9 });
+    s.noise({ at: 0.95, freq: 900, to: 80, attack: 0.005, release: 0.9, peak: 0.4 });
+  } },
+  { id: 'cash', name: 'Kasse', emoji: '💰', play(s) {
+    s.noise({ type: 'bandpass', freq: 2200, q: 2, release: 0.06, peak: 0.25 });
+    s.tone(2093, { at: 0.08, type: 'triangle', release: 0.6, peak: 0.14 });
+    s.tone(2637, { at: 0.12, type: 'triangle', release: 0.8, peak: 0.12 });
+    [0.3, 0.38, 0.46].forEach((at) => s.tone(3136, { at, type: 'square', release: 0.06, peak: 0.04, filter: { type: 'lowpass', freq: 6000 } }));
+  } },
+];
+
+// Sound eines Alerts: "default" (eigener Klang je Art), "none", ein Effekt-Sound "x:<id>", ein Sound vom
 // Soundboard (z. B. "gong"), ein eigener Alert-Sound als "a:<pfad>" oder ein
 // Sound aus „Ärgere den Streamer“ als "c:<pfad>". urlFor bekommt den ganzen Wert.
 // Liefert ein Promise, das endet, wenn eine Sound-Datei fertig ist – so bleibt
 // der Alert stehen, solange sein Sound läuft.
 export function playAlertSound(sfx, kind, choice = 'default', urlFor = null) {
   if (choice === 'none') return Promise.resolve();
-  if (/^[ac]:/.test(choice)) {
+  if (choice.startsWith('x:')) {
+    const fx = ALERT_SFX.find((x) => x.id === choice.slice(2));
+    if (fx) { fx.play(sfx); return Promise.resolve(); }
+  } else if (/^[ac]:/.test(choice)) {
     const url = urlFor?.(choice);
     if (url) return sfx.playUrl(url, choice.startsWith('a:') ? ALERT_SOUND_SECONDS : undefined);
   } else if (BOARD.some((b) => b.id === choice)) {
